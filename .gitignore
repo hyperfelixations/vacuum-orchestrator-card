@@ -1,0 +1,19 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+.cache/
+.stryker-tmp/
+reports/
+*.log
+
+# Operating systems and editors
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+
+# Local agent routing
+/AGENTS.md
+
