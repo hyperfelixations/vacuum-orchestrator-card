@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>vacuum-orchestrator-card test harness</title>
+    <link rel="stylesheet" href="fonts/roboto.css" />
+    <style>
+      /* Home Assistant's default-theme custom properties. The card sets no colour of its own:
+         every tone it paints is derived with color-mix() from these properties, which it
+         inherits from its host in production. Left undefined, a var() with no fallback
+         resolves to the property's initial value, so the card would silently lose its
+         surface, borders, state tones and tile backgrounds and would not look like the card
+         Home Assistant renders.
+
+         Sources: home-assistant/frontend. The five neutral tokens are the long-established
+         default-theme values; the five state colours are the default theme's
+         primary/error/warning/success/info. Dark-mode neutrals are taken from the frontend's
+         dark colour set. --ha-card-background and --ha-card-box-shadow are deliberately left
+         undefined: the default theme does not set them either, and the card carries its own
+         literal fallbacks for both. */
+      :root {
+        --primary-background-color: #fafafa;
+        --card-background-color: #ffffff;
+        --secondary-background-color: #e5e5e5;
+        --primary-text-color: #212121;
+        --secondary-text-color: rgba(0, 0, 0, 0.6);
+        --divider-color: rgba(0, 0, 0, 0.12);
+        --primary-color: #03a9f4;
+        --error-color: #db4437;
+        --warning-color: #ffa600;
+        --success-color: #43a047;
+        --info-color: #039be5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --primary-background-color: #111111;
+          --card-background-color: #1c1c1c;
+          --secondary-background-color: #202020;
+          --primary-text-color: #e1e1e1;
+          --secondary-text-color: #9b9b9b;
+          --divider-color: rgba(225, 225, 225, 0.12);
+        }
+      }
+      /* Roboto is what the Home Assistant frontend uses, and the card inherits its font from
+         its host rather than setting one. Without it every text metric — and therefore every
+         wrap, ellipsis and column width in a golden — would come from an arbitrary system
+         font. sans-serif stays as the fallback for glyphs Roboto does not ship. */
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--primary-background-color);
+        font-family: "Roboto", sans-serif;
+      }
+      /* Screenshots capture #stage, not the bare card: a box-shadow is painted outside the
+         element's border box, so a shot cropped to the card would cut it off and would show
+         no page background at all, unlike a real dashboard where a card sits in a gutter.
+         40px clears the card's shadow extent (8px offset + 26px blur) on every side. The
+         stage has no background of its own so the page background shows through. */
+      #stage {
+        display: inline-block;
+        padding: 40px;
+        box-sizing: border-box;
+      }
+      vacuum-orchestrator-card {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <script src="ha-stubs.js"></script>
+    <script src="/dist/vacuum-orchestrator-card.js"></script>
+  </body>
+</html>

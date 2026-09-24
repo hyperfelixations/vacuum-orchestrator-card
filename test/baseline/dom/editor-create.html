@@ -1,0 +1,200 @@
+<div class="voc-root" data-state="ready" data-tone="ready" data-density="auto" style="--tone-color:var(--success-color, #0f9d58);--tone-ink:var(--success-color, #0f9d58);--tone-soft:color-mix(in srgb, var(--success-color, #0f9d58) 16%, transparent);--tone-border:color-mix(in srgb, var(--success-color, #0f9d58) 44%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header" data-parts="icon title pill">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">2 jobs queued</div>
+</div>
+<span class="voc-pill voc-pill--ready voc-status-pill">Idle</span>
+</div>
+<div class="voc-body" id="voc-panel">
+<section class="voc-overlay voc-job-editor" data-overlay="editor" data-editor-mode="create" role="region" aria-labelledby="voc-editor-title" data-focus-region="true">
+<header class="voc-overlay-head">
+<button type="button" class="voc-back-button" data-action="back" data-confirm="false" aria-label="Back">Back</button>
+<h2 id="voc-editor-title">Add job</h2>
+<span class="voc-overlay-status">
+</span>
+</header>
+<form class="voc-editor-form" data-voc-editor-form="true" data-submit-command="create_job" novalidate="">
+<fieldset class="voc-editor-group" data-editor-group="areas">
+<legend>Rooms</legend>
+<div class="voc-form-field voc-form-field-invalid" data-field-path="areas">
+<div class="voc-field-label voc-sr-only" id="voc-field-areas-label">Rooms </div>
+<div class="voc-field-control" aria-describedby="voc-field-areas-hint voc-field-areas-error">
+<div class="voc-control voc-chip-select" data-control="chip-select" data-field-path="areas" data-multiple="true" role="listbox" aria-multiselectable="true" aria-labelledby="voc-field-areas-label" aria-invalid="true" aria-describedby="voc-field-areas-error">
+<button type="button" class="voc-chip-option" role="option" aria-selected="false" tabindex="0" data-action="update-draft" data-voc-value="bathroom" data-field-path="areas">Bathroom</button>
+<button type="button" class="voc-chip-option" role="option" aria-selected="false" tabindex="-1" data-action="update-draft" data-voc-value="hall" data-field-path="areas">Hall</button>
+<button type="button" class="voc-chip-option" role="option" aria-selected="false" tabindex="-1" data-action="update-draft" data-voc-value="kitchen" data-field-path="areas">Kitchen</button>
+</div>
+</div>
+<div class="voc-field-hint" id="voc-field-areas-hint">Robot data is not provided by the backend.</div>
+<div class="voc-field-error" id="voc-field-areas-error" role="alert">Select at least one room.</div>
+</div>
+</fieldset>
+<fieldset class="voc-editor-group" data-editor-group="mode">
+<legend>Mode</legend>
+<div class="voc-form-field" data-field-path="mode">
+<div class="voc-field-label voc-sr-only" id="voc-field-mode-label">Mode </div>
+<div class="voc-field-control">
+<div class="voc-control voc-segmented" data-control="segmented" data-field-path="mode" role="radiogroup" aria-invalid="false" aria-labelledby="voc-field-mode-label">
+<button type="button" class="voc-segmented-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="update-draft" data-voc-value="vacuum" data-field-path="mode">Vacuum</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="mop" data-field-path="mode">Mop</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="vacuum_and_mop" data-field-path="mode">Vacuum and mop</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="vacuum_then_mop" data-field-path="mode">Vacuum, then mop</button>
+</div>
+</div>
+</div>
+</fieldset>
+<fieldset class="voc-editor-group" data-editor-group="settings">
+<legend>Settings</legend>
+<div class="voc-form-field" data-field-path="passes">
+<div class="voc-field-label" id="voc-field-passes-label">Passes  <span class="voc-field-optional">Optional</span>
+</div>
+<div class="voc-field-control">
+<div class="voc-control voc-stepper" data-control="stepper" data-field-path="passes" role="group" aria-labelledby="voc-field-passes-label" aria-invalid="false">
+<button type="button" class="voc-stepper-button" data-action="update-draft" data-stepper-action="decrement" data-field-path="passes" aria-label="Move down" data-key-action="ArrowDown PageDown Home">−</button>
+<input class="voc-stepper-input" data-action="update-draft" data-voc-input="number" data-field-path="passes" type="number" inputmode="numeric" min="1" max="10" step="1" value="1" aria-valuemin="1" aria-valuemax="10" aria-valuenow="1" aria-label="Passes">
+<button type="button" class="voc-stepper-button" data-action="update-draft" data-stepper-action="increment" data-field-path="passes" aria-label="Move up" data-key-action="ArrowUp PageUp End">+</button>
+</div>
+</div>
+</div>
+<div class="voc-form-field" data-field-path="vacuumPower">
+<div class="voc-field-label" id="voc-field-vacuumPower-label">Vacuum power  <span class="voc-field-optional">Optional</span>
+</div>
+<div class="voc-field-control">
+<div class="voc-control voc-segmented" data-control="segmented" data-field-path="vacuumPower" role="radiogroup" aria-invalid="false" aria-labelledby="voc-field-vacuumPower-label">
+<button type="button" class="voc-segmented-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="update-draft" data-voc-value="" data-field-path="vacuumPower">Not set</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="off" data-field-path="vacuumPower">Off</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="low" data-field-path="vacuumPower">Low</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="standard" data-field-path="vacuumPower">Standard</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="medium" data-field-path="vacuumPower">Medium</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="high" data-field-path="vacuumPower">High</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="maximum" data-field-path="vacuumPower">Maximum</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="auto" data-field-path="vacuumPower">Automatic</button>
+</div>
+</div>
+</div>
+<div class="voc-form-field" data-field-path="mopIntensity">
+<div class="voc-field-label" id="voc-field-mopIntensity-label">Mop intensity  <span class="voc-field-optional">Optional</span>
+</div>
+<div class="voc-field-control">
+<div class="voc-control voc-segmented" data-control="segmented" data-field-path="mopIntensity" role="radiogroup" aria-invalid="false" aria-labelledby="voc-field-mopIntensity-label">
+<button type="button" class="voc-segmented-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="update-draft" data-voc-value="" data-field-path="mopIntensity">Not set</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="off" data-field-path="mopIntensity">Off</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="low" data-field-path="mopIntensity">Low</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="standard" data-field-path="mopIntensity">Standard</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="medium" data-field-path="mopIntensity">Medium</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="high" data-field-path="mopIntensity">High</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="maximum" data-field-path="mopIntensity">Maximum</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="auto" data-field-path="mopIntensity">Automatic</button>
+</div>
+</div>
+</div>
+<div class="voc-form-field" data-field-path="mopRoute">
+<div class="voc-field-label" id="voc-field-mopRoute-label">Mop route  <span class="voc-field-optional">Optional</span>
+</div>
+<div class="voc-field-control">
+<div class="voc-control voc-chip-select" data-control="chip-select" data-field-path="mopRoute" data-multiple="false" role="listbox" aria-multiselectable="false" aria-labelledby="voc-field-mopRoute-label" aria-invalid="false">
+<button type="button" class="voc-chip-option" role="option" aria-selected="false" tabindex="0" data-action="update-draft" data-voc-value="" data-field-path="mopRoute">Not set</button>
+<button type="button" class="voc-chip-option" role="option" aria-selected="false" tabindex="-1" data-action="update-draft" data-voc-value="standard" data-field-path="mopRoute">Standard</button>
+<button type="button" class="voc-chip-option" role="option" aria-selected="false" tabindex="-1" data-action="update-draft" data-voc-value="deep" data-field-path="mopRoute">Deep</button>
+<button type="button" class="voc-chip-option" role="option" aria-selected="false" tabindex="-1" data-action="update-draft" data-voc-value="fast" data-field-path="mopRoute">Fast</button>
+<button type="button" class="voc-chip-option" role="option" aria-selected="false" tabindex="-1" data-action="update-draft" data-voc-value="auto" data-field-path="mopRoute">Automatic</button>
+</div>
+</div>
+</div>
+<div class="voc-form-field" data-field-path="settingsPolicy">
+<div class="voc-field-label" id="voc-field-settingsPolicy-label">Settings policy  <span class="voc-field-optional">Optional</span>
+</div>
+<div class="voc-field-control" aria-describedby="voc-field-settingsPolicy-hint">
+<div class="voc-control voc-segmented" data-control="segmented" data-field-path="settingsPolicy" role="radiogroup" aria-invalid="false" aria-labelledby="voc-field-settingsPolicy-label">
+<button type="button" class="voc-segmented-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="update-draft" data-voc-value="best_effort" data-field-path="settingsPolicy">Best effort</button>
+<button type="button" class="voc-segmented-option" role="radio" aria-checked="false" tabindex="-1" data-action="update-draft" data-voc-value="strict" data-field-path="settingsPolicy">Strict</button>
+</div>
+</div>
+<div class="voc-field-hint" id="voc-field-settingsPolicy-hint">Best effort accepts the best available settings; strict requires every setting.</div>
+</div>
+</fieldset>
+<fieldset class="voc-editor-group" data-editor-group="source">
+<legend>Origin</legend>
+<div class="voc-form-field" data-field-path="name">
+<div class="voc-field-label" id="voc-field-name-label">Name  <span class="voc-field-optional">Optional</span>
+</div>
+<div class="voc-field-control">
+<input class="voc-text-input" data-control="text-field" data-action="update-draft" data-field-path="name" aria-labelledby="voc-field-name-label" aria-invalid="false" type="text" value="" autocomplete="off">
+</div>
+</div>
+<div class="voc-form-field" data-field-path="source">
+<div class="voc-field-label" id="voc-field-source-label">Source  <span class="voc-field-optional">Optional</span>
+</div>
+<div class="voc-field-control">
+<input class="voc-text-input" data-control="text-field" data-action="update-draft" data-field-path="source" aria-labelledby="voc-field-source-label" aria-invalid="false" type="text" value="" autocomplete="off">
+</div>
+</div>
+<div class="voc-form-field" data-field-path="reason">
+<div class="voc-field-label" id="voc-field-reason-label">Reason  <span class="voc-field-optional">Optional</span>
+</div>
+<div class="voc-field-control">
+<input class="voc-text-input" data-control="text-field" data-action="update-draft" data-field-path="reason" aria-labelledby="voc-field-reason-label" aria-invalid="false" type="text" value="" autocomplete="off">
+</div>
+</div>
+<div class="voc-form-field" data-field-path="note">
+<div class="voc-field-label" id="voc-field-note-label">Note  <span class="voc-field-optional">Optional</span>
+</div>
+<div class="voc-field-control">
+<textarea class="voc-text-input" data-control="text-field" data-action="update-draft" data-field-path="note" aria-labelledby="voc-field-note-label" aria-invalid="false" rows="3">
+</textarea>
+</div>
+</div>
+<div class="voc-form-field" data-field-path="dedupeKey">
+<div class="voc-field-label" id="voc-field-dedupeKey-label">Dedupe key  <span class="voc-field-optional">Optional</span>
+</div>
+<div class="voc-field-control">
+<input class="voc-text-input" data-control="text-field" data-action="update-draft" data-field-path="dedupeKey" aria-labelledby="voc-field-dedupeKey-label" aria-invalid="false" type="text" value="" autocomplete="off">
+</div>
+</div>
+</fieldset>
+<fieldset class="voc-editor-group" data-editor-group="requirements">
+<legend>Requirements</legend>
+<div class="voc-form-field" data-field-path="requiredOn">
+<div class="voc-field-label" id="voc-field-requiredOn-label">Required on  <span class="voc-field-optional">Optional</span>
+</div>
+<div class="voc-field-control">
+<div class="voc-control voc-entity-combobox" data-control="entity-combobox" data-field-path="requiredOn" aria-haspopup="listbox" aria-expanded="false" aria-owns="voc-field-requiredOn-listbox" aria-labelledby="voc-field-requiredOn-label" aria-invalid="false">
+<div class="voc-combobox-chips">
+</div>
+<input class="voc-combobox-input" data-action="update-draft" data-voc-input="entity" data-field-path="requiredOn" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="voc-field-requiredOn-listbox" aria-activedescendant="" value="" aria-label="Required on">
+<div class="voc-combobox-list" id="voc-field-requiredOn-listbox" role="listbox" hidden="">
+</div>
+</div>
+</div>
+</div>
+<div class="voc-form-field" data-field-path="requiredOff">
+<div class="voc-field-label" id="voc-field-requiredOff-label">Required off  <span class="voc-field-optional">Optional</span>
+</div>
+<div class="voc-field-control">
+<div class="voc-control voc-entity-combobox" data-control="entity-combobox" data-field-path="requiredOff" aria-haspopup="listbox" aria-expanded="false" aria-owns="voc-field-requiredOff-listbox" aria-labelledby="voc-field-requiredOff-label" aria-invalid="false">
+<div class="voc-combobox-chips">
+</div>
+<input class="voc-combobox-input" data-action="update-draft" data-voc-input="entity" data-field-path="requiredOff" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="voc-field-requiredOff-listbox" aria-activedescendant="" value="" aria-label="Required off">
+<div class="voc-combobox-list" id="voc-field-requiredOff-listbox" role="listbox" hidden="">
+</div>
+</div>
+</div>
+</div>
+</fieldset>
+<div class="voc-editor-actions">
+<button type="button" class="voc-secondary-button" data-action="cancel" data-confirm="false">Cancel</button>
+<button type="button" class="voc-action-button voc-primary-button" data-action="save-job" data-command="create_job" disabled="">Save</button>
+</div>
+</form>
+</section>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

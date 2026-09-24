@@ -7,3 +7,14 @@ test/** text eol=lf
 *.md text eol=lf
 *.mjs text eol=lf
 
+# `test/** text eol=lf` above claims every file under test/, including the ones that are not
+# text at all. This repository is developed on Windows with core.autocrlf=true, so a forced
+# text attribute would rewrite CR/LF byte pairs inside binaries on add and checkout: golden
+# screenshots and the self-hosted web fonts would be corrupted silently. They take part in
+# byte-for-byte comparisons, so they are declared binary explicitly.
+*.png binary
+*.woff2 binary
+
+# The golden screenshots are verbatim recordings, not hand-written files; a whitespace check
+# on them is meaningless and would fire on arbitrary pixel data.
+test/browser/**/*-snapshots/** -whitespace

@@ -1,0 +1,59 @@
+# Attaches the built card to a release the repository owner published. The asset is built here
+# from the released commit's sources, never uploaded by hand, and the version is checked
+# against every place that carries it before anything is attached.
+
+name: Release asset
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  hacs-validation:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: plugin
+
+  build:
+    name: Build, verify and attach the release asset
+    needs: hacs-validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Refuses the release unless package.json, both lockfile entries, CARD_VERSION and the
+      # HACS manifest agree with the tag.
+      - name: Verify the version and the HACS manifest
+        run: node scripts/validate-release.mjs "${{ github.event.release.tag_name }}"
+
+      - name: Run the Node test layers against the released commit
+        run: |
+          npm run build
+          npm run check:run
+          npm run test:node:run
+
+      - name: Attach the built card to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/vacuum-orchestrator-card.js

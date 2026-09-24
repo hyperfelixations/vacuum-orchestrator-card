@@ -1,0 +1,51 @@
+"use strict";
+// The one hand-written statement of what the card offers. The product-surface contract test
+// holds the source to it, so a new option, section, language or vocabulary word is a
+// deliberate change here and in the public README, never a silent one.
+
+module.exports = Object.freeze({
+  languages: ["en", "de"],
+  sections: ["queue", "rooms", "robots", "history", "diagnostics"],
+  modes: ["vacuum", "mop", "vacuum_and_mop", "vacuum_then_mop"],
+  states: ["queued", "dispatching", "running", "canceling", "completed", "failed", "cancelled", "needs_attention"],
+  capabilities: [
+    "queueRead",
+    "jobRead",
+    "jobsHistory",
+    "liveSubscribe",
+    "jobCreate",
+    "jobUpdate",
+    "jobDelete",
+    "jobMove",
+    "jobStart",
+    "jobCancel",
+    "jobRetry",
+    "queueRun",
+    "queuePause",
+    "queueResume",
+    "jobsActive",
+    "robotsRead",
+    "areasRead",
+    "jobProgress",
+    "jobBlockedReason",
+    "recoveryResolve",
+    "describe",
+  ],
+  topLevelKeys: [
+    "title",
+    "subtitle",
+    "icon",
+    "accent_line",
+    "language",
+    "show",
+    "sections",
+    "start_section",
+    "page_size",
+    "time_format",
+    "density",
+    "confirm_destructive",
+    "tap_action",
+    "hold_action",
+  ],
+  showKeys: ["accent_line", "icon", "title", "subtitle", "pill", "warnings", "stats", "tabs", "queue_controls", "unavailable_sections"],
+});

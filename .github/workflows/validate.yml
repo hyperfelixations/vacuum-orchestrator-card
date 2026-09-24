@@ -1,0 +1,23 @@
+# HACS validates the repository itself: manifest, structure, releases and the declared
+# frontend artifact. It says nothing about the card's behaviour, which is what ci.yml is for.
+
+name: Validate
+
+on:
+  push:
+  schedule:
+    - cron: "0 0 * * 6"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  validate-hacs:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: plugin

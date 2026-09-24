@@ -1,0 +1,87 @@
+# Two independent jobs with no `needs:` between them; each builds the bundle itself, so no job
+# reports green against an artifact it did not produce. dist/ is not committed.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Read-only: this workflow tests, it never publishes.
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Code & Node test layers
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Nothing here pushes; a persisted token would let a later step write to the repo.
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build the bundle from src/
+        run: npm run build
+
+      - name: Syntax check
+        run: npm run check:run
+
+      - name: All Node test layers
+        run: npm run test:node:run
+
+  browser:
+    name: Browser tests and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Repeated on purpose: this job must not pass against a bundle another job produced.
+      - name: Build the bundle from src/
+        run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Source-normalized coverage across the unit, bundle and browser layers
+        run: npm run coverage
+
+      # coverage already ran the full Chromium suite; only the other engines are left.
+      - name: Firefox and WebKit core
+        run: npm run test:browser:cross-engine:run
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-layers
+          path: coverage/
+          retention-days: 14
+
+      - name: Upload the Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

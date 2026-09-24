@@ -1,0 +1,111 @@
+<div class="voc-root" data-state="ready" data-tone="ready" data-density="auto" style="--tone-color:var(--success-color, #0f9d58);--tone-ink:var(--success-color, #0f9d58);--tone-soft:color-mix(in srgb, var(--success-color, #0f9d58) 16%, transparent);--tone-border:color-mix(in srgb, var(--success-color, #0f9d58) 44%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header" data-parts="icon title pill">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Nothing to do</div>
+</div>
+<span class="voc-pill voc-pill--ready voc-status-pill">Idle</span>
+</div>
+<div class="voc-stats">
+<div class="voc-stat-tile" data-stat="queueLength">
+<span class="voc-stat-value">0</span>
+<span class="voc-stat-label">Queue</span>
+</div>
+<div class="voc-stat-tile" data-stat="activeJobs">
+<span class="voc-stat-value">0</span>
+<span class="voc-stat-label">Active</span>
+</div>
+<div class="voc-stat-tile" data-stat="attentionJobs">
+<span class="voc-stat-value">0</span>
+<span class="voc-stat-label">Attention</span>
+</div>
+<div class="voc-stat-tile" data-stat="robotsAvailable">
+<span class="voc-stat-value">1 / 1</span>
+<span class="voc-stat-label">Robots</span>
+</div>
+</div>
+<div class="voc-tab-row">
+<div class="voc-tabs" role="tablist">
+<button type="button" class="voc-tab" role="tab" id="voc-tab-queue" data-section="queue" aria-controls="voc-panel" aria-selected="false" tabindex="-1" aria-label="Queue">
+<span class="voc-tab-label" aria-hidden="true">Queue</span>
+<span class="voc-tab-short" aria-hidden="true">Queue</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-rooms" data-section="rooms" aria-controls="voc-panel" aria-selected="false" tabindex="-1" aria-label="Rooms">
+<span class="voc-tab-label" aria-hidden="true">Rooms</span>
+<span class="voc-tab-short" aria-hidden="true">Rooms</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-robots" data-section="robots" aria-controls="voc-panel" aria-selected="true" tabindex="0" aria-label="Robots">
+<span class="voc-tab-label" aria-hidden="true">Robots</span>
+<span class="voc-tab-short" aria-hidden="true">Robots</span>
+</button>
+</div>
+<button type="button" class="voc-button voc-primary-action" data-action="create-job" data-command="create_job" aria-label="Add job">
+<ha-icon icon="mdi:plus" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Add job</span>
+</button>
+</div>
+<div class="voc-body" id="voc-panel" role="tabpanel" aria-labelledby="voc-tab-robots">
+<section class="voc-section voc-robots-section" data-section="robots">
+<h2 class="voc-section-title">Robots</h2>
+<div class="voc-robot-grid">
+<article class="voc-robot-card" data-robot-id="robot-1">
+<div class="voc-robot-header">
+<div class="voc-robot-icon" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div>
+<h3>Robot 1</h3>
+<span class="voc-robot-availability voc-tone-ready">Available</span>
+</div>
+</div>
+<div class="voc-robot-status" data-robot-battery="true">
+<span>
+<ha-icon icon="mdi:battery" aria-hidden="true">
+</ha-icon>Battery</span>
+<strong>87%</strong>
+</div>
+<div class="voc-robot-active">
+<span>Current job</span>
+<span>Not set</span>
+</div>
+<div class="voc-robot-capabilities">
+<div class="voc-robot-chip-group">
+<span class="voc-robot-chip-label">Supported operations</span>
+<div class="voc-robot-chip-list">
+<span class="voc-robot-chip">Vacuum</span>
+<span class="voc-robot-chip">Mop</span>
+<span class="voc-robot-chip">Vacuum and mop</span>
+</div>
+</div>
+<div class="voc-robot-chip-group">
+<span class="voc-robot-chip-label">Reachable rooms</span>
+<div class="voc-robot-chip-list">
+<span class="voc-robot-chip">Kitchen</span>
+<span class="voc-robot-chip">Hall</span>
+<span class="voc-robot-chip">Bathroom</span>
+</div>
+</div>
+<span class="voc-robot-max-passes">Maximum passes: 3</span>
+</div>
+</article>
+</div>
+</section>
+</div>
+<div class="voc-queue-controls" data-queue-mode="idle">
+<button type="button" class="voc-button voc-queue-command" data-action="run-queue" data-command="run_queue" aria-label="Start queue">
+<ha-icon icon="mdi:play" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Start queue</span>
+</button>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>
