@@ -442,10 +442,9 @@ function createFakeOrchestrator({ profile = "today", clock = null, seed = null }
       if (!job) return Promise.reject(error("unknown_job"));
       if (job.state !== "queued") return Promise.reject(error("job_not_startable"));
       const robot = data.robot_id ? robots.find((item) => item.robot_id === data.robot_id) : robots.find((item) => item.availability === "available");
-      if (profile === "target" && !robot) return Promise.reject(error("no_robot_configured"));
-      job.state = "running";
+      if (!robot) return Promise.reject(error("no_robot_configured"));
+      job.state = "dispatching";
       job.assigned_robot_id = robot?.robot_id ?? null;
-      job.started_at = iso(virtualClock);
       job.active_attempt_id = `${job.job_id}-attempt-1`;
       job.revision += 1;
       job.updated_at = iso(virtualClock);
@@ -461,22 +460,15 @@ function createFakeOrchestrator({ profile = "today", clock = null, seed = null }
     } else if (action === "cancel_job") {
       const job = jobs.get(data.job_id);
       if (!job) return Promise.reject(error("unknown_job"));
-      if (job.state === "queued") {
+      const queuedCancellation = job.state === "queued";
+      if (queuedCancellation) {
         const index = queue.indexOf(job.job_id);
         if (index >= 0) queue.splice(index, 1);
         queueChanged = true;
       } else if (!["dispatching", "running", "canceling"].includes(job.state)) return Promise.reject(error("job_not_cancellable"));
-      job.state = "cancelled";
-      job.finished_at = iso(virtualClock);
+      job.state = queuedCancellation ? "cancelled" : "canceling";
+      if (queuedCancellation) job.finished_at = iso(virtualClock);
       job.updated_at = iso(virtualClock);
-      if (job.assigned_robot_id) {
-        const robot = robots.find((item) => item.robot_id === job.assigned_robot_id);
-        if (robot) {
-          robot.availability = "available";
-          robot.active_job_id = null;
-          robot.active_area_id = null;
-        }
-      }
       response = { job_id: job.job_id };
     } else if (action === "retry_job") {
       const source = jobs.get(data.job_id);

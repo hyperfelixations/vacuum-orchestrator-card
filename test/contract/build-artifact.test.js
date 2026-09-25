@@ -13,5 +13,7 @@ test("the release artifact is a dependency-free strict IIFE", () => {
   assert.match(source, /'use strict'/);
   assert.doesNotMatch(source, /^\s*(?:import|export)\b/m);
   assert.doesNotMatch(source, /\brequire\s*\(/);
-  assert.doesNotMatch(source, /sourceMappingURL/);
+  if (process.env.VACUUM_ORCHESTRATOR_CARD_COVERAGE_ARTIFACT !== "1") {
+    assert.doesNotMatch(source, /sourceMappingURL/);
+  }
 });

@@ -1,6 +1,8 @@
-// Executes the three coverage layers with one source-mapped build and restores the ordinary
-// production artifact before returning. The merge script owns source normalization, inventory
-// checks and the 0.0.1 quality floor.
+// Executes the four coverage layers with one instrumented build and delegates source-map
+// normalization/reporting to merge-coverage.mjs. The ordinary reviewable bundle is restored
+// before exit, including after failure, so coverage never poisons a later pipeline `*:run`.
+// Commands are spawned without a shell so paths, environment values and failures retain
+// their exact meaning on Windows and POSIX. See internal dev doc §10.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -11,6 +13,56 @@ const MODULE_PATH = fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(MODULE_PATH), "..");
 const COVERAGE = path.join(ROOT, "coverage");
 
+// The Node layers, each one c8 run over its tests. Every Node test directory belongs to exactly
+// one layer or to UNMEASURED_TEST_DIRECTORIES (test/architecture/coverage-layers.test.js).
+export const COVERAGE_LAYERS = Object.freeze([
+  Object.freeze({ name: "unit", tests: Object.freeze(["test/unit/**/*.test.js"]) }),
+  Object.freeze({ name: "bundle", tests: Object.freeze(["test/component/**/*.test.js"]) }),
+  Object.freeze({
+    name: "surface",
+    tests: Object.freeze([
+      "test/contract/*.test.js",
+      "test/property/*.test.js",
+      "test/characterization/*.test.js",
+    ]),
+  }),
+]);
+export const BROWSER_LAYER = "browser";
+export const UNMEASURED_TEST_DIRECTORIES = Object.freeze({
+  architecture: "reads sources and scripts as text; it never executes the card",
+});
+
+// Fixed for every Node layer run: the artifact tests judge dist/ without its coverage source
+// map, property runs use their default counts and seeds, and nothing rewrites a baseline or
+// writes a report. `null` removes a variable inherited from the shell.
+export const NODE_LAYER_ENV = Object.freeze({
+  VACUUM_ORCHESTRATOR_CARD_COVERAGE_ARTIFACT: "1",
+  VACUUM_ORCHESTRATOR_CARD_FUZZ_CASES: null,
+  VACUUM_ORCHESTRATOR_CARD_FUZZ_SEED: null,
+  VACUUM_ORCHESTRATOR_CARD_METAMORPHIC_CASES: null,
+  VACUUM_ORCHESTRATOR_CARD_METAMORPHIC_SEED: null,
+  VACUUM_ORCHESTRATOR_CARD_DISCOVERY_CASES: null,
+  VACUUM_ORCHESTRATOR_CARD_DISCOVERY_SEED: null,
+  VACUUM_ORCHESTRATOR_CARD_PROPERTY_REPORT_DIR: null,
+  UPDATE_CHARACTERIZATION: null,
+});
+
+// c8 reports the src/ modules a test imports directly. It drops the vm-evaluated dist bundle
+// (--include applies before remapping, and --exclude-after-remap marks every bundled line
+// covered), so merge-coverage.mjs remaps the bundle from the raw V8 files kept in `v8/`.
+export function c8Args(directory, tests) {
+  return [
+    "--report-dir", directory,
+    "--temp-directory", `${directory}/v8`,
+    "--reporter=json",
+    "--all",
+    "--include=src/**/*.js",
+    process.execPath,
+    "--test",
+    ...tests,
+  ];
+}
+
 function run(script, args, extraEnv = {}) {
   const env = { ...process.env };
   for (const [key, value] of Object.entries(extraEnv)) {
@@ -19,8 +71,8 @@ function run(script, args, extraEnv = {}) {
   }
   const result = spawnSync(process.execPath, [script, ...args], {
     cwd: ROOT,
-    env,
     stdio: "inherit",
+    env,
   });
   if (result.status !== 0) {
     const error = new Error(`${path.relative(ROOT, script)} exited with status ${result.status ?? 1}`);
@@ -40,7 +92,10 @@ export function runWithRestoredArtifact(coverageWork, restoreArtifact) {
     restoreArtifact();
   } catch (restoreFailure) {
     if (coverageFailure) {
-      throw new AggregateError([coverageFailure, restoreFailure], "coverage failed and the ordinary bundle could not be restored");
+      throw new AggregateError(
+        [coverageFailure, restoreFailure],
+        "coverage failed and the ordinary bundle could not be restored",
+      );
     }
     throw restoreFailure;
   }
@@ -54,38 +109,20 @@ function main() {
   fs.rmSync(COVERAGE, { recursive: true, force: true });
 
   const rollup = path.join(ROOT, "node_modules", "rollup", "dist", "bin", "rollup");
-  const c8 = path.join(ROOT, "node_modules", "c8", "bin", "c8.js");
-  const playwright = path.join(ROOT, "node_modules", "@playwright", "test", "cli.js");
-  const merge = path.join(ROOT, "scripts", "merge-coverage.mjs");
-
   runWithRestoredArtifact(
     () => {
       run(rollup, ["-c"], { VACUUM_ORCHESTRATOR_CARD_COVERAGE: "1" });
 
-      const c8Args = (directory, tests, includes = ["src/**/*.js"]) => [
-        "--report-dir", directory,
-        "--reporter=json",
-        "--all",
-        ...includes.map((pattern) => `--include=${pattern}`),
-        process.execPath,
-        "--test",
-        ...tests,
-      ];
-      // Two Node layers by how they reach the code: the source-direct suites and the ones that
-      // drive the built bundle. Leaving a suite out of both would understate what is covered.
-      // The contract layer is not among them: it describes the release artifact, which this
-      // run deliberately builds with a source map.
-      run(c8, c8Args("coverage/raw-unit", ["test/unit/**/*.test.js", "test/property/**/*.test.js", "test/architecture/**/*.test.js"]));
-      // The bundle-loading suites execute dist/, which V8 records under that filename; without
-      // it in the include list c8 discards their coverage and the layer reports nothing. The
-      // build under this flag carries a source map, so the report lands back on src/.
-      run(c8, c8Args("coverage/raw-bundle", ["test/component/**/*.test.js", "test/characterization/**/*.test.js"], ["src/**/*.js", "dist/vacuum-orchestrator-card.js"]));
+      const c8 = path.join(ROOT, "node_modules", "c8", "bin", "c8.js");
+      for (const layer of COVERAGE_LAYERS) {
+        run(c8, c8Args(`coverage/raw-${layer.name}`, layer.tests), NODE_LAYER_ENV);
+      }
 
-      run(playwright, ["test", "--project=chromium"], {
+      run(path.join(ROOT, "node_modules", "@playwright", "test", "cli.js"), ["test", "--project=chromium"], {
         VACUUM_ORCHESTRATOR_CARD_BROWSER_COVERAGE: "1",
         VACUUM_ORCHESTRATOR_CARD_BROWSER_COVERAGE_DIR: path.join(COVERAGE, "browser", "raw"),
       });
-      run(merge, []);
+      run(path.join(ROOT, "scripts", "merge-coverage.mjs"), []);
     },
     () => run(rollup, ["-c"], { VACUUM_ORCHESTRATOR_CARD_COVERAGE: null }),
   );

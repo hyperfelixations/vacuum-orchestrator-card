@@ -4,12 +4,8 @@
 // module builds in Node, so a browser test exercises the whole card — element, backend port,
 // model, sections — not a fragment of it.
 
-const fs = require("node:fs");
-const path = require("node:path");
 const { expect } = require("@playwright/test");
 const { wireJob, wireJobListPage, wireQueuePage, wireArea, wireRobot } = require("../fixtures/wire.js");
-
-const COVERAGE_DIR = process.env.VACUUM_ORCHESTRATOR_CARD_BROWSER_COVERAGE_DIR || "";
 
 // The card reads the clock through its platform adapter, so the page keeps a fixed one: the
 // fixtures are dated against it and a golden must not change with the day it is recorded.
@@ -236,20 +232,6 @@ function serviceCalls(page, service) {
   return page.evaluate((name) => (window.__vocCalls || []).filter((call) => call.kind === "service" && call.service === name), service);
 }
 
-async function startCoverage(page) {
-  if (!COVERAGE_DIR) return;
-  await page.coverage.startJSCoverage({ resetOnNavigation: false });
-}
-
-async function stopCoverage(page, testInfo) {
-  if (!COVERAGE_DIR) return;
-  const entries = await page.coverage.stopJSCoverage();
-  fs.mkdirSync(COVERAGE_DIR, { recursive: true });
-  const name = `${testInfo.testId || testInfo.title.replace(/\W+/g, "-")}.json`;
-  // merge-coverage.mjs reads each file as a bare list of V8 script entries.
-  fs.writeFileSync(path.join(COVERAGE_DIR, name), JSON.stringify(entries), "utf8");
-}
-
 module.exports = {
   mountCard,
   gotoHarness,
@@ -257,8 +239,6 @@ module.exports = {
   serviceCalls,
   setCardWidth,
   waitForStableLayout,
-  startCoverage,
-  stopCoverage,
   DEFAULT_JOBS,
   RUNNING_JOB,
   FINISHED_JOBS,

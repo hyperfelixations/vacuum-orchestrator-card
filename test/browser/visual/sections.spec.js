@@ -3,7 +3,7 @@
 // show, so a golden cannot be re-recorded around a card that stopped saying it.
 // Re-record with `npx playwright test --update-snapshots`, then look at every changed image.
 
-const { test, expect } = require("@playwright/test");
+const { test, expect } = require("../../helpers/playwright.js");
 const { backendData, mountCard, setCardWidth } = require("../../helpers/browser-helpers.js");
 
 const WIDE = 900;

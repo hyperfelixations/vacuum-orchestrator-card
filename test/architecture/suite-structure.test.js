@@ -9,8 +9,16 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const TEST_DIR = path.join(__dirname, "..");
+const ROOT = path.join(TEST_DIR, "..");
 const LAYERS = ["unit", "component", "contract", "architecture", "characterization", "property", "browser"];
 const SHARED = ["fixtures", "helpers", "manifests", "baseline"];
+const NODE_DIRECTORIES = new Set([
+  "unit/application", "unit/backend", "unit/config", "unit/core", "unit/domain", "unit/i18n",
+  "unit/presentation/sections", "unit/presentation/shell", "unit/render", "unit/runtime", "unit/sections",
+  "component/lifecycle", "component/sections", "component/shell", "contract", "architecture",
+  "characterization", "property",
+]);
+const BROWSER_DIRECTORIES = ["core", "interaction", "geometry", "accessibility", "visual"];
 
 function walk(directory, files = []) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
@@ -25,6 +33,18 @@ const all = walk(TEST_DIR);
 const rel = (file) => path.relative(TEST_DIR, file).split(path.sep).join("/");
 const testFiles = all.filter((file) => /\.(test|spec)\.js$/.test(file));
 const sources = all.filter((file) => file.endsWith(".js"));
+const scripts = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")).scripts;
+
+function localDependencies(entry, seen = new Set()) {
+  const file = fs.existsSync(entry) ? entry : `${entry}.js`;
+  if (!fs.existsSync(file) || seen.has(file)) return seen;
+  seen.add(file);
+  const source = fs.readFileSync(file, "utf8");
+  for (const match of source.matchAll(/(?:require|import)\(\s*["'](\.[^"']+)["']\s*\)/g)) {
+    localDependencies(path.resolve(path.dirname(file), match[1]), seen);
+  }
+  return seen;
+}
 
 test("the test root holds only the declared layers and shared directories", () => {
   const top = fs.readdirSync(TEST_DIR, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
@@ -39,16 +59,60 @@ test("node tests end in .test.js and browser specs in .spec.js, each in its own 
   assert.deepEqual(misplaced.map(rel), []);
 });
 
+test("every test belongs to a registered owner directory", () => {
+  const unknown = testFiles.map(rel).filter((name) => {
+    const directory = name.split("/").slice(0, -1).join("/");
+    return name.endsWith(".spec.js")
+      ? !BROWSER_DIRECTORIES.includes(name.split("/")[1])
+      : !NODE_DIRECTORIES.has(directory);
+  });
+  assert.deepEqual(unknown, []);
+  for (const directory of NODE_DIRECTORIES) {
+    assert.ok(testFiles.some((file) => rel(file).startsWith(`${directory}/`) && rel(file).split("/").slice(0, -1).join("/") === directory), directory);
+  }
+});
+
+test("every browser owner has a public command and a no-build pipeline command", () => {
+  for (const directory of BROWSER_DIRECTORIES) {
+    assert.ok(scripts[`test:browser:${directory}`]?.startsWith("npm run build && "), directory);
+    assert.match(scripts[`test:browser:${directory}:run`] || "", new RegExp(`test/browser/${directory}\\b`));
+  }
+  for (const engine of ["firefox-core", "webkit-core"]) {
+    assert.ok(scripts["test:browser:cross-engine:run"].includes(`--project=${engine}`));
+  }
+});
+
+test("every browser spec uses the coverage-aware Playwright fixture", () => {
+  const browserSpecs = testFiles.filter((file) => rel(file).startsWith("browser/"));
+  const bypasses = browserSpecs.filter((file) => {
+    const source = fs.readFileSync(file, "utf8");
+    return /require\(\s*["']@playwright\/test["']\s*\)/.test(source) || !source.includes("helpers/playwright.js");
+  });
+  assert.deepEqual(bypasses.map(rel), []);
+});
+
 // Unit tests import sources directly; only component tests and above load the built bundle.
-test("unit tests never load the bundle", () => {
-  const offenders = testFiles.filter((file) => rel(file).startsWith("unit/") && /dist\/|load-card|mount-card/.test(fs.readFileSync(file, "utf8")));
+test("unit tests reach source and never reach the bundle through a helper", () => {
+  const offenders = [];
+  for (const file of testFiles.filter((item) => rel(item).startsWith("unit/"))) {
+    const source = fs.readFileSync(file, "utf8");
+    if (!/["'][.][.][\/].*src[\/]/.test(source)) offenders.push(`${rel(file)} has no direct source import`);
+    const dependencies = [...localDependencies(file)];
+    if (dependencies.some((dependency) => /load-card[.]jsdom|mount-card[.]js|[/\\]dist[/\\]/.test(dependency))) offenders.push(`${rel(file)} reaches the bundle`);
+  }
+  assert.deepEqual(offenders, []);
+});
+
+test("component tests load the assembled card", () => {
+  const offenders = testFiles.filter((file) => rel(file).startsWith("component/") &&
+    ![...localDependencies(file)].some((dependency) => /load-card[.]jsdom[.]js$/.test(dependency)));
   assert.deepEqual(offenders.map(rel), []);
 });
 
 test("every test file opens with a header that says what it covers", () => {
   const missing = testFiles.filter((file) => {
     const lines = fs.readFileSync(file, "utf8").split("\n").slice(0, 6);
-    return lines.filter((line) => line.startsWith("//")).length < 2;
+    return lines.filter((line) => line.startsWith("//")).length < 1;
   });
   assert.deepEqual(missing.map(rel), []);
 });

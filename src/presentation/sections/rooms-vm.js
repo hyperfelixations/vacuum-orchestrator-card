@@ -11,7 +11,7 @@ function progressFor(lastAt, dueAt, nowMs) {
 }
 
 function buildRoom(status, { areasById, entitiesById, texts, nowMs }) {
-  const dueState = resolveDueState(status, nowMs);
+  const dueState = resolveDueState(status);
   const nextDueAt = [status.vacuumDueAt, status.mopDueAt].filter((value) => value !== null).sort((a, b) => a - b)[0] ?? null;
   const lastAt = [status.lastVacuumedAt, status.lastMoppedAt].filter((value) => value !== null).sort((a, b) => b - a)[0] ?? null;
   const remainingMs = nextDueAt === null || !Number.isFinite(nowMs) ? null : nextDueAt - nowMs;

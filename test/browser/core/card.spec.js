@@ -2,16 +2,8 @@
 // Boundary to the jsdom component tests: those check behaviour, these check that a real engine
 // builds the same card from the shipped bundle.
 
-const { test, expect } = require("@playwright/test");
-const { backendData, gotoHarness, mountCard, startCoverage, stopCoverage } = require("../../helpers/browser-helpers.js");
-
-test.beforeEach(async ({ page }) => {
-  await startCoverage(page);
-});
-
-test.afterEach(async ({ page }, testInfo) => {
-  await stopCoverage(page, testInfo);
-});
+const { test, expect } = require("../../helpers/playwright.js");
+const { backendData, gotoHarness, mountCard } = require("../../helpers/browser-helpers.js");
 
 test("publishes one card registration and the production version identity", async ({ page }) => {
   await gotoHarness(page);

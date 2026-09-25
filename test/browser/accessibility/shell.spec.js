@@ -1,16 +1,8 @@
 // Accessibility of the card shell in a real engine: landmark roles, the tab strip contract,
 // keyboard navigation, and status that does not depend on colour alone.
 
-const { test, expect } = require("@playwright/test");
-const { mountCard, startCoverage, stopCoverage } = require("../../helpers/browser-helpers.js");
-
-test.beforeEach(async ({ page }) => {
-  await startCoverage(page);
-});
-
-test.afterEach(async ({ page }, testInfo) => {
-  await stopCoverage(page, testInfo);
-});
+const { test, expect } = require("../../helpers/playwright.js");
+const { mountCard } = require("../../helpers/browser-helpers.js");
 
 test("exposes semantic body, status and live-region surfaces", async ({ page }) => {
   const card = await mountCard(page, {});

@@ -95,9 +95,8 @@ test("every backend error code has exactly one group, and an unknown code stays 
   }
 });
 
-test("an area status keeps the backend's verdict and derives one only where it is absent", async () => {
+test("an area status uses only the backend's due verdict", async () => {
   const { normalizeAreaStatus, dueState } = await import("../../../src/domain/areas.js");
-  const now = Date.parse("2026-09-17T12:00:00Z");
   const past = "2026-09-16T12:00:00Z";
   const future = "2026-09-18T12:00:00Z";
 
@@ -110,16 +109,16 @@ test("an area status keeps the backend's verdict and derives one only where it i
   assert.deepEqual([...status.unknownFields], ["unknown"]);
 
   // The backend's own verdict always wins.
-  assert.equal(dueState(normalizeAreaStatus(wireArea({ due_state: "clean", vacuum_due_at: past })), now), "clean");
+  assert.equal(dueState(normalizeAreaStatus(wireArea({ due_state: "clean", vacuum_due_at: past }))), "clean");
 
-  const derived = (overrides) => dueState(normalizeAreaStatus(wireArea({ due_state: "nonsense", ...overrides })), now);
-  assert.equal(derived({ vacuum_due_at: past, mop_due_at: past }), "both_due");
-  assert.equal(derived({ vacuum_due_at: past, mop_due_at: future }), "vacuum_due");
-  assert.equal(derived({ vacuum_due_at: future, mop_due_at: past }), "mop_due");
-  assert.equal(derived({ vacuum_due_at: future, mop_due_at: future }), "clean");
+  const derived = (overrides) => dueState(normalizeAreaStatus(wireArea({ due_state: "nonsense", ...overrides })));
+  assert.equal(derived({ vacuum_due_at: past, mop_due_at: past }), "unknown");
+  assert.equal(derived({ vacuum_due_at: past, mop_due_at: future }), "unknown");
+  assert.equal(derived({ vacuum_due_at: future, mop_due_at: past }), "unknown");
+  assert.equal(derived({ vacuum_due_at: future, mop_due_at: future }), "unknown");
   assert.equal(derived({ vacuum_due_at: null, mop_due_at: null }), "unknown");
-  assert.equal(dueState(normalizeAreaStatus(wireArea({ due_state: "nonsense" })), null), "unknown", "without a clock nothing is derived");
-  assert.equal(dueState(null, now), "unknown");
+  assert.equal(dueState(normalizeAreaStatus(wireArea({ due_state: "nonsense" }))), "unknown");
+  assert.equal(dueState(null), "unknown");
 });
 
 test("a robot record is normalized into the card's vocabulary or refused", async () => {

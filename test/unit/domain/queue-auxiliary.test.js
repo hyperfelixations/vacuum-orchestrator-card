@@ -87,17 +87,14 @@ test("robot records clamp the battery and keep their capability snapshot", async
   assert.equal(normalizeRobot({ name: "no id" }), null);
 });
 
-// The backend's own verdict wins; the derived one needs the caller's clock and must not
-// silently answer "clean" when it has no time to compare against.
-test("area status keeps the reported due state and derives one only with a clock", async () => {
+// Area due states are backend verdicts, including where due timestamps are present.
+test("area status never derives a due verdict from timestamps", async () => {
   const { normalizeAreaStatus, dueState } = await import("../../../src/domain/areas.js");
   const reported = normalizeAreaStatus(wireArea({ due_state: "mop_due" }));
   assert.equal(reported.dueState, "mop_due");
-  assert.equal(dueState(reported, Date.parse("2026-09-17T00:00:00Z")), "mop_due");
+  assert.equal(dueState(reported), "mop_due");
 
   const derived = normalizeAreaStatus(wireArea({ due_state: undefined }));
   assert.equal(derived.dueState, null);
-  assert.equal(dueState(derived, Date.parse("2026-09-20T00:00:00Z")), "both_due");
-  assert.equal(dueState(derived, Date.parse("2026-09-17T00:00:00Z")), "clean");
-  assert.equal(dueState(derived, null), "unknown");
+  assert.equal(dueState(derived), "unknown");
 });

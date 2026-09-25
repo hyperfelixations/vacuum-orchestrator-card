@@ -6,6 +6,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createTestEnvironment } = require("../../helpers/load-card.jsdom.js");
 const { mountCard, JOBS } = require("../../helpers/mount-card.js");
+const { wireRobot } = require("../../fixtures/wire.js");
 
 let env;
 test.before(() => {
@@ -26,7 +27,7 @@ test("the queue section renders one keyed row per pending job and the active job
 
 // Only two actions used to be wired; every other button reached no command at all.
 test("each row control sends exactly one backend command", async () => {
-  const mounted = await mountCard({ env, config: { confirm_destructive: false }, seed: { jobs: JOBS } });
+  const mounted = await mountCard({ env, config: { confirm_destructive: false }, seed: { jobs: JOBS, robots: [wireRobot()] } });
   await mounted.click(".voc-pending-queue .voc-job-action-moveDown");
   assert.equal(mounted.serviceCalls("move_job").length, 1);
   assert.deepEqual(mounted.serviceCalls("move_job")[0].data, { job_id: "job-a", direction: "down" });

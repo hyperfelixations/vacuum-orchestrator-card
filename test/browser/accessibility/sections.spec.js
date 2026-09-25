@@ -1,16 +1,8 @@
 // Accessibility of the section bodies and the overlay pages: no interactive element inside
 // another, every overlay is a named region, and focus returns where it came from.
 
-const { test, expect } = require("@playwright/test");
-const { backendData, mountCard, startCoverage, stopCoverage } = require("../../helpers/browser-helpers.js");
-
-test.beforeEach(async ({ page }) => {
-  await startCoverage(page);
-});
-
-test.afterEach(async ({ page }, testInfo) => {
-  await stopCoverage(page, testInfo);
-});
+const { test, expect } = require("../../helpers/playwright.js");
+const { backendData, mountCard } = require("../../helpers/browser-helpers.js");
 
 test("no interactive element sits inside another", async ({ page }) => {
   await mountCard(page, {});

@@ -1,11 +1,8 @@
 "use strict";
-// The pure helpers every section projection formats through, and the keyed patch the sections
-// rely on to keep focus. Boundary: single functions with an injected text port; how a section
-// composes them is its own test.
+// The pure helpers every section projection formats through, with an injected text port.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { JSDOM } = require("jsdom");
 
 const TEXTS = {
   t: (key, vars) => (vars ? `${key}:${JSON.stringify(vars)}` : key),
@@ -92,66 +89,4 @@ test("the capability, pending and job lookups read the frozen model", async () =
   assert.equal(helpers.jobLabel(model.history.jobs[0], areas), "Hall", "without a name the rooms say it");
   assert.equal(helpers.jobLabel({ jobId: "job-3", areas: [] }, areas), "job-3", "the id is the last resort");
   assert.equal(helpers.jobLabel(null, areas), "");
-});
-
-test("the keyed patch reuses, adds, reorders and removes rows", async () => {
-  const { keyedPatch } = await import("../../../../src/render/primitives/dom.js");
-  const dom = new JSDOM("<!doctype html><body><div id='list'></div></body>");
-  const document = dom.window.document;
-  const parent = document.getElementById("list");
-  const render = (item) => {
-    const node = document.createElement("div");
-    node.dataset.jobId = item.jobId;
-    node.textContent = item.label;
-    return node;
-  };
-  const patch = (node, item) => {
-    node.textContent = item.label;
-  };
-  const options = { key: "jobId", render, patch };
-
-  keyedPatch(parent, [{ jobId: "a", label: "A" }, { jobId: "b", label: "B" }], options);
-  const first = parent.children[0];
-  assert.deepEqual([...parent.children].map((node) => node.dataset.jobId), ["a", "b"]);
-
-  // The same key keeps the very same node, which is what keeps focus and scroll position.
-  keyedPatch(parent, [{ jobId: "b", label: "B" }, { jobId: "a", label: "A2" }], options);
-  assert.deepEqual([...parent.children].map((node) => node.dataset.jobId), ["b", "a"]);
-  assert.equal(parent.children[1], first);
-  assert.equal(first.textContent, "A2");
-
-  keyedPatch(parent, [{ jobId: "b", label: "B" }], options);
-  assert.deepEqual([...parent.children].map((node) => node.dataset.jobId), ["b"]);
-
-  // A renderer that declines an item leaves the list unchanged rather than inserting nothing.
-  keyedPatch(parent, [{ jobId: "b", label: "B" }, { jobId: "c", label: "C" }], { key: "jobId", render: () => null, patch });
-  assert.deepEqual([...parent.children].map((node) => node.dataset.jobId), ["b"]);
-
-  assert.deepEqual(keyedPatch(null, [], options), []);
-});
-
-test("attribute and text writers accept an absent node and every falsy value", async () => {
-  const { setAttribute, setText, measuredWidth, computedStyleOf } = await import("../../../../src/render/primitives/dom.js");
-  const dom = new JSDOM("<!doctype html><body><span id='one'>x</span></body>");
-  const node = dom.window.document.getElementById("one");
-
-  setText(node, null);
-  assert.equal(node.textContent, "");
-  setText(node, 0);
-  assert.equal(node.textContent, "0");
-  setText(null, "ignored");
-
-  setAttribute(node, "hidden", true);
-  assert.equal(node.getAttribute("hidden"), "");
-  setAttribute(node, "hidden", false);
-  assert.equal(node.hasAttribute("hidden"), false);
-  setAttribute(node, "title", "Kitchen");
-  assert.equal(node.getAttribute("title"), "Kitchen");
-  setAttribute(node, "title", null);
-  assert.equal(node.hasAttribute("title"), false);
-  setAttribute(null, "title", "ignored");
-
-  assert.equal(measuredWidth(null), 0);
-  assert.equal(computedStyleOf(null), null);
-  assert.ok(computedStyleOf(node));
 });

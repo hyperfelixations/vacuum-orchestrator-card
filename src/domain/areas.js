@@ -30,19 +30,10 @@ function strings(value) {
   return Object.freeze(result);
 }
 
-// The backend's own verdict wins. Only where it is absent does the card derive one from the
-// due dates, and then it needs the current time from its caller.
-export function dueState(status, nowMs) {
+// The backend owns the due verdict; missing or invalid values remain unknown.
+export function dueState(status) {
   if (!status || typeof status !== "object") return "unknown";
   if (DUE_STATES.has(status.dueState)) return status.dueState;
-  const now = Number.isFinite(nowMs) ? nowMs : null;
-  if (now === null) return "unknown";
-  const vacuumDue = status.vacuumDueAt !== null && status.vacuumDueAt <= now;
-  const mopDue = status.mopDueAt !== null && status.mopDueAt <= now;
-  if (vacuumDue && mopDue) return "both_due";
-  if (vacuumDue) return "vacuum_due";
-  if (mopDue) return "mop_due";
-  if (status.vacuumDueAt !== null || status.mopDueAt !== null) return "clean";
   return "unknown";
 }
 

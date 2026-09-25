@@ -44,6 +44,25 @@ component, contract, architecture, characterization, property, and browser
 suites. A browser test uses the generated bundle through the local static test
 server; it does not import source modules directly.
 
+Browser specs are grouped into `core`, `accessibility`, `interaction`,
+`geometry`, and `visual`. `test/helpers/playwright.js` records Chromium V8
+coverage for every group during `npm run coverage`. The coverage runner uses
+unit, bundle, contract/property/characterization, and browser layers; it
+checks source inventory, actual bundle execution, and the merged quality floor.
+It restores the ordinary bundle after the measurement build.
+
+## Release preparation
+
+No release has been published. The manual Release Candidate workflow accepts
+the exact package version, the approved full commit SHA from `main`, and a
+stable or development release kind. It builds the bundle from that commit,
+runs the complete Node suite and an extended property sweep, records the
+baseline anchor and bundle SHA-256, and uploads the candidate. Browser tests
+download and verify that same bundle. Independent official HACS validation
+must pass before the workflow can create an unpublished GitHub draft with the
+tested asset and checksum. Publishing the draft remains a separate owner
+action. `dist/` is never committed.
+
 ## Development bundle
 
 ```sh

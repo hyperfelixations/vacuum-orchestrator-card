@@ -1,7 +1,7 @@
 // The card's own controls in a real engine: roving selection and keyboard operation.
 // Boundary: pointer and key handling; the resulting draft is a component-level concern.
 
-const { test, expect } = require("@playwright/test");
+const { test, expect } = require("../../helpers/playwright.js");
 
 test("card-owned controls expose roving selection and keyboard actions", async ({ page }) => {
   await page.goto("/test/fixtures/harness.html");

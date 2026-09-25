@@ -11,9 +11,11 @@ Assistant actions and automations.
 
 ## Installation
 
-Install the latest release through HACS as a Lovelace dashboard resource. HACS
-adds the JavaScript module resource automatically. Reload the browser after an
-update.
+The card has no published release yet and is not currently installable through
+HACS. HACS validation is part of the release preparation. Installation
+instructions will apply after the first release has been validated and
+published. Developers can build and test the card from source as described in
+[TESTING.md](TESTING.md).
 
 The card type is:
 
