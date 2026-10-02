@@ -1,6 +1,6 @@
 import { createDiagnostic, fallbackValue, FALLBACK } from "../core/diagnostics.js";
 import { parseConfigNumber } from "../core/numbers.js";
-import { rejectConfiguration, rejectValue } from "./errors.js";
+import { rejectConfiguration } from "./errors.js";
 import { nearestKey } from "./suggest.js";
 
 export function isPlainObject(value) {
@@ -61,39 +61,4 @@ export function readLabel(value, path, diagnostics) {
   if (typeof value === "string") return value.trim();
   invalid(diagnostics, path, value, FALLBACK.AUTOMATIC);
   return null;
-}
-
-export function readStringList(value, path, diagnostics, { allowEmpty = true } = {}) {
-  if (isUnwritten(value)) return [];
-  if (!Array.isArray(value)) {
-    invalid(diagnostics, path, value, FALLBACK.DEFAULTS);
-    return [];
-  }
-  const result = [];
-  const seen = new Set();
-  for (const [index, item] of value.entries()) {
-    if (typeof item !== "string" || (!allowEmpty && !item.trim())) {
-      invalid(diagnostics, `${path}[${index}]`, item, FALLBACK.IGNORED);
-      continue;
-    }
-    const text = item.trim();
-    if (!text && !allowEmpty) continue;
-    if (seen.has(text)) continue;
-    seen.add(text);
-    result.push(text);
-  }
-  return result;
-}
-
-export function readObject(value, path, diagnostics) {
-  if (isUnwritten(value)) return null;
-  if (isPlainObject(value)) return value;
-  invalid(diagnostics, path, value, FALLBACK.DEFAULTS);
-  return null;
-}
-
-export function readNumberAtPath(value, path) {
-  const number = parseConfigNumber(value);
-  if (number === null) rejectValue(path, value);
-  return number;
 }

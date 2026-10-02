@@ -6,7 +6,3 @@ export function parseConfigNumber(value) {
   const parsed = Number(text);
   return Number.isFinite(parsed) ? parsed : null;
 }
-
-export function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}

@@ -1,152 +1,161 @@
-"use strict";
-// The shell view model: header, tone, tab strip and body slot. Section content is not built
-// here; the shell only reserves its place.
+// The card shell as data: one overall status shared by tone, pill, subtitle and panel; the main
+// panel; the tab set with automatic views and the start view; notices; onboarding per phase.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { modelFor } = require("../../../helpers/model.js");
 
-const texts = { t: (key, vars = {}) => key === "card.title" ? "Cleaning" : key === "subtitle.queued" ? `${vars.count} queued` : key, formatNumber: (value) => String(value) };
-const config = { title: { text: null, overflow: "wrap" }, subtitle: { text: null, overflow: "clip" }, show: { icon: true, title: true, subtitle: true, pill: true, stats: true, tabs: "auto", warnings: true, queue_controls: true }, accent_line: "top", density: "auto", _configDiagnostics: [] };
+async function shell(scenario = "typical", options = {}) {
+  const built = await modelFor(scenario, options);
+  const { VIEWS, VIEW_TYPES, optionSchemaForView } = await import("../../../../src/views/registry.js");
+  const { normalizeConfig } = await import("../../../../src/config/normalize-config.js");
+  const config = (raw = {}) => normalizeConfig(raw, { viewTypes: VIEW_TYPES, optionSchemaForView });
+  return { ...built, VIEWS, config };
+}
 
-test("shell view model exposes a complete unavailable shell", async () => {
-  const { buildCardViewModel } = await import("../../../../src/presentation/shell/card-view-model.js");
-  const model = { connection: { state: "backend_missing" }, permissions: {}, queue: {}, active: {}, attention: {}, robots: {}, diagnostics: { warnings: [], hints: [] } };
-  const view = buildCardViewModel({ model, config, texts, sectionDefinitions: [] });
-  assert.equal(view.empty, true);
-  assert.equal(view.body.kind, "empty");
-  assert.equal(view.header.hasTitle, true);
-  assert.equal(view.tabs.tabs.length, 0);
+const statusOf = async (model) => (await import("../../../../src/presentation/shell/status.js")).cardStatus(model);
+
+test("status precedence: phase, attention, work in progress, queue mode, unfinished setup", async () => {
+  assert.equal(await statusOf((await modelFor("typical")).model), "cleaning");
+  assert.equal(await statusOf((await modelFor("attention")).model), "attention");
+  assert.equal(await statusOf((await modelFor("windingDown")).model), "running");
+  assert.equal(await statusOf((await modelFor("empty")).model), "idle");
+  assert.equal(await statusOf((await modelFor("fresh")).model), "setup");
+  assert.equal(await statusOf((await modelFor("typical", { fake: { installed: false, setUp: false } })).model), "notInstalled");
+  assert.equal(await statusOf({ phase: "ready", slots: {} }), "connecting");
 });
 
-// A dropped connection keeps the last snapshot on screen; only a backend the card can never
-// reach replaces the body.
-test("a disconnected backend keeps the section body", async () => {
-  const { buildCardViewModel } = await import("../../../../src/presentation/shell/card-view-model.js");
-  const definitions = [{ key: "queue", requires: ["queueRead"], defaultEnabled: () => true }];
-  const model = { connection: { state: "disconnected" }, permissions: {}, capabilities: { queueRead: true }, queue: {}, active: {}, attention: {}, robots: {}, diagnostics: { warnings: [], hints: [] } };
-  const view = buildCardViewModel({ model, config, texts, sectionDefinitions: definitions, sectionContent: { rows: [] } });
-  assert.equal(view.empty, false);
-  assert.equal(view.body.kind, "section");
+test("each status has a tone in the RCC token derivation", async () => {
+  const { toneFor } = await import("../../../../src/presentation/shell/status.js");
+  const tone = toneFor("paused");
+  assert.equal(tone.key, "paused");
+  assert.match(tone.style, /--tone-soft:color-mix\(in srgb, var\(--warning-color, #ffa600\) 20%, transparent\)/);
+  assert.match(tone.style, /--tone-border:color-mix\(in srgb, var\(--tone-ink\) 38%, transparent\)/);
+  assert.equal(toneFor("nonsense").key, "nonsense");
 });
 
-test("tabs auto-hide when they offer no choice and list sections the backend cannot serve yet", async () => {
-  const { buildTabs } = await import("../../../../src/presentation/shell/tabs.js");
-  const definitions = [
-    { key: "queue", requires: ["queueRead"], defaultEnabled: () => true },
-    { key: "rooms", requires: ["areasRead"], defaultEnabled: () => true },
-  ];
-  const model = { capabilities: { queueRead: true, areasRead: false } };
-  const both = buildTabs({ sectionDefinitions: definitions, model, config: { show: { tabs: "auto", unavailable_sections: true } }, texts });
-  assert.equal(both.visible, true);
-  assert.equal(both.tabs.find((tab) => tab.key === "rooms").degraded, true);
-  assert.equal(both.active, "queue");
-  const hidden = buildTabs({ sectionDefinitions: definitions, model, config: { show: { tabs: "auto", unavailable_sections: false } }, texts });
-  assert.deepEqual(hidden.tabs.map((tab) => tab.key), ["queue"]);
-  assert.equal(hidden.visible, false);
+test("the automatic subtitle names what the card is doing", async () => {
+  const { automaticSubtitle } = await import("../../../../src/presentation/shell/header.js");
+  const typical = await modelFor("typical");
+  assert.equal(automaticSubtitle(typical.model, "cleaning", typical.texts), typical.texts.t("subtitle.activeJob", { job: "Living room", state: typical.texts.t("job.state.running") }));
+  const attention = await modelFor("attention");
+  assert.equal(automaticSubtitle(attention.model, "attention", attention.texts), attention.texts.t("subtitle.recoveryOne", { robot: "Rocky" }));
+  const winding = await modelFor("windingDown");
+  assert.match(automaticSubtitle(winding.model, "running", winding.texts), /12/);
+  const fresh = await modelFor("fresh");
+  assert.equal(automaticSubtitle(fresh.model, "setup", fresh.texts), fresh.texts.t("subtitle.setupIncomplete"));
 });
 
-test("shell subtitle precedence uses active job before queue summary", async () => {
+test("the header honours title, subtitle, icon and the show switches", async () => {
+  const { model, texts, config } = await shell();
   const { buildHeader } = await import("../../../../src/presentation/shell/header.js");
-  const model = { connection: { state: "connected" }, active: { jobs: [{ name: "Kitchen", mode: "mop" }] }, queue: { total: 3 }, attention: {} };
-  assert.match(buildHeader({ model, config, texts }).subtitle, /activeJob|Kitchen/);
+  const full = buildHeader({ model, config: config({ title: "Upstairs", icon: "mdi:broom" }), texts, status: "idle" });
+  assert.deepEqual([full.title, full.icon, full.parts, full.pill], ["Upstairs", "mdi:broom", null, texts.t("status.idle")]);
+  const reduced = buildHeader({ model, config: config({ subtitle: "", show: { pill: false, icon: false } }), texts, status: "idle" });
+  assert.deepEqual([reduced.hasSubtitle, reduced.parts], [false, "title"]);
 });
 
-test("tone resolves attention, running and unavailable states", async () => {
-  const { resolveTone } = await import("../../../../src/presentation/shell/tone.js");
-  assert.equal(resolveTone({ connection: { state: "backend_missing" } }).key, "unsupported");
-  assert.equal(resolveTone({ connection: { state: "connected" }, active: { jobs: [{}] }, queue: {} }).key, "running");
-  assert.equal(resolveTone({ connection: { state: "connected" }, active: {}, queue: {}, attention: { available: true, jobs: [{}] } }).key, "attention");
+test("the panel shows the waiting count, the run line, up to three robots and the queue control", async () => {
+  const { model, texts, context, config } = await shell();
+  const { buildPanel } = await import("../../../../src/presentation/shell/panel.js");
+  const panel = buildPanel({ model, config: config(), texts, context });
+  assert.deepEqual([panel.value, panel.mode, panel.runLine], ["3", "running", texts.t("panel.running")]);
+  assert.equal(panel.robots.length, 2);
+  assert.deepEqual([panel.control.command, panel.control.label, panel.control.decision.state], ["pause_queue", texts.t("panel.control.pause"), "enabled"]);
+  assert.equal(buildPanel({ model, config: config({ show: { queue_controls: false } }), texts, context }).control, null);
+  assert.equal(buildPanel({ model, config: config({ show: { panel: false } }), texts, context }).visible, false);
+  const winding = await modelFor("windingDown");
+  assert.match(buildPanel({ model: winding.model, config: config(), texts: winding.texts, context: winding.context }).runLine, /12/);
 });
 
-// Every part the card can be asked to leave out, and the markup that remains when it does.
-test("the shell renders only the parts the configuration asks for", async () => {
+test("by default the five everyday views show; settings for administrators, diagnostics and setup only when needed", async () => {
+  const { model, texts, VIEWS, config } = await shell();
+  const { buildTabs } = await import("../../../../src/presentation/shell/tabs.js");
+  const tabs = buildTabs({ definitions: VIEWS, model, config: config(), ui: {}, texts });
+  assert.deepEqual(tabs.tabs.map((tab) => tab.key), ["queue", "rooms", "robots", "templates", "history", "settings"]);
+  const reader = await shell("typical", { admin: false });
+  const readerTabs = buildTabs({ definitions: VIEWS, model: reader.model, config: config(), ui: {}, texts });
+  assert.deepEqual(readerTabs.tabs.map((tab) => tab.key), ["queue", "rooms", "robots", "templates", "history"], "who may change nothing sees no settings");
+  const forced = buildTabs({ definitions: VIEWS, model: reader.model, config: config({ views: ["queue", { type: "settings", enabled: true }] }), ui: {}, texts });
+  assert.deepEqual(forced.tabs.map((tab) => tab.key), ["queue", "settings"]);
+  assert.equal(tabs.active, "queue");
+  assert.equal(tabs.visible, true);
+  const fresh = await shell("fresh");
+  const setupTabs = buildTabs({ definitions: VIEWS, model: fresh.model, config: config(), ui: {}, texts });
+  assert.equal(setupTabs.tabs[0].key, "setup");
+  assert.equal(setupTabs.active, "setup", "an unfinished setup is where the card starts");
+});
+
+test("a written list decides order and switches; the start view is a wish", async () => {
+  const { model, texts, VIEWS, config } = await shell();
+  const { buildTabs } = await import("../../../../src/presentation/shell/tabs.js");
+  const tabs = buildTabs({ definitions: VIEWS, model, config: config({ views: ["rooms", "diagnostics", { type: "queue", enabled: false }], start_view: "diagnostics" }), ui: {}, texts });
+  assert.deepEqual(tabs.tabs.map((tab) => tab.key), ["rooms", "diagnostics"]);
+  assert.equal(tabs.active, "diagnostics");
+  const chosen = buildTabs({ definitions: VIEWS, model, config: config({ start_view: "rooms" }), ui: { view: "robots" }, texts });
+  assert.equal(chosen.active, "robots", "the user's choice beats the start view");
+  const single = buildTabs({ definitions: VIEWS, model, config: config({ views: ["queue"] }), ui: {}, texts });
+  assert.equal(single.visible, false, "one view needs no tab strip");
+  assert.equal(buildTabs({ definitions: VIEWS, model, config: config({ views: ["queue"], show: { tabs: true } }), ui: {}, texts }).visible, true);
+});
+
+test("a view the integration does not offer is listed as unavailable unless hidden", async () => {
+  const { model, texts, VIEWS, config } = await shell();
+  const { buildTabs } = await import("../../../../src/presentation/shell/tabs.js");
+  const without = { ...model, operations: model.operations.filter((operation) => operation !== "get_history") };
+  const listed = buildTabs({ definitions: VIEWS, model: without, config: config(), ui: {}, texts });
+  assert.equal(listed.tabs.find((tab) => tab.key === "history").available, false);
+  const hidden = buildTabs({ definitions: VIEWS, model: without, config: config({ show: { unavailable_views: false } }), ui: {}, texts });
+  assert.equal(hidden.tabs.some((tab) => tab.key === "history"), false);
+});
+
+test("one warning is a sentence, several a count; a hint is appended to the subtitle", async () => {
+  const { texts, config } = await shell();
+  const notices = await import("../../../../src/presentation/shell/notices.js");
+  const { createDiagnostic } = await import("../../../../src/core/diagnostics.js");
+  const one = notices.buildNotices({ configDiagnostics: config({ page_size: 1 })._configDiagnostics, diagnostics: [createDiagnostic("hint.reconnecting")] });
+  const block = notices.buildWarningBlock({ config: config(), notices: one, texts });
+  assert.equal(block.visible, true);
+  assert.match(block.text, /page_size/);
+  const several = notices.buildNotices({ diagnostics: [createDiagnostic("backend.query_failed", { params: { scope: "rooms", code: "x" } }), createDiagnostic("backend.query_failed", { params: { scope: "robots", code: "x" } })] });
+  assert.equal(notices.warningText(several.warnings, texts), texts.t("warning.several", { count: 2 }));
+  assert.equal(notices.buildWarningBlock({ config: config({ show: { warnings: false } }), notices: one, texts }).visible, false);
+  const header = notices.withHint({ subtitle: "Nothing waiting", hasSubtitle: true }, notices.hintText(one.hints, texts));
+  assert.equal(header.subtitle, `Nothing waiting · ${texts.t("hint.reconnecting")}`);
+});
+
+test("onboarding explains each unusable phase and offers Home Assistant's own pages", async () => {
+  const { buildOnboarding } = await import("../../../../src/presentation/shell/onboarding.js");
+  const { INTEGRATION_URL, SET_UP_PATH, INTEGRATION_PAGE_PATH } = await import("../../../../src/presentation/common/links.js");
+  const missing = await modelFor("typical", { fake: { installed: false, setUp: false } });
+  const notInstalled = buildOnboarding({ model: missing.model, texts: missing.texts });
+  assert.equal(notInstalled.steps.length, 3);
+  assert.deepEqual(notInstalled.actions.map((action) => [action.kind, action.href]), [["link", INTEGRATION_URL]]);
+  const unset = await modelFor("typical", { fake: { setUp: false } });
+  assert.deepEqual(buildOnboarding({ model: unset.model, texts: unset.texts }).actions.map((action) => action.path), [SET_UP_PATH]);
+  const nonAdmin = await modelFor("typical", { fake: { setUp: false }, admin: false });
+  const asUser = buildOnboarding({ model: nonAdmin.model, texts: nonAdmin.texts });
+  assert.deepEqual(asUser.actions, []);
+  assert.equal(asUser.note, nonAdmin.texts.t("onboarding.adminRequired"));
+  const failed = await modelFor("typical", { fake: { runtimeLoaded: false } });
+  assert.deepEqual(buildOnboarding({ model: failed.model, texts: failed.texts }).actions.map((action) => action.path), [INTEGRATION_PAGE_PATH]);
+  const newer = await modelFor("typical", { fake: { apiVersion: 3 } });
+  assert.match(buildOnboarding({ model: newer.model, texts: newer.texts }).text, /3/);
+  assert.equal(buildOnboarding({ model: (await modelFor("typical")).model, texts: failed.texts }), null);
+});
+
+test("the card view model puts onboarding, an overlay or the active view into the body", async () => {
+  const { model, texts, context, VIEWS, config } = await shell();
   const { buildCardViewModel } = await import("../../../../src/presentation/shell/card-view-model.js");
-  const { renderCardBody } = await import("../../../../src/render/composition/card-shell.js");
-  const definitions = [{ key: "queue", requires: ["queueRead"], defaultEnabled: () => true }];
-  const model = {
-    connection: { state: "connected" },
-    permissions: { canCommand: true },
-    capabilities: { queueRead: true, jobCreate: true, queueRun: true },
-    queue: { mode: "idle", pending: [] },
-    active: { jobs: [] },
-    attention: { jobs: [] },
-    robots: {},
-    commands: { pending: [] },
-    diagnostics: { warnings: [], hints: [] },
-  };
-  const context = { texts, htmlToNodes: () => [] };
-  const render = (overrides) =>
-    renderCardBody(
-      context,
-      buildCardViewModel({ model, config: { ...config, ...overrides, show: { ...config.show, ...(overrides.show || {}) } }, texts, sectionDefinitions: definitions, sectionContent: {} }),
-      []
-    );
-
-  const complete = render({});
-  for (const part of ["voc-icon-badge", "voc-title", "voc-subtitle", "voc-status-pill", "voc-stats", "voc-primary-action", "voc-queue-controls", "voc-top-line"]) {
-    assert.match(complete, new RegExp(part), `${part} is drawn by default`);
-  }
-
-  const bare = render({ show: { icon: false, title: false, subtitle: false, pill: false, stats: false, queue_controls: false }, accent_line: "bottom" });
-  for (const part of ["voc-icon-badge", "voc-title", "voc-stats", "voc-queue-controls"]) {
-    assert.doesNotMatch(bare, new RegExp(part), `${part} is left out on request`);
-  }
-  assert.match(bare, /data-accent-line="bottom"/);
-  assert.match(bare, /voc-primary-action/, "the primary action is not part of the header");
-
-  // A header with nothing in it is not an empty header, it is no header at all.
-  assert.doesNotMatch(bare, /class="voc-header"/);
-});
-
-test("the shell marks the overflow the header was configured for", async () => {
-  const { buildCardViewModel } = await import("../../../../src/presentation/shell/card-view-model.js");
-  const { renderCardBody } = await import("../../../../src/render/composition/card-shell.js");
-  const model = { connection: { state: "backend_missing" }, permissions: {}, queue: {}, active: {}, attention: {}, robots: {}, diagnostics: { warnings: [], hints: [] } };
-  const render = (title, subtitle) =>
-    renderCardBody(
-      { texts, htmlToNodes: () => [] },
-      buildCardViewModel({ model, config: { ...config, title, subtitle }, texts, sectionDefinitions: [] }),
-      []
-    );
-  const clipped = render({ text: "Cleaning", overflow: "clip" }, { text: "Ground floor", overflow: "wrap" });
-  assert.match(clipped, /data-title="clip"/);
-  assert.match(clipped, /data-subtitle="wrap"/);
-
-  const wrapped = render({ text: "Cleaning", overflow: "wrap" }, { text: "Ground floor", overflow: "clip" });
-  assert.doesNotMatch(wrapped, /data-title=/);
-  assert.doesNotMatch(wrapped, /data-subtitle=/);
-});
-
-// The card-wide controls answer to the same policy as a row control.
-test("the card controls close down for a read-only user and for a missing capability", async () => {
-  const { buildCardControls } = await import("../../../../src/presentation/shell/controls.js");
-  const base = { connection: { state: "connected" }, queue: { mode: "running" }, commands: { pending: [] } };
-
-  const usable = buildCardControls({ model: { ...base, permissions: { canCommand: true }, capabilities: { jobCreate: true, queuePause: true } }, config: {}, texts });
-  assert.equal(usable.queue.action, "pause-queue");
-  assert.equal(usable.queue.ariaDisabled, false);
-  assert.equal(usable.primary.visible, true);
-
-  const readOnly = buildCardControls({ model: { ...base, permissions: { canCommand: false }, capabilities: { jobCreate: true, queuePause: true } }, config: {}, texts });
-  assert.equal(readOnly.queue.ariaDisabled, true);
-  assert.equal(readOnly.primary.ariaDisabled, true);
-
-  const noCapability = buildCardControls({ model: { ...base, permissions: { canCommand: true }, capabilities: {} }, config: {}, texts });
-  assert.equal(noCapability.queue.ariaDisabled, true);
-  assert.equal(noCapability.primary.ariaDisabled, true);
-
-  const pending = buildCardControls({ model: { ...base, permissions: { canCommand: true }, capabilities: { jobCreate: true, queuePause: true }, commands: { pending: ["queue", "create"] } }, config: {}, texts });
-  assert.equal(pending.queue.disabled, true, "a command already on its way cannot be sent twice");
-  assert.equal(pending.primary.disabled, true);
-
-  const hidden = buildCardControls({ model: { ...base, permissions: { canCommand: true }, capabilities: { jobCreate: true } }, config: { show: { queue_controls: false } }, texts });
-  assert.equal(hidden.queue.visible, false);
-  assert.equal(hidden.primary.visible, true);
-
-  const overlay = buildCardControls({ model: { ...base, permissions: { canCommand: true }, capabilities: { jobCreate: true } }, config: {}, texts, overlay: { key: "editor" } });
-  assert.equal(overlay.primary.visible, false, "an overlay is its own page");
-  assert.equal(overlay.queue.visible, false);
-
-  const modes = ["idle", "paused"].map((mode) => buildCardControls({ model: { ...base, queue: { mode }, permissions: { canCommand: true }, capabilities: { queueRun: true, queueResume: true } }, config: {}, texts }).queue.action);
-  assert.deepEqual(modes, ["run-queue", "resume-queue"]);
+  const { buildTabs } = await import("../../../../src/presentation/shell/tabs.js");
+  const cfg = config();
+  const tabs = buildTabs({ definitions: VIEWS, model, config: cfg, ui: {}, texts });
+  const view = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: { key: "queue" } });
+  assert.equal(view.body.kind, "view");
+  assert.equal(view.primary.action, "create-job");
+  const overlay = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: {}, overlay: { key: "job-editor", content: {} } });
+  assert.equal(overlay.body.kind, "overlay");
+  assert.equal(overlay.primary, null, "a page has its own actions");
+  const notice = buildCardViewModel({ model, config: cfg, texts, ui: { notice: { kind: "error", operation: "run_queue", failure: { code: "unauthorized" } } }, tabs, definitions: VIEWS, context, viewContent: {} });
+  assert.equal(notice.notice.text, texts.t("error.code.unauthorized", { detail: "" }));
 });

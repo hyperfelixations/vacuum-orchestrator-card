@@ -1,9 +1,9 @@
-// The card in a real browser: registration, the connected queue, and the markup boundary.
-// Boundary to the jsdom component tests: those check behaviour, these check that a real engine
-// builds the same card from the shipped bundle.
+// The card in each real engine: registration, the connected queue, every view without errors,
+// onboarding, and text that never becomes markup. Behaviour in depth is the component tests';
+// these check that each engine builds the same card from the shipped bundle.
 
 const { test, expect } = require("../../helpers/playwright.js");
-const { backendData, gotoHarness, mountCard } = require("../../helpers/browser-helpers.js");
+const { gotoHarness, mountCard } = require("../../helpers/browser-helpers.js");
 
 test("publishes one card registration and the production version identity", async ({ page }) => {
   await gotoHarness(page);
@@ -12,34 +12,44 @@ test("publishes one card registration and the production version identity", asyn
     pickerCount: (window.customCards || []).filter((entry) => entry.type === "vacuum-orchestrator-card").length,
     version: window.vacuumOrchestratorCardVersion,
   }));
-
   expect(registration.customElement).toBe("VacuumOrchestratorCard");
   expect(registration.pickerCount).toBe(1);
   expect(registration.version).toBe("0.0.1");
 });
 
 test("the null configuration renders the connected queue", async ({ page }) => {
-  const card = await mountCard(page, {});
-
-  await expect(card.locator(".voc-root")).toHaveAttribute("data-state", "ready");
+  const card = await mountCard(page);
+  await expect(card.locator(".voc-root")).toHaveAttribute("data-state", "view");
   await expect(card.locator(".voc-title")).toHaveText("Cleaning");
-  await expect(card.locator(".voc-status-pill")).toHaveText("Running");
-  await expect(card.locator(".voc-pending-queue .voc-job-row")).toHaveCount(2);
-  await expect(card.locator(".voc-active-jobs .voc-job-row")).toHaveCount(1);
+  await expect(card.locator(".voc-status-pill")).toHaveText("Cleaning");
+  await expect(card.locator('[data-key="active"] .voc-job')).toHaveCount(1);
+  await expect(card.locator('[data-key="waiting"] .voc-job')).toHaveCount(3);
 });
 
-test("a missing integration shows the installation hint instead of an empty card", async ({ page }) => {
-  const card = await mountCard(page, { data: { ...backendData(), installed: false } });
+test("every view renders without a console error", async ({ page }) => {
+  const errors = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  page.on("pageerror", (error) => errors.push(error.message));
+  const card = await mountCard(page, { config: { views: ["queue", "rooms", "robots", "templates", "history", "diagnostics", "setup"] } });
+  for (const view of ["rooms", "robots", "templates", "history", "diagnostics", "setup", "queue"]) {
+    await card.locator(`[role=tab][data-view="${view}"]`).click();
+    await expect(card.locator(`[data-key="view:${view}"]`)).toBeVisible();
+  }
+  expect(errors).toEqual([]);
+});
 
-  await expect(card.locator(".voc-root")).toHaveAttribute("data-tone", "unsupported");
+test("a missing integration shows how to install it", async ({ page }) => {
+  const card = await mountCard(page, { installed: false, setUp: false });
   await expect(card.locator(".voc-status-pill")).toHaveText("Not installed");
-  await expect(card.locator(".voc-no-section")).toBeVisible();
+  await expect(card.locator(".voc-onboarding")).toHaveAttribute("data-phase", "not_installed");
+  await expect(card.locator(".voc-onboarding a")).toHaveAttribute("rel", "noopener noreferrer");
 });
 
-test("keeps configured header text as text content", async ({ page }) => {
+test("configured header text stays text", async ({ page }) => {
   const value = '<img src=x onerror="window.__vocXss = true">';
   const card = await mountCard(page, { config: { title: value } });
-
   await expect(card.locator(".voc-title")).toHaveText(value);
   expect(await page.evaluate(() => window.__vocXss || false)).toBe(false);
   expect(await card.locator(".voc-title img").count()).toBe(0);

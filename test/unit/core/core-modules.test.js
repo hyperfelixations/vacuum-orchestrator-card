@@ -1,31 +1,27 @@
-"use strict";
-// The dependency-free base: text, numbers, time, ids and the frozen diagnostic catalog.
+// The dependency-free base: text, numbers, time and the frozen diagnostic catalog.
 // Boundary: pure functions with injected clocks and randomness, never a browser global.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-test("core text primitives escape, truncate and join deterministically", async () => {
+test("html escaping covers every character that can leave a text node or attribute", async () => {
   const text = await import("../../../src/core/text.js");
   assert.equal(text.escapeHtml(`& < > \" '`), "&amp; &lt; &gt; &quot; &#39;");
-  assert.equal(text.truncateText("abcdef", 4), "abc…");
-  assert.equal(text.joinList(["a", "", "b"], " · "), "a · b");
+  assert.equal(text.escapeHtml(null), "");
+  assert.equal(text.escapeHtml(0), "0");
 });
 
-test("core numbers, time and ids use injected or explicit values", async () => {
+test("core numbers and time use explicit values", async () => {
   const numbers = await import("../../../src/core/numbers.js");
   const time = await import("../../../src/core/time.js");
-  const ids = await import("../../../src/core/ids.js");
   assert.equal(numbers.parseConfigNumber("2.5"), 2.5);
+  assert.equal(numbers.parseConfigNumber(" -3 "), -3);
+  assert.equal(numbers.parseConfigNumber("1e3"), null);
   assert.equal(numbers.parseConfigNumber(true), null);
-  assert.equal(numbers.clamp(12, 0, 10), 10);
   assert.equal(time.parseInstant("2026-09-17T00:00:00Z"), Date.parse("2026-09-17T00:00:00Z"));
   assert.equal(time.parseInstant(1758000000000), 1758000000000);
   assert.deepEqual(time.relativeParts(100000, 40000), { unit: "minute", value: -1 });
   assert.deepEqual(time.durationParts(90 * 60000), { hours: 1, minutes: 30 });
-  const factory = ids.createIdFactory("voc");
-  assert.equal(factory.nextCommandId(), "voc-1");
-  assert.equal(factory.nextCommandId(), "voc-2");
 });
 
 // The card's own parser rather than Date.parse: the same string has to mean the same instant
@@ -40,7 +36,8 @@ test("timestamp parsing rejects impossible calendar dates", async () => {
 
 test("diagnostics reject codes outside the frozen catalog", async () => {
   const diagnostics = await import("../../../src/core/diagnostics.js");
-  assert.equal(diagnostics.DIAGNOSTIC_SEVERITY["hint.partial_page"], "hint");
+  assert.equal(diagnostics.DIAGNOSTIC_SEVERITY["hint.partial_jobs"], "hint");
+  assert.equal(diagnostics.DIAGNOSTIC_SEVERITY["backend.query_failed"], "warning");
   assert.throws(() => diagnostics.createDiagnostic("not-a-code"), /unknown code/);
   assert.equal(diagnostics.formatConfigValue({ a: 1 }), "{…}");
 });

@@ -1,49 +1,54 @@
-// Which sections the card offers, and which one is on screen. Requested, available and active
-// stay three separate facts: a section the backend cannot serve yet is still listed, so the
-// user can see what the card will offer once the integration provides it.
-// See internal dev doc §5 "Abschnittswahl".
+// Which views the card offers and which one is on screen (RCC views contract, without the
+// carousel). Requested, available and active stay separate facts: a view the integration cannot
+// serve is still listed when `show.unavailable_views` allows, so the user sees what is missing.
 
-function requestedEntries(config, definitions) {
-  if (!Array.isArray(config?.sections)) return null;
-  const byKey = new Map(config.sections.map((entry) => [entry.type, entry]));
-  return definitions.filter((definition) => byKey.has(definition.key)).map((definition) => ({ definition, request: byKey.get(definition.key) }));
+import { t } from "../common/texts.js";
+
+function requested(config, definitions) {
+  if (!Array.isArray(config?.views)) return null;
+  const byType = new Map(definitions.map((definition) => [definition.key, definition]));
+  return config.views.filter((entry) => byType.has(entry.type)).map((entry) => ({ definition: byType.get(entry.type), request: entry }));
 }
 
-function automaticEntries(definitions, model) {
-  return definitions.map((definition) => ({ definition, request: null })).filter(({ definition }) => definition.defaultEnabled(model) !== false);
+export function availableView(definition, model) {
+  const operations = new Set(model.operations || []);
+  return model.phase === "ready" && (definition.requires || []).every((operation) => operations.has(operation));
 }
 
-export function buildTabs({ sectionDefinitions = [], model = {}, config = {}, ui = {}, texts = { t: (key) => key } } = {}) {
-  const explicit = requestedEntries(config, sectionDefinitions);
-  const entries = explicit ?? automaticEntries(sectionDefinitions, model);
-  const showUnavailable = config.show?.unavailable_sections !== false;
-
+export function buildTabs({ definitions = [], model = {}, config = {}, ui = {}, texts } = {}) {
+  const entries = requested(config, definitions) ?? definitions.map((definition) => ({ definition, request: null }));
+  const showUnavailable = config.show?.unavailable_views !== false;
   const candidates = entries
     .map(({ definition, request }) => {
-      const available = (definition.requires || []).every((capability) => model.capabilities?.[capability] === true);
-      const requested = request ? request.enabled !== false : true;
-      const auto = request ? request.enabled === "auto" : true;
-      const enabled = auto ? definition.defaultEnabled(model) !== false : requested;
+      const auto = !request || request.enabled === "auto";
+      const enabled = auto ? definition.defaultEnabled(model) !== false : request.enabled !== false;
+      const available = availableView(definition, model);
       return {
         key: definition.key,
-        label: texts.t(`section.${definition.key}`),
-        shortLabel: texts.t(`section.short.${definition.key}`),
-        capability: (definition.requires || [])[0] || null,
-        available,
+        icon: definition.icon,
+        label: t(texts, `view.${definition.key}`),
         enabled,
-        degraded: enabled && !available,
+        available,
+        options: request?.options || {},
+        startPreferred: auto && typeof definition.preferredStart === "function" && definition.preferredStart(model) === true,
       };
     })
     .filter((tab) => tab.enabled && (tab.available || showUnavailable));
 
-  const preferred = ui.section && candidates.some((tab) => tab.key === ui.section) ? ui.section : null;
-  const start = config.start_section && candidates.some((tab) => tab.key === config.start_section) ? config.start_section : null;
-  const active = preferred || start || candidates.find((tab) => tab.available)?.key || candidates[0]?.key || null;
-
+  const usable = (key) => candidates.some((tab) => tab.key === key && tab.available);
+  const active =
+    (ui.view && candidates.some((tab) => tab.key === ui.view) ? ui.view : null) ||
+    (config.start_view && usable(config.start_view) ? config.start_view : null) ||
+    candidates.find((tab) => tab.startPreferred && tab.available)?.key ||
+    candidates.find((tab) => tab.available)?.key ||
+    candidates[0]?.key ||
+    null;
+  const tabs = candidates.map((tab) => ({ ...tab, active: tab.key === active }));
+  const showTabs = config.show?.tabs;
   return {
-    tabs: candidates.map((tab) => ({ ...tab, active: tab.key === active })),
+    tabs,
     active,
-    // `auto` hides a tab strip that would offer no choice.
-    visible: config.show?.tabs === false ? false : config.show?.tabs === true ? candidates.length > 0 : candidates.length > 1,
+    activeTab: tabs.find((tab) => tab.active) || null,
+    visible: showTabs === false ? false : showTabs === true ? tabs.length > 0 : tabs.length > 1,
   };
 }

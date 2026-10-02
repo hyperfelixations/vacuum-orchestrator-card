@@ -1,0 +1,39 @@
+<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Living room · Cleaning</div>
+</div>
+<div class="voc-status-pill">Cleaning</div>
+</div>
+<div class="voc-body" id="voc-panel" data-body="overlay:confirm">
+<section class="voc-overlay" data-key="overlay:confirm" role="dialog" aria-modal="true" aria-labelledby="voc-overlay-title">
+<header class="voc-overlay-head">
+<button type="button" class="voc-button voc-button--icon voc-back" data-action="back" aria-label="Back" title="Back">
+<ha-icon icon="mdi:arrow-left" aria-hidden="true">
+</ha-icon>
+</button>
+<h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">Cancel job?</h2>
+</header>
+<p class="voc-overlay-lead">“Living room” is cancelled. A robot already cleaning is stopped.</p>
+<div class="voc-overlay-actions">
+<button type="button" class="voc-button voc-button--quiet" data-action="back" data-autofocus="">
+<span class="voc-button-label">Keep</span>
+</button>
+<button type="button" class="voc-button voc-button--danger" data-action="confirm-command">
+<ha-icon icon="mdi:stop-circle-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Cancel job</span>
+</button>
+</div>
+</section>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

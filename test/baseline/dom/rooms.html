@@ -1,0 +1,387 @@
+<div class="voc-root" data-state="view" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Living room · Cleaning</div>
+</div>
+<div class="voc-status-pill">Cleaning</div>
+</div>
+<div class="voc-panel" data-queue-mode="running">
+<div class="voc-panel-headline">
+<span class="voc-panel-label">Waiting</span>
+<span class="voc-panel-value">3</span>
+</div>
+<div class="voc-panel-status">
+<div class="voc-panel-mode">
+<span class="voc-dot" aria-hidden="true">
+</span>
+<span>Queue running</span>
+</div>
+<div class="voc-panel-robots">
+<span class="voc-panel-robot" data-key="robot:robot-rocky" data-tone="running">
+<span class="voc-dot" aria-hidden="true">
+</span>Rocky · Cleaning · 76 %</span>
+<span class="voc-panel-robot" data-key="robot:robot-dusty" data-tone="ready">
+<span class="voc-dot" aria-hidden="true">
+</span>Dusty · Docked · 100 %</span>
+</div>
+</div>
+<div class="voc-panel-control">
+<button type="button" class="voc-button voc-button--primary voc-queue-control" data-action="queue-control" title="Pause queue">
+<ha-icon icon="mdi:pause" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Pause queue</span>
+</button>
+</div>
+</div>
+<div class="voc-tab-row">
+<div class="voc-tabs" role="tablist" aria-label="Views">
+<button type="button" class="voc-tab" role="tab" id="voc-tab-queue" data-key="tab-queue" data-view="queue" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Queue">
+<ha-icon icon="mdi:format-list-numbered" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Queue</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-rooms" data-key="tab-rooms" data-view="rooms" aria-controls="voc-panel" aria-selected="true" tabindex="0" title="Rooms">
+<ha-icon icon="mdi:floor-plan" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Rooms</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-robots" data-key="tab-robots" data-view="robots" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Robots">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Robots</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-templates" data-key="tab-templates" data-view="templates" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Templates">
+<ha-icon icon="mdi:content-copy" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Templates</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-history" data-key="tab-history" data-view="history" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="History">
+<ha-icon icon="mdi:history" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">History</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-settings" data-key="tab-settings" data-view="settings" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Settings">
+<ha-icon icon="mdi:cog-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Settings</span>
+</button>
+</div>
+<button type="button" class="voc-button voc-button--quiet voc-primary-action" data-action="create-room" title="Add room">
+<ha-icon icon="mdi:plus" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Add room</span>
+</button>
+</div>
+<div class="voc-body" id="voc-panel" data-body="view:rooms" role="tabpanel" aria-labelledby="voc-tab-rooms">
+<div class="voc-view voc-rooms" data-key="view:rooms">
+<div class="voc-room-grid">
+<article class="voc-room" data-key="room:room-kitchen">
+<header class="voc-room-head">
+<span class="voc-room-icon" aria-hidden="true">
+<ha-icon icon="mdi:silverware-fork-knife" aria-hidden="true">
+</ha-icon>
+</span>
+<h3 class="voc-room-name">Kitchen</h3>
+<button type="button" class="voc-button voc-button--icon" data-action="edit-room" data-args="{&quot;roomId&quot;:&quot;room-kitchen&quot;}" aria-label="Settings for Kitchen" title="Settings for Kitchen">
+<ha-icon icon="mdi:cog-outline" aria-hidden="true">
+</ha-icon>
+</button>
+</header>
+<div class="voc-room-status">
+<span class="voc-pill voc-pill--ready">
+<ha-icon icon="mdi:lock-open-variant-outline" aria-hidden="true">
+</ha-icon>Released · Until revoked</span>
+</div>
+<div class="voc-room-due">
+<div class="voc-due" data-key="due:vacuum" data-due="due">
+<span class="voc-due-label">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>Vacuum</span>
+<span class="voc-due-status">Due 3 hours ago</span>
+<span class="voc-due-bar" aria-hidden="true">
+<span style="width:100%">
+</span>
+</span>
+<span class="voc-due-last">Last Sep 15, 2026, 9:00 AM · <span class="voc-due-quality" data-quality="derived">Derived</span>
+</span>
+</div>
+<div class="voc-due" data-key="due:mop" data-due="fresh">
+<span class="voc-due-label">
+<ha-icon icon="mdi:water-outline" aria-hidden="true">
+</ha-icon>Mop</span>
+<span class="voc-due-status">Due in 3 days</span>
+<span class="voc-due-bar" aria-hidden="true">
+<span style="width:57%">
+</span>
+</span>
+<span class="voc-due-last">Last Sep 13, 2026, 12:00 PM · <span class="voc-due-quality" data-quality="confirmed">Confirmed</span>
+</span>
+</div>
+</div>
+<div class="voc-room-meta">
+<span class="voc-room-meta-item">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>Rocky, Dusty</span>
+</div>
+<div class="voc-room-actions">
+<button type="button" class="voc-button voc-button--quiet" data-action="create-job" data-args="{&quot;roomIds&quot;:[&quot;room-kitchen&quot;]}">
+<ha-icon icon="mdi:plus" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Job</span>
+</button>
+<button type="button" class="voc-button voc-button--text voc-room-toggle" data-action="revoke-room" data-args="{&quot;roomId&quot;:&quot;room-kitchen&quot;}">
+<ha-icon icon="mdi:lock-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Lock</span>
+</button>
+</div>
+</article>
+<article class="voc-room" data-key="room:room-hall">
+<header class="voc-room-head">
+<span class="voc-room-icon" aria-hidden="true">
+<ha-icon icon="mdi:door" aria-hidden="true">
+</ha-icon>
+</span>
+<h3 class="voc-room-name">Hall</h3>
+<button type="button" class="voc-button voc-button--icon" data-action="edit-room" data-args="{&quot;roomId&quot;:&quot;room-hall&quot;}" aria-label="Settings for Hall" title="Settings for Hall">
+<ha-icon icon="mdi:cog-outline" aria-hidden="true">
+</ha-icon>
+</button>
+</header>
+<div class="voc-room-status">
+<span class="voc-pill voc-pill--ready">
+<ha-icon icon="mdi:lock-open-variant-outline" aria-hidden="true">
+</ha-icon>Released · For this queue run</span>
+</div>
+<div class="voc-room-due">
+<div class="voc-due" data-key="due:vacuum" data-due="fresh">
+<span class="voc-due-label">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>Vacuum</span>
+<span class="voc-due-status">Due in 19 hours</span>
+<span class="voc-due-bar" aria-hidden="true">
+<span style="width:21%">
+</span>
+</span>
+<span class="voc-due-last">Last Sep 17, 2026, 7:00 AM · <span class="voc-due-quality" data-quality="derived">Derived</span>
+</span>
+</div>
+<div class="voc-due" data-key="due:mop" data-due="disabled">
+<span class="voc-due-label">
+<ha-icon icon="mdi:water-outline" aria-hidden="true">
+</ha-icon>Mop</span>
+<span class="voc-due-status">No interval</span>
+<span class="voc-due-last">No cleaning recorded</span>
+</div>
+</div>
+<div class="voc-room-meta">
+<span class="voc-room-meta-item">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>Rocky, Dusty</span>
+</div>
+<div class="voc-room-actions">
+<button type="button" class="voc-button voc-button--quiet" data-action="create-job" data-args="{&quot;roomIds&quot;:[&quot;room-hall&quot;]}">
+<ha-icon icon="mdi:plus" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Job</span>
+</button>
+<button type="button" class="voc-button voc-button--text voc-room-toggle" data-action="revoke-room" data-args="{&quot;roomId&quot;:&quot;room-hall&quot;}">
+<ha-icon icon="mdi:lock-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Lock</span>
+</button>
+</div>
+</article>
+<article class="voc-room" data-key="room:room-bathroom">
+<header class="voc-room-head">
+<span class="voc-room-icon" aria-hidden="true">
+<ha-icon icon="mdi:shower" aria-hidden="true">
+</ha-icon>
+</span>
+<h3 class="voc-room-name">Bathroom</h3>
+<button type="button" class="voc-button voc-button--icon" data-action="edit-room" data-args="{&quot;roomId&quot;:&quot;room-bathroom&quot;}" aria-label="Settings for Bathroom" title="Settings for Bathroom">
+<ha-icon icon="mdi:cog-outline" aria-hidden="true">
+</ha-icon>
+</button>
+</header>
+<div class="voc-room-status">
+<span class="voc-pill voc-pill--neutral">
+<ha-icon icon="mdi:lock-outline" aria-hidden="true">
+</ha-icon>Locked</span>
+</div>
+<div class="voc-room-due">
+<div class="voc-due" data-key="due:vacuum" data-due="fresh">
+<span class="voc-due-label">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>Vacuum</span>
+<span class="voc-due-status">Due after 4 h of use</span>
+<span class="voc-due-bar" aria-hidden="true">
+<span style="width:33%">
+</span>
+</span>
+<span class="voc-due-last">Last Sep 16, 2026, 12:00 PM · <span class="voc-due-quality" data-quality="derived">Derived</span>
+</span>
+</div>
+<div class="voc-due" data-key="due:mop" data-due="due">
+<span class="voc-due-label">
+<ha-icon icon="mdi:water-outline" aria-hidden="true">
+</ha-icon>Mop</span>
+<span class="voc-due-status">Due</span>
+<span class="voc-due-bar" aria-hidden="true">
+<span style="width:100%">
+</span>
+</span>
+<span class="voc-due-last">Last Sep 14, 2026, 12:00 PM · <span class="voc-due-quality" data-quality="derived">Derived</span>
+</span>
+</div>
+</div>
+<div class="voc-room-meta">
+<span class="voc-room-meta-item">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>Rocky</span>
+<span class="voc-room-meta-item" data-key="condition:binary_sensor.bathroom_door">
+<ha-icon icon="mdi:door" aria-hidden="true">
+</ha-icon>Bathroom door: off (needs on)</span>
+</div>
+<div class="voc-room-actions">
+<button type="button" class="voc-button voc-button--quiet" data-action="create-job" data-args="{&quot;roomIds&quot;:[&quot;room-bathroom&quot;]}">
+<ha-icon icon="mdi:plus" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Job</span>
+</button>
+<button type="button" class="voc-button voc-button--text voc-room-toggle" data-action="open-release" data-args="{&quot;roomId&quot;:&quot;room-bathroom&quot;}">
+<ha-icon icon="mdi:lock-open-variant-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Release…</span>
+</button>
+</div>
+</article>
+<article class="voc-room" data-key="room:room-living">
+<header class="voc-room-head">
+<span class="voc-room-icon" aria-hidden="true">
+<ha-icon icon="mdi:sofa" aria-hidden="true">
+</ha-icon>
+</span>
+<h3 class="voc-room-name">Living room</h3>
+<button type="button" class="voc-button voc-button--icon" data-action="edit-room" data-args="{&quot;roomId&quot;:&quot;room-living&quot;}" aria-label="Settings for Living room" title="Settings for Living room">
+<ha-icon icon="mdi:cog-outline" aria-hidden="true">
+</ha-icon>
+</button>
+</header>
+<div class="voc-room-status">
+<span class="voc-pill voc-pill--running">
+<ha-icon icon="mdi:lock-clock" aria-hidden="true">
+</ha-icon>Reserved for a job</span>
+</div>
+<div class="voc-room-due">
+<div class="voc-due" data-key="due:vacuum" data-due="due">
+<span class="voc-due-label">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>Vacuum</span>
+<span class="voc-due-status">Due 2 hours ago</span>
+<span class="voc-due-bar" aria-hidden="true">
+<span style="width:100%">
+</span>
+</span>
+<span class="voc-due-last">Last Sep 16, 2026, 10:00 AM · <span class="voc-due-quality" data-quality="derived">Derived</span>
+</span>
+</div>
+<div class="voc-due" data-key="due:mop" data-due="fresh">
+<span class="voc-due-label">
+<ha-icon icon="mdi:water-outline" aria-hidden="true">
+</ha-icon>Mop</span>
+<span class="voc-due-status">Due tomorrow</span>
+<span class="voc-due-bar" aria-hidden="true">
+<span style="width:67%">
+</span>
+</span>
+<span class="voc-due-last">Last Sep 15, 2026, 12:00 PM · <span class="voc-due-quality" data-quality="derived">Derived</span>
+</span>
+</div>
+</div>
+<div class="voc-room-meta">
+<span class="voc-room-meta-item">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>Rocky</span>
+</div>
+<div class="voc-room-actions">
+<button type="button" class="voc-button voc-button--quiet" data-action="create-job" data-args="{&quot;roomIds&quot;:[&quot;room-living&quot;]}">
+<ha-icon icon="mdi:plus" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Job</span>
+</button>
+<button type="button" class="voc-button voc-button--text voc-room-toggle" data-action="revoke-room" data-args="{&quot;roomId&quot;:&quot;room-living&quot;}">
+<ha-icon icon="mdi:lock-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Lock</span>
+</button>
+</div>
+</article>
+<article class="voc-room" data-key="room:room-bedroom">
+<header class="voc-room-head">
+<span class="voc-room-icon" aria-hidden="true">
+<ha-icon icon="mdi:bed" aria-hidden="true">
+</ha-icon>
+</span>
+<h3 class="voc-room-name">Bedroom</h3>
+<button type="button" class="voc-button voc-button--icon" data-action="edit-room" data-args="{&quot;roomId&quot;:&quot;room-bedroom&quot;}" aria-label="Settings for Bedroom" title="Settings for Bedroom">
+<ha-icon icon="mdi:cog-outline" aria-hidden="true">
+</ha-icon>
+</button>
+</header>
+<div class="voc-room-status">
+<span class="voc-pill voc-pill--neutral">
+<ha-icon icon="mdi:lock-outline" aria-hidden="true">
+</ha-icon>Locked</span>
+</div>
+<div class="voc-room-due">
+<div class="voc-due" data-key="due:vacuum" data-due="due">
+<span class="voc-due-label">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>Vacuum</span>
+<span class="voc-due-status">Never cleaned</span>
+<span class="voc-due-bar" aria-hidden="true">
+<span style="width:100%">
+</span>
+</span>
+<span class="voc-due-last">No cleaning recorded</span>
+</div>
+<div class="voc-due" data-key="due:mop" data-due="disabled">
+<span class="voc-due-label">
+<ha-icon icon="mdi:water-outline" aria-hidden="true">
+</ha-icon>Mop</span>
+<span class="voc-due-status">No interval</span>
+<span class="voc-due-last">No cleaning recorded</span>
+</div>
+</div>
+<div class="voc-room-meta">
+<span class="voc-room-meta-item voc-room-warning">
+<ha-icon icon="mdi:robot-vacuum-alert" aria-hidden="true">
+</ha-icon>No robot reaches this room</span>
+</div>
+<div class="voc-room-actions">
+<button type="button" class="voc-button voc-button--quiet" data-action="create-job" data-args="{&quot;roomIds&quot;:[&quot;room-bedroom&quot;]}">
+<ha-icon icon="mdi:plus" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Job</span>
+</button>
+<button type="button" class="voc-button voc-button--text voc-room-toggle" data-action="open-release" data-args="{&quot;roomId&quot;:&quot;room-bedroom&quot;}">
+<ha-icon icon="mdi:lock-open-variant-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Release…</span>
+</button>
+</div>
+</article>
+</div>
+</div>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

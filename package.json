@@ -43,6 +43,7 @@
     "test:install": "playwright install chromium firefox webkit"
   },
   "devDependencies": {
+    "@mdi/js": "7.4.47",
     "@playwright/test": "^1.61.1",
     "c8": "12.0.0",
     "card-mod": "github:thomasloven/lovelace-card-mod#11005313b240da0f7880b95aedc5a9876c293b83",

@@ -1,0 +1,156 @@
+<div class="voc-root" data-state="view" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Living room · Cleaning</div>
+</div>
+<div class="voc-status-pill">Cleaning</div>
+</div>
+<div class="voc-panel" data-queue-mode="running">
+<div class="voc-panel-headline">
+<span class="voc-panel-label">Waiting</span>
+<span class="voc-panel-value">3</span>
+</div>
+<div class="voc-panel-status">
+<div class="voc-panel-mode">
+<span class="voc-dot" aria-hidden="true">
+</span>
+<span>Queue running</span>
+</div>
+<div class="voc-panel-robots">
+<span class="voc-panel-robot" data-key="robot:robot-rocky" data-tone="running">
+<span class="voc-dot" aria-hidden="true">
+</span>Rocky · Cleaning · 76 %</span>
+<span class="voc-panel-robot" data-key="robot:robot-dusty" data-tone="ready">
+<span class="voc-dot" aria-hidden="true">
+</span>Dusty · Docked · 100 %</span>
+</div>
+</div>
+<div class="voc-panel-control">
+<button type="button" class="voc-button voc-button--primary voc-queue-control" data-action="queue-control" title="Pause queue">
+<ha-icon icon="mdi:pause" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Pause queue</span>
+</button>
+</div>
+</div>
+<div class="voc-tab-row">
+<div class="voc-tabs" role="tablist" aria-label="Views">
+<button type="button" class="voc-tab" role="tab" id="voc-tab-queue" data-key="tab-queue" data-view="queue" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Queue">
+<ha-icon icon="mdi:format-list-numbered" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Queue</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-diagnostics" data-key="tab-diagnostics" data-view="diagnostics" aria-controls="voc-panel" aria-selected="true" tabindex="0" title="Diagnostics">
+<ha-icon icon="mdi:stethoscope" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Diagnostics</span>
+</button>
+</div>
+<span class="voc-primary-slot" aria-hidden="true">
+</span>
+</div>
+<div class="voc-body" id="voc-panel" data-body="view:diagnostics" role="tabpanel" aria-labelledby="voc-tab-diagnostics">
+<div class="voc-view voc-diagnostics" data-key="view:diagnostics">
+<section class="voc-block" data-key="versions">
+<h3 class="voc-block-title">
+<ha-icon icon="mdi:information-outline" aria-hidden="true">
+</ha-icon>Connection and versions</h3>
+<div class="voc-diagnostics-connection" data-key="connection">
+<span class="voc-pill voc-pill--ready">
+<ha-icon icon="mdi:lan-connect" aria-hidden="true">
+</ha-icon>Live updates active</span>
+</div>
+<dl class="voc-facts">
+<dt>Integration</dt>
+<dd>0.1.0</dd>
+<dt>API version</dt>
+<dd>2</dd>
+<dt>Storage version</dt>
+<dd>3</dd>
+<dt>Runtime</dt>
+<dd>runtime-1</dd>
+<dt>Commit</dt>
+<dd>1</dd>
+<dt>Runtime sequence</dt>
+<dd>1</dd>
+<dt>Stored</dt>
+<dd>7 jobs · 5 rooms</dd>
+<dt>Trace</dt>
+<dd>4 kept of 4 · 0 dropped</dd>
+</dl>
+</section>
+<section class="voc-block" data-key="setup">
+<h3 class="voc-block-title">
+<ha-icon icon="mdi:clipboard-check-outline" aria-hidden="true">
+</ha-icon>Setup</h3>
+<ul class="voc-checklist">
+<li data-key="step:robots" data-done="true">
+<ha-icon icon="mdi:check-circle" aria-hidden="true">
+</ha-icon>
+<span>Add a robot</span>
+</li>
+<li data-key="step:rooms" data-done="true">
+<ha-icon icon="mdi:check-circle" aria-hidden="true">
+</ha-icon>
+<span>Assign rooms to a robot</span>
+</li>
+<li data-key="step:release" data-done="true">
+<ha-icon icon="mdi:check-circle" aria-hidden="true">
+</ha-icon>
+<span>Release rooms for cleaning</span>
+</li>
+<li data-key="step:firstJob" data-done="true">
+<ha-icon icon="mdi:check-circle" aria-hidden="true">
+</ha-icon>
+<span>Create the first job</span>
+</li>
+</ul>
+</section>
+<section class="voc-block" data-key="trace">
+<h3 class="voc-block-title">
+<ha-icon icon="mdi:timeline-text-outline" aria-hidden="true">
+</ha-icon>Recent events</h3>
+<p class="voc-overlay-lead">Kept in memory only and cleared when the integration restarts.</p>
+<ol class="voc-trace">
+<li data-key="trace:42" data-tone="neutral">
+<span class="voc-trace-time">Sep 17, 2026, 11:48 AM</span>
+<span class="voc-trace-event">Attempt</span>
+<span class="voc-trace-detail">Living room · Started · Rocky</span>
+</li>
+<li data-key="trace:41" data-tone="neutral">
+<span class="voc-trace-time">Sep 17, 2026, 11:47 AM</span>
+<span class="voc-trace-event">Robot command</span>
+<span class="voc-trace-detail">Living room · queued · Rocky · start_job · requested</span>
+</li>
+<li data-key="trace:40" data-tone="neutral">
+<span class="voc-trace-time">Sep 17, 2026, 11:46 AM</span>
+<span class="voc-trace-event">Job</span>
+<span class="voc-trace-detail">Living room · Starting</span>
+</li>
+<li data-key="trace:39" data-tone="attention">
+<span class="voc-trace-time">Sep 17, 2026, 11:35 AM</span>
+<span class="voc-trace-event">Blocked</span>
+<span class="voc-trace-detail">Bathroom · queued · A room is not released.</span>
+</li>
+</ol>
+</section>
+<div class="voc-diagnostics-download" data-key="download">
+<span>For a complete report, download the diagnostics on the integration page.</span>
+<button type="button" class="voc-button voc-button--text" data-action="navigate" data-args="{&quot;path&quot;:&quot;/_my_redirect/integration?domain=vacuum_orchestrator&quot;}">
+<ha-icon icon="mdi:open-in-app" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Open integration</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

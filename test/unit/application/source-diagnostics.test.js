@@ -1,36 +1,45 @@
-"use strict";
-// Which backend facts become a warning, which a hint, and which deliberately neither.
-// Boundary: the diagnostic decision; its wording belongs to the i18n registry.
+// Which backend facts become the card's warning and which a hint (RCC diagnostics contract).
+// Phase problems are the onboarding's, recovery and attention are view content: neither is a
+// notice.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-test("store diagnostics are split by severity and model facts add hints", async () => {
-  const { collectBackendDiagnostics } = await import("../../../src/application/source-diagnostics.js");
-  const { createDiagnostic } = await import("../../../src/core/diagnostics.js");
-  const diagnostics = collectBackendDiagnostics({
-    model: {
-      connection: { stale: false },
-      queue: { available: true, total: 3, pending: [{ jobId: "job-1" }] },
-      commands: { pending: ["job:job-1"] },
-    },
-    backendDiagnostics: [createDiagnostic("hint.reconnecting"), createDiagnostic("command.failed", { params: { code: "unknown_job" } })],
-  });
-  assert.deepEqual(diagnostics.warnings.map((item) => item.code), ["command.failed"]);
-  assert.deepEqual(diagnostics.hints.map((item) => item.code), ["hint.reconnecting", "hint.command_pending", "hint.partial_page"]);
-  assert.equal(Object.isFrozen(diagnostics.warnings), true);
+const load = () => import("../../../src/application/source-diagnostics.js");
+const failed = (code) => ({ status: "error", error: { ok: false, code } });
+
+test("a failed query is a warning naming the scope and code", async () => {
+  const { collectSourceDiagnostics } = await load();
+  const result = collectSourceDiagnostics({ phase: "ready", subscription: "live", slots: { rooms: failed("invalid_response") } });
+  assert.deepEqual(result.warnings.map((item) => [item.code, { ...item.params }]), [["backend.query_failed", { scope: "rooms", code: "invalid_response" }]]);
+  assert.deepEqual(result.hints, []);
 });
 
-// A warning block that is on in normal operation stops being read. Missing optional
-// capabilities and read-only users are explained where they matter instead.
-test("a working card with today's backend produces no warning", async () => {
-  const { buildCardDomainModel } = await import("../../../src/application/card-domain-model.js");
-  const { initialState } = await import("../../../src/backend/store.js");
-  const { capabilitiesFrom } = await import("../../../src/backend/capabilities.js");
-  const backendState = initialState();
-  backendState.connection.state = "connected";
-  backendState.capabilities = capabilitiesFrom({ apiVersion: 2, services: {} });
-  const model = buildCardDomainModel({ backendState, user: { is_admin: false }, nowMs: 0 });
-  assert.equal(model.capabilities.robotsRead, false);
-  assert.deepEqual(model.diagnostics.warnings, []);
+test("a timeout or lost connection is an offline hint, not a warning", async () => {
+  const { collectSourceDiagnostics } = await load();
+  const result = collectSourceDiagnostics({ phase: "ready", subscription: "live", slots: { queue: failed("timeout"), rooms: failed("connection_lost") } });
+  assert.deepEqual(result.warnings, []);
+  assert.deepEqual(result.hints.map((item) => item.code), ["hint.offline"]);
+});
+
+test("reconnecting live updates and an incomplete job scan are hints", async () => {
+  const { collectSourceDiagnostics } = await load();
+  const result = collectSourceDiagnostics({ phase: "ready", subscription: "reconnecting", slots: { queue: failed("timeout"), openJobs: { status: "ready", data: { jobs: [], complete: false } } } });
+  assert.deepEqual(result.hints.map((item) => item.code), ["hint.reconnecting", "hint.partial_jobs"]);
+});
+
+test("codes that change the phase are left to onboarding, and outside ready nothing is reported", async () => {
+  const { collectSourceDiagnostics } = await load();
+  const phaseCodes = { a: failed("orchestrator_not_loaded"), b: failed("api_incompatible"), c: failed("unknown_command") };
+  assert.deepEqual(collectSourceDiagnostics({ phase: "ready", slots: phaseCodes }).warnings, []);
+  assert.deepEqual(collectSourceDiagnostics({ phase: "load_failed", slots: { rooms: failed("invalid_response") } }).warnings, []);
+});
+
+test("the same failure in two slots is reported once, and the lists are frozen", async () => {
+  const { collectSourceDiagnostics } = await load();
+  const result = collectSourceDiagnostics({ phase: "ready", slots: { rooms: failed("x"), roomsAgain: { status: "error", error: { code: "x" } } } });
+  assert.equal(result.warnings.length, 2, "different scopes are different warnings");
+  const once = collectSourceDiagnostics({ phase: "ready", slots: { a: failed("timeout"), b: failed("timeout") } });
+  assert.equal(once.hints.length, 1);
+  assert.ok(Object.isFrozen(result.warnings) && Object.isFrozen(result.hints));
 });

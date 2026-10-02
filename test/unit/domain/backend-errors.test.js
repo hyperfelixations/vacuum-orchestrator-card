@@ -1,59 +1,61 @@
-// Every backend code has exactly one group, and an unknown code stays readable.
-// Boundary: classification; the message text comes from the i18n registry.
+// The error catalog: every known code belongs to exactly one group, a code the card does not
+// know stays readable in the unknown group, and failure records are frozen and recognizable.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-test("backend error catalog assigns each known code once and normalizes unknown failures", async () => {
-  const errors = await import("../../../src/domain/backend-errors.js");
-  const memberships = new Map();
-  for (const [group, codes] of Object.entries(errors.ERROR_GROUPS)) {
-    for (const code of codes) {
-      memberships.set(code, (memberships.get(code) || 0) + 1);
-      assert.equal(errors.classifyBackendError(code).group, group);
-    }
-  }
-  assert.equal([...memberships.values()].every((count) => count === 1), true);
-  assert.deepEqual(errors.classifyBackendError("future_code"), { group: "unknown", messageKey: "error.backend.unknown" });
+const load = () => import("../../../src/domain/backend-errors.js");
 
-  const normalized = errors.toBackendError({ code: "unknown_job", detail: "job-1" });
-  assert.equal(normalized instanceof errors.BackendError, true);
-  assert.equal(normalized.group, "conflict");
-  assert.equal(normalized.detail, "job-1");
+test("each known code has exactly one group", async () => {
+  const { ERROR_GROUPS, KNOWN_ERROR_CODES, errorGroup } = await load();
+  const seen = new Map();
+  for (const [group, codes] of Object.entries(ERROR_GROUPS)) for (const code of codes) seen.set(code, [...(seen.get(code) || []), group]);
+  assert.deepEqual([...seen].filter(([, groups]) => groups.length > 1), []);
+  assert.equal(seen.size, KNOWN_ERROR_CODES.length);
+  for (const [code, [group]] of seen) assert.equal(errorGroup(code), group);
 });
 
-test("backend errors preserve identity, legacy shapes, causes, and empty fallbacks", async () => {
-  const { BackendError, isBackendError, toBackendError } = await import("../../../src/domain/backend-errors.js");
-  const cause = new Error("socket closed");
-  const existing = new BackendError("timeout", "late", { cause, rawCode: "client_timeout" });
-  assert.equal(isBackendError(existing), true);
-  assert.equal(isBackendError({ name: "BackendError" }), true);
-  assert.equal(toBackendError(existing), existing);
-  assert.equal(existing.cause, cause);
-  assert.equal(existing.rawCode, "client_timeout");
+test("an unknown code is kept with the unknown group", async () => {
+  const { backendFailure, errorGroup, isKnownErrorCode, ERROR_GROUP_NAMES } = await load();
+  assert.equal(errorGroup("quantum_flux"), "unknown");
+  assert.equal(isKnownErrorCode("quantum_flux"), false);
+  assert.ok(ERROR_GROUP_NAMES.includes("unknown"));
+  const failure = backendFailure(" quantum_flux ", { detail: 42, channel: "ws" });
+  assert.deepEqual({ ...failure }, { ok: false, code: "quantum_flux", group: "unknown", detail: "42", channel: "ws" });
+  assert.ok(Object.isFrozen(failure));
+});
 
-  const legacyErrors = [
-    ["error_code", { error_code: "unauthorized", detail: "denied" }, "denied"],
-    ["errorCode", { errorCode: "unknown_job", message: "missing" }, "missing"],
-    ["type", { type: "job_not_startable", error: "running" }, "running"],
-  ];
-  for (const [field, wire, detail] of legacyErrors) {
-    const normalized = toBackendError(wire);
-    assert.equal(normalized.code, wire[field]);
-    assert.equal(normalized.detail, detail);
-    assert.equal(normalized.cause, wire);
-    assert.equal(normalized.rawCode, wire[field]);
+test("an empty code becomes unknown and a missing detail stays null", async () => {
+  const { backendFailure } = await load();
+  assert.equal(backendFailure("").code, "unknown");
+  assert.equal(backendFailure(null).detail, null);
+});
+
+test("failure records are recognized by shape", async () => {
+  const { backendFailure, isBackendFailure } = await load();
+  assert.equal(isBackendFailure(backendFailure("timeout")), true);
+  assert.equal(isBackendFailure({ ok: true, code: "x" }), false);
+  assert.equal(isBackendFailure({ ok: false }), false);
+  assert.equal(isBackendFailure(null), false);
+});
+
+test("permission, availability and client codes sit in their own groups", async () => {
+  const { errorGroup } = await load();
+  assert.equal(errorGroup("unauthorized"), "permission");
+  assert.equal(errorGroup("orchestrator_not_loaded"), "availability");
+  assert.equal(errorGroup("connection_lost"), "client");
+  assert.equal(errorGroup("preference_conflicts_with_cleaning_mode"), "job");
+  assert.equal(errorGroup("release_duration_mismatch"), "room");
+  assert.equal(errorGroup("robot_busy"), "robot");
+  assert.equal(errorGroup("invalid_role_entity"), "robotConfiguration");
+});
+
+test("outcome, readiness and due vocabularies are closed lists without duplicates", async () => {
+  const { FAILURE_CODES, READINESS_REASONS, DUE_REASONS } = await load();
+  for (const list of [FAILURE_CODES, READINESS_REASONS, DUE_REASONS]) {
+    assert.ok(Object.isFrozen(list));
+    assert.equal(new Set(list).size, list.length);
   }
-
-  const fromError = toBackendError(new Error("connection refused"), "orchestrator_not_loaded");
-  assert.equal(fromError.code, "orchestrator_not_loaded");
-  assert.equal(fromError.detail, "connection refused");
-  assert.equal(fromError.cause.message, "connection refused");
-
-  const fromText = toBackendError("offline", "timeout");
-  assert.equal(fromText.code, "timeout");
-  assert.equal(fromText.detail, "offline");
-  assert.equal(toBackendError("", "timeout").detail, null);
-  assert.equal(toBackendError({}, "unknown_command").code, "unknown_command");
-  assert.equal(new BackendError("  ").message, "unknown");
+  assert.ok(FAILURE_CODES.includes("physical_run_ownership_uncertain"));
+  assert.deepEqual([...READINESS_REASONS], ["room_not_released", "requirement_not_satisfied", "requirement_unknown", "requirement_stale"]);
 });

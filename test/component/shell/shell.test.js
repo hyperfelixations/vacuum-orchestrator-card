@@ -1,64 +1,103 @@
-"use strict";
-// The assembled shell: header, warning block, tab strip and the rule that a working card shows
-// no warning. Section content is covered in test/component/sections.
+// The card shell through the built card: language, header options, the warning block and
+// subtitle hints, the show switches, the tab strip and its keyboard, unavailable views and the
+// command notice.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createTestEnvironment } = require("../../helpers/load-card.jsdom.js");
-const { mountCard, JOBS } = require("../../helpers/mount-card.js");
+const { mountCard, FIXED_NOW } = require("../../helpers/mount-card.js");
 
 let env;
 test.before(() => {
-  env = createTestEnvironment();
+  env = createTestEnvironment({ now: FIXED_NOW });
 });
 test.after(() => env.cleanupAll());
 
-test("the header speaks the configured language and summarizes the queue", async () => {
-  const mounted = await mountCard({ env, config: { language: "de" }, seed: { jobs: JOBS } });
-  assert.equal(mounted.text(".voc-title"), "Reinigung");
-  assert.equal(mounted.text(".voc-subtitle"), "2 Aufträge offen");
-  assert.equal(mounted.text(".voc-status-pill"), "Bereit");
-  mounted.unmount();
+test("the card speaks the configured language", async () => {
+  const card = await mountCard({ env, config: { language: "de" } });
+  assert.equal(card.text(".voc-title"), "Reinigung");
+  assert.equal(card.text(".voc-status-pill"), "Reinigt");
+  assert.deepEqual(card.all('[role="tab"]').map((tab) => tab.getAttribute("title")), ["Warteschlange", "Räume", "Roboter", "Vorlagen", "Verlauf", "Einstellungen"]);
+  card.unmount();
 });
 
-// Missing optional capabilities and a read-only user are normal states. A warning block that
-// is always on stops being read.
-test("a working card with today's backend shows no warning, for admins and read-only users", async () => {
-  for (const isAdmin of [true, false]) {
-    const mounted = await mountCard({ env, seed: { jobs: JOBS }, hass: { isAdmin } });
-    assert.equal(mounted.root.querySelector(".voc-warning"), null, `isAdmin=${isAdmin}`);
-    mounted.unmount();
-  }
+test("header options set title, subtitle, icon and the accent line position", async () => {
+  const card = await mountCard({ env, config: { title: "Upstairs", subtitle: { text: "Cleaning crew", overflow: "wrap" }, icon: "mdi:broom", accent_line: "bottom" } });
+  const root = card.root.querySelector(".voc-root");
+  assert.equal(card.text(".voc-title"), "Upstairs");
+  assert.equal(card.text(".voc-subtitle"), "Cleaning crew");
+  assert.equal(card.root.querySelector(".voc-icon-badge ha-icon").getAttribute("icon"), "mdi:broom");
+  assert.equal(root.dataset.accentLine, "bottom");
+  assert.equal(root.dataset.subtitle, "wrap");
+  card.unmount();
 });
 
-test("a read-only user keeps the queue and sees the read-only pill", async () => {
-  const mounted = await mountCard({ env, seed: { jobs: JOBS }, hass: { isAdmin: false } });
-  assert.deepEqual(mounted.rows(), ["job-a", "job-b"]);
-  const start = mounted.root.querySelector(".voc-job-action-start");
-  assert.equal(start.getAttribute("aria-disabled"), "true");
-  mounted.unmount();
+test("an unusable option is a warning with its fallback; show.warnings hides the block", async () => {
+  const card = await mountCard({ env, config: { page_size: 1 } });
+  assert.match(card.text(".voc-warning-text"), /page_size/);
+  card.card.setConfig({ type: "custom:vacuum-orchestrator-card", page_size: 1, show: { warnings: false } });
+  await card.settle();
+  assert.equal(card.root.querySelector(".voc-warning"), null);
+  card.unmount();
 });
 
-// Sections the backend cannot serve yet are still listed, so the user sees what is coming.
-test("the tab strip lists degraded sections and hides history and diagnostics by default", async () => {
-  const mounted = await mountCard({ env, seed: { jobs: JOBS } });
-  const tabs = [...mounted.root.querySelectorAll("[role=tab]")];
-  assert.deepEqual(tabs.map((tab) => tab.dataset.section), ["queue", "rooms", "robots"]);
-  assert.deepEqual(tabs.map((tab) => tab.dataset.degraded === "true"), [false, true, true]);
-  assert.equal(tabs[0].getAttribute("aria-selected"), "true");
-  mounted.unmount();
+test("a lost connection is a hint behind the subtitle, not a warning", async () => {
+  const card = await mountCard({ env });
+  card.fake.disconnect();
+  await card.updateHass({});
+  assert.match(card.text(".voc-subtitle"), / · .*reconnect/i);
+  assert.equal(card.root.querySelector(".voc-warning"), null);
+  card.fake.reconnect();
+  await card.settle(24);
+  assert.doesNotMatch(card.text(".voc-subtitle"), /reconnect/i);
+  card.unmount();
 });
 
-test("show.unavailable_sections: false leaves one section and auto-hides the tab strip", async () => {
-  const mounted = await mountCard({ env, config: { show: { unavailable_sections: false } }, seed: { jobs: JOBS } });
-  assert.equal(mounted.root.querySelector("[role=tablist]"), null);
-  assert.deepEqual(mounted.rows(), ["job-a", "job-b"]);
-  mounted.unmount();
+test("show switches remove the panel, the tab strip and the queue control", async () => {
+  const card = await mountCard({ env, config: { show: { panel: false, tabs: false } } });
+  assert.equal(card.root.querySelector(".voc-panel"), null);
+  assert.equal(card.root.querySelector(".voc-tabs"), null);
+  card.card.setConfig({ type: "custom:vacuum-orchestrator-card", show: { queue_controls: false } });
+  await card.settle();
+  assert.ok(card.root.querySelector(".voc-panel"));
+  assert.equal(card.root.querySelector(".voc-queue-control"), null);
+  card.unmount();
 });
 
-test("all variable header text is text content, not markup", async () => {
-  const mounted = await mountCard({ env, config: { title: "<img src=x onerror=alert(1)>" } });
-  assert.equal(mounted.root.querySelectorAll("img,script").length, 0);
-  assert.match(mounted.text(".voc-title"), /<img/);
-  mounted.unmount();
+test("arrow keys move through the tabs and switch the view with focus on the tab", async () => {
+  const card = await mountCard({ env });
+  await card.press('[role="tab"][data-view="queue"]', "ArrowRight");
+  const selected = card.root.querySelector('[role="tab"][aria-selected="true"]');
+  assert.equal(selected.dataset.view, "rooms");
+  assert.equal(card.root.activeElement, selected);
+  assert.equal(card.root.querySelector("#voc-panel").getAttribute("aria-labelledby"), "voc-tab-rooms");
+  card.unmount();
+});
+
+test("a view the integration does not offer is listed and explained", async () => {
+  const card = await mountCard({ env });
+  const services = { ...card.hass.services.vacuum_orchestrator };
+  delete services.get_history;
+  card.card.hass = { ...card.card.hass, services: { ...card.card.hass.services, vacuum_orchestrator: services } };
+  await card.settle(24);
+  const tab = card.root.querySelector('[role="tab"][data-view="history"]');
+  assert.equal(tab.dataset.unavailable, "true");
+  await card.click(tab);
+  assert.match(card.text(".voc-unavailable"), /History/);
+  card.unmount();
+});
+
+test("a command's notice is announced and can be dismissed", async () => {
+  const card = await mountCard({ env });
+  await card.click(".voc-queue-control");
+  await card.settle(32);
+  assert.equal(card.services("pause_queue").length, 1);
+  card.fake.failNext("resume_queue", { code: "home_assistant_error", message: "Unauthorized" });
+  await card.click(".voc-queue-control");
+  await card.settle(32);
+  assert.equal(card.root.querySelector(".voc-notice").getAttribute("role"), "alert");
+  assert.equal(card.text(".voc-live-region"), card.text(".voc-notice-text"));
+  await card.click(".voc-notice-close");
+  assert.equal(card.root.querySelector(".voc-notice"), null);
+  card.unmount();
 });

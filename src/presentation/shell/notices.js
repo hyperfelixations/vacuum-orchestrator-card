@@ -1,64 +1,60 @@
+// The only place a diagnostic becomes text (RCC diagnostics contract): one warning as a
+// sentence in the warning block, several as a count; one hint appended to the subtitle,
+// several as a count. Messages are language-neutral `{ key, vars }` until rendered.
+
 import { SEVERITY, formatConfigValue } from "../../core/diagnostics.js";
 
-const message = (key, vars = null) => vars ? { key, vars } : { key };
+const message = (key, vars = null) => (vars ? { key, vars } : { key });
 
-function written(value, texts) {
+function written(value) {
   const shown = formatConfigValue(value);
-  return shown === null ? texts.t("value.empty") : shown;
+  return shown === null ? message("value.empty") : shown;
 }
 
-const DIAGNOSTIC_MESSAGES = {
-  "value.invalid": (entry, texts) => message("warning.invalidValue", { value: written(entry.value, texts), key: entry.path, instead: fallbackText(entry.fallback, texts) }),
+function fallbackMessage(fallback) {
+  if (!fallback) return message("fallback.defaults");
+  if (Object.hasOwn(fallback, "value")) return message("fallback.value", { value: String(fallback.value) });
+  if (Object.hasOwn(fallback, "key")) return message("fallback.option", { key: fallback.key, value: String(fallback.value) });
+  return message(`fallback.${fallback.phrase}`);
+}
+
+const DIAGNOSTIC_MESSAGES = Object.freeze({
+  "value.invalid": (entry) => message("warning.invalidValue", { value: written(entry.value), key: entry.path, instead: fallbackMessage(entry.fallback) }),
   "config.foreign_key": (entry) => message("warning.foreignKey", { key: entry.path }),
-  "config.deprecated": (entry) => message("warning.deprecated", entry.params),
-  "backend.missing": () => message("warning.backendMissing"),
-  "backend.not_loaded": () => message("unavailable.backendNotLoaded"),
-  "backend.api_incompatible": () => message("unavailable.apiIncompatible"),
-  "backend.query_failed": (entry) => message("warning.commandFailed", { code: entry.params?.code || "query_failed" }),
-  "backend.capability_missing": (entry) => message("unavailable.capabilityMissing", { capability: entry.params?.capability || entry.path || "backend capability" }),
-  "backend.unauthorized": () => message("unavailable.readOnly"),
-  "command.failed": (entry) => message("warning.commandFailed", { code: entry.params?.code || "unknown" }),
+  "backend.query_failed": (entry) => message("warning.queryFailed", { scope: message(`scope.${entry.params?.scope || "unknown"}`), code: entry.params?.code || "unknown" }),
   "hint.reconnecting": () => message("hint.reconnecting"),
-  "hint.stale_snapshot": () => message("hint.staleSnapshot"),
-  "hint.command_pending": () => message("hint.commandPending"),
-  "hint.partial_page": () => message("hint.partialPage"),
-};
+  "hint.offline": () => message("hint.offline"),
+  "hint.partial_jobs": () => message("hint.partialJobs"),
+});
 
-function fallbackText(fallback, texts) {
-  if (!fallback) return texts.t("fallback.defaults");
-  if (Object.hasOwn(fallback, "value")) return texts.t("fallback.value", { value: String(fallback.value) });
-  if (Object.hasOwn(fallback, "key")) return texts.t("fallback.option", { key: fallback.key, value: String(fallback.value) });
-  return texts.t(`fallback.${fallback.phrase}`);
-}
+export const DIAGNOSTIC_CODES_WITH_MESSAGES = Object.freeze(Object.keys(DIAGNOSTIC_MESSAGES));
 
-export function messageForDiagnostic(entry, texts = { t: (key) => key }) {
+export function messageForDiagnostic(entry) {
   const builder = DIAGNOSTIC_MESSAGES[entry.code];
   if (!builder) throw new Error(`notices: no message for "${entry.code}"`);
-  return builder(entry, texts);
+  return builder(entry);
 }
 
 export function messageForConfigError(error) {
-  const map = {
-    "config.not_object": () => message("error.notObject"),
-    "config.unknown_key": ({ key, suggestion }) => suggestion ? message("error.unknownKeySuggestion", { key, suggestion }) : message("error.unknownKey", { key }),
-    "config.must_be_list": ({ key }) => message("error.mustBeList", { key }),
-    "config.must_be_object": ({ key }) => message("error.mustBeObject", { key }),
-    "config.duplicate_section": ({ key }) => message("error.duplicateSection", { key }),
-  };
-  const builder = map[error.code];
-  if (!builder) throw new Error(`notices: no message for "${error.code}"`);
-  return builder(error.params || {});
+  if (error.code === "config.not_object") return message("error.notObject");
+  if (error.code === "config.unknown_key") {
+    const { key, suggestion } = error.params || {};
+    return suggestion ? message("error.unknownKeySuggestion", { key, suggestion }) : message("error.unknownKey", { key });
+  }
+  throw new Error(`notices: no message for "${error.code}"`);
 }
 
-export function renderMessage(entry, t) {
-  if (!entry?.vars) return t(entry?.key || "");
-  const vars = Object.fromEntries(Object.entries(entry.vars).map(([key, value]) => [key, value && typeof value === "object" && value.key ? renderMessage(value, t) : value]));
-  return t(entry.key, vars);
+export function renderMessage(entry, translate) {
+  if (typeof entry === "string") return entry;
+  if (!entry?.vars) return translate(entry?.key || "");
+  const vars = Object.fromEntries(Object.entries(entry.vars).map(([key, value]) => [key, value && typeof value === "object" && value.key ? renderMessage(value, translate) : value]));
+  return translate(entry.key, vars);
 }
 
-export function buildNotices({ configDiagnostics = [], diagnostics = [], texts = { t: (key) => key } } = {}) {
+// Configuration diagnostics first, then the backend's, each in their own order.
+export function buildNotices({ configDiagnostics = [], diagnostics = [] } = {}) {
   const all = [...configDiagnostics, ...diagnostics];
-  const worded = (severity) => all.filter((entry) => entry.severity === severity).map((entry) => messageForDiagnostic(entry, texts));
+  const worded = (severity) => all.filter((entry) => entry.severity === severity).map(messageForDiagnostic);
   return { warnings: worded(SEVERITY.WARNING), hints: worded(SEVERITY.HINT) };
 }
 
@@ -72,21 +68,20 @@ export function hintText(hints, texts) {
   return hints.length === 1 ? renderMessage(hints[0], texts.t) : texts.t("hint.several", { count: hints.length });
 }
 
-export function buildWarningBlock({ config = {}, notices = {}, texts = { t: (key) => key } } = {}) {
+export function buildWarningBlock({ config = {}, notices = {}, texts } = {}) {
   const text = warningText(notices.warnings || [], texts);
   return { visible: Boolean(text) && config.show?.warnings !== false, text: text || "", label: texts.t("warning.label") };
 }
 
 function appendHint(line, hint) {
-  if (/[.!?]$/.test(line)) return `${line} ${hint}`;
+  if (/[.!?…]$/.test(line)) return `${line} ${hint}`;
   if (/[。！？]$/.test(line)) return `${line}${hint}`;
   return `${line} · ${hint}`;
 }
 
-export function composeSubtitle({ config = {}, automatic = "", hint = null } = {}) {
-  const own = config.subtitle?.text;
-  const line = own === null || own === undefined ? automatic : own;
-  const hasSubtitle = line !== "" && config.show?.subtitle !== false;
-  if (!hasSubtitle || !hint) return { subtitle: line, hasSubtitle, subtitleOverflow: config.subtitle?.overflow || "clip" };
-  return { subtitle: appendHint(line, hint), hasSubtitle: true, subtitleOverflow: "wrap" };
+// A hint joins the line the card shows anyway and makes it wrap while it lasts; a hidden or
+// empty subtitle stays hidden.
+export function withHint(header, hint) {
+  if (!hint || !header.hasSubtitle) return header;
+  return { ...header, subtitle: appendHint(header.subtitle, hint), subtitleOverflow: "wrap" };
 }

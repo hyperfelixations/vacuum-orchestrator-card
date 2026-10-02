@@ -1,48 +1,57 @@
-// One queue page plus one registry page become the ordered model the sections read.
-// Positions are derived from the page offset and never stored on the backend side.
+// The pending-queue page and the queue run as the integration reports them. Positions follow
+// from the page offset; the integration owns the order. See internal dev doc §7 "Queue".
 
-import { isActiveState, isQueueMode, isTerminalState } from "./job-schema.js";
+import { isQueueMode } from "./job-schema.js";
 import { normalizeJob } from "./job.js";
+import { bool, finite, instant, integer, isRecord, records, text } from "./wire-values.js";
 
-function integer(value, fallback) {
-  return Number.isInteger(value) ? value : fallback;
-}
-
-function pageJobs(page) {
-  if (!page || typeof page !== "object" || !Array.isArray(page.jobs)) return [];
-  return page.jobs.map(normalizeJob).filter(Boolean);
-}
-
-const EMPTY_PAGE = Object.freeze({ available: false, total: 0, offset: 0, limit: 0 });
-
-export function buildQueueModel({ queuePage = null, registryPage = null } = {}) {
-  const queueAvailable = Boolean(queuePage && typeof queuePage === "object");
-  const registryAvailable = Boolean(registryPage && typeof registryPage === "object");
-  const offset = Math.max(0, integer(queuePage?.offset, 0));
-  const limit = Math.max(0, integer(queuePage?.limit, 0));
-  const registry = pageJobs(registryPage);
+function queueRun(wire) {
+  if (!isRecord(wire)) return null;
+  const runId = text(wire.run_id);
+  if (!runId) return null;
   return Object.freeze({
-    available: queueAvailable,
-    mode: isQueueMode(queuePage?.mode) ? queuePage.mode : "idle",
-    revision: integer(queuePage?.queue_revision, 0),
-    commitId: integer(queuePage?.commit_id, null),
-    needsAttention: queuePage?.needs_attention === true,
-    total: Math.max(0, integer(queuePage?.total, 0)),
-    offset,
-    limit,
-    pending: Object.freeze(
-      pageJobs(queuePage).map((job, index) => Object.freeze({ ...job, position: offset + index + 1 }))
-    ),
-    active: Object.freeze(registry.filter((job) => isActiveState(job.state))),
-    history: Object.freeze(registry.filter((job) => isTerminalState(job.state))),
-    attention: Object.freeze(registry.filter((job) => job.state === "needs_attention")),
-    registry: registryAvailable
-      ? Object.freeze({
-          available: true,
-          total: integer(registryPage?.total, registry.length),
-          offset: integer(registryPage?.offset, 0),
-          limit: integer(registryPage?.limit, registry.length),
-        })
-      : EMPTY_PAGE,
+    runId,
+    startedAt: instant(wire.started_at),
+    active: wire.active === true,
+    idleSince: instant(wire.idle_since),
+    deadline: instant(wire.deadline),
+    completedAt: instant(wire.completed_at),
   });
+}
+
+// `robot_id` may name a removed profile, a source identity or `legacy:unscoped`; recovery
+// must send it back unchanged.
+function recoveryTarget(wire) {
+  const robotId = text(wire.robot_id);
+  return robotId ? Object.freeze({ robotId, reason: text(wire.reason) }) : null;
+}
+
+export function normalizeQueuePage(wire) {
+  if (!isRecord(wire)) return null;
+  const offset = Math.max(0, integer(wire.offset) ?? 0);
+  const jobs = records(wire.jobs)
+    .map(normalizeJob)
+    .filter(Boolean)
+    .map((job, index) => Object.freeze({ ...job, position: offset + index + 1 }));
+  return Object.freeze({
+    mode: isQueueMode(wire.mode) ? wire.mode : "idle",
+    commitId: integer(wire.commit_id),
+    queueRevision: integer(wire.queue_revision),
+    needsAttention: bool(wire.needs_attention) === true,
+    recoveryTargets: Object.freeze(records(wire.recovery_targets).map(recoveryTarget).filter(Boolean)),
+    graceSeconds: finite(wire.queue_grace_seconds),
+    run: queueRun(wire.queue_run),
+    total: Math.max(0, integer(wire.total) ?? jobs.length),
+    offset,
+    limit: Math.max(1, integer(wire.limit) ?? 50),
+    jobs: Object.freeze(jobs),
+  });
+}
+
+// A run is live while the integration says so; its deadline only exists during the quiet
+// period. The phase is read, never computed.
+export function queueRunPhase(run) {
+  if (!run) return "none";
+  if (!run.active) return "finished";
+  return run.deadline !== null ? "winding_down" : "active";
 }

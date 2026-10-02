@@ -1,30 +1,22 @@
-// Everything a renderer may reach: the document it draws into, the text port, the UI route
-// and the two narrow lookups that need Home Assistant. Renderers never see hass itself.
-export function createRenderContext(ownerDocument, extras = {}) {
+// Everything a renderer may reach: the document it draws into, the text port and the one
+// lookup that needs Home Assistant (an image URL). Renderers never see hass itself.
+
+export function createRenderContext(ownerDocument, { texts = null, resolveUrl = null } = {}) {
   if (!ownerDocument) throw new TypeError("render context requires an ownerDocument");
-  return {
+  const t = (key, vars) => (texts && typeof texts.t === "function" ? texts.t(key, vars) : key);
+  return Object.freeze({
     ownerDocument,
-    defaultView: ownerDocument.defaultView,
-    createElement: (tagName) => ownerDocument.createElement(tagName),
-    htmlToElement: (html) => htmlToElementIn(ownerDocument, html),
-    htmlToNodes: (html) => htmlToNodesIn(ownerDocument, html),
-    texts: extras.texts || null,
-    ui: extras.ui || null,
-    capabilities: extras.capabilities || {},
-    canCommand: extras.canCommand === true,
-    // Resolves an image entity the backend named to a URL the browser may load.
-    resolveImage: extras.resolveImage || (() => null),
-  };
+    texts,
+    t,
+    // The sentence for an affordance decision's reason, or "".
+    reason: (decision) => (decision?.state === "disabled" && decision.reason ? t(`affordance.${decision.reason}`) : ""),
+    resolveUrl: typeof resolveUrl === "function" ? resolveUrl : () => null,
+    fragment: (html) => fragmentIn(ownerDocument, html),
+  });
 }
 
-export function htmlToElementIn(ownerDocument, html) {
-  const wrapper = ownerDocument.createElement("div");
-  wrapper.innerHTML = String(html ?? "").trim();
-  return wrapper.firstElementChild;
-}
-
-export function htmlToNodesIn(ownerDocument, html) {
-  const wrapper = ownerDocument.createElement("div");
-  wrapper.innerHTML = String(html ?? "");
-  return Array.from(wrapper.childNodes);
+export function fragmentIn(ownerDocument, html) {
+  const template = ownerDocument.createElement("template");
+  template.innerHTML = String(html ?? "");
+  return template.content;
 }

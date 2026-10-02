@@ -14,8 +14,9 @@ const LAYERS = ["unit", "component", "contract", "architecture", "characterizati
 const SHARED = ["fixtures", "helpers", "manifests", "baseline"];
 const NODE_DIRECTORIES = new Set([
   "unit/application", "unit/backend", "unit/config", "unit/core", "unit/domain", "unit/i18n",
-  "unit/presentation/sections", "unit/presentation/shell", "unit/render", "unit/runtime", "unit/sections",
-  "component/lifecycle", "component/sections", "component/shell", "contract", "architecture",
+  "unit/presentation/common", "unit/presentation/shell", "unit/presentation/views", "unit/presentation/overlays",
+  "unit/render", "unit/runtime", "unit/views",
+  "component/lifecycle", "component/views", "component/shell", "contract", "architecture",
   "characterization", "property",
 ]);
 const BROWSER_DIRECTORIES = ["core", "interaction", "geometry", "accessibility", "visual"];

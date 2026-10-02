@@ -1,42 +1,72 @@
-// The card's route: which section is on screen, which overlay covers it, the editor draft and
-// the focus the next render owes. See internal dev doc §5 "UI-Zustand".
-export function createUIState({ section = null } = {}) {
-  let snapshot = { section, overlay: null, draft: null, focus: null, error: null };
+// One card's own route and transient state: the view on screen, the overlay stack (a dialog
+// can sit on an editor and give it back), page offsets, expanded blocks, the last command's
+// notice and the focus the next render owes. Nothing here is shared between cards.
+// See internal dev doc §9 "UI-Zustand".
+
+export function createUIState() {
+  let state = Object.freeze({ view: null, overlays: Object.freeze([]), pages: Object.freeze({}), expanded: Object.freeze([]), choices: Object.freeze({}), notice: null, focus: null });
   const listeners = new Set();
-  const publish = () => { listeners.forEach((listener) => listener(snapshot)); };
-  const update = (next) => { snapshot = next; publish(); return snapshot; };
+  const publish = () => listeners.forEach((listener) => listener(state));
+  const update = (patch, { silent = false } = {}) => {
+    state = Object.freeze({ ...state, ...patch });
+    if (!silent) publish();
+    return state;
+  };
+
   return {
-    get section() { return snapshot.section; },
-    get overlay() { return snapshot.overlay; },
-    get draft() { return snapshot.draft; },
-    get error() { return snapshot.error; },
-    get focus() { return snapshot.focus; },
-    setSection(key) { return update({ ...snapshot, section: key, overlay: null }); },
-    // A confirmation interrupts the page underneath it and carries that page with it, so a
-    // dismissed confirmation can give it back instead of dropping an unsaved draft.
-    openOverlay(spec) {
-      const next = spec || null;
-      const interrupted = next?.kind === "confirm" && snapshot.overlay ? { overlay: snapshot.overlay, draft: snapshot.draft } : null;
-      return update({
-        ...snapshot,
-        overlay: interrupted ? { ...next, interrupted } : next,
-        draft: interrupted ? snapshot.draft : next?.draft ?? null,
-      });
+    get snapshot() {
+      return state;
     },
-    // `resume` returns to the interrupted page; without it the whole stack closes.
-    closeOverlay({ resume = false } = {}) {
-      const interrupted = resume ? snapshot.overlay?.interrupted : null;
-      if (interrupted) return update({ ...snapshot, overlay: interrupted.overlay, draft: interrupted.draft, focus: null });
-      return update({ ...snapshot, overlay: null, draft: null, focus: null });
+    get view() {
+      return state.view;
     },
-    // The draft is opaque here; the domain reducer produces each next draft.
-    setDraft(draft) { return update({ ...snapshot, draft: draft ?? null }); },
+    get overlay() {
+      return state.overlays[state.overlays.length - 1] ?? null;
+    },
+    setView(view) {
+      return update({ view, overlays: Object.freeze([]) });
+    },
+    openOverlay(entry) {
+      return update({ overlays: Object.freeze([...state.overlays, Object.freeze({ ...entry })]) });
+    },
+    // Merges into the top overlay, e.g. the next draft of an editor.
+    updateOverlay(patch) {
+      const top = this.overlay;
+      if (!top) return state;
+      return update({ overlays: Object.freeze([...state.overlays.slice(0, -1), Object.freeze({ ...top, ...patch })]) });
+    },
+    closeOverlay() {
+      return update({ overlays: Object.freeze(state.overlays.slice(0, -1)) });
+    },
+    closeAllOverlays() {
+      return update({ overlays: Object.freeze([]) });
+    },
+    setPage(scope, offset) {
+      return update({ pages: Object.freeze({ ...state.pages, [scope]: Math.max(0, offset) }) });
+    },
+    toggle(key) {
+      const expanded = state.expanded.includes(key) ? state.expanded.filter((item) => item !== key) : [...state.expanded, key];
+      return update({ expanded: Object.freeze(expanded) });
+    },
+    // A per-card display choice, such as which map picture a robot card shows.
+    choose(key, value) {
+      return update({ choices: Object.freeze({ ...state.choices, [key]: value }) });
+    },
+    setNotice(notice) {
+      return update({ notice: notice ? Object.freeze({ ...notice }) : null });
+    },
     // A focus request is data for the next render, not a reason for one.
-    requestFocus(selector) { snapshot = { ...snapshot, focus: selector || null }; return snapshot; },
-    consumeFocus() { const focus = snapshot.focus; snapshot = { ...snapshot, focus: null }; return focus; },
-    dismissError() { return update({ ...snapshot, error: null }); },
-    setError(error) { return update({ ...snapshot, error }); },
-    subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
-    snapshot() { return snapshot; },
+    requestFocus(selector) {
+      return update({ focus: selector || null }, { silent: true });
+    },
+    consumeFocus() {
+      const focus = state.focus;
+      if (focus) update({ focus: null }, { silent: true });
+      return focus;
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
   };
 }

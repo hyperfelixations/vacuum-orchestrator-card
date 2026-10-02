@@ -1,94 +1,63 @@
-"use strict";
-// The live subscription: commit notifications, gap detection, and reconnect with bounded
-// backoff. It reads hass lazily, like every other backend module.
+// Coalescing of invalidation events: a reload waits for a quiet gap, never longer than the
+// maximum delay after the first event, and can be cancelled.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { VirtualClock } = require("../../helpers/fake-orchestrator.js");
 
-const { createFakeOrchestrator, VirtualClock } = require("../../helpers/fake-orchestrator.js");
+async function timer(options = {}) {
+  const { createInvalidationTimer, QUIET_MS, MAX_WAIT_MS } = await import("../../../src/backend/subscription.js");
+  const clock = new VirtualClock(0);
+  let fired = 0;
+  const platform = { now: () => clock.now(), setTimeout: (fn, ms) => clock.setTimeout(fn, ms), clearTimeout: (handle) => clock.clearTimeout(handle) };
+  const coalescer = createInvalidationTimer({ platform, onFire: () => { fired += 1; }, ...options });
+  return { clock, coalescer, fired: () => fired, QUIET_MS, MAX_WAIT_MS };
+}
 
-test("subscription reconnects with bounded backoff and requests snapshots for commit gaps", async () => {
-  const { createSubscription } = await import("../../../src/backend/subscription.js");
-  const clock = new VirtualClock();
-  const fake = createFakeOrchestrator({ profile: "target", clock });
-  const hass = fake.attachTo({});
-  const changes = [];
-  const events = [];
-  const subscription = createSubscription({ getHass: () => hass, platform: clock, onEvent: (event) => events.push(event), onStateChange: (change) => changes.push(change) });
-  await Promise.resolve();
-  await fake.createJob({ areas: ["kitchen"], mode: "vacuum" });
-  assert.equal(events.length, 1);
-  fake.failNext("commit_gap");
-  await fake.createJob({ areas: ["hall"], mode: "vacuum" });
-  assert.equal(changes.some((item) => item.reason === "commit_gap"), true);
-  fake.disconnect();
-  assert.equal(changes.some((item) => item.state === "reconnecting"), true);
-  clock.advance(1000);
-  fake.reconnect();
-  await Promise.resolve();
-  assert.equal(changes.some((item) => item.reason === "reconnect"), true);
-  subscription.dispose();
+test("a single event fires after the quiet gap", async () => {
+  const { clock, coalescer, fired, QUIET_MS } = await timer();
+  coalescer.schedule();
+  assert.equal(coalescer.pending, true);
+  clock.advance(QUIET_MS - 1);
+  assert.equal(fired(), 0);
+  clock.advance(1);
+  assert.equal(fired(), 1);
+  assert.equal(coalescer.pending, false);
 });
 
-
-// A subscription that cannot be established, and an event that cannot be believed: both have
-// to end in a named state rather than a broken loop.
-test("a missing connection and a malformed event both ask for a fresh snapshot", async () => {
-  const { createSubscription } = await import("../../../src/backend/subscription.js");
-  const { VirtualClock } = require("../../helpers/fake-orchestrator.js");
-  const clock = new VirtualClock();
-
-  const withoutConnection = [];
-  // A subscription starts itself; without a connection it says so instead of waiting.
-  const none = createSubscription({ getHass: () => ({}), platform: clock, onEvent: () => {}, onStateChange: (change) => withoutConnection.push(change) });
-  await Promise.resolve();
-  assert.equal(none.getState(), "disconnected");
-  assert.equal(withoutConnection.at(-1).state, "disconnected");
-  assert.equal(withoutConnection.at(-1).reason, "unavailable");
-  none.dispose();
-
-  let deliver = null;
-  const changes = [];
-  const hass = {
-    connection: {
-      subscribeMessage: (callback) => {
-        deliver = callback;
-        return () => {};
-      },
-    },
-  };
-  const live = createSubscription({ getHass: () => hass, platform: clock, onEvent: () => {}, onStateChange: (change) => changes.push(change) });
-  await Promise.resolve();
-  assert.equal(live.getState(), "connected");
-
-  deliver({ api_version: 2, mode: "not a mode" });
-  assert.equal(changes.at(-1).state, "snapshot_required");
-  assert.equal(changes.at(-1).reason, "invalid_event");
-  live.dispose();
+test("events inside the gap extend it, but never past the maximum delay", async () => {
+  const { clock, coalescer, fired, QUIET_MS, MAX_WAIT_MS } = await timer();
+  for (let elapsed = 0; elapsed < MAX_WAIT_MS + QUIET_MS; elapsed += QUIET_MS - 50) {
+    coalescer.schedule();
+    clock.advance(QUIET_MS - 50);
+  }
+  assert.equal(fired(), 1);
+  assert.ok(clock.now() >= MAX_WAIT_MS);
 });
 
-// A consumer that throws is the consumer's problem; the subscription keeps running.
-test("a listener that throws does not tear down the subscription", async () => {
-  const { createSubscription } = await import("../../../src/backend/subscription.js");
-  const { VirtualClock } = require("../../helpers/fake-orchestrator.js");
-  const clock = new VirtualClock();
-  let deliver = null;
-  const hass = { connection: { subscribeMessage: (callback) => { deliver = callback; return () => { throw new Error("stale handle"); }; } } };
-  const seen = [];
-  const subscription = createSubscription({
-    getHass: () => hass,
-    platform: clock,
-    onEvent: (event) => {
-      seen.push(event.commit_id);
-      throw new Error("consumer failed");
-    },
-    onStateChange: () => {},
-  });
-  await Promise.resolve();
-  const event = { api_version: 2, commit_id: 1, queue_revision: 1, mode: "idle", pending_jobs: 0, needs_attention: false };
-  deliver(event);
-  deliver({ ...event, commit_id: 2 });
-  assert.deepEqual(seen, [1, 2], "the second event still arrives");
-  // Disposing over a handle that throws is survivable too.
-  subscription.dispose();
+test("after firing, the next burst starts a new window", async () => {
+  const { clock, coalescer, fired, QUIET_MS } = await timer();
+  coalescer.schedule();
+  clock.advance(QUIET_MS);
+  coalescer.schedule();
+  clock.advance(QUIET_MS);
+  assert.equal(fired(), 2);
+});
+
+test("cancel drops a pending reload", async () => {
+  const { clock, coalescer, fired, QUIET_MS } = await timer();
+  coalescer.schedule();
+  coalescer.cancel();
+  clock.advance(QUIET_MS * 10);
+  assert.equal(fired(), 0);
+  assert.equal(clock.timers.size, 0);
+});
+
+test("without timers every event fires at once", async () => {
+  const { createInvalidationTimer } = await import("../../../src/backend/subscription.js");
+  let fired = 0;
+  const coalescer = createInvalidationTimer({ platform: null, onFire: () => { fired += 1; } });
+  coalescer.schedule();
+  coalescer.schedule();
+  assert.equal(fired, 2);
 });

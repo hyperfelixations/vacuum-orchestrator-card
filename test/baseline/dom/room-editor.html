@@ -1,0 +1,119 @@
+<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Living room · Cleaning</div>
+</div>
+<div class="voc-status-pill">Cleaning</div>
+</div>
+<div class="voc-body" id="voc-panel" data-body="overlay:room-editor">
+<section class="voc-overlay" data-key="overlay:room-editor" role="region" aria-labelledby="voc-overlay-title">
+<header class="voc-overlay-head">
+<button type="button" class="voc-button voc-button--icon voc-back" data-action="back" aria-label="Back" title="Back">
+<ha-icon icon="mdi:arrow-left" aria-hidden="true">
+</ha-icon>
+</button>
+<h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">Kitchen settings</h2>
+</header>
+<div class="voc-form">
+<section class="voc-block" data-key="group:room">
+<h3 class="voc-block-title">Room</h3>
+<div class="voc-field" data-key="field:name" data-field-control="text">
+<label class="voc-field-label" id="voc-field-name-label" for="voc-field-name">Name</label>
+<input class="voc-input" id="voc-field-name" data-field="name" type="text" value="Kitchen" autocomplete="off">
+</div>
+<div class="voc-field" data-key="field:followAreaName" data-field-control="switch">
+<label class="voc-field-label" id="voc-field-followAreaName-label" for="voc-field-followAreaName">Name source</label>
+<label class="voc-switch">
+<input type="checkbox" role="switch" id="voc-field-followAreaName" data-field="followAreaName" checked="">
+<span class="voc-switch-track" aria-hidden="true">
+<span class="voc-switch-thumb">
+</span>
+</span>
+<span class="voc-switch-label">Follow the Home Assistant area name</span>
+</label>
+</div>
+<div class="voc-field" data-key="field:enabled" data-field-control="switch">
+<label class="voc-field-label" id="voc-field-enabled-label" for="voc-field-enabled">Use this room</label>
+<label class="voc-switch">
+<input type="checkbox" role="switch" id="voc-field-enabled" data-field="enabled" checked="" aria-describedby="voc-field-enabled-hint">
+<span class="voc-switch-track" aria-hidden="true">
+<span class="voc-switch-thumb">
+</span>
+</span>
+<span class="voc-switch-label">Room can be cleaned</span>
+</label>
+<div class="voc-field-hint" id="voc-field-enabled-hint">An excluded room keeps its history and is not imported again.</div>
+</div>
+</section>
+<section class="voc-block" data-key="group:due">
+<h3 class="voc-block-title">When cleaning is due</h3>
+<div class="voc-field" data-key="field:basis" data-field-control="segmented">
+<div class="voc-field-label" id="voc-field-basis-label">Count time as</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-basis-label" aria-describedby="voc-field-basis-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;basis&quot;,&quot;value&quot;:&quot;calendar&quot;}" data-value="calendar" data-key="option:calendar">
+<span>Calendar time</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;basis&quot;,&quot;value&quot;:&quot;occupied&quot;}" data-value="occupied" data-key="option:occupied">
+<span>Occupied time</span>
+</button>
+</div>
+<div class="voc-field-hint" id="voc-field-basis-hint">Time since the last cleaning.</div>
+</div>
+<div class="voc-field" data-key="field:vacuumHours" data-field-control="text">
+<label class="voc-field-label" id="voc-field-vacuumHours-label" for="voc-field-vacuumHours">Vacuum every (hours) <span class="voc-field-optional">optional</span>
+</label>
+<input class="voc-input" id="voc-field-vacuumHours" data-field="vacuumHours" aria-describedby="voc-field-vacuumHours-hint" type="number" min="0" step="1" value="48" autocomplete="off">
+<div class="voc-field-hint" id="voc-field-vacuumHours-hint">Leave empty to switch the due calculation off; 48 is two days.</div>
+</div>
+<div class="voc-field" data-key="field:mopHours" data-field-control="text">
+<label class="voc-field-label" id="voc-field-mopHours-label" for="voc-field-mopHours">Mop every (hours) <span class="voc-field-optional">optional</span>
+</label>
+<input class="voc-input" id="voc-field-mopHours" data-field="mopHours" type="number" min="0" step="1" value="168" autocomplete="off">
+</div>
+</section>
+<section class="voc-block" data-key="group:conditions">
+<h3 class="voc-block-title">Conditions</h3>
+<div class="voc-field" data-key="field:requirementsAdd" data-field-control="entities">
+<label class="voc-field-label" id="voc-field-requirementsAdd-label" for="voc-field-requirementsAdd">Add condition <span class="voc-field-optional">optional</span>
+</label>
+<div class="voc-entities" data-control="entities">
+<input class="voc-input" type="search" id="voc-field-requirementsAdd" data-field="query:requirementsAdd" value="" placeholder="Search entities…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="voc-field-requirementsAdd-matches" aria-describedby="voc-field-requirementsAdd-hint">
+</div>
+<div class="voc-field-hint" id="voc-field-requirementsAdd-hint">For example a door that must be open. Unknown or unavailable states prevent the start.</div>
+</div>
+</section>
+<section class="voc-block" data-key="group:targets">
+<button type="button" class="voc-disclosure" data-action="set-overlay" data-args="{&quot;bindingsOpen&quot;:true}" aria-expanded="false">
+<ha-icon icon="mdi:chevron-down" aria-hidden="true">
+</ha-icon>
+<span>Robot targets</span>
+</button>
+</section>
+</div>
+<div class="voc-overlay-actions">
+<button type="button" class="voc-button voc-button--danger voc-action-start" data-action="remove-room" data-args="{&quot;roomId&quot;:&quot;room-kitchen&quot;}">
+<ha-icon icon="mdi:eye-off-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Exclude room</span>
+</button>
+<button type="button" class="voc-button voc-button--quiet" data-action="back">
+<span class="voc-button-label">Cancel</span>
+</button>
+<button type="button" class="voc-button voc-button--primary" data-action="save-room">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Save</span>
+</button>
+</div>
+</section>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

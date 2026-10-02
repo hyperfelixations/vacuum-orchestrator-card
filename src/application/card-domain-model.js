@@ -1,13 +1,12 @@
-// The one model every view reads. It joins the backend snapshot with the presentation context
-// Home Assistant supplies (area and entity names, the current user, the clock) and adds
-// nothing of its own. Pure and total: identical inputs give an identical frozen result.
-// Shape contract: see internal dev doc §7 "CardDomainModel".
+// The one model every view reads. It joins the shared session snapshot with what Home Assistant
+// supplies (areas, entity states, the user, registered actions) and the card's own scope
+// requests. Pure and total; it is plain data so it can be compared by value.
+// See internal dev doc §7 "CardDomainModel".
 
-import { collectBackendDiagnostics } from "./source-diagnostics.js";
-
-// A snapshot older than this is shown as possibly outdated. Only the caller knows the time,
-// so staleness cannot be decided inside the store.
-const STALE_AFTER_MS = 120_000;
+import { scopeKey } from "../backend/session.js";
+import { collectSourceDiagnostics } from "./source-diagnostics.js";
+import { indexRegistry, robotLive, summaryFrom } from "./ha-entities.js";
+import { setupStatus } from "./setup-status.js";
 
 function deepFreeze(value) {
   if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
@@ -15,92 +14,102 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 
-function areaCatalog(areaRegistry) {
-  const entries = areaRegistry && typeof areaRegistry === "object" ? Object.entries(areaRegistry) : [];
-  const result = [];
-  for (const [areaId, entry] of entries) {
-    if (typeof areaId !== "string" || !areaId) continue;
-    result.push({ areaId, name: entry?.name || areaId, icon: entry?.icon || "mdi:floor-plan" });
+const EMPTY_SLOT = Object.freeze({ status: "idle", stale: false, data: null, error: null, loadedAt: null });
+
+function slotsFrom(snapshot, requests) {
+  const slots = {};
+  for (const [slot, request] of Object.entries(requests || {})) {
+    if (!request) continue;
+    const scope = snapshot?.scopes?.[scopeKey(request.name, request.params || {})];
+    slots[slot] = scope ? { status: scope.status, stale: scope.stale, data: scope.data, error: scope.error, loadedAt: scope.loadedAt } : EMPTY_SLOT;
   }
-  return result.sort((one, other) => one.name.localeCompare(other.name));
+  return slots;
 }
 
-// Entity ids with a friendly name, for the requirement pickers and readiness explanations.
+function areaCatalog(areas) {
+  if (!areas || typeof areas !== "object") return [];
+  return Object.entries(areas)
+    .filter(([areaId]) => typeof areaId === "string" && areaId)
+    .map(([areaId, area]) => ({ areaId, name: typeof area?.name === "string" && area.name.trim() ? area.name.trim() : areaId, icon: area?.icon || null, floorId: area?.floor_id || null }));
+}
+
+// Entity ids the views name: readiness explanations, conditions, occupancy sources.
+function referencedEntityIds(slots) {
+  const ids = new Set();
+  const addReadiness = (readiness) => {
+    if (!readiness) return;
+    for (const id of [...readiness.failedOn, ...readiness.failedOff, ...readiness.unknown]) ids.add(id);
+    for (const item of readiness.requirements) ids.add(item.entityId);
+  };
+  const addJob = (job) => {
+    if (!job) return;
+    for (const id of [...job.requiredOn, ...job.requiredOff]) ids.add(id);
+    addReadiness(job.readiness);
+  };
+  for (const job of slots.queue?.data?.jobs || []) addJob(job);
+  for (const job of slots.openJobs?.data?.jobs || []) addJob(job);
+  addJob(slots.job?.data);
+  for (const item of slots.execution?.data?.robots || []) addReadiness(item.readiness);
+  for (const room of slots.rooms?.data?.items || []) {
+    for (const requirement of room.requirements) ids.add(requirement.entityId);
+    if (room.duePolicy.occupancyEntityId) ids.add(room.duePolicy.occupancyEntityId);
+  }
+  for (const robot of slots.robots?.data?.items || []) for (const requirement of robot.configuration.requirements) ids.add(requirement.entityId);
+  return [...ids].sort();
+}
+
+function entityReading(states, entityId) {
+  const state = states?.[entityId];
+  return {
+    state: state?.state ?? null,
+    name: state?.attributes?.friendly_name || null,
+    available: Boolean(state) && state.state !== "unavailable" && state.state !== "unknown",
+  };
+}
+
+// Every entity as an editor option: id, name, domain. Built only while an editor needs it.
 function entityCatalog(states) {
-  const entries = states && typeof states === "object" ? Object.entries(states) : [];
-  const result = [];
-  for (const [entityId, state] of entries) {
-    if (typeof entityId !== "string" || !entityId) continue;
-    result.push({ entityId, name: state?.attributes?.friendly_name || entityId, state: state?.state ?? null });
-  }
-  return result;
+  if (!states || typeof states !== "object") return [];
+  return Object.keys(states)
+    .sort()
+    .map((entityId) => ({ entityId, name: states[entityId]?.attributes?.friendly_name || entityId, domain: entityId.split(".")[0] }));
 }
 
-function staleness(connection, nowMs) {
-  const lastUpdatedAt = connection.lastUpdatedAt;
-  if (connection.state !== "connected") return false;
-  if (!Number.isFinite(lastUpdatedAt) || !Number.isFinite(nowMs)) return false;
-  return nowMs - lastUpdatedAt > STALE_AFTER_MS;
-}
-
-export function buildCardDomainModel({ backendState = {}, areaRegistry = null, states = null, user = null, nowMs = 0 } = {}) {
-  const snapshot = backendState && typeof backendState === "object" ? backendState : {};
-  const connectionState = snapshot.connection || {};
-  const capabilities = snapshot.capabilities || {};
-  const canCommand = user?.is_admin !== false;
-  const stale = staleness(connectionState, nowMs);
-  const areas = areaCatalog(areaRegistry);
-  const entities = entityCatalog(states);
+// `home`: Home Assistant's facts as `readHomeAssistant` returns them.
+export function buildCardDomainModel({ snapshot = null, requests = {}, home = null, nowMs = 0, needsEntityCatalog = false } = {}) {
+  const slots = slotsFrom(snapshot, requests);
+  const registry = indexRegistry(slots.registry?.data || []);
+  const states = home?.states || null;
+  const robots = slots.robots?.data?.items ?? null;
+  const rooms = slots.rooms?.data?.items ?? null;
+  const candidates = new Map((slots.candidates?.data?.items || []).map((candidate) => [candidate.registryId, candidate]));
+  const robotsLive = {};
+  for (const robot of robots || []) robotsLive[robot.robotId] = robotLive(robot, registry, states, candidates.get(robot.configuration.registryId), home?.formatState ?? null);
+  const entityReadings = {};
+  for (const entityId of referencedEntityIds(slots)) entityReadings[entityId] = entityReading(states, entityId);
+  const canCommand = home?.admin !== false;
 
   const model = {
-    connection: {
-      state: connectionState.state || "connecting",
-      stale,
-      apiVersion: connectionState.apiVersion ?? null,
-      integrationVersion: connectionState.integrationVersion ?? null,
-      commitId: connectionState.commitId ?? null,
-      queueRevision: connectionState.queueRevision ?? null,
-      lastUpdatedAt: connectionState.lastUpdatedAt ?? null,
-      lastError: connectionState.lastError ?? null,
-      subscription: connectionState.subscription || "disconnected",
-    },
-    permissions: { canCommand, reason: canCommand ? null : "admin_required" },
-    capabilities: { ...(capabilities.values || {}) },
-    capabilityMeta: {
-      negotiated: capabilities.negotiated === true,
-      source: capabilities.source ?? null,
-      limits: capabilities.limits ?? null,
-    },
-    queue: {
-      available: snapshot.queue?.available === true,
-      mode: snapshot.queue?.mode || "idle",
-      revision: snapshot.queue?.revision ?? 0,
-      needsAttention: snapshot.queue?.needsAttention === true,
-      total: snapshot.queue?.total ?? 0,
-      offset: snapshot.queue?.offset ?? 0,
-      limit: snapshot.queue?.limit ?? 0,
-      pending: snapshot.queue?.pending || [],
-    },
-    active: { available: snapshot.active?.available === true, jobs: snapshot.active?.jobs || [] },
-    history: {
-      available: snapshot.history?.available === true,
-      jobs: snapshot.history?.jobs || [],
-      total: snapshot.history?.total ?? 0,
-      offset: snapshot.history?.offset ?? 0,
-      limit: snapshot.history?.limit ?? 0,
-    },
-    attention: { available: snapshot.attention?.available === true, jobs: snapshot.attention?.jobs || [] },
-    robots: { available: snapshot.robots?.available === true, items: snapshot.robots?.items || [] },
-    areas: { available: snapshot.areas?.available === true, items: snapshot.areas?.items || [], catalog: areas },
-    entities,
-    // Command targets currently in flight, as the key set the action policy tests against.
-    commands: { pending: Object.keys(snapshot.commands?.pending || {}) },
-    lastCommandError: snapshot.lastCommandError ?? null,
-    entityStatus: snapshot.entityStatus || { available: false },
+    phase: snapshot?.phase ?? "probing",
+    phaseFailure: snapshot?.phaseFailure ?? null,
+    apiVersion: snapshot?.apiVersion ?? null,
+    integrationVersion: slots.manifest?.data?.version ?? null,
+    runtime: snapshot?.runtime ?? { id: null, sequence: null, commitId: null },
+    live: snapshot?.live ?? null,
+    subscription: snapshot?.subscription ?? "idle",
+    permissions: { canCommand, isAdmin: home?.admin === true },
+    operations: [...(home?.operations || [])],
+    pending: Object.keys(snapshot?.pending || {}).sort(),
+    slots,
+    summary: summaryFrom(registry, states),
+    robotsLive,
+    entityReadings,
+    areas: areaCatalog(home?.areas),
+    entityCatalog: needsEntityCatalog ? entityCatalog(states) : [],
+    setup: setupStatus({ robots, rooms, queueTotal: slots.queue?.data?.total ?? null, openJobs: slots.openJobs?.data?.jobs ?? null }),
+    nowMs,
     diagnostics: { warnings: [], hints: [] },
   };
-  model.diagnostics = collectBackendDiagnostics({ model, backendDiagnostics: snapshot.diagnostics || [] });
+  model.diagnostics = collectSourceDiagnostics(model);
   return deepFreeze(model);
 }
-
-export { STALE_AFTER_MS };

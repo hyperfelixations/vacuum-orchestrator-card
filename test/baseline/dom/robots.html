@@ -1,0 +1,193 @@
+<div class="voc-root" data-state="view" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Living room · Cleaning</div>
+</div>
+<div class="voc-status-pill">Cleaning</div>
+</div>
+<div class="voc-panel" data-queue-mode="running">
+<div class="voc-panel-headline">
+<span class="voc-panel-label">Waiting</span>
+<span class="voc-panel-value">3</span>
+</div>
+<div class="voc-panel-status">
+<div class="voc-panel-mode">
+<span class="voc-dot" aria-hidden="true">
+</span>
+<span>Queue running</span>
+</div>
+<div class="voc-panel-robots">
+<span class="voc-panel-robot" data-key="robot:robot-rocky" data-tone="running">
+<span class="voc-dot" aria-hidden="true">
+</span>Rocky · Cleaning · 76 %</span>
+<span class="voc-panel-robot" data-key="robot:robot-dusty" data-tone="ready">
+<span class="voc-dot" aria-hidden="true">
+</span>Dusty · Docked · 100 %</span>
+</div>
+</div>
+<div class="voc-panel-control">
+<button type="button" class="voc-button voc-button--primary voc-queue-control" data-action="queue-control" title="Pause queue">
+<ha-icon icon="mdi:pause" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Pause queue</span>
+</button>
+</div>
+</div>
+<div class="voc-tab-row">
+<div class="voc-tabs" role="tablist" aria-label="Views">
+<button type="button" class="voc-tab" role="tab" id="voc-tab-queue" data-key="tab-queue" data-view="queue" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Queue">
+<ha-icon icon="mdi:format-list-numbered" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Queue</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-rooms" data-key="tab-rooms" data-view="rooms" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Rooms">
+<ha-icon icon="mdi:floor-plan" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Rooms</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-robots" data-key="tab-robots" data-view="robots" aria-controls="voc-panel" aria-selected="true" tabindex="0" title="Robots">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Robots</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-templates" data-key="tab-templates" data-view="templates" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Templates">
+<ha-icon icon="mdi:content-copy" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Templates</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-history" data-key="tab-history" data-view="history" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="History">
+<ha-icon icon="mdi:history" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">History</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-settings" data-key="tab-settings" data-view="settings" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Settings">
+<ha-icon icon="mdi:cog-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Settings</span>
+</button>
+</div>
+<button type="button" class="voc-button voc-button--quiet voc-primary-action" data-action="add-robot" title="Add robot">
+<ha-icon icon="mdi:plus" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Add robot</span>
+</button>
+</div>
+<div class="voc-body" id="voc-panel" data-body="view:robots" role="tabpanel" aria-labelledby="voc-tab-robots">
+<div class="voc-view voc-robots" data-key="view:robots">
+<div class="voc-robot-grid">
+<article class="voc-robot" data-key="robot:robot-rocky" data-tone="running">
+<header class="voc-robot-head">
+<span class="voc-robot-icon" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</span>
+<div class="voc-robot-title">
+<h3 class="voc-robot-name">Rocky</h3>
+<div class="voc-robot-state">
+<span class="voc-pill voc-pill--running">Cleaning</span>
+<span class="voc-robot-battery">
+<ha-icon icon="mdi:battery-outline" aria-hidden="true">
+</ha-icon>76 %</span>
+</div>
+</div>
+<button type="button" class="voc-button voc-button--icon" data-action="edit-robot" data-args="{&quot;robotId&quot;:&quot;robot-rocky&quot;}" aria-label="Settings for Rocky" disabled="" title="The robot is working on a job.">
+<ha-icon icon="mdi:cog-outline" aria-hidden="true">
+</ha-icon>
+</button>
+</header>
+<div class="voc-robot-facts">
+<span class="voc-robot-fact" data-key="fact:room" title="Current room">
+<ha-icon icon="mdi:map-marker-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-sr-only">Current room: </span>Living room</span>
+<span class="voc-robot-fact" data-key="fact:status" title="Status">
+<ha-icon icon="mdi:information-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-sr-only">Status: </span>segment_cleaning</span>
+<span class="voc-robot-fact" data-key="fact:map" title="Selected map">
+<ha-icon icon="mdi:map-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-sr-only">Selected map: </span>Ground floor</span>
+<span class="voc-robot-fact" data-key="fact:minimum" title="Minimum battery">
+<ha-icon icon="mdi:battery-low" aria-hidden="true">
+</ha-icon>
+<span class="voc-sr-only">Minimum battery: </span>min. 20 %</span>
+</div>
+<div class="voc-robot-note" data-key="active" data-tone="running">
+<ha-icon icon="mdi:progress-clock" aria-hidden="true">
+</ha-icon>
+<span>Working on a job.</span>
+</div>
+<div class="voc-robot-chips" data-key="operations">
+<span class="voc-chip">
+<span>Vacuuming</span>
+</span>
+<span class="voc-chip">
+<span>Mopping</span>
+</span>
+<span class="voc-chip">
+<span>Vacuuming and mopping</span>
+</span>
+</div>
+<div class="voc-robot-line" data-key="rooms">
+<ha-icon icon="mdi:floor-plan" aria-hidden="true">
+</ha-icon>
+<span>Kitchen, Hall, Living room, Bathroom</span>
+</div>
+<div class="voc-robot-levels" data-key="levels">
+<span>Up to 3 passes</span>
+<span>Suction: High, Low, Maximum, Standard</span>
+<span>Water: High, Low, Medium</span>
+<span>Routes: Deep route, Standard route</span>
+</div>
+<figure class="voc-robot-map" data-key="map">
+<img src="/test/fixtures/map.svg" alt="Rocky: Rocky Ground floor" loading="lazy">
+</figure>
+</article>
+<article class="voc-robot" data-key="robot:robot-dusty" data-tone="ready">
+<header class="voc-robot-head">
+<span class="voc-robot-icon" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</span>
+<div class="voc-robot-title">
+<h3 class="voc-robot-name">Dusty</h3>
+<div class="voc-robot-state">
+<span class="voc-pill voc-pill--ready">Docked</span>
+<span class="voc-robot-battery">
+<ha-icon icon="mdi:battery-outline" aria-hidden="true">
+</ha-icon>100 %</span>
+</div>
+</div>
+<button type="button" class="voc-button voc-button--icon" data-action="edit-robot" data-args="{&quot;robotId&quot;:&quot;robot-dusty&quot;}" aria-label="Settings for Dusty" title="Settings for Dusty">
+<ha-icon icon="mdi:cog-outline" aria-hidden="true">
+</ha-icon>
+</button>
+</header>
+<div class="voc-robot-chips" data-key="operations">
+<span class="voc-chip">
+<span>Vacuuming</span>
+</span>
+</div>
+<div class="voc-robot-line" data-key="rooms">
+<ha-icon icon="mdi:floor-plan" aria-hidden="true">
+</ha-icon>
+<span>Kitchen, Hall</span>
+</div>
+<div class="voc-robot-levels" data-key="levels">
+<span>Up to 1 passes</span>
+</div>
+</article>
+</div>
+</div>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

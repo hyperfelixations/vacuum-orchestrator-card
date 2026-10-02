@@ -1,4 +1,3 @@
-"use strict";
 // Key parity between the two languages and the Intl formatters built on top of them.
 // Boundary: wording and formatting; which key a surface picks is tested with that surface.
 

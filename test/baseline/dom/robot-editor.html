@@ -1,0 +1,539 @@
+<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Living room · Cleaning</div>
+</div>
+<div class="voc-status-pill">Cleaning</div>
+</div>
+<div class="voc-body" id="voc-panel" data-body="overlay:robot-editor">
+<section class="voc-overlay" data-key="overlay:robot-editor" role="region" aria-labelledby="voc-overlay-title">
+<header class="voc-overlay-head">
+<button type="button" class="voc-button voc-button--icon voc-back" data-action="back" aria-label="Back" title="Back">
+<ha-icon icon="mdi:arrow-left" aria-hidden="true">
+</ha-icon>
+</button>
+<h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">Dusty profile</h2>
+</header>
+<p class="voc-overlay-lead">vacuum.dusty · Home Assistant vacuum</p>
+<div class="voc-form">
+<section class="voc-block" data-key="group:general">
+<h3 class="voc-block-title">General</h3>
+<div class="voc-field" data-key="field:enabled" data-field-control="switch">
+<label class="voc-field-label" id="voc-field-enabled-label" for="voc-field-enabled">Use this robot</label>
+<label class="voc-switch">
+<input type="checkbox" role="switch" id="voc-field-enabled" data-field="enabled" checked="">
+<span class="voc-switch-track" aria-hidden="true">
+<span class="voc-switch-thumb">
+</span>
+</span>
+<span class="voc-switch-label">Robot can take jobs</span>
+</label>
+</div>
+<div class="voc-field" data-key="field:allowedOperations" data-field-control="chips">
+<div class="voc-field-label" id="voc-field-allowedOperations-label">Allowed cleaning</div>
+<div class="voc-chips" role="listbox" aria-multiselectable="true" aria-labelledby="voc-field-allowedOperations-label" data-control="choice">
+<button type="button" class="voc-option is-selected" role="option" aria-selected="true" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;allowedOperations&quot;,&quot;value&quot;:&quot;vacuum&quot;}" data-value="vacuum" data-key="option:vacuum">
+<span>Vacuuming</span>
+</button>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;allowedOperations&quot;,&quot;value&quot;:&quot;mop&quot;}" data-value="mop" data-key="option:mop">
+<span>Mopping</span>
+</button>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;allowedOperations&quot;,&quot;value&quot;:&quot;vacuum_and_mop&quot;}" data-value="vacuum_and_mop" data-key="option:vacuum_and_mop">
+<span>Vacuuming and mopping</span>
+</button>
+</div>
+</div>
+<div class="voc-field" data-key="field:fixedMode" data-field-control="segmented">
+<div class="voc-field-label" id="voc-field-fixedMode-label">Fixed mode</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-fixedMode-label" aria-describedby="voc-field-fixedMode-hint" data-control="choice">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;fixedMode&quot;,&quot;value&quot;:null}" data-value="" data-key="option:">
+<span>Not fixed</span>
+</button>
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;fixedMode&quot;,&quot;value&quot;:&quot;vacuum&quot;}" data-value="vacuum" data-key="option:vacuum">
+<span>Vacuuming</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;fixedMode&quot;,&quot;value&quot;:&quot;mop&quot;}" data-value="mop" data-key="option:mop">
+<span>Mopping</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;fixedMode&quot;,&quot;value&quot;:&quot;vacuum_and_mop&quot;}" data-value="vacuum_and_mop" data-key="option:vacuum_and_mop">
+<span>Vacuuming and mopping</span>
+</button>
+</div>
+<div class="voc-field-hint" id="voc-field-fixedMode-hint">Only for robots without a mode selector that always clean in one mode.</div>
+</div>
+<div class="voc-field" data-key="field:preference" data-field-control="text">
+<label class="voc-field-label" id="voc-field-preference-label" for="voc-field-preference">Preference</label>
+<input class="voc-input" id="voc-field-preference" data-field="preference" aria-describedby="voc-field-preference-hint" type="number" min="-100" max="100" step="1" value="0" autocomplete="off">
+<div class="voc-field-hint" id="voc-field-preference-hint">From −100 to 100; robots with a higher value are chosen first.</div>
+</div>
+<div class="voc-field" data-key="field:minimumBattery" data-field-control="text">
+<label class="voc-field-label" id="voc-field-minimumBattery-label" for="voc-field-minimumBattery">Minimum battery (%) <span class="voc-field-optional">optional</span>
+</label>
+<input class="voc-input" id="voc-field-minimumBattery" data-field="minimumBattery" aria-describedby="voc-field-minimumBattery-hint" type="number" min="0" max="100" step="1" value="" autocomplete="off">
+<div class="voc-field-hint" id="voc-field-minimumBattery-hint">Below this level the robot takes no new job.</div>
+</div>
+</section>
+<section class="voc-block" data-key="group:areas">
+<h3 class="voc-block-title">Rooms by area</h3>
+<div class="voc-field" data-key="field:targetAreas" data-field-control="chips">
+<div class="voc-field-label" id="voc-field-targetAreas-label">Areas the robot cleans</div>
+<div class="voc-chips" role="listbox" aria-multiselectable="true" aria-labelledby="voc-field-targetAreas-label" aria-describedby="voc-field-targetAreas-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="option" aria-selected="true" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;kitchen&quot;}" data-value="kitchen" data-key="option:kitchen">
+<span>Kitchen</span>
+</button>
+<button type="button" class="voc-option is-selected" role="option" aria-selected="true" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;hall&quot;}" data-value="hall" data-key="option:hall">
+<span>Hall</span>
+</button>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;bathroom&quot;}" data-value="bathroom" data-key="option:bathroom">
+<span>Bathroom</span>
+</button>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;living_room&quot;}" data-value="living_room" data-key="option:living_room">
+<span>Living room</span>
+</button>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;bedroom&quot;}" data-value="bedroom" data-key="option:bedroom">
+<span>Bedroom</span>
+</button>
+</div>
+<div class="voc-field-hint" id="voc-field-targetAreas-hint">For robots addressed by Home Assistant areas. Map segments are assigned in the room settings.</div>
+</div>
+</section>
+<section class="voc-block" data-key="section:roles">
+<button type="button" class="voc-disclosure" data-action="toggle-section" data-args="{&quot;key&quot;:&quot;roles&quot;}" aria-expanded="true">
+<ha-icon icon="mdi:chevron-up" aria-hidden="true">
+</ha-icon>
+<span>Entities</span>
+</button>
+<p class="voc-overlay-lead">Automatic uses the entities Vacuum Orchestrator finds. Off ignores a role; an entity overrides discovery.</p>
+<div class="voc-roles">
+<div class="voc-role" data-key="role:battery">
+<div class="voc-field voc-field--inline" data-key="field:roles.battery.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-battery-mode-label">Battery</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-battery-mode-label" data-control="choice">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.battery.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.battery.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.battery.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+<div class="voc-field" data-key="field:roles.battery.entity" data-field-control="entities">
+<label class="voc-field-label voc-sr-only" id="voc-field-roles-battery-entity-label" for="voc-field-roles-battery-entity">Entity for Battery</label>
+<div class="voc-entities" data-control="entities">
+<div class="voc-entity-chips">
+<span class="voc-entity-chip" data-key="selected:sensor.dusty_battery">
+<span>Dusty Battery</span>
+<button type="button" class="voc-button voc-button--icon voc-entity-remove" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;roles.battery.entity&quot;,&quot;value&quot;:&quot;sensor.dusty_battery&quot;}" aria-label="Remove Dusty Battery" title="Remove Dusty Battery">
+<ha-icon icon="mdi:close" aria-hidden="true">
+</ha-icon>
+</button>
+</span>
+</div>
+</div>
+</div>
+</div>
+<div class="voc-role is-attention" data-key="role:status">
+<div class="voc-field voc-field--inline" data-key="field:roles.status.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-status-mode-label">Status</div>
+<div class="voc-field-hint" id="voc-field-roles-status-mode-hint">Several entities fit. Choose one.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-status-mode-label" aria-describedby="voc-field-roles-status-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.status.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.status.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.status.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:error">
+<div class="voc-field voc-field--inline" data-key="field:roles.error.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-error-mode-label">Error</div>
+<div class="voc-field-hint" id="voc-field-roles-error-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-error-mode-label" aria-describedby="voc-field-roles-error-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.error.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.error.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.error.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:dock_error">
+<div class="voc-field voc-field--inline" data-key="field:roles.dock_error.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-dock_error-mode-label">Dock error</div>
+<div class="voc-field-hint" id="voc-field-roles-dock_error-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-dock_error-mode-label" aria-describedby="voc-field-roles-dock_error-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.dock_error.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.dock_error.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.dock_error.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:last_clean_start">
+<div class="voc-field voc-field--inline" data-key="field:roles.last_clean_start.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-last_clean_start-mode-label">Last cleaning start</div>
+<div class="voc-field-hint" id="voc-field-roles-last_clean_start-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-last_clean_start-mode-label" aria-describedby="voc-field-roles-last_clean_start-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.last_clean_start.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.last_clean_start.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.last_clean_start.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:last_clean_end">
+<div class="voc-field voc-field--inline" data-key="field:roles.last_clean_end.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-last_clean_end-mode-label">Last cleaning end</div>
+<div class="voc-field-hint" id="voc-field-roles-last_clean_end-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-last_clean_end-mode-label" aria-describedby="voc-field-roles-last_clean_end-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.last_clean_end.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.last_clean_end.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.last_clean_end.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:current_room">
+<div class="voc-field voc-field--inline" data-key="field:roles.current_room.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-current_room-mode-label">Current room</div>
+<div class="voc-field-hint" id="voc-field-roles-current_room-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-current_room-mode-label" aria-describedby="voc-field-roles-current_room-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.current_room.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.current_room.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.current_room.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:clean_percent">
+<div class="voc-field voc-field--inline" data-key="field:roles.clean_percent.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-clean_percent-mode-label">Cleaning progress</div>
+<div class="voc-field-hint" id="voc-field-roles-clean_percent-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-clean_percent-mode-label" aria-describedby="voc-field-roles-clean_percent-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_percent.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_percent.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_percent.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:cleaning_mode">
+<div class="voc-field voc-field--inline" data-key="field:roles.cleaning_mode.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-cleaning_mode-mode-label">Cleaning mode</div>
+<div class="voc-field-hint" id="voc-field-roles-cleaning_mode-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-cleaning_mode-mode-label" aria-describedby="voc-field-roles-cleaning_mode-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.cleaning_mode.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.cleaning_mode.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.cleaning_mode.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:mop_intensity">
+<div class="voc-field voc-field--inline" data-key="field:roles.mop_intensity.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-mop_intensity-mode-label">Water level</div>
+<div class="voc-field-hint" id="voc-field-roles-mop_intensity-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-mop_intensity-mode-label" aria-describedby="voc-field-roles-mop_intensity-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_intensity.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_intensity.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_intensity.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:mop_route">
+<div class="voc-field voc-field--inline" data-key="field:roles.mop_route.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-mop_route-mode-label">Mop route</div>
+<div class="voc-field-hint" id="voc-field-roles-mop_route-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-mop_route-mode-label" aria-describedby="voc-field-roles-mop_route-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_route.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_route.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_route.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:selected_map">
+<div class="voc-field voc-field--inline" data-key="field:roles.selected_map.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-selected_map-mode-label">Selected map</div>
+<div class="voc-field-hint" id="voc-field-roles-selected_map-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-selected_map-mode-label" aria-describedby="voc-field-roles-selected_map-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.selected_map.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.selected_map.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.selected_map.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:in_cleaning">
+<div class="voc-field voc-field--inline" data-key="field:roles.in_cleaning.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-in_cleaning-mode-label">Cleaning</div>
+<div class="voc-field-hint" id="voc-field-roles-in_cleaning-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-in_cleaning-mode-label" aria-describedby="voc-field-roles-in_cleaning-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.in_cleaning.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.in_cleaning.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.in_cleaning.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:water_shortage">
+<div class="voc-field voc-field--inline" data-key="field:roles.water_shortage.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-water_shortage-mode-label">Water shortage</div>
+<div class="voc-field-hint" id="voc-field-roles-water_shortage-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-water_shortage-mode-label" aria-describedby="voc-field-roles-water_shortage-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.water_shortage.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.water_shortage.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.water_shortage.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:mop_attached">
+<div class="voc-field voc-field--inline" data-key="field:roles.mop_attached.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-mop_attached-mode-label">Mop attached</div>
+<div class="voc-field-hint" id="voc-field-roles-mop_attached-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-mop_attached-mode-label" aria-describedby="voc-field-roles-mop_attached-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_attached.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_attached.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_attached.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:water_box_attached">
+<div class="voc-field voc-field--inline" data-key="field:roles.water_box_attached.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-water_box_attached-mode-label">Water tank attached</div>
+<div class="voc-field-hint" id="voc-field-roles-water_box_attached-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-water_box_attached-mode-label" aria-describedby="voc-field-roles-water_box_attached-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.water_box_attached.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.water_box_attached.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.water_box_attached.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:dirty_box_full">
+<div class="voc-field voc-field--inline" data-key="field:roles.dirty_box_full.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-dirty_box_full-mode-label">Dirty water full</div>
+<div class="voc-field-hint" id="voc-field-roles-dirty_box_full-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-dirty_box_full-mode-label" aria-describedby="voc-field-roles-dirty_box_full-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.dirty_box_full.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.dirty_box_full.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.dirty_box_full.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:clean_box_empty">
+<div class="voc-field voc-field--inline" data-key="field:roles.clean_box_empty.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-clean_box_empty-mode-label">Clean water empty</div>
+<div class="voc-field-hint" id="voc-field-roles-clean_box_empty-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-clean_box_empty-mode-label" aria-describedby="voc-field-roles-clean_box_empty-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_box_empty.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_box_empty.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_box_empty.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-role" data-key="role:clean_fluid_empty">
+<div class="voc-field voc-field--inline" data-key="field:roles.clean_fluid_empty.mode" data-field-control="segmented">
+<div class="voc-field-text">
+<div class="voc-field-label" id="voc-field-roles-clean_fluid_empty-mode-label">Cleaning fluid empty</div>
+<div class="voc-field-hint" id="voc-field-roles-clean_fluid_empty-mode-hint">No entity found.</div>
+</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-clean_fluid_empty-mode-label" aria-describedby="voc-field-roles-clean_fluid_empty-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_fluid_empty.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<span>Automatic</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_fluid_empty.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
+<span>Off</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_fluid_empty.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<span>Entity</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="voc-block" data-key="section:requirements">
+<button type="button" class="voc-disclosure" data-action="toggle-section" data-args="{&quot;key&quot;:&quot;requirements&quot;}" aria-expanded="false">
+<ha-icon icon="mdi:chevron-down" aria-hidden="true">
+</ha-icon>
+<span>Robot conditions</span>
+</button>
+</section>
+<section class="voc-block" data-key="section:optionMaps">
+<button type="button" class="voc-disclosure" data-action="toggle-section" data-args="{&quot;key&quot;:&quot;optionMaps&quot;}" aria-expanded="false">
+<ha-icon icon="mdi:chevron-down" aria-hidden="true">
+</ha-icon>
+<span>Option names</span>
+</button>
+</section>
+<section class="voc-block" data-key="section:timeouts">
+<button type="button" class="voc-disclosure" data-action="toggle-section" data-args="{&quot;key&quot;:&quot;timeouts&quot;}" aria-expanded="false">
+<ha-icon icon="mdi:chevron-down" aria-hidden="true">
+</ha-icon>
+<span>Time limits</span>
+</button>
+</section>
+<section class="voc-block" data-key="section:identity">
+<button type="button" class="voc-disclosure" data-action="toggle-section" data-args="{&quot;key&quot;:&quot;identity&quot;}" aria-expanded="false">
+<ha-icon icon="mdi:chevron-down" aria-hidden="true">
+</ha-icon>
+<span>Identity</span>
+</button>
+</section>
+</div>
+<div class="voc-overlay-actions">
+<button type="button" class="voc-button voc-button--danger voc-action-start" data-action="remove-robot" data-args="{&quot;robotId&quot;:&quot;robot-dusty&quot;}">
+<ha-icon icon="mdi:delete-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Remove robot</span>
+</button>
+<button type="button" class="voc-button voc-button--quiet" data-action="back">
+<span class="voc-button-label">Cancel</span>
+</button>
+<button type="button" class="voc-button voc-button--primary" data-action="save-robot">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Save</span>
+</button>
+</div>
+</section>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

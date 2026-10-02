@@ -1,47 +1,52 @@
-// The card's own controls in a real engine: roving selection and keyboard operation.
-// Boundary: pointer and key handling; the resulting draft is a component-level concern.
+// The card's own controls with a real keyboard and pointer: roving choice groups that select as
+// they move, the stepper, the entity search with its match list, and the job editor end to end.
 
 const { test, expect } = require("../../helpers/playwright.js");
+const { mountCard, serviceCalls } = require("../../helpers/browser-helpers.js");
 
-test("card-owned controls expose roving selection and keyboard actions", async ({ page }) => {
-  await page.goto("/test/fixtures/harness.html");
-  const result = await page.evaluate(async () => {
-    const [{ segmented }, { stepper }, { entityCombobox }, { handleControlKeydown }] = await Promise.all([
-      import("/src/sections/controls/segmented.js"),
-      import("/src/sections/controls/stepper.js"),
-      import("/src/sections/controls/entity-combobox.js"),
-      import("/src/sections/controls/keyboard.js"),
-    ]);
-    const texts = { t: (key) => key };
-    document.addEventListener("keydown", handleControlKeydown);
-    document.body.innerHTML = segmented.render({ texts }, { path: "mode", label: "Mode", value: "vacuum", options: [{ value: "vacuum", label: "Vacuum" }, { value: "mop", label: "Mop" }] });
-    const options = [...document.querySelectorAll("[role=radio]")];
-    let selectedByKey = 0;
-    options[1].addEventListener("click", () => { selectedByKey += 1; });
-    options[0].focus();
-    options[0].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
-    const segmentedResult = { focus: document.activeElement?.dataset.vocValue, selectedByKey, firstTabIndex: options[0].tabIndex, secondTabIndex: options[1].tabIndex };
+test("a mode group selects with the arrow keys and keeps one tab stop", async ({ page }) => {
+  const card = await mountCard(page);
+  await card.locator(".voc-primary-action").click();
+  const group = card.locator('[data-key="field:mode"] [role=radiogroup]');
+  await group.locator('[role=radio][aria-checked="true"]').focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(group.locator('[role=radio][data-value="mop"]')).toHaveAttribute("aria-checked", "true");
+  await expect(group.locator('[role=radio][data-value="mop"]')).toBeFocused();
+  await expect(group.locator('[role=radio][tabindex="0"]')).toHaveCount(1);
+});
 
-    document.body.innerHTML = stepper.render({ texts }, { path: "passes", label: "Passes", min: 1, max: 10, value: 2 });
-    const stepperRoot = document.querySelector("[data-control=stepper]");
-    const increment = stepperRoot.querySelector("[data-stepper-action=increment]");
-    let incremented = 0;
-    increment.addEventListener("click", () => { incremented += 1; });
-    const input = stepperRoot.querySelector("input");
-    input.focus();
-    input.dispatchEvent(new KeyboardEvent("keydown", { key: "PageUp", bubbles: true }));
-    const stepperResult = { incremented, inputFocusedAfterKey: document.activeElement === input };
+test("the stepper counts within its bounds", async ({ page }) => {
+  const card = await mountCard(page);
+  await card.locator(".voc-primary-action").click();
+  const passes = card.locator('[data-key="field:passes"]');
+  await expect(passes.locator("button").first()).toBeDisabled();
+  await passes.locator("button").last().click();
+  await expect(passes.locator("input")).toHaveValue("2");
+});
 
-    document.body.innerHTML = entityCombobox.render({ texts }, { path: "requiredOn", label: "Required on", expanded: true, activeDescendant: "voc-field-requiredOn-option-0", options: [{ value: "input_boolean.allowed", label: "Allowed" }], value: [] });
-    const combobox = document.querySelector("[role=combobox]");
-    combobox.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-    const list = document.querySelector(".voc-combobox-list");
-    const comboboxResult = { expanded: combobox.getAttribute("aria-expanded"), hidden: list.hidden, active: combobox.getAttribute("aria-activedescendant") };
-    document.removeEventListener("keydown", handleControlKeydown);
-    return { segmentedResult, stepperResult, comboboxResult };
-  });
+test("the entity search filters as you type and ArrowDown enters the matches", async ({ page }) => {
+  const card = await mountCard(page);
+  await card.locator(".voc-primary-action").click();
+  await card.locator('[data-action="set-overlay"][data-args*="moreOpen"]').click();
+  const search = card.locator('[data-field="query:requiredOn"]');
+  await search.fill("door");
+  const matches = card.locator('[data-key="field:requiredOn"] .voc-entity-match');
+  await expect(matches.first()).toContainText("Bathroom door");
+  await search.press("ArrowDown");
+  await expect(matches.first()).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(card.locator('[data-key="field:requiredOn"] .voc-entity-chip')).toContainText("Bathroom door");
+  await expect(search).toHaveValue("");
+});
 
-  expect(result.segmentedResult).toEqual({ focus: "mop", selectedByKey: 1, firstTabIndex: 0, secondTabIndex: -1 });
-  expect(result.stepperResult).toEqual({ incremented: 1, inputFocusedAfterKey: true });
-  expect(result.comboboxResult).toEqual({ expanded: "false", hidden: true, active: null });
+test("a job built with pointer and keyboard reaches the integration", async ({ page }) => {
+  const card = await mountCard(page);
+  await card.locator(".voc-primary-action").click();
+  await card.locator('[data-key="field:roomIds"] [data-value="room-kitchen"]').click();
+  await card.locator('[data-key="field:mode"] [data-value="vacuum_then_mop"]').click();
+  await card.locator('[data-key="field:vacuumPower"] [data-value="high"]').click();
+  await card.locator('[data-action="save-draft"]').click();
+  await expect(card.locator(".voc-notice")).toContainText("added");
+  const [call] = await serviceCalls(page, "create_job");
+  expect(call).toMatchObject({ areas: ["room-kitchen"], mode: "vacuum_then_mop", vacuum_power: "high" });
 });

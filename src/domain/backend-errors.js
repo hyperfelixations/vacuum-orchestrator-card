@@ -1,140 +1,143 @@
-// Stable backend error groups; presentation translates message keys elsewhere.
+// Stable error codes the card words individually, grouped by what the user can do about them.
+// Codes come from the integration's domain errors and from Home Assistant's transport; any
+// other code is tolerated and worded through its group. See internal dev doc §6 "Fehlervertrag".
 
-const GROUPS = {
-  validation: [
-    "job_requires_area",
-    "duplicate_area",
-    "mixed_map_contexts",
-    "invalid_pass_count",
-    "invalid_cleaning_mode",
-    "contradictory_state_requirement",
-    "empty_job_update",
-    "empty_target",
-    "empty_map_context",
-    "empty_name",
-    "empty_source",
-    "empty_reason",
-    "empty_note",
-    "empty_dedupe_key",
-    "invalid_required_on",
-    "invalid_required_off",
-  ],
-  conflict: [
+const GROUPS = Object.freeze({
+  job: [
     "unknown_job",
-    "dedupe_key_already_queued",
     "job_not_editable",
     "job_not_deletable",
     "job_not_movable",
-    "job_not_startable",
     "job_not_cancellable",
     "job_not_retryable",
+    "job_not_startable",
     "job_not_dispatchable",
+    "dedupe_key_already_queued",
     "duplicate_queue_job",
+    "empty_job_update",
+    "job_requires_area",
+    "duplicate_area",
+    "invalid_cleaning_mode",
+    "invalid_pass_count",
+    "contradictory_state_requirement",
+    "preference_conflicts_with_cleaning_mode",
+    "job_conditions_not_satisfied",
+    "readiness_changed_before_start",
   ],
-  capability: [
-    "unsupported_operation",
-    "unsupported_pass_count",
-    "unsupported_pass_scope",
-    "unsupported_cleaning_preference",
-    "unsupported_map_context",
-    "unsupported_cancel_semantics",
-    "unmapped_target",
-    "capabilities_changed_before_dispatch",
+  room: [
+    "unknown_room",
+    "unknown_area",
+    "room_unavailable",
+    "room_not_released",
+    "room_has_active_job",
+    "room_already_exists",
+    "invalid_room_configuration",
+    "room_configuration_changes_runtime_state",
+    "duplicate_room_binding",
+    "invalid_room_targets",
+    "overlapping_room_mapping",
+    "requirement_binding_missing",
+    "invalid_requirements",
+    "occupancy_source_required",
+    "invalid_occupancy_states",
+    "release_duration_mismatch",
   ],
   robot: [
     "no_robot_configured",
     "unknown_robot",
+    "robot_busy",
     "robot_needs_attention",
     "robot_already_executing",
     "robot_availability_unknown",
+    "robot_not_available",
+    "battery_below_minimum",
+    "unmapped_target",
+    "unsupported_operation",
+    "unsupported_map_context",
+    "unsupported_pass_count",
+    "unsupported_cleaning_preference",
     "target_overlap_active",
     "source_robot_already_leased",
+    "capabilities_changed_before_dispatch",
+    "robot_stopped_confirmation_required",
+    "robot_not_needing_recovery",
   ],
-  storage: [
-    "critical_storage_state_uncertain",
-    "critical_storage_unreadable",
-    "snapshot_digest_mismatch",
-    "critical_commit_readback_mismatch",
-    "non_monotonic_commit",
+  robotConfiguration: [
+    "already_configured",
+    "robot_limit_reached",
+    "robot_identity_change",
+    "entity_not_registered",
+    "vacuum_unavailable",
+    "invalid_role_entity",
+    "unknown_entity_role",
+    "invalid_role_mapping",
+    "empty_allowed_operations",
+    "invalid_operation",
+    "unsupported_robot_protocol",
+    "invalid_robot_preference",
+    "invalid_minimum_battery",
+    "invalid_option_mapping",
+    "ambiguous_mode_mapping",
+    "invalid_duration",
+    "timeout_out_of_range",
+    "invalid_target_areas",
+    "unknown_robot_configuration_field",
+    "invalid_robot_enabled",
   ],
-  connection: [
-    "orchestrator_not_loaded",
-    "orchestrator_not_initialized",
-    "multiple_orchestrator_entries_loaded",
-    "unknown_command",
-  ],
-  auth: ["unauthorized"],
-  // Refusals the card decides itself, before a request leaves the browser.
-  client: ["capability_missing", "command_pending", "invalid_response", "timeout"],
-  unknown: [],
-};
+  template: ["unknown_template", "template_disabled", "template_unknown_room"],
+  queue: ["queue_grace_out_of_range"],
+  storage: ["critical_storage_state_uncertain", "critical_storage_unreadable", "snapshot_digest_mismatch", "critical_commit_readback_mismatch"],
+  availability: ["orchestrator_not_loaded", "orchestrator_not_initialized", "orchestrator_shutting_down", "multiple_orchestrator_entries_loaded", "unknown_command", "service_not_found"],
+  permission: ["unauthorized"],
+  // Decided before or around a request leaving the browser.
+  client: ["invalid_parameters", "invalid_request", "invalid_response", "timeout", "connection_lost", "command_pending", "read_only", "operation_missing"],
+});
 
-export const ERROR_GROUPS = Object.freeze(
-  Object.fromEntries(
-    Object.entries(GROUPS).map(([group, codes]) => [group, Object.freeze([...codes])])
-  )
-);
+export const ERROR_GROUPS = Object.freeze(Object.fromEntries(Object.entries(GROUPS).map(([group, codes]) => [group, Object.freeze([...codes])])));
+export const ERROR_GROUP_NAMES = Object.freeze([...Object.keys(GROUPS), "unknown"]);
+export const KNOWN_ERROR_CODES = Object.freeze(Object.values(GROUPS).flat());
 
-const CODE_TO_GROUP = new Map();
-for (const [group, codes] of Object.entries(GROUPS)) {
-  for (const code of codes) CODE_TO_GROUP.set(code, group);
+const GROUP_BY_CODE = new Map(Object.entries(GROUPS).flatMap(([group, codes]) => codes.map((code) => [code, group])));
+
+export function errorGroup(code) {
+  return GROUP_BY_CODE.get(code) || "unknown";
 }
 
-const knownMessageKeys = {};
-for (const code of CODE_TO_GROUP.keys()) {
-  knownMessageKeys[code] = `error.backend.${code}`;
+export function isKnownErrorCode(code) {
+  return GROUP_BY_CODE.has(code);
 }
-knownMessageKeys.unknown = "error.backend.unknown";
-knownMessageKeys.timeout = "error.backend.timeout";
-knownMessageKeys.invalid_response = "error.backend.invalid_response";
-knownMessageKeys.capability_missing = "unavailable.capabilityMissing";
-knownMessageKeys.command_pending = "hint.commandPending";
-export const BACKEND_ERROR_MESSAGE_KEYS = Object.freeze(knownMessageKeys);
 
-export function classifyBackendError(code) {
+// A failed request as every layer above the transport sees it.
+export function backendFailure(code, { detail = null, channel = null } = {}) {
   const normalized = typeof code === "string" && code.trim() ? code.trim() : "unknown";
-  const group = CODE_TO_GROUP.get(normalized) || "unknown";
-  return Object.freeze({
-    group,
-    messageKey: BACKEND_ERROR_MESSAGE_KEYS[normalized] || "error.backend.unknown",
-  });
+  return Object.freeze({ ok: false, code: normalized, group: errorGroup(normalized), detail: detail === null || detail === undefined ? null : String(detail), channel });
 }
 
-export class BackendError extends Error {
-  constructor(code = "unknown", detail = null, options = {}) {
-    const normalizedCode = typeof code === "string" && code.trim() ? code.trim() : "unknown";
-    const classification = classifyBackendError(normalizedCode);
-    const detailText = detail === null || detail === undefined ? null : String(detail);
-    super(detailText ? `${normalizedCode}: ${detailText}` : normalizedCode);
-    this.name = "BackendError";
-    this.code = normalizedCode;
-    this.group = classification.group;
-    this.messageKey = classification.messageKey;
-    this.detail = detailText;
-    this.ok = false;
-    this.data = null;
-    if (options && options.cause !== undefined) this.cause = options.cause;
-    if (options && options.rawCode !== undefined) this.rawCode = options.rawCode;
-  }
+export function isBackendFailure(value) {
+  return Boolean(value) && typeof value === "object" && value.ok === false && typeof value.code === "string";
 }
 
-export function isBackendError(value) {
-  return value instanceof BackendError || Boolean(value && value.name === "BackendError");
-}
+// Execution outcomes a job or attempt can end with (`failure_code`), worded individually.
+export const FAILURE_CODES = Object.freeze([
+  "start_timeout",
+  "run_timeout",
+  "cancel_timeout",
+  "observation_timeout",
+  "robot_reported_error",
+  "robot_connection_lost",
+  "observed_mode_mismatch",
+  "completion_scope_mismatch",
+  "insufficient_start_evidence",
+  "insufficient_completion_evidence",
+  "external_run_interrupted",
+  "physical_run_ownership_uncertain",
+  "operator_assumed_stopped",
+  "dispatch_failed",
+  "setting_confirmation_timeout",
+  "setting_entity_unavailable",
+  "setting_option_unavailable",
+  "cleaning_mode_not_confirmed",
+]);
 
-export function toBackendError(value, fallbackCode = "unknown") {
-  if (isBackendError(value)) return value;
-  if (value && typeof value === "object") {
-    const record = value;
-    const code = record.code || record.error_code || record.errorCode || record.type;
-    const detail = record.detail || record.message || record.error || null;
-    if (typeof code === "string" && code.trim()) {
-      return new BackendError(code, detail, { cause: value, rawCode: code });
-    }
-  }
-  if (typeof value === "string" && value.trim()) {
-    return new BackendError(fallbackCode, value, { cause: value });
-  }
-  const detail = value && value.message ? value.message : null;
-  return new BackendError(fallbackCode, detail, { cause: value });
-}
+export const READINESS_REASONS = Object.freeze(["room_not_released", "requirement_not_satisfied", "requirement_unknown", "requirement_stale"]);
+export const DUE_REASONS = Object.freeze(["interval_disabled", "never_cleaned", "clock_before_completion", "calendar_interval", "occupancy_baseline_unknown", "occupancy_gap", "occupied_interval"]);

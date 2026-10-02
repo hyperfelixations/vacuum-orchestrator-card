@@ -1,152 +1,134 @@
-"use strict";
-// The custom element's Home Assistant lifecycle: setConfig before hass, refusals that leave
-// the card untouched, reconnects, and the grid contract.
+// The custom element in Home Assistant's lifecycle: setConfig before hass, new hass objects,
+// refusals that leave the card untouched, onboarding until the integration works, remounts,
+// cards sharing one session, render failures, the config form and the grid contract.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createTestEnvironment } = require("../../helpers/load-card.jsdom.js");
-const { mountCard, JOBS } = require("../../helpers/mount-card.js");
+const { createTestEnvironment, settle } = require("../../helpers/load-card.jsdom.js");
+const { mountCard, FIXED_NOW } = require("../../helpers/mount-card.js");
 
 let env;
 test.before(() => {
-  env = createTestEnvironment();
+  env = createTestEnvironment({ now: FIXED_NOW });
 });
 test.after(() => env.cleanupAll());
 
-test("the null configuration is complete and the card exposes the HA grid contract", async () => {
-  const mounted = await mountCard({ env });
-  assert.deepEqual({ ...mounted.card.getGridOptions() }, { columns: 12, min_columns: 6, max_columns: 12 });
-  assert.deepEqual(mounted.card.config, {});
-  assert.ok(mounted.card.getCardSize() >= 4);
-  mounted.unmount();
+test("configured before it gets hass, the card connects and shows the queue", async () => {
+  const card = await mountCard({ env });
+  assert.equal(card.text(".voc-status-pill"), "Cleaning");
+  assert.deepEqual(card.all(".voc-job").map((row) => row.dataset.key), ["job:job-running", "job:job-kitchen", "job:job-bathroom", "job:job-bedroom"]);
+  assert.equal(card.root.querySelector(".voc-root").dataset.state, "view");
+  card.unmount();
 });
 
-// Home Assistant calls setConfig before it sets hass. A backend bound to the missing hass of
-// the first call never connected, and the card reported "not installed" forever.
-test("the card connects when Home Assistant sets the configuration first", async () => {
-  const mounted = await mountCard({ env, seed: { jobs: JOBS } });
-  assert.equal(mounted.text(".voc-status-pill"), "Idle");
-  assert.deepEqual(mounted.rows(), ["job-a", "job-b"]);
-  mounted.unmount();
+test("a new hass object on every state change keeps the session and its one subscription", async () => {
+  const card = await mountCard({ env });
+  const session = card.card._hold.session;
+  await card.updateHass({ states: { ...card.hass.states } });
+  await card.updateHass({ states: { ...card.hass.states } });
+  assert.equal(card.card._hold.session, session);
+  assert.equal(card.fake.subscriberCount(), 1);
+  card.unmount();
 });
 
-test("a later hass object is picked up without recreating the backend", async () => {
-  const mounted = await mountCard({ env, seed: { jobs: JOBS } });
-  const next = { ...mounted.hass, states: { ...mounted.hass.states } };
-  mounted.card.hass = next;
-  await mounted.settle();
-  assert.deepEqual(mounted.rows(), ["job-a", "job-b"]);
-  mounted.unmount();
+test("a state change reaches the card without a backend event", async () => {
+  const card = await mountCard({ env });
+  const states = { ...card.hass.states, "sensor.rocky_battery": { ...card.hass.states["sensor.rocky_battery"], state: "42" } };
+  await card.updateHass({ states });
+  assert.match(card.text(".voc-panel"), /42 %/);
+  card.unmount();
 });
 
-test("the card reports a missing integration and recovers once it loads", async () => {
-  const mounted = await mountCard({ env, attachBackend: false });
-  assert.equal(mounted.text(".voc-status-pill"), "Not installed");
-  assert.match(mounted.text(".voc-no-section"), /not installed/);
-  mounted.card.hass = mounted.fake.attachTo(mounted.hass);
-  await mounted.settle();
-  assert.equal(mounted.text(".voc-status-pill"), "Idle");
-  mounted.unmount();
+test("a missing integration shows how to get it, and the card follows once it is set up", async () => {
+  const card = await mountCard({ env, fake: { installed: false, setUp: false } });
+  assert.equal(card.root.querySelector(".voc-onboarding").dataset.phase, "not_installed");
+  assert.match(card.root.querySelector(".voc-onboarding a").getAttribute("href"), /github.com\/hyperfelixations\/vacuum-orchestrator/);
+  card.fake.state.installed = true;
+  card.fake.state.setUp = true;
+  await card.updateHass({});
+  await settle(24);
+  assert.equal(card.root.querySelector(".voc-onboarding"), null);
+  assert.equal(card.all(".voc-job").length, 4);
+  card.unmount();
 });
 
-test("setConfig is atomic when normalization rejects a typo, and the refusal is localized", async () => {
-  const mounted = await mountCard({ env, config: { language: "de" } });
-  assert.throws(() => mounted.card.setConfig({ languge: "de", language: "de" }), /Ungültige Konfiguration: languge ist keine Option dieser Karte\. Meintest du language\?/);
-  assert.equal(mounted.card.config.language, "de");
-  mounted.unmount();
+test("an installed but unconfigured integration offers Home Assistant's setup dialog", async () => {
+  const card = await mountCard({ env, fake: { setUp: false } });
+  const action = card.root.querySelector('.voc-onboarding [data-action="navigate"]');
+  assert.deepEqual(JSON.parse(action.dataset.args), { path: "/_my_redirect/config_flow_start?domain=vacuum_orchestrator" });
+  card.unmount();
 });
 
-test("disconnect and reconnect leave one rendered card", async () => {
-  const mounted = await mountCard({ env, seed: { jobs: JOBS } });
-  mounted.card.remove();
-  env.document.body.appendChild(mounted.card);
-  await mounted.settle();
-  assert.equal(mounted.root.querySelectorAll(".voc-root").length, 1);
-  assert.deepEqual(mounted.rows(), ["job-a", "job-b"]);
-  mounted.unmount();
+test("removing and re-adding the card renders one card and keeps the subscription", async () => {
+  const card = await mountCard({ env });
+  const parent = card.card.parentNode;
+  card.card.remove();
+  parent.appendChild(card.card);
+  await settle(16);
+  assert.equal(card.root.querySelectorAll(".voc-root").length, 1);
+  assert.equal(card.fake.subscriberCount(), 1);
+  card.unmount();
 });
 
-test("the card size grows with the rows the queue will draw", async () => {
-  const empty = await mountCard({ env });
-  const filled = await mountCard({ env, seed: { jobs: JOBS } });
-  assert.ok(filled.card.getCardSize() > empty.card.getCardSize());
-  assert.ok(filled.card.getCardSize() <= 14, "the estimate stays bounded");
-  empty.unmount();
-  filled.unmount();
+test("two cards on one connection share a session and keep their own tabs", async () => {
+  const first = await mountCard({ env });
+  const second = env.createCard({ type: "custom:vacuum-orchestrator-card", start_view: "rooms" }, first.hass);
+  await settle(24);
+  assert.equal(second._hold.session, first.card._hold.session);
+  assert.equal(first.fake.subscriberCount(), 1);
+  assert.equal(second.shadowRoot.querySelector('[role="tab"][aria-selected="true"]').dataset.view, "rooms");
+  assert.equal(first.root.querySelector('[role="tab"][aria-selected="true"]').dataset.view, "queue");
+  env.cleanup(second);
+  first.unmount();
 });
 
-// A page is a backend query, not a slice of an already loaded list.
-test("paging asks the backend for the next and the previous page", async () => {
-  const jobs = Array.from({ length: 12 }, (_, index) => ({ job_id: `job-${index}`, areas: ["kitchen"], mode: "vacuum" }));
-  const mounted = await mountCard({ env, config: { page_size: 5 }, seed: { jobs } });
-  assert.equal(mounted.rows().length, 5);
-
-  await mounted.click('[data-action="load-more"]');
-  assert.deepEqual(mounted.rows(), ["job-5", "job-6", "job-7", "job-8", "job-9"]);
-  assert.equal(mounted.text(".voc-page-status"), "2 / 3");
-
-  await mounted.click('[data-action="load-previous"]');
-  assert.deepEqual(mounted.rows(), ["job-0", "job-1", "job-2", "job-3", "job-4"]);
-  mounted.unmount();
+test("a configuration typo is refused and leaves the card as it was", async () => {
+  const card = await mountCard({ env, config: { title: "Downstairs" } });
+  assert.throws(() => card.card.setConfig({ titel: "x" }), /Did you mean title\?/);
+  await settle();
+  assert.equal(card.text(".voc-title"), "Downstairs");
+  card.unmount();
 });
 
-test("typing in a field reaches the draft, and typing in the entity picker only filters it", async () => {
-  const mounted = await mountCard({ env, seed: { jobs: JOBS } });
-  await mounted.click(".voc-primary-action");
-  const name = mounted.root.querySelector('[data-field-path="name"] input');
-  name.value = "Evening round";
-  name.dispatchEvent(new mounted.env.window.Event("change", { bubbles: true, composed: true }));
-  await mounted.settle();
-  assert.equal(mounted.card._ui.draft.name, "Evening round");
-
-  const picker = mounted.root.querySelector('[data-field-path="requiredOn"] input');
-  picker.value = "door";
-  picker.dispatchEvent(new mounted.env.window.Event("input", { bubbles: true, composed: true }));
-  await mounted.settle();
-  assert.deepEqual([...(mounted.card._ui.draft.requiredOn || [])], [], "filtering is not a choice");
-  mounted.unmount();
+test("a German configuration error message follows the card's language", async () => {
+  const card = await mountCard({ env });
+  assert.throws(() => card.card.setConfig({ language: "de", strat_view: "rooms" }), (error) => error.message === "Ungültige Konfiguration: strat_view ist keine Option dieser Karte. Meintest du start_view?");
+  card.unmount();
 });
 
-// Leaving a started draft must not discard it silently.
-test("leaving a changed editor asks before the draft is dropped", async () => {
-  const mounted = await mountCard({ env, seed: { jobs: JOBS } });
-  await mounted.click(".voc-primary-action");
-  await mounted.click('.voc-job-editor [data-control][data-field-path="areas"] [data-voc-value="bathroom"]');
-  await mounted.click(".voc-job-editor .voc-back-button");
-  assert.ok(mounted.root.querySelector(".voc-confirm-overlay"), "the card asks first");
-  await mounted.click('.voc-confirm-actions [data-action="dismiss"]');
-  assert.ok(mounted.root.querySelector(".voc-job-editor"), "dismissing keeps the draft");
-  mounted.unmount();
-});
-
-// A card that cannot be drawn says so in its own frame instead of going blank or stale.
-test("a render that fails leaves one localized line in the card", async () => {
-  const mounted = await mountCard({ env, seed: { jobs: JOBS } });
-  mounted.card.hass = {
-    language: "en",
-    locale: { language: "en" },
-    config: { components: ["vacuum_orchestrator"] },
-    user: { is_admin: true },
-    get states() {
-      throw new Error("simulated integration failure");
-    },
+test("a render that fails leaves one localized line and the next good render recovers", async () => {
+  const card = await mountCard({ env });
+  const original = card.card._computeViewModel;
+  card.card._computeViewModel = () => {
+    throw new Error("boom");
   };
-  await mounted.settle();
-  assert.equal(mounted.text(".voc-render-failed"), "The card could not be rendered. Check the browser console.");
-  assert.equal(mounted.root.querySelectorAll(".voc-job-row").length, 0);
-  mounted.unmount();
+  const errors = [];
+  const log = env.window.console.error;
+  env.window.console.error = (...args) => errors.push(args);
+  card.card.setConfig({ type: "custom:vacuum-orchestrator-card", title: "Again" });
+  await settle();
+  env.window.console.error = log;
+  assert.equal(card.root.querySelectorAll(".voc-render-failed").length, 1);
+  assert.equal(errors.length, 1);
+  card.card._computeViewModel = original;
+  card.card.setConfig({ type: "custom:vacuum-orchestrator-card" });
+  await settle();
+  assert.equal(card.root.querySelector(".voc-render-failed"), null);
+  assert.equal(card.all(".voc-job").length, 4);
+  card.unmount();
 });
 
-// Home Assistant reads this form to draw the card's visual editor.
-test("the configuration form offers every visual option and refuses an invalid one", async () => {
-  const mounted = await mountCard({ env });
-  const form = mounted.env.window.customElements.get("vacuum-orchestrator-card").getConfigForm();
-  // The form comes from the card's realm, so the list is copied before it is compared.
-  const names = [...form.schema].map((entry) => entry.name);
-  assert.deepEqual(names, ["title", "subtitle", "language", "start_section", "page_size", "time_format", "density", "confirm_destructive"]);
-  assert.equal(form.computeLabel({ name: "page_size" }).length > 0, true);
-  assert.equal(form.computeLabel({ name: "not_an_option" }), "not_an_option");
-  form.assertConfig({ page_size: 30 });
-  assert.throws(() => form.assertConfig({ pag_size: 30 }), (error) => error.code === "config.unknown_key");
-  mounted.unmount();
+test("the visual editor gets a form with the view types; the grid and size hints are present", async () => {
+  const card = await mountCard({ env });
+  const Card = env.window.customElements.get("vacuum-orchestrator-card");
+  // Objects from the card's realm are compared by value.
+  const form = Card.getConfigForm();
+  const plain = (value) => JSON.parse(JSON.stringify(value));
+  assert.deepEqual(plain(form.schema.map((entry) => entry.name)), ["title", "subtitle", "start_view", "language"]);
+  assert.deepEqual(plain(form.schema[2].selector.select.options), ["setup", "queue", "rooms", "robots", "templates", "history", "diagnostics", "settings"]);
+  assert.throws(() => form.assertConfig({ show: { panle: false } }));
+  assert.deepEqual(plain(card.card.getGridOptions()), { columns: 12, min_columns: 6, max_columns: 12 });
+  assert.ok(card.card.getCardSize() >= 4);
+  assert.deepEqual(plain(Card.getStubConfig()), {});
+  card.unmount();
 });

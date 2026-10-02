@@ -1,0 +1,121 @@
+<div class="voc-root" data-state="view" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Living room · Cleaning</div>
+</div>
+<div class="voc-status-pill">Cleaning</div>
+</div>
+<div class="voc-panel" data-queue-mode="running">
+<div class="voc-panel-headline">
+<span class="voc-panel-label">Waiting</span>
+<span class="voc-panel-value">3</span>
+</div>
+<div class="voc-panel-status">
+<div class="voc-panel-mode">
+<span class="voc-dot" aria-hidden="true">
+</span>
+<span>Queue running</span>
+</div>
+<div class="voc-panel-robots">
+<span class="voc-panel-robot" data-key="robot:robot-rocky" data-tone="running">
+<span class="voc-dot" aria-hidden="true">
+</span>Rocky · Cleaning · 76 %</span>
+<span class="voc-panel-robot" data-key="robot:robot-dusty" data-tone="ready">
+<span class="voc-dot" aria-hidden="true">
+</span>Dusty · Docked · 100 %</span>
+</div>
+</div>
+<div class="voc-panel-control">
+<button type="button" class="voc-button voc-button--primary voc-queue-control" data-action="queue-control" title="Pause queue">
+<ha-icon icon="mdi:pause" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Pause queue</span>
+</button>
+</div>
+</div>
+<div class="voc-tab-row">
+<div class="voc-tabs" role="tablist" aria-label="Views">
+<button type="button" class="voc-tab" role="tab" id="voc-tab-queue" data-key="tab-queue" data-view="queue" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Queue">
+<ha-icon icon="mdi:format-list-numbered" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Queue</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-rooms" data-key="tab-rooms" data-view="rooms" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Rooms">
+<ha-icon icon="mdi:floor-plan" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Rooms</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-robots" data-key="tab-robots" data-view="robots" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Robots">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Robots</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-templates" data-key="tab-templates" data-view="templates" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Templates">
+<ha-icon icon="mdi:content-copy" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Templates</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-history" data-key="tab-history" data-view="history" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="History">
+<ha-icon icon="mdi:history" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">History</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-settings" data-key="tab-settings" data-view="settings" aria-controls="voc-panel" aria-selected="true" tabindex="0" title="Settings">
+<ha-icon icon="mdi:cog-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Settings</span>
+</button>
+</div>
+<span class="voc-primary-slot" aria-hidden="true">
+</span>
+</div>
+<div class="voc-body" id="voc-panel" data-body="view:settings" role="tabpanel" aria-labelledby="voc-tab-settings">
+<div class="voc-view voc-settings" data-key="view:settings">
+<section class="voc-block" data-key="queue">
+<h3 class="voc-block-title">
+<ha-icon icon="mdi:format-list-numbered" aria-hidden="true">
+</ha-icon>Queue</h3>
+<div class="voc-setting" data-key="setting:grace">
+<div class="voc-setting-text">
+<strong id="voc-setting-grace">Wait before a run ends</strong>
+<span>When no work can start, a queue run waits this long before it ends. New work that can start resets the wait.</span>
+</div>
+<span class="voc-setting-value">15 min</span>
+<button type="button" class="voc-button voc-button--text" data-action="open-queue-settings" aria-describedby="voc-setting-grace">
+<ha-icon icon="mdi:pencil-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Change</span>
+</button>
+</div>
+</section>
+<section class="voc-block" data-key="integration">
+<h3 class="voc-block-title">
+<ha-icon icon="mdi:puzzle-outline" aria-hidden="true">
+</ha-icon>Integration</h3>
+<p class="voc-overlay-lead">Robots, rooms and templates are set up in their own tabs.</p>
+<dl class="voc-facts">
+<dt>Version</dt>
+<dd>0.1.0</dd>
+<dt>API version</dt>
+<dd>2</dd>
+</dl>
+<div class="voc-inline-actions">
+<button type="button" class="voc-button voc-button--text" data-action="navigate" data-args="{&quot;path&quot;:&quot;/_my_redirect/integration?domain=vacuum_orchestrator&quot;}">
+<ha-icon icon="mdi:open-in-app" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Open in Home Assistant</span>
+</button>
+</div>
+</section>
+</div>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

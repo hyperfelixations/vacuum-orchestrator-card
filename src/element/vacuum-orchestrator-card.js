@@ -1,106 +1,87 @@
-// The custom element: Home Assistant's lifecycle, the render pipeline and the transitions
-// between them. It owns config, hass, the shadow DOM and the wiring of backend, model, view
-// model and renderers; the controllers own everything else.
-//
-// Import direction, enforced by test/architecture/source-architecture.test.js:
-//   core -> config / i18n / domain -> backend -> application
-//        -> presentation -> render + styles -> sections -> controllers -> this file -> index.js
+// The custom element: Home Assistant's lifecycle and the render pipeline. It owns config, hass,
+// the shadow DOM, this card's UI state and its hold on the shared session; the controllers own
+// everything else. Import direction is enforced by test/architecture/source-architecture.test.js.
 
-import { clamp } from "../core/numbers.js";
+import { CARD_NAME } from "../core/card-metadata.js";
 import { normalizeConfig } from "../config/normalize-config.js";
 import { ConfigError } from "../config/errors.js";
 import { isSupportedLanguage, resolveLanguage, resolveMessageLanguage, translate } from "../i18n/translate.js";
-import { formatDateTime, formatDuration, formatNumber, formatRelative } from "../i18n/formatters.js";
+import { textService } from "../i18n/text-service.js";
 import { DEFAULT_LANGUAGE } from "../i18n/locales.js";
-import { applyDraftChange, createDraft } from "../domain/job-draft.js";
+import { affordanceContext } from "../domain/affordances.js";
+import { acquireSession } from "../backend/session-registry.js";
 import { buildCardDomainModel } from "../application/card-domain-model.js";
+import { readHomeAssistant } from "../backend/home-assistant.js";
 import { buildCardViewModel } from "../presentation/shell/card-view-model.js";
+import { buildTabs } from "../presentation/shell/tabs.js";
 import { messageForConfigError, renderMessage } from "../presentation/shell/notices.js";
 import { createRenderContext } from "../render/primitives/render-context.js";
-import { captureFocus, focusSelector, restoreFocus } from "../render/primitives/focus.js";
-import { cardStructureSignature, patchCardBody, renderCardBody, renderFailureBody, resolveSectionLayouts } from "../render/composition/card-shell.js";
+import { captureFocus, focusRingShown, focusSelector, restoreFocus } from "../render/primitives/focus.js";
+import { renderCard, renderFailure } from "../render/composition/card-shell.js";
 import { createShadowMount } from "../render/composition/shadow-mount.js";
 import { buildStyles } from "../styles/index.js";
 import { createBrowserPlatform } from "../controllers/runtime/browser-platform.js";
 import { createDiagnosticsReporter } from "../controllers/runtime/diagnostics-reporter.js";
 import { createInteractionRuntime } from "../controllers/runtime/interaction-runtime.js";
 import { createKeyboardRuntime } from "../controllers/runtime/keyboard-runtime.js";
-import { createResizeRuntime } from "../controllers/runtime/resize-runtime.js";
-import { createSurfaceWatch } from "../controllers/runtime/surface-watch.js";
+import { createTabStripRuntime } from "../controllers/runtime/tab-strip-runtime.js";
 import { createUIState } from "../controllers/runtime/ui-state.js";
+import { createActionRouter } from "../controllers/runtime/action-router.js";
 import { createRenderController } from "../controllers/render/render-controller.js";
-import { dataSignature, structuralConfigSignature } from "../controllers/render/render-signatures.js";
-import { createOrchestratorBackend } from "../backend/index.js";
-import { findJob } from "../presentation/sections/helpers.js";
-import {
-  OVERLAY_RENDERERS,
-  SECTION_CSS,
-  SECTION_DEFINITIONS,
-  SECTION_RENDERERS,
-  filterEntityOptions,
-  handleControlKeydown,
-  optionSchemaForSection,
-} from "../sections/index.js";
+import { VIEWS, VIEW_CSS, VIEW_TYPES, handleControlKeydown, optionSchemaForView, overlayFor, renderBody, viewFor } from "../views/index.js";
 
-const SECTION_TYPES = SECTION_DEFINITIONS.map((definition) => definition.key);
-const ALL_RENDERERS = [...SECTION_RENDERERS, ...OVERLAY_RENDERERS];
+const CARD_SIZE_ROW_PX = 50;
+const CARD_SIZE_MAX_ROWS = 14;
+const COLLABORATORS = Object.freeze({ isSupportedLanguage, viewTypes: VIEW_TYPES, optionSchemaForView });
+const STYLES = buildStyles({ viewCss: VIEW_CSS });
+let ownerSequence = 0;
 
-function textService(language) {
-  const t = (key, vars) => translate(language, key, vars);
-  return {
-    language,
-    t,
-    formatNumber: (value, digits = 0, options) => formatNumber(language, value, digits, options),
-    formatDateTime: (value, options) => formatDateTime(language, value, options),
-    formatRelative: (nowMs, thenMs) => formatRelative(language, nowMs, thenMs),
-    formatDuration: (value) => formatDuration(language, value, t),
-  };
+function resolvedOptions(definition, requested = {}) {
+  const resolved = {};
+  for (const [name, descriptor] of Object.entries(definition?.optionsSchema || {})) resolved[name] = requested[name] === undefined ? descriptor.default : requested[name];
+  return resolved;
 }
 
 export class VacuumOrchestratorCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this._owner = `card-${++ownerSequence}`;
     this._config = null;
+    this._configVersion = 0;
     this._lovelaceConfig = null;
     this._hass = null;
-    this._backend = null;
+    this._hold = null;
+    this._unsubscribe = null;
     this._model = null;
-    this._renderContext = null;
     this._platform = createBrowserPlatform(() => this.ownerDocument);
-    this._shadowMount = createShadowMount(this.shadowRoot);
+    this._mount = createShadowMount(this.shadowRoot);
     this._ui = createUIState();
-    this._ui.subscribe(() => this._renderSafely());
-    this._diagnostics = createDiagnosticsReporter({
+    this._ui.subscribe(() => this._scheduleRender());
+    this._diagnostics = createDiagnosticsReporter({ platform: this._platform, describe: (entry) => renderMessage(entry, (key, vars) => translate(DEFAULT_LANGUAGE, key, vars)) });
+    this._router = createActionRouter({
+      ui: this._ui,
+      getSession: () => this._hold?.session ?? null,
+      getModel: () => this._model,
+      getConfig: () => this._config,
       platform: this._platform,
-      describe: (entry) => renderMessage(entry, (key, vars) => translate(DEFAULT_LANGUAGE, key, vars)),
     });
-    this._interaction = createInteractionRuntime({
+    this._interaction = createInteractionRuntime({ root: this.shadowRoot, onAction: (event) => this._onInteraction(event) });
+    this._keyboard = createKeyboardRuntime({
       root: this.shadowRoot,
-      onAction: (event) => this._handleInteraction(event),
+      onView: (view) => this._ui.setView(view),
+      // Escape is the page's Back control, including its question about unsaved changes.
+      onEscape: () => {
+        if (!this._ui.overlay) return false;
+        this._router.handle("back");
+        return true;
+      },
+      onControlKey: handleControlKeydown,
     });
-    this._keyboard = createKeyboardRuntime({ root: this.shadowRoot, ui: this._ui, onControlKey: handleControlKeydown });
-    this._resize = createResizeRuntime({
-      platform: this._platform,
-      onMeasure: () => resolveSectionLayouts(this._renderContext, this.shadowRoot, this._renderController.lastViewModel, ALL_RENDERERS),
-    });
-    this._surface = createSurfaceWatch({
-      platform: this._platform,
-      onChange: () => this._renderSafely(),
-      getStyleContainers: () => this._shadowMount.containers(),
-      getForeignNodes: () => this._shadowMount.foreignNodes(),
-    });
-    this._renderController = createRenderController({
-      computeViewModel: () => this._computeViewModel(),
-      computeStructureSignature: (viewModel) => cardStructureSignature(viewModel, ALL_RENDERERS),
-      renderAll: (viewModel) => this._renderAll(viewModel),
-      updateEmpty: (viewModel) => this._updateContent(viewModel),
-      updateContent: (viewModel) => this._updateContent(viewModel),
-    });
+    this._tabStrip = createTabStripRuntime({ root: this.shadowRoot, platform: this._platform });
+    this._renderer = createRenderController({ computeViewModel: () => this._computeViewModel(), renderView: (viewModel) => this._renderView(viewModel) });
   }
 
-  // The card needs no options at all: one Vacuum Orchestrator installation is discovered
-  // through Home Assistant itself.
   static getStubConfig() {
     return {};
   }
@@ -110,52 +91,42 @@ export class VacuumOrchestratorCard extends HTMLElement {
       schema: [
         { name: "title", selector: { text: {} } },
         { name: "subtitle", selector: { text: {} } },
+        { name: "start_view", selector: { select: { mode: "dropdown", options: VIEW_TYPES } } },
         { name: "language", selector: { select: { mode: "dropdown", options: ["auto", "en", "de"] } } },
-        { name: "start_section", selector: { select: { mode: "dropdown", options: SECTION_TYPES } } },
-        { name: "page_size", selector: { number: { min: 5, max: 100, step: 1, mode: "box" } } },
-        { name: "time_format", selector: { select: { mode: "dropdown", options: ["auto", "relative", "absolute"] } } },
-        { name: "density", selector: { select: { mode: "dropdown", options: ["auto", "comfortable", "compact"] } } },
-        { name: "confirm_destructive", selector: { boolean: {} } },
       ],
-      // A missing translation returns its own key, which would put "config.page_size" in the
-      // editor; the option name is the better answer.
       computeLabel: (entry) => {
         const key = `config.${entry.name}`;
-        const label = translate(DEFAULT_LANGUAGE, key, undefined);
+        const label = translate(DEFAULT_LANGUAGE, key);
         return label === key ? entry.name : label;
       },
-      assertConfig: (config) => {
-        normalizeConfig(config, { isSupportedLanguage, sectionTypes: SECTION_TYPES, optionSchemaForSection });
-      },
+      assertConfig: (config) => normalizeConfig(config, COLLABORATORS),
     };
   }
 
+  // The configuration as written, read by frontend modules such as card-mod.
   get config() {
     return this._lovelaceConfig;
   }
 
-  // Strong exception safety: normalization writes nothing, and the commit phase cannot throw
-  // because a failing render shows its own message. Home Assistant calls this on every
-  // keystroke in the YAML editor, so a refusal must leave the card untouched.
+  // Normalization runs first and writes nothing; Home Assistant's YAML editor calls this on
+  // every keystroke, so a refusal must leave the card untouched.
   setConfig(config) {
     const normalized = this._normalizeConfig(config);
     this._config = normalized;
     this._lovelaceConfig = config;
-    this._backend?.setPageSize(normalized.page_size);
-    this._renderController.invalidateDataSignature();
+    this._configVersion += 1;
+    this._renderer.invalidate();
     this._renderSafely();
   }
 
-  // Home Assistant sets this on every state change, so it may never throw into the frontend:
-  // a failure here ends in the card's own failure shell like any other.
   set hass(value) {
     this._hass = value;
     try {
-      this._syncBackend();
+      this._syncSession();
     } catch (error) {
       this._diagnostics.reportRenderFailure(error);
     }
-    this._renderSafely();
+    this._scheduleRender();
   }
 
   get hass() {
@@ -165,24 +136,26 @@ export class VacuumOrchestratorCard extends HTMLElement {
   connectedCallback() {
     this._interaction.connect();
     this._keyboard.connect();
-    this._resize.connect(this);
-    this._surface.observe(this);
+    this._tabStrip.connect();
+    this._syncSession();
     this._renderSafely();
   }
 
   disconnectedCallback() {
     this._interaction.disconnect();
     this._keyboard.disconnect();
-    this._resize.disconnect();
-    this._surface.disconnect();
+    this._tabStrip.disconnect();
+    this._releaseSession();
   }
 
-  // An upper bound for the masonry layout: header, stats, tab strip and the rows the active
-  // section will draw.
+  // Masonry rows of 50 px: the rendered height once there is one, else header, panel and tab
+  // row plus one row per listed job.
   getCardSize() {
-    const model = this._model;
-    const rows = model ? model.queue.pending.length + model.active.jobs.length : 0;
-    return Math.min(14, 4 + Math.max(0, rows));
+    const height = this.shadowRoot?.querySelector("ha-card")?.getBoundingClientRect?.().height ?? 0;
+    if (height > 0) return Math.max(1, Math.ceil(height / CARD_SIZE_ROW_PX));
+    const queue = this._model?.slots?.queue?.data;
+    const rows = (queue?.jobs?.length ?? 0) + (this._model?.slots?.openJobs?.data?.jobs?.length ?? 0);
+    return Math.min(CARD_SIZE_MAX_ROWS, 4 + rows);
   }
 
   getGridOptions() {
@@ -191,330 +164,204 @@ export class VacuumOrchestratorCard extends HTMLElement {
 
   _normalizeConfig(config) {
     try {
-      return normalizeConfig(config, { isSupportedLanguage, sectionTypes: SECTION_TYPES, optionSchemaForSection });
+      return normalizeConfig(config, COLLABORATORS);
     } catch (error) {
       if (!(error instanceof ConfigError)) throw error;
-      // Home Assistant shows this before any hass exists, so the language comes from the card
-      // option or the page.
       const language = resolveMessageLanguage(config?.language, this.ownerDocument?.documentElement?.getAttribute("lang"));
-      const text = renderMessage(messageForConfigError(error), (key, vars) => translate(language, key, vars));
       const localized = new ConfigError(error.code, error.params);
-      localized.message = text;
+      localized.message = renderMessage(messageForConfigError(error), (key, vars) => translate(language, key, vars));
       throw localized;
     }
   }
 
-  // The backend is created once and then reads `hass` lazily: Home Assistant replaces that
-  // object on every state update, and binding it would freeze the card on the first one.
-  _syncBackend() {
-    if (!this._hass) return;
-    if (!this._backend) {
-      this._backend = createOrchestratorBackend({
-        getHass: () => this._hass,
-        platform: this._platform,
-        clock: this._platform,
-        onChange: () => this._renderSafely(),
-        pageSize: this._config?.page_size,
-      });
-      void this._backend.connect();
-      return;
+  // The session belongs to the Home Assistant connection, shared with every other card on it.
+  _syncSession() {
+    if (!this._hass || !this.isConnected) return;
+    if (this._hold && this._holdConnection !== this._hass.connection) this._releaseSession();
+    if (!this._hold) {
+      this._hold = acquireSession({ hass: this._hass, platform: this._platform });
+      this._holdConnection = this._hass.connection;
+      // A new session has not heard this card's demand yet.
+      this._lastRequests = null;
+      this._unsubscribe = this._hold.session.subscribe(() => this._scheduleRender());
     }
-    this._backend.syncHass();
+    this._hold.updateHass(this._hass);
   }
 
-  _computeModel() {
-    this._model = buildCardDomainModel({
-      backendState: this._backend?.getState() ?? {},
-      areaRegistry: this._hass?.areas ?? null,
-      states: this._hass?.states ?? null,
-      user: this._hass?.user ?? null,
-      nowMs: this._platform.now(),
-    });
-    return this._model;
+  _releaseSession() {
+    this._unsubscribe?.();
+    this._unsubscribe = null;
+    this._hold?.release(this._owner);
+    this._hold = null;
+    this._holdConnection = null;
+    this._lastRequests = null;
   }
 
-  _sectionOptions(key) {
-    const requested = (this._config.sections || []).find((entry) => entry.type === key)?.options || {};
-    const schema = optionSchemaForSection(key) || {};
-    const resolved = {};
-    for (const [name, descriptor] of Object.entries(schema)) {
-      resolved[name] = requested[name] === undefined ? descriptor.default : requested[name];
-    }
-    return {
-      ...resolved,
-      pageSize: this._config.page_size,
-      timeFormat: this._config.time_format,
-      nowMs: this._platform.now(),
+  // The scopes this card reads, by slot. The base set serves the shell; the active view and the
+  // top overlay add their own.
+  _requests(tabs) {
+    const ui = this._ui.snapshot;
+    const pageSize = this._config.page_size;
+    const summary = this._model?.summary;
+    const expected = Number.isInteger(summary?.activeJobs) && Number.isInteger(summary?.attentionJobs) ? summary.activeJobs + summary.attentionJobs : null;
+    const requests = {
+      queue: { name: "queue", params: { offset: ui.pages.queue ?? 0, limit: pageSize } },
+      openJobs: { name: "openJobs", params: {}, hints: { expected } },
+      rooms: { name: "rooms", params: {} },
+      robots: { name: "robots", params: {} },
+      candidates: { name: "candidates", params: {} },
+      registry: { name: "registry", params: {} },
+      manifest: { name: "manifest", params: {} },
     };
-  }
-
-  // An image entity the backend named, resolved against this Home Assistant instance.
-  _imageUrl(entityId) {
-    const picture = this._hass?.states?.[entityId]?.attributes?.entity_picture;
-    if (typeof picture !== "string" || !picture) return null;
-    return typeof this._hass.hassUrl === "function" ? this._hass.hassUrl(picture) : picture;
-  }
-
-  _overlayContent(model, texts) {
+    const add = (list) => {
+      for (const request of list || []) requests[request.slot || request.name] = { name: request.name, params: request.params || {}, hints: request.hints };
+    };
+    const definition = viewFor(tabs?.active);
+    if (definition?.scopes) add(definition.scopes({ ui, options: resolvedOptions(definition, tabs.activeTab?.options), config: this._config }));
     const overlay = this._ui.overlay;
-    if (!overlay) return null;
-    const renderer = OVERLAY_RENDERERS.find((entry) => entry.key === overlay.kind);
-    if (!renderer) return null;
-    const job = overlay.jobId ? findJob(model, overlay.jobId) : null;
-    const options = { ...overlay, job, confirmDestructive: this._config.confirm_destructive };
-    return { key: renderer.key, content: renderer.build(model, texts, options, this._ui) };
+    const overlayDefinition = overlay ? overlayFor(overlay.kind) : null;
+    if (overlayDefinition?.scopes) add(overlayDefinition.scopes({ ui, overlay, config: this._config }));
+    return requests;
+  }
+
+  _texts() {
+    return textService(resolveLanguage(this._config?.language || "auto", this._hass));
+  }
+
+  // Model, tabs and scope demand settle together: the active view decides the demand, and the
+  // demand decides what the model holds.
+  _computeModel() {
+    const snapshot = this._hold?.session.getSnapshot() ?? null;
+    const overlay = this._ui.overlay;
+    const needsEntityCatalog = Boolean(overlay && overlayFor(overlay.kind)?.needsEntityCatalog);
+    const texts = this._texts();
+    let model = buildCardDomainModel({ snapshot, requests: this._lastRequests || {}, home: readHomeAssistant(this._hass), nowMs: this._platform.now(), needsEntityCatalog });
+    const tabs = buildTabs({ definitions: VIEWS, model, config: this._config, ui: this._ui.snapshot, texts });
+    this._model = model;
+    const requests = this._requests(tabs);
+    if (this._hold && JSON.stringify(requests) !== JSON.stringify(this._lastRequests)) {
+      this._lastRequests = requests;
+      this._hold?.session.setDemand(this._owner, Object.values(requests));
+      model = buildCardDomainModel({ snapshot: this._hold?.session.getSnapshot() ?? null, requests, home: readHomeAssistant(this._hass), nowMs: this._platform.now(), needsEntityCatalog });
+    }
+    this._model = model;
+    return { model, tabs: buildTabs({ definitions: VIEWS, model, config: this._config, ui: this._ui.snapshot, texts }), texts };
+  }
+
+  _signature({ model, texts }) {
+    return JSON.stringify({
+      session: this._hold?.session.getSnapshot().version ?? null,
+      config: this._configVersion,
+      language: texts.language,
+      minute: Math.floor(model.nowMs / 60000),
+      ui: this._ui.snapshot,
+      hass: [model.summary, model.robotsLive, model.entityReadings, model.areas, model.operations, model.permissions, model.entityCatalog.length],
+    });
   }
 
   _computeViewModel() {
-    const model = this._computeModel();
-    const language = resolveLanguage(this._config?.language || "auto", this._hass);
-    const texts = textService(language);
-    this._renderContext = createRenderContext(this.ownerDocument, {
-      texts,
-      ui: this._ui,
-      capabilities: model.capabilities,
-      canCommand: model.permissions.canCommand,
-      resolveImage: (entityId) => this._imageUrl(entityId),
-    });
-    const overlay = this._overlayContent(model, texts);
-    const viewModel = buildCardViewModel({
-      model,
-      config: this._config,
-      texts,
-      ui: this._ui,
-      sectionDefinitions: SECTION_DEFINITIONS,
-      overlay,
-    });
-    if (viewModel.body.kind === "section") {
-      const renderer = SECTION_RENDERERS.find((entry) => entry.key === viewModel.body.section);
-      viewModel.body = {
-        ...viewModel.body,
-        content: renderer ? renderer.build(model, texts, this._sectionOptions(viewModel.body.section), this._ui) : null,
-      };
+    const { model, tabs, texts } = this._pending;
+    const context = affordanceContext({ canCommand: model.permissions.canCommand, operations: model.operations, pending: model.pending });
+    const config = this._config;
+    let viewContent = null;
+    const definition = viewFor(tabs.active);
+    if (definition && tabs.activeTab?.available && model.phase === "ready") {
+      viewContent = definition.build({ model, texts, context, options: resolvedOptions(definition, tabs.activeTab.options), config, ui: this._ui.snapshot });
     }
-    return viewModel;
+    let overlay = null;
+    const top = this._ui.overlay;
+    const overlayDefinition = top ? overlayFor(top.kind) : null;
+    if (overlayDefinition && model.phase === "ready") {
+      overlay = { key: overlayDefinition.key, content: overlayDefinition.build({ model, texts, context, overlay: top, config, ui: this._ui.snapshot }) };
+    }
+    const viewModel = buildCardViewModel({ model, config, texts, ui: this._ui.snapshot, tabs, definitions: VIEWS, context, viewContent, overlay });
+    return { viewModel, texts };
   }
 
-  _renderAll(viewModel) {
-    const heldFocus = captureFocus(this.shadowRoot);
-    this._shadowMount.mount(this._renderContext, {
-      css: buildStyles({ sectionCss: SECTION_CSS }),
-      bodyHtml: renderCardBody(this._renderContext, viewModel, ALL_RENDERERS),
-    });
-    this._interaction.connect();
-    this._keyboard.connect();
-    this._surface.observe(this);
+  _renderView({ viewModel, texts }) {
+    const context = createRenderContext(this.ownerDocument, { texts, resolveUrl: (path) => (typeof this._hass?.hassUrl === "function" ? this._hass.hassUrl(path) : path) });
+    const held = captureFocus(this.shadowRoot);
+    const ring = { visible: focusRingShown(this.shadowRoot) };
+    const depth = this._ui.snapshot.overlays.length;
+    const previousDepth = this._overlayDepth ?? 0;
+    // Opening a page moves focus into it and remembers the control that opened it; closing it
+    // gives focus back to that control.
+    if (depth > previousDepth) this._focusReturns = [...(this._focusReturns || []), held];
+    this._mount.mount(context, { css: STYLES, html: renderCard(context, viewModel, renderBody) });
     const requested = this._ui.consumeFocus();
-    if (requested) focusSelector(this.shadowRoot, requested);
-    else restoreFocus(this.shadowRoot, heldFocus);
+    if (requested) focusSelector(this.shadowRoot, requested, ring);
+    else if (depth > previousDepth && held) focusSelector(this.shadowRoot, "[data-autofocus], #voc-overlay-title", ring);
+    else if (depth < previousDepth && held) {
+      const returns = this._focusReturns || [];
+      const target = returns.slice(depth).find(Boolean) || null;
+      this._focusReturns = returns.slice(0, depth);
+      if (!target || !focusSelector(this.shadowRoot, target, ring)) restoreFocus(this.shadowRoot, ".voc-root", ring);
+    } else restoreFocus(this.shadowRoot, held, ring);
+    this._overlayDepth = depth;
+    this._tabStrip.sync();
     this._diagnostics.reportWarnings(viewModel.notices.warnings);
     this._diagnostics.reportRenderSuccess();
   }
 
-  _updateContent(viewModel) {
-    patchCardBody(this._renderContext, this.shadowRoot, viewModel, ALL_RENDERERS);
-    this._diagnostics.reportWarnings(viewModel.notices.warnings);
+  // Session, UI and hass changes arrive in bursts; one render per microtask answers them all.
+  _scheduleRender() {
+    if (this._renderScheduled) return;
+    this._renderScheduled = true;
+    Promise.resolve().then(() => {
+      this._renderScheduled = false;
+      this._renderSafely();
+    });
   }
 
+  // A render can cause another (a new scope demand notifies synchronously); the nested request
+  // is replayed after the outer render instead of interleaving with it.
   _renderSafely() {
     if (!this._config) return;
+    if (this._rendering) {
+      this._renderAgain = true;
+      return;
+    }
+    this._rendering = true;
     try {
-      const model = this._computeModel();
-      const language = resolveLanguage(this._config.language, this._hass);
-      this._renderController.render({
-        dataSignature: dataSignature({
-          model,
-          config: this._config,
-          language,
-          surface: this._platform.prefersReducedMotion() ? "reduced" : "normal",
-          ui: this._ui,
-          nowMs: this._platform.now(),
-        }),
-        structuralConfigSignature: structuralConfigSignature(this._config),
-      });
+      do {
+        this._renderAgain = false;
+        this._renderOnce();
+      } while (this._renderAgain);
+    } finally {
+      this._rendering = false;
+    }
+  }
+
+  _renderOnce() {
+    try {
+      const pending = this._computeModel();
+      this._pending = pending;
+      this._renderer.render({ signature: this._signature(pending) });
     } catch (error) {
-      this._renderController.markFailed();
+      this._renderer.markFailed();
       this._diagnostics.reportRenderFailure(error);
       const language = resolveMessageLanguage(this._config?.language, this.ownerDocument?.documentElement?.getAttribute("lang"));
       const text = translate(language, "error.renderFailed");
       try {
-        this._shadowMount.mount(this._renderContext, { css: buildStyles({ sectionCss: [] }), bodyHtml: renderFailureBody(text) });
+        this._mount.mount(createRenderContext(this.ownerDocument), { css: STYLES, html: renderFailure(text) });
       } catch (_ignored) {
-        this._shadowMount.showText(text);
+        this._mount.showText(`${CARD_NAME}: ${text}`);
       }
     }
   }
 
-  // Every control the sections render carries its command as data attributes; this is the one
-  // place that turns them into backend calls. See internal dev doc §5 "Aktionsvertrag".
-  _handleInteraction({ type, key, target }) {
-    if (type === "input") {
-      filterEntityOptions(target.closest("[data-control]"), target.value);
+  _onInteraction(event) {
+    if (event.type === "view") {
+      this._ui.requestFocus(`[role="tab"][data-view="${event.view}"]`);
+      this._ui.setView(event.view);
       return;
     }
-    if (type === "change") {
-      this._updateDraft(target);
+    if (event.type === "input" || event.type === "change") {
+      const target = event.target;
+      const value = target.type === "checkbox" ? target.checked : target.type === "number" ? (target.value === "" ? null : Number(target.value)) : target.value;
+      this._router.input(event.field, value);
       return;
     }
-    if (type === "section") {
-      // The tab strip is rebuilt by the render this triggers, so the focus has to be asked
-      // for rather than kept.
-      this._ui.requestFocus(`[role="tab"][data-section="${key}"]`);
-      this._ui.setSection(key);
-      return;
-    }
-    const action = target?.dataset?.action;
-    const jobId = target?.dataset?.jobId || null;
-    const direction = target?.dataset?.direction || null;
-    const needsConfirm = target?.dataset?.confirm === "true" && this._config.confirm_destructive !== false;
-    if (needsConfirm) {
-      this._ui.openOverlay({ kind: "confirm", action, jobId, ...confirmKeysFor(action), jobName: this._jobName(jobId) });
-      return;
-    }
-    this._dispatch(action, { jobId, direction, target });
+    void this._router.handle(event.action, event.args);
   }
-
-  _jobName(jobId) {
-    const job = this._model ? findJob(this._model, jobId) : null;
-    return job?.name || job?.areas?.join(", ") || jobId || "";
-  }
-
-  _dispatch(action, { jobId, direction, target } = {}) {
-    const backend = this._backend;
-    switch (action) {
-      case "open-detail":
-        return this._ui.openOverlay({ kind: "detail", jobId });
-      case "create-job":
-        return this._ui.openOverlay({ kind: "editor", mode: "create", draft: createDraft(null) });
-      case "edit-job":
-        return this._ui.openOverlay({ kind: "editor", mode: "edit", jobId, draft: createDraft(this._model ? findJob(this._model, jobId) : null) });
-      case "back":
-      case "cancel":
-        return this._ui.closeOverlay();
-      case "dismiss":
-        return this._ui.closeOverlay({ resume: true });
-      case "update-draft":
-        return this._updateDraft(target);
-      case "save-job":
-        return this._saveDraft();
-      case "move-up":
-      case "move-down":
-      case "move-top":
-      case "move-bottom":
-        return this._run(backend?.moveJob(jobId, direction));
-      case "delete-job":
-        return this._run(backend?.deleteJob(jobId));
-      case "start-job":
-        return this._run(backend?.startJob(jobId));
-      case "cancel-job":
-        return this._run(backend?.cancelJob(jobId));
-      case "retry-job":
-        return this._run(backend?.retryJob(jobId));
-      case "run-queue":
-        return this._run(backend?.runQueue());
-      case "pause-queue":
-        return this._run(backend?.pauseQueue());
-      case "resume-queue":
-        return this._run(backend?.resumeQueue());
-      case "load-more":
-      case "load-previous":
-        return this._loadPage(target);
-      case "toggle-release":
-        return this._toggleRelease(target?.dataset?.entityId);
-      default:
-        return undefined;
-    }
-  }
-
-  // Turns one control interaction into the next draft through the domain reducer, so the draft
-  // keeps its baseline and validation stays the domain's.
-  _updateDraft(target) {
-    const draft = this._ui.draft;
-    const path = target?.dataset?.fieldPath;
-    if (!draft || !path) return undefined;
-    const control = target.closest("[data-control]");
-    const next = nextDraftValue(control?.dataset?.control, control, target, draft[path]);
-    if (next === undefined) return undefined;
-    return this._ui.setDraft(applyDraftChange(draft, path, next));
-  }
-
-  _run(promise) {
-    if (!promise) return undefined;
-    return promise.then((result) => {
-      if (result?.ok) this._ui.closeOverlay();
-      this._renderSafely();
-      return result;
-    });
-  }
-
-  _saveDraft() {
-    const overlay = this._ui.overlay;
-    const draft = this._ui.draft;
-    if (!overlay || !draft || !this._backend) return undefined;
-    const content = this._renderController.lastViewModel?.body?.content;
-    if (!content?.payload) return undefined;
-    const promise = overlay.mode === "edit" ? this._backend.updateJob(overlay.jobId, content.payload) : this._backend.createJob(content.payload);
-    return this._run(promise);
-  }
-
-  // The release switch belongs to an entity the backend declared; toggling it is an ordinary
-  // Home Assistant action, not cleaning logic.
-  _toggleRelease(entityId) {
-    if (!entityId || typeof this._hass?.callService !== "function") return undefined;
-    return this._hass.callService("homeassistant", "toggle", { entity_id: entityId });
-  }
-
-  _loadPage(target) {
-    const nav = target?.closest?.(".voc-pagination");
-    const offset = Number(nav?.dataset?.offset ?? 0);
-    const limit = Number(nav?.dataset?.limit ?? this._config.page_size);
-    const next = target.dataset.pageDirection === "previous" ? Math.max(0, offset - limit) : offset + limit;
-    // The pressed control names its own section; the UI route is still empty while a single
-    // section is on screen without a tab strip.
-    const scope = target?.closest?.("[data-section]")?.dataset?.section === "history" ? "history" : "queue";
-    return this._backend?.loadPage(scope, next).then(() => this._renderSafely());
-  }
-}
-
-function confirmKeysFor(action) {
-  if (action === "cancel-job") {
-    return { titleKey: "confirm.cancelJob.title", textKey: "confirm.cancelJob.text", confirmKey: "confirm.cancelJob.confirm" };
-  }
-  return { titleKey: "confirm.deleteJob.title", textKey: "confirm.deleteJob.text", confirmKey: "confirm.deleteJob.confirm" };
-}
-
-function toggled(list, value) {
-  const current = Array.isArray(list) ? list : [];
-  return current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
-}
-
-// The value a control interaction asks for, in the draft's own vocabulary. `undefined` means
-// the interaction changes nothing. An empty choice or text is "not set", which is null.
-function nextDraftValue(kind, control, target, current) {
-  const value = target.dataset.vocValue;
-  if (kind === "entity-combobox") {
-    if (target.dataset.comboboxRemove !== undefined) return (current || []).filter((item) => item !== target.dataset.comboboxRemove);
-    return value === undefined ? undefined : toggled(current, value);
-  }
-  if (kind === "chip-select") {
-    if (value === undefined) return undefined;
-    if (control.dataset.multiple === "true") return toggled(current, value);
-    return value === "" ? null : value;
-  }
-  if (kind === "segmented") return value === undefined ? undefined : value === "" ? null : value;
-  if (kind === "stepper") {
-    const input = control.querySelector("input");
-    const min = Number(input?.min ?? 1);
-    const max = Number(input?.max ?? 10);
-    const base = Number.isInteger(current) ? current : min;
-    if (target.dataset.stepperAction === "increment") return Math.min(max, base + 1);
-    if (target.dataset.stepperAction === "decrement") return Math.max(min, base - 1);
-    // A number field reports an unreadable entry as an empty string; that is a half-typed
-    // value, not a request for zero, so the draft keeps what it had.
-    if (target.value === "") return undefined;
-    const typed = Number(target.value);
-    return Number.isInteger(typed) ? clamp(typed, min, max) : undefined;
-  }
-  if (kind === "text-field") return target.value.trim() === "" ? null : target.value;
-  return undefined;
 }

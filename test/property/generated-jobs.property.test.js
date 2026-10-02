@@ -1,43 +1,79 @@
-"use strict";
-// Generated VOI-shaped jobs exercise every public state and cleaning mode.
+// Generated event sequences against the session: commits, readiness changes, repeated and
+// out-of-order sequences and runtime changes. The session ends on the newest accepted event of
+// the current runtime and reloads demanded scopes at least once after any accepted event.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { wireJob } = require("../fixtures/wire.js");
-const { checkGenerated } = require("./check.js");
+const W = require("../fixtures/voi/wire.js");
+const { VirtualClock } = require("../helpers/fake-orchestrator.js");
+const { seededRandom } = require("./seeded-random.js");
 const { propertyRun } = require("./run-config.js");
 
-test("normalization stays total, immutable and canonical across job populations", async () => {
-  const { JOB_STATES, CLEANING_MODES } = await import("../../src/domain/job-schema.js");
-  const { normalizeJob } = await import("../../src/domain/job.js");
-  const { cases, seed } = propertyRun("FUZZ", 400, "voc-jobs-v1");
-  const census = checkGenerated({
-    name: "job normalization",
-    cases,
-    seed,
-    generate(random, index) {
-      const state = JOB_STATES[index % JOB_STATES.length];
-      const mode = CLEANING_MODES[Math.floor(index / JOB_STATES.length) % CLEANING_MODES.length];
-      const areas = Array.from({ length: 1 + random.integer(6) }, (_, n) => `area-${n % (1 + random.integer(3))}`);
-      return wireJob({ job_id: `job-${index}`, state, mode, areas, passes: 1 + random.integer(10), future_extension: index });
-    },
-    classify: ({ state, mode }) => `${state}/${mode}`,
-    shrink: (wire) => wire.areas.length > 1 ? [{ ...wire, areas: [wire.areas[0]] }] : [],
-    verify(wire) {
-      const job = normalizeJob(wire);
-      assert.ok(job, wire.job_id);
-      assert.equal(job.state, wire.state);
-      assert.equal(job.mode, wire.mode);
-      assert.equal(job.jobId, wire.job_id);
-      assert.equal(new Set(job.areas).size, job.areas.length);
-      assert.equal(Object.isFrozen(job), true);
-      assert.equal(Object.isFrozen(job.areas), true);
-      assert.ok(job.unknownFields.includes("future_extension"));
-      assert.deepEqual(normalizeJob(wire), job);
-      assert.equal(Object.keys(job).some((key) => key.includes("_")), false);
-    },
-  });
-  if (cases >= JOB_STATES.length * CLEANING_MODES.length) {
-    assert.equal(Object.keys(census).length, JOB_STATES.length * CLEANING_MODES.length);
+const tick = async () => {
+  for (let index = 0; index < 6; index += 1) await new Promise((resolve) => setImmediate(resolve));
+};
+
+// The session is asynchronous, so this property runs its own seeded loop.
+test("the session follows the newest event of the current runtime", async () => {
+  const { createSession } = await import("../../src/backend/session.js");
+  const { QUIET_MS, MAX_WAIT_MS } = await import("../../src/backend/subscription.js");
+  const { cases, seed } = propertyRun("EVENTS", 60, "voc-events-v1");
+  const random = seededRandom(seed);
+  for (let index = 0; index < cases; index += 1) {
+    const clock = new VirtualClock(0);
+    let deliver = null;
+    let loads = 0;
+    const transport = {
+      ws: async (message) => {
+        if (message.type.endsWith("/queue/get")) return { ok: true, data: W.wireQueuePage([], { commit_id: 1 }) };
+        if (message.type === "manifest/get") return { ok: true, data: W.wireManifest() };
+        loads += 1;
+        return { ok: true, data: W.wirePage("rooms", []) };
+      },
+      subscribe: async (_message, onEvent) => {
+        deliver = onEvent;
+        return { ok: true, data: () => {} };
+      },
+      onConnection: () => () => {},
+    };
+    const hass = { config: { components: ["vacuum_orchestrator"] }, services: { vacuum_orchestrator: {} } };
+    const platform = { now: () => clock.now(), setTimeout: (fn, ms) => clock.setTimeout(fn, ms), clearTimeout: (handle) => clock.clearTimeout(handle), isDocumentHidden: () => true };
+    const session = createSession({ transport, platform, getHass: () => hass });
+    session.syncHass();
+    await tick();
+    session.setDemand("p", [{ name: "rooms" }]);
+    await tick();
+    const loadsBefore = loads;
+    let runtime = "runtime-1";
+    let sequence = 0;
+    let commit = 1;
+    let expected = null;
+    for (let step = 0; step < 1 + random.integer(20); step += 1) {
+      const kind = random.integer(10);
+      if (kind === 0) {
+        runtime = `runtime-${step + 2}`;
+        sequence = 1;
+      } else if (kind <= 2 && sequence > 0) {
+        deliver(W.wireSubscriptionEvent({ runtime_id: runtime, runtime_sequence: Math.max(0, sequence - random.integer(3)), commit_id: commit }));
+        continue;
+      } else {
+        sequence += 1;
+        if (random.boolean()) commit += 1;
+      }
+      deliver(W.wireSubscriptionEvent({ runtime_id: runtime, runtime_sequence: sequence, commit_id: commit }));
+      expected = { id: runtime, sequence, commitId: commit };
+      clock.advance(random.integer(QUIET_MS * 2));
+      await tick();
+    }
+    clock.advance(MAX_WAIT_MS);
+    await tick();
+    const snapshot = session.getSnapshot();
+    if (expected) {
+      assert.deepEqual({ ...snapshot.runtime }, expected, `seed=${seed} case=${index}`);
+      assert.ok(loads > loadsBefore, `seed=${seed} case=${index}: an accepted event reloads`);
+    } else {
+      assert.equal(loads, loadsBefore);
+    }
+    session.dispose();
   }
 });

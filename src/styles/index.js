@@ -1,14 +1,17 @@
-import { TOKENS_CSS } from "./tokens.js";
+// The stylesheet in slice order: tokens first, shell parts, shared blocks, then the view slices
+// injected by the composition root, responsive tiers and motion last.
+
+import { BUTTONS_CSS } from "./buttons.js";
 import { CARD_CSS } from "./card.js";
 import { HEADER_CSS } from "./header.js";
-import { STATS_CSS } from "./stats.js";
-import { TABS_CSS } from "./tabs.js";
-import { BUTTONS_CSS } from "./buttons.js";
+import { MOTION_CSS } from "./motion.js";
 import { NOTICES_CSS } from "./notices.js";
 import { OVERLAY_CSS } from "./overlay.js";
+import { PANEL_CSS } from "./panel.js";
 import { RESPONSIVE_CSS } from "./responsive.js";
-import { MOTION_CSS } from "./motion.js";
+import { TABS_CSS } from "./tabs.js";
+import { TOKENS_CSS } from "./tokens.js";
 
-export function buildStyles({ sectionCss = [] } = {}) {
-  return [TOKENS_CSS, CARD_CSS, HEADER_CSS, STATS_CSS, TABS_CSS, BUTTONS_CSS, NOTICES_CSS, OVERLAY_CSS, RESPONSIVE_CSS, MOTION_CSS, ...sectionCss].join("");
+export function buildStyles({ viewCss = [] } = {}) {
+  return [TOKENS_CSS, CARD_CSS, HEADER_CSS, NOTICES_CSS, PANEL_CSS, TABS_CSS, BUTTONS_CSS, OVERLAY_CSS, ...viewCss, RESPONSIVE_CSS, MOTION_CSS].join("");
 }

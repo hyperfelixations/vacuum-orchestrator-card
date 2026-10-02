@@ -3,26 +3,17 @@ export const SEVERITY = Object.freeze({ WARNING: "warning", HINT: "hint" });
 export const DIAGNOSTIC_SEVERITY = Object.freeze({
   "value.invalid": SEVERITY.WARNING,
   "config.foreign_key": SEVERITY.WARNING,
-  "config.deprecated": SEVERITY.WARNING,
-  "backend.missing": SEVERITY.WARNING,
-  "backend.not_loaded": SEVERITY.WARNING,
-  "backend.api_incompatible": SEVERITY.WARNING,
   "backend.query_failed": SEVERITY.WARNING,
-  "backend.capability_missing": SEVERITY.WARNING,
-  "backend.unauthorized": SEVERITY.WARNING,
-  "command.failed": SEVERITY.WARNING,
   "hint.reconnecting": SEVERITY.HINT,
-  "hint.stale_snapshot": SEVERITY.HINT,
-  "hint.command_pending": SEVERITY.HINT,
-  "hint.partial_page": SEVERITY.HINT,
+  "hint.offline": SEVERITY.HINT,
+  "hint.partial_jobs": SEVERITY.HINT,
 });
 
 export const FALLBACK = Object.freeze({
   AUTOMATIC: Object.freeze({ phrase: "automatic" }),
   DEFAULTS: Object.freeze({ phrase: "defaults" }),
   IGNORED: Object.freeze({ phrase: "ignored" }),
-  FIRST_SECTION: Object.freeze({ phrase: "firstSection" }),
-  CARD_ACTION: Object.freeze({ phrase: "cardAction" }),
+  FIRST_VIEW: Object.freeze({ phrase: "firstView" }),
 });
 
 export function fallbackValue(value) {

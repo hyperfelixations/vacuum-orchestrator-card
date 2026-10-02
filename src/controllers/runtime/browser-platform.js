@@ -1,3 +1,6 @@
+// The browser behind the card: clock, timers, page visibility, size changes, console and Home
+// Assistant's in-app navigation. Everything else reaches the browser through the DOM it renders.
+
 function documentOf(getDocument) {
   return () => getDocument?.() || null;
 }
@@ -14,42 +17,24 @@ export function createBrowserPlatform(getDocument) {
       return { cancel: () => view.clearTimeout(id) };
     },
     clearTimeout(handle) { handle?.cancel?.(); },
-    requestAnimationFrame(fn) {
-      const view = viewOf();
-      if (view?.requestAnimationFrame) {
-        const id = view.requestAnimationFrame(fn);
-        return { cancel: () => view.cancelAnimationFrame(id) };
-      }
-      return this.setTimeout(fn, 16);
-    },
-    cancelAnimationFrame(handle) { handle?.cancel?.(); },
-    prefersReducedMotion: () => Boolean(viewOf()?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches),
     isDocumentHidden: () => Boolean(currentDocument()?.hidden),
-    onVisibilityChange(listener) {
-      const target = currentDocument();
-      if (!target) return () => {};
-      target.addEventListener("visibilitychange", listener);
-      return () => target.removeEventListener("visibilitychange", listener);
-    },
-    onColorSchemeChange(listener) {
-      const query = viewOf()?.matchMedia?.("(prefers-color-scheme: dark)");
-      if (!query?.addEventListener) return () => {};
-      query.addEventListener("change", listener);
-      return () => query.removeEventListener("change", listener);
-    },
-    createMutationObserver(callback) {
-      const Observer = viewOf()?.MutationObserver;
-      return typeof Observer === "function" ? new Observer(callback) : null;
-    },
-    createResizeObserver(callback) {
+    // Calls `fn` whenever `element` changes size; returns the disconnect.
+    observeResize(element, fn) {
       const Observer = viewOf()?.ResizeObserver;
-      return typeof Observer === "function" ? new Observer(callback) : null;
-    },
-    fontsReady: () => currentDocument()?.fonts?.ready || null,
-    createEvent(type, init) {
-      const EventConstructor = viewOf()?.Event || globalThis.Event;
-      return new EventConstructor(type, init);
+      if (!Observer || !element) return () => {};
+      const observer = new Observer(() => fn());
+      observer.observe(element);
+      return () => observer.disconnect();
     },
     log(level, ...args) { viewOf()?.console?.[level]?.(...args); },
+    // Home Assistant's in-app navigation: push the path and announce it to the router.
+    navigate(path) {
+      const view = viewOf();
+      if (!view?.history?.pushState || typeof path !== "string" || !path.startsWith("/")) return false;
+      view.history.pushState(null, "", path);
+      const EventConstructor = view.CustomEvent || globalThis.CustomEvent;
+      view.dispatchEvent(new EventConstructor("location-changed", { detail: { replace: false } }));
+      return true;
+    },
   };
 }

@@ -1,673 +1,663 @@
-// Deterministic HA-facing backend fake shared by unit, contract and browser harnesses.
+// A deterministic stand-in for Vacuum Orchestrator API V2 behind Home Assistant's frontend
+// connection. Shapes come from test/fixtures/voi/wire.js; preconditions and error codes follow
+// the integration's command handlers, and errors travel in Home Assistant's own frames
+// (`service_validation_error` for actions, the VOI code for its WebSocket types). It holds no
+// scheduler: a test moves jobs between states explicitly. Loads in Node through `require` and in
+// the browser harness as a plain script (`globalThis.VocFake`).
+(function (root) {
+  "use strict";
 
-const DOMAIN = "vacuum_orchestrator";
-const WS = {
-  QUEUE_GET: `${DOMAIN}/queue/get`,
-  JOB_GET: `${DOMAIN}/job/get`,
-  JOBS_LIST: `${DOMAIN}/jobs/list`,
-  DESCRIBE: `${DOMAIN}/describe`,
-  SUBSCRIBE: `${DOMAIN}/subscribe`,
-  ROBOTS_LIST: `${DOMAIN}/robots/list`,
-  AREAS_STATUS: `${DOMAIN}/areas/status`,
-};
+  const W = typeof module !== "undefined" && module.exports ? require("../fixtures/voi/wire.js") : root.VocWire;
+  const DOMAIN = "vacuum_orchestrator";
+  const ACTIONS = ["create_job", "update_job", "delete_job", "move_job", "start_job", "cancel_job", "retry_job", "run_queue", "pause_queue", "resume_queue"];
+  const QUERY_ACTIONS = ["get_queue", "get_job"];
+  const COMMANDS = ["configure_queue", "create_room", "update_room", "remove_room", "release_room", "revoke_room", "add_robot", "configure_robot", "remove_robot", "resolve_recovery", "save_template", "remove_template", "create_job_from_template", "reset_template_demand"];
+  const QUERIES = ["get_rooms", "get_room", "get_robots", "get_robot_candidates", "get_templates", "get_history", "get_trace", "get_diagnostics", "get_job_execution"];
+  const TERMINAL = new Set(["completed", "failed", "cancelled"]);
+  const MODES = { vacuum: "vacuum", vac: "vacuum", mop: "mop", vacuum_and_mop: "vacuum_and_mop", vac_and_mop: "vacuum_and_mop", vacuum_then_mop: "vacuum_then_mop", vac_then_mop: "vacuum_then_mop" };
+  const LEVELS = new Set(["off", "low", "standard", "medium", "high", "maximum", "auto"]);
+  const ROUTES = new Set(["standard", "deep", "fast", "auto"]);
+  const RELEASE_KINDS = new Set(["permanent", "once", "timed", "queue_run"]);
 
-const BASE_CAPABILITIES = [
-  "queueRead",
-  "jobRead",
-  "jobsHistory",
-  "liveSubscribe",
-  "jobCreate",
-  "jobUpdate",
-  "jobDelete",
-  "jobMove",
-  "jobStart",
-  "jobCancel",
-  "jobRetry",
-  "queueRun",
-  "queuePause",
-  "queueResume",
-];
-const TARGET_CAPABILITIES = [
-  ...BASE_CAPABILITIES,
-  "jobsActive",
-  "robotsRead",
-  "areasRead",
-  "jobProgress",
-  "jobBlockedReason",
-  "recoveryResolve",
-  "describe",
-];
+  const copy = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
 
-class VirtualClock {
-  constructor(now = 0) {
-    this.time = Number.isFinite(now) ? now : 0;
-    this.nextHandle = 1;
-    this.timers = new Map();
-  }
-
-  now() {
-    return this.time;
-  }
-
-  setTimeout(callback, delay = 0) {
-    const handle = this.nextHandle++;
-    this.timers.set(handle, { at: this.time + Math.max(0, delay), callback });
-    return handle;
-  }
-
-  clearTimeout(handle) {
-    this.timers.delete(handle);
-  }
-
-  advance(ms) {
-    const target = this.time + Math.max(0, ms);
-    let guard = 0;
-    while (true) {
-      let selected = null;
-      for (const [handle, timer] of this.timers) {
-        if (timer.at <= target && (!selected || timer.at < selected.timer.at)) selected = { handle, timer };
+  class VirtualClock {
+    constructor(now = Date.UTC(2026, 8, 17, 12, 0, 0)) {
+      this.time = now;
+      this.nextHandle = 1;
+      this.timers = new Map();
+    }
+    now() {
+      return this.time;
+    }
+    setTimeout(callback, delay = 0) {
+      const handle = this.nextHandle++;
+      this.timers.set(handle, { at: this.time + Math.max(0, delay), callback });
+      return handle;
+    }
+    clearTimeout(handle) {
+      this.timers.delete(handle);
+    }
+    advance(ms) {
+      const target = this.time + Math.max(0, ms);
+      for (let guard = 0; guard < 10000; guard += 1) {
+        let next = null;
+        for (const [handle, timer] of this.timers) if (timer.at <= target && (!next || timer.at < next.timer.at)) next = { handle, timer };
+        if (!next) break;
+        this.time = next.timer.at;
+        this.timers.delete(next.handle);
+        next.timer.callback();
       }
-      if (!selected) break;
-      this.time = selected.timer.at;
-      this.timers.delete(selected.handle);
-      selected.timer.callback();
-      if (++guard > 10000) throw new Error("fake orchestrator timer storm");
+      this.time = target;
     }
-    this.time = target;
-  }
-}
-
-function ownClock(input) {
-  if (!input) return new VirtualClock();
-  if (typeof input.now === "function" && typeof input.setTimeout === "function") return input;
-  return new VirtualClock(Number.isFinite(input.nowMs) ? input.nowMs : 0);
-}
-
-function iso(clock, value = null) {
-  return new Date(value === null ? clock.now() : value).toISOString();
-}
-
-function canonicalMode(value) {
-  return {
-    vac: "vacuum",
-    vacuum: "vacuum",
-    mop: "mop",
-    vac_and_mop: "vacuum_and_mop",
-    vacuum_and_mop: "vacuum_and_mop",
-    vac_then_mop: "vacuum_then_mop",
-    vacuum_then_mop: "vacuum_then_mop",
-  }[value] || null;
-}
-
-function copy(value) {
-  if (Array.isArray(value)) return value.map(copy);
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, copy(item)]));
-  return value;
-}
-
-function error(code, detail = null) {
-  return { code, detail, message: detail || code };
-}
-
-function reject(code, detail = null) {
-  return Promise.reject(error(code, detail));
-}
-
-function numberOrNull(value) {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function defaultJob(clock, id, data, revision = 1) {
-  const mode = canonicalMode(data.mode);
-  const areas = Array.isArray(data.areas) ? [...data.areas] : [];
-  const timestamp = iso(clock);
-  return {
-    api_version: 2,
-    job_id: id,
-    revision,
-    state: "queued",
-    name: data.name ?? null,
-    areas,
-    mode,
-    vacuum_power: data.vacuum_power ?? null,
-    mop_intensity: data.mop_intensity ?? null,
-    mop_route: data.mop_route ?? null,
-    passes: data.passes ?? 1,
-    source: data.source ?? null,
-    reason: data.reason ?? null,
-    note: data.note ?? null,
-    dedupe_key: data.dedupe_key ?? null,
-    required_on: Array.isArray(data.required_on) ? [...data.required_on] : [],
-    required_off: Array.isArray(data.required_off) ? [...data.required_off] : [],
-    settings_policy: data.settings_policy ?? "best_effort",
-    created_at: data.created_at ?? timestamp,
-    updated_at: data.updated_at ?? timestamp,
-    active_attempt_id: data.active_attempt_id ?? null,
-    retries_job_id: data.retries_job_id ?? null,
-    failure_code: data.failure_code ?? null,
-    readiness: data.readiness ?? { state: "ready", failed_on: [], failed_off: [], unknown: [] },
-    assigned_robot_id: data.assigned_robot_id ?? null,
-    started_at: data.started_at ?? null,
-    finished_at: data.finished_at ?? null,
-    blocked_reason: data.blocked_reason ?? null,
-    active_work_unit_id: data.active_work_unit_id ?? null,
-    work_units: Array.isArray(data.work_units) ? copy(data.work_units) : [],
-  };
-}
-
-function defaultRobot() {
-  return {
-    robot_id: "robot-1",
-    name: "Robot 1",
-    adapter: "fake",
-    vacuum_entity_id: "vacuum.fake_robot",
-    availability: "available",
-    battery_percentage: 87,
-    active_job_id: null,
-    active_area_id: null,
-    blocked_reason: null,
-    allowed_area_ids: ["kitchen", "hall", "bathroom"],
-    map_image_entity_id: null,
-    capabilities: {
-      operations: ["vacuum", "mop", "vacuum_and_mop"],
-      max_passes: 3,
-      pass_scope: "target_set",
-      vacuum_levels: ["standard", "high", "maximum"],
-      water_levels: ["standard", "high"],
-      mop_routes: ["standard", "deep", "fast"],
-      cancel: true,
-    },
-  };
-}
-
-function defaultArea(areaId) {
-  return {
-    area_id: areaId,
-    last_vacuumed_at: null,
-    last_mopped_at: null,
-    vacuum_due_at: null,
-    mop_due_at: null,
-    due_state: "unknown",
-    release_entity_id: null,
-    blocking_entity_ids: [],
-    open_job_ids: [],
-  };
-}
-
-function serviceNames(capabilities) {
-  const mapping = {
-    jobCreate: "create_job",
-    jobUpdate: "update_job",
-    jobDelete: "delete_job",
-    jobMove: "move_job",
-    jobStart: "start_job",
-    jobCancel: "cancel_job",
-    jobRetry: "retry_job",
-    queueRun: "run_queue",
-    queuePause: "pause_queue",
-    queueResume: "resume_queue",
-  };
-  return Object.fromEntries(
-    Object.entries(mapping)
-      .filter(([capability]) => capabilities.includes(capability))
-      .map(([, service]) => [service, {}])
-  );
-}
-
-function makeEmitter() {
-  const listeners = new Map();
-  return {
-    addEventListener(type, callback) {
-      if (!listeners.has(type)) listeners.set(type, new Set());
-      listeners.get(type).add(callback);
-    },
-    removeEventListener(type, callback) {
-      listeners.get(type)?.delete(callback);
-    },
-    emit(type, value) {
-      for (const callback of [...(listeners.get(type) || [])]) callback(value);
-    },
-  };
-}
-
-function createFakeOrchestrator({ profile = "today", clock = null, seed = null } = {}) {
-  if (!new Set(["today", "target"]).has(profile)) throw new TypeError("unknown fake profile");
-  const virtualClock = ownClock(clock);
-  let capabilities = [...(profile === "target" ? TARGET_CAPABILITIES : BASE_CAPABILITIES)];
-  let connected = true;
-  let commandCounter = 0;
-  let jobCounter = 0;
-  let commitId = 0;
-  let queueRevision = 0;
-  let sequence = 0;
-  let mode = "idle";
-  let gapNext = false;
-  const jobs = new Map();
-  const queue = [];
-  const robots = [];
-  const areas = new Map();
-  const subscriptions = new Set();
-  const failures = [];
-  const calls = { ws: [], services: [], events: [] };
-  const connection = makeEmitter();
-  const hassBindings = new Set();
-
-  function has(capability) {
-    return capabilities.includes(capability);
   }
 
-  function now() {
-    return typeof virtualClock.now === "function" ? virtualClock.now() : 0;
-  }
+  // Errors as home-assistant-js-websocket rejects them.
+  const validation = (code, detail) => W.haError.serviceValidation(code, detail);
+  const voi = (code) => W.haError.voi(code);
 
-  function consumeFailure() {
-    return failures.shift() || null;
-  }
+  function createFakeOrchestrator(options = {}) {
+    const clock = options.clock || { now: () => Date.now() };
+    const seed = options.seed || {};
+    const iso = (offsetMs = 0) => new Date(clock.now() + offsetMs).toISOString().replace("Z", "+00:00");
+    let sequence = 0;
+    const nextId = (prefix) => `${prefix}-${++sequence}`;
 
-  function maybeFail({ forEvent = false } = {}) {
-    const next = failures[0];
-    if (!next || (next === "commit_gap" && !forEvent)) return null;
-    failures.shift();
-    if (next === "timeout") return "timeout";
-    if (next === "disconnect") {
-      connected = false;
-      return error("orchestrator_not_loaded", "fake disconnected");
-    }
-    return error(next, next);
-  }
-
-  function checkConnected() {
-    if (!connected) return error("orchestrator_not_loaded", "fake disconnected");
-    return null;
-  }
-
-  function nextCommandId() {
-    commandCounter += 1;
-    return `fake-command-${commandCounter}`;
-  }
-
-  function validateIntent(data) {
-    if (!Array.isArray(data.areas) || data.areas.length === 0) return "job_requires_area";
-    if (new Set(data.areas).size !== data.areas.length) return "duplicate_area";
-    if (!canonicalMode(data.mode)) return "invalid_cleaning_mode";
-    if (!Number.isInteger(data.passes ?? 1) || data.passes < 1 || data.passes > 10) return "invalid_pass_count";
-    for (const field of ["name", "source", "reason", "note", "dedupe_key"]) {
-      if (data[field] !== undefined && data[field] !== null && (typeof data[field] !== "string" || !data[field].trim())) return `empty_${field}`;
-    }
-    const on = Array.isArray(data.required_on) ? data.required_on : [];
-    const off = Array.isArray(data.required_off) ? data.required_off : [];
-    if (new Set(on).size !== on.length) return "invalid_required_on";
-    if (new Set(off).size !== off.length) return "invalid_required_off";
-    if (on.some((value) => off.includes(value))) return "contradictory_state_requirement";
-    return null;
-  }
-
-  function touch({ queueChanged = false } = {}) {
-    commitId += 1;
-    if (queueChanged) queueRevision += 1;
-    sequence += 1;
-    emit();
-  }
-
-  function serialize(job) {
-    const result = copy(job);
-    result.api_version = 2;
-    if (job.state !== "queued" && profile !== "target") delete result.readiness;
-    if (!has("jobProgress")) {
-      delete result.active_work_unit_id;
-      delete result.work_units;
-    }
-    if (!has("jobBlockedReason")) delete result.blocked_reason;
-    return result;
-  }
-
-  function queuePage(offset = 0, limit = 50) {
-    return {
-      api_version: 2,
-      commit_id: commitId,
-      queue_revision: queueRevision,
-      mode,
-      needs_attention: [...jobs.values()].some((job) => job.state === "needs_attention"),
-      total: queue.length,
-      offset,
-      limit,
-      jobs: queue.slice(offset, offset + limit).map((id) => serialize(jobs.get(id))),
+    const state = {
+      installed: options.installed !== false,
+      setUp: options.setUp !== false,
+      runtimeLoaded: options.runtimeLoaded !== false,
+      apiVersion: options.apiVersion ?? 2,
+      admin: options.admin !== false,
+      commitId: seed.commitId ?? 1,
+      queueRevision: 1,
+      runtimeId: "runtime-1",
+      runtimeSequence: 1,
+      mode: seed.mode || "idle",
+      run: seed.run ? W.wireQueueRun(seed.run) : null,
+      graceSeconds: seed.graceSeconds ?? 900,
+      recoveryTargets: copy(seed.recoveryTargets || []),
+      jobs: new Map(),
+      readiness: new Map(),
+      queue: [],
+      rooms: (seed.rooms || []).map((room) => W.wireRoom(room)),
+      robots: (seed.robots || []).map((robot) => W.wireRobot(robot)),
+      candidates: (seed.candidates || []).map((candidate) => W.wireCandidate(candidate)),
+      templates: (seed.templates || []).map((template) => W.wireTemplate(template)),
+      runs: (seed.runs || []).map((run) => W.wireRun(run)),
+      trace: (seed.trace || []).map((record) => W.wireTraceRecord(record)),
+      execution: copy(seed.execution || {}),
+      registry: copy(seed.registry || []),
+      latencyMs: options.latencyMs ?? 0,
     };
-  }
-
-  function registryPage(offset = 0, limit = 50, options = {}) {
-    let records = [...jobs.values()].sort((left, right) => {
-      const leftTime = Date.parse(left.created_at);
-      const rightTime = Date.parse(right.created_at);
-      return options.order === "created_asc" ? leftTime - rightTime : rightTime - leftTime;
-    });
-    if (Array.isArray(options.states) && has("jobsActive")) records = records.filter((job) => options.states.includes(job.state));
-    return {
-      api_version: 2,
-      total: records.length,
-      offset,
-      limit,
-      jobs: records.slice(offset, offset + limit).map(serialize),
-    };
-  }
-
-  function emit() {
-    const gap = failures[0] === "commit_gap";
-    if (gap) {
-      failures.shift();
-      commitId += 1;
-      sequence += 1;
+    for (const job of seed.jobs || []) {
+      const wire = W.wireJob(job);
+      delete wire.readiness;
+      state.jobs.set(wire.job_id, wire);
+      if (job.readiness) state.readiness.set(wire.job_id, W.wireReadiness(job.readiness));
+      if (wire.state === "queued") state.queue.push(wire.job_id);
     }
-    const event = {
-      api_version: 2,
-      commit_id: commitId,
-      queue_revision: queueRevision,
-      mode,
-      pending_jobs: queue.length,
-      needs_attention: [...jobs.values()].some((job) => job.state === "needs_attention"),
-    };
-    if (has("describe") || profile === "target") {
-      event.sequence = sequence;
-      event.attention_job_ids = [...jobs.values()].filter((job) => job.state === "needs_attention").map((job) => job.job_id);
-    }
-    calls.events.push(copy(event));
-    for (const callback of [...subscriptions]) callback(copy(event));
-  }
 
-  function mutate(action, data = {}) {
-    const commandId = nextCommandId();
-    const injected = maybeFail();
-    if (injected === "timeout") return new Promise(() => {});
-    if (injected) return Promise.reject(injected);
-    const availability = checkConnected();
-    if (availability) return Promise.reject(availability);
-    let response = null;
-    let queueChanged = false;
-    if (!has({
-      create_job: "jobCreate",
-      update_job: "jobUpdate",
-      delete_job: "jobDelete",
-      move_job: "jobMove",
-      start_job: "jobStart",
-      cancel_job: "jobCancel",
-      retry_job: "jobRetry",
-      run_queue: "queueRun",
-      pause_queue: "queuePause",
-      resume_queue: "queueResume",
-    }[action])) return Promise.reject(error("unknown_command", action));
-    if (action === "create_job") {
-      const invalid = validateIntent(data);
-      if (invalid) return Promise.reject(error(invalid));
-      const id = data.job_id || `job-${++jobCounter}`;
-      const job = defaultJob(virtualClock, id, data, 1);
-      jobs.set(id, job);
-      queue.push(id);
-      response = { job_id: id };
-      queueChanged = true;
-    } else if (action === "update_job") {
-      const job = jobs.get(data.job_id);
-      if (!job) return Promise.reject(error("unknown_job"));
-      if (job.state !== "queued") return Promise.reject(error("job_not_editable"));
-      const next = { ...job };
-      for (const key of ["areas", "mode", "name", "vacuum_power", "mop_intensity", "mop_route", "passes", "source", "reason", "note", "dedupe_key", "required_on", "required_off", "settings_policy"]) {
-        if (Object.prototype.hasOwnProperty.call(data, key)) next[key] = Array.isArray(data[key]) ? [...data[key]] : data[key];
-      }
-      const invalid = validateIntent(next);
-      if (invalid) return Promise.reject(error(invalid));
-      next.mode = canonicalMode(next.mode);
-      next.revision += 1;
-      next.updated_at = iso(virtualClock);
-      jobs.set(next.job_id, next);
-      response = { job_id: next.job_id };
-    } else if (action === "delete_job") {
-      const job = jobs.get(data.job_id);
-      if (!job) return Promise.reject(error("unknown_job"));
-      if (!(job.state === "queued" || ["completed", "failed", "cancelled"].includes(job.state))) return Promise.reject(error("job_not_deletable"));
-      jobs.delete(job.job_id);
-      const index = queue.indexOf(job.job_id);
-      if (index >= 0) queue.splice(index, 1);
-      response = { job_id: job.job_id };
-      queueChanged = index >= 0;
-    } else if (action === "move_job") {
-      const index = queue.indexOf(data.job_id);
-      if (index < 0) return Promise.reject(error("job_not_movable"));
-      const direction = data.direction;
-      const target = direction === "top" ? 0 : direction === "bottom" ? queue.length - 1 : direction === "up" ? Math.max(0, index - 1) : Math.min(queue.length - 1, index + 1);
-      queue.splice(index, 1);
-      queue.splice(target, 0, data.job_id);
-      response = { job_id: data.job_id, direction };
-      queueChanged = target !== index;
-    } else if (action === "start_job") {
-      const job = jobs.get(data.job_id);
-      if (!job) return Promise.reject(error("unknown_job"));
-      if (job.state !== "queued") return Promise.reject(error("job_not_startable"));
-      const robot = data.robot_id ? robots.find((item) => item.robot_id === data.robot_id) : robots.find((item) => item.availability === "available");
-      if (!robot) return Promise.reject(error("no_robot_configured"));
-      job.state = "dispatching";
-      job.assigned_robot_id = robot?.robot_id ?? null;
-      job.active_attempt_id = `${job.job_id}-attempt-1`;
-      job.revision += 1;
-      job.updated_at = iso(virtualClock);
-      const index = queue.indexOf(job.job_id);
-      if (index >= 0) queue.splice(index, 1);
-      if (robot) {
-        robot.availability = "busy";
-        robot.active_job_id = job.job_id;
-        robot.active_area_id = job.areas[0] || null;
-      }
-      response = { job_id: job.job_id, robot_id: robot?.robot_id ?? null };
-      queueChanged = true;
-    } else if (action === "cancel_job") {
-      const job = jobs.get(data.job_id);
-      if (!job) return Promise.reject(error("unknown_job"));
-      const queuedCancellation = job.state === "queued";
-      if (queuedCancellation) {
-        const index = queue.indexOf(job.job_id);
-        if (index >= 0) queue.splice(index, 1);
-        queueChanged = true;
-      } else if (!["dispatching", "running", "canceling"].includes(job.state)) return Promise.reject(error("job_not_cancellable"));
-      job.state = queuedCancellation ? "cancelled" : "canceling";
-      if (queuedCancellation) job.finished_at = iso(virtualClock);
-      job.updated_at = iso(virtualClock);
-      response = { job_id: job.job_id };
-    } else if (action === "retry_job") {
-      const source = jobs.get(data.job_id);
-      if (!source) return Promise.reject(error("unknown_job"));
-      if (!["completed", "failed", "cancelled"].includes(source.state)) return Promise.reject(error("job_not_retryable"));
-      const id = `job-${++jobCounter}`;
-      const retried = defaultJob(virtualClock, id, { ...source, retries_job_id: source.job_id }, 1);
-      retried.retries_job_id = source.job_id;
-      jobs.set(id, retried);
-      queue.push(id);
-      response = { job_id: id };
-      queueChanged = true;
-    } else if (action === "run_queue" || action === "resume_queue") {
-      mode = "running";
-      response = { dispatched: 0, robot_ids: [] };
-    } else if (action === "pause_queue") {
-      mode = "paused";
-      response = null;
-    }
-    touch({ queueChanged });
-    return Promise.resolve({ command_id: commandId, ...copy(response || {}) });
-  }
+    const calls = { ws: [], services: [] };
+    const failures = new Map();
+    const subscribers = new Set();
+    const connectionListeners = { ready: new Set(), disconnected: new Set() };
 
-  async function query(message) {
-    calls.ws.push(copy(message));
-    const injected = maybeFail();
-    if (injected === "timeout") return new Promise(() => {});
-    if (injected) return reject(injected.code, injected.detail);
-    const availability = checkConnected();
-    if (availability) return reject(availability.code, availability.detail);
-    if (message.type === WS.DESCRIBE) {
-      if (!has("describe")) return reject("unknown_command");
-      return {
-        api_version: 2,
-        integration_version: "fake-0.0.1",
-        capabilities: [...capabilities],
-        limits: { max_page_size: 100, max_areas_per_job: 20, max_passes: 10 },
+    function respond(value) {
+      if (!state.latencyMs || typeof clock.setTimeout !== "function") return Promise.resolve(copy(value));
+      return new Promise((resolve) => clock.setTimeout(() => resolve(copy(value)), state.latencyMs));
+    }
+
+    function reject(error) {
+      if (!state.latencyMs || typeof clock.setTimeout !== "function") return Promise.reject(error);
+      return new Promise((_resolve, rejectLater) => clock.setTimeout(() => rejectLater(error), state.latencyMs));
+    }
+
+    function event() {
+      return { api_version: 2, commit_id: state.commitId, runtime_id: state.runtimeId, runtime_sequence: state.runtimeSequence, queue_revision: state.queueRevision, mode: state.mode, pending_jobs: state.queue.length, needs_attention: needsAttention() };
+    }
+
+    function notify() {
+      state.runtimeSequence += 1;
+      for (const callback of [...subscribers]) callback(event());
+    }
+
+    function commit({ queueChanged = false } = {}) {
+      state.commitId += 1;
+      if (queueChanged) state.queueRevision += 1;
+      notify();
+    }
+
+    function needsAttention() {
+      return state.recoveryTargets.length > 0 || [...state.jobs.values()].some((job) => job.state === "needs_attention");
+    }
+
+    function readinessFor(jobId) {
+      return state.readiness.get(jobId) || W.wireReadiness();
+    }
+
+    function presentJob(job, withReadiness) {
+      const result = copy(job);
+      if (withReadiness) result.readiness = copy(readinessFor(job.job_id));
+      return result;
+    }
+
+    function page(items, { offset = 0, limit = 50 } = {}) {
+      return { offset, limit, total: items.length, slice: items.slice(offset, offset + limit) };
+    }
+
+    function pageParameters(parameters) {
+      const offset = parameters.offset ?? 0;
+      const limit = parameters.limit ?? 50;
+      if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1 || limit > 100) return null;
+      return { offset, limit };
+    }
+
+    function roomFor(reference) {
+      return state.rooms.find((room) => room.room_id === reference || room.area_id === reference) || null;
+    }
+
+    function jobOrError(jobId) {
+      return state.jobs.get(jobId) || null;
+    }
+
+    function failure(key) {
+      if (!failures.has(key)) return null;
+      const error = failures.get(key);
+      failures.delete(key);
+      return error;
+    }
+
+    // ---- WebSocket types -------------------------------------------------------------------
+
+    function queuePage(message) {
+      const { offset, limit, total, slice } = page(state.queue, message);
+      const base = W.wireQueuePage(slice.map((jobId) => presentJob(state.jobs.get(jobId), true)), {
+        commit_id: state.commitId,
+        queue_revision: state.queueRevision,
+        mode: state.mode,
+        needs_attention: needsAttention(),
+        recovery_targets: copy(state.recoveryTargets),
+        queue_grace_seconds: state.graceSeconds,
+        queue_run: copy(state.run),
+        total,
+        offset,
+        limit,
+      });
+      base.api_version = state.apiVersion;
+      return base;
+    }
+
+    function jobsList(message) {
+      const ordered = [...state.jobs.values()].sort((one, other) => (one.created_at === other.created_at ? (one.job_id < other.job_id ? 1 : -1) : one.created_at < other.created_at ? 1 : -1));
+      const { offset, limit, total, slice } = page(ordered, message);
+      return W.wireJobListPage(slice.map((job) => presentJob(job, false)), { total, offset, limit });
+    }
+
+    function query(name, parameters) {
+      const paging = pageParameters(parameters);
+      const collection = (key, items) => {
+        if (!paging) throw voi("invalid_parameters");
+        const { offset, limit, total, slice } = page(items, paging);
+        return W.wirePage(key, copy(slice), { total, offset, limit });
       };
+      switch (name) {
+        case "get_rooms":
+          return collection("rooms", state.rooms);
+        case "get_room": {
+          const room = roomFor(parameters.room_id);
+          if (!room) throw voi("unknown_room");
+          return { api_version: 2, ...copy(room) };
+        }
+        case "get_robots":
+          return collection("robots", state.robots);
+        case "get_robot_candidates":
+          return collection("candidates", state.candidates);
+        case "get_templates":
+          return collection("templates", state.templates);
+        case "get_history":
+          return collection("runs", state.runs);
+        case "get_trace": {
+          const records = state.trace.filter((record) => !parameters.job_id || record.job_id === parameters.job_id);
+          return { ...collection("records", records), runtime_id: state.runtimeId, trace_sequence: state.trace.length };
+        }
+        case "get_diagnostics":
+          return W.wireDiagnostics({ commit_id: state.commitId, runtime_id: state.runtimeId, runtime_sequence: state.runtimeSequence, mode: state.mode, needs_attention: needsAttention(), totals: { jobs: state.jobs.size, rooms: state.rooms.length }, trace_window: { recorded: state.trace.length, retained: state.trace.length, dropped: 0 } });
+        case "get_job_execution": {
+          const job = jobOrError(parameters.job_id);
+          if (!job) throw voi("unknown_job");
+          return W.wireExecution({ job_id: job.job_id, ...(copy(state.execution[job.job_id]) || { robots: state.robots.map((robot) => W.wireExecutionRobot({ robot_id: robot.robot_id, operation: job.mode === "mop" ? "mop" : "vacuum" })), attempts: [] }) });
+        }
+        default:
+          throw voi("invalid_parameters");
+      }
     }
-    if (message.type === WS.QUEUE_GET) return queuePage(message.offset ?? 0, message.limit ?? 50);
-    if (message.type === WS.JOB_GET) {
-      const job = jobs.get(message.job_id);
-      if (!job) return reject("unknown_job");
-      return serialize(job);
-    }
-    if (message.type === WS.JOBS_LIST) return registryPage(message.offset ?? 0, message.limit ?? 50, message);
-    if (message.type === WS.ROBOTS_LIST) {
-      if (!has("robotsRead")) return reject("unknown_command");
-      return { api_version: 2, robots: robots.map(copy) };
-    }
-    if (message.type === WS.AREAS_STATUS) {
-      if (!has("areasRead")) return reject("unknown_command");
-      return { api_version: 2, areas: [...areas.values()].map(copy) };
-    }
-    if (message.type === WS.SUBSCRIBE) return null;
-    return reject("unknown_command", message.type);
-  }
 
-  function subscribe(callback) {
-    if (!connected) return reject("orchestrator_not_loaded");
-    subscriptions.add(callback);
-    return Promise.resolve(() => subscriptions.delete(callback));
-  }
+    function requireAdmin() {
+      if (!state.admin) throw W.haError.unauthorized();
+    }
 
-  function attachTo(hassStub = {}) {
-    const hass = hassStub;
-    hass.config = hass.config || {};
-    hass.config.components = hass.config.components || new Set();
-    if (hass.config.components instanceof Set) hass.config.components.add(DOMAIN);
-    else if (Array.isArray(hass.config.components) && !hass.config.components.includes(DOMAIN)) hass.config.components.push(DOMAIN);
-    else if (hass.config.components && typeof hass.config.components === "object") hass.config.components[DOMAIN] = true;
-    hass.services = hass.services || {};
-    hass.services[DOMAIN] = serviceNames(capabilities);
-    hass.connection = hass.connection || {};
-    Object.assign(hass.connection, connection, {
-      subscribeMessage: (_callback, message) => {
-        if (message?.type !== WS.SUBSCRIBE) return reject("unknown_command");
-        return subscribe(_callback);
+    function command(name, parameters) {
+      requireAdmin();
+      const result = { api_version: 2 };
+      switch (name) {
+        case "configure_queue": {
+          const value = parameters.grace_seconds;
+          if (typeof value !== "number" || value < 0 || value > 86400) throw voi("invalid_parameters");
+          state.graceSeconds = value;
+          result.grace_seconds = value;
+          break;
+        }
+        case "create_room": {
+          if (!parameters.name) throw voi("invalid_parameters");
+          const room = W.wireRoom({ room_id: nextId("room"), name: parameters.name, area_id: parameters.area_id ?? null });
+          state.rooms.push(room);
+          result.room_id = room.room_id;
+          break;
+        }
+        case "update_room": {
+          const room = roomFor(parameters.room_id);
+          if (!room) throw voi("unknown_room");
+          const patch = parameters.configuration || {};
+          for (const key of Object.keys(patch)) if (!["name", "area_id", "floor_id", "enabled", "follow_area_name", "bindings", "requirements", "due_policy"].includes(key)) throw voi("invalid_room_configuration");
+          if (patch.due_policy) room.due_policy = { ...room.due_policy, ...copy(patch.due_policy) };
+          for (const key of ["name", "area_id", "floor_id", "enabled", "follow_area_name", "bindings", "requirements"]) if (key in patch) room[key] = copy(patch[key]);
+          if ("name" in patch && !("follow_area_name" in patch)) room.follow_area_name = false;
+          if ("area_id" in patch) room.area_missing = false;
+          if (room.requirements) room.requirements = room.requirements.map((item) => W.wireRoomRequirement({ entity_registry_id: null, ...item }));
+          result.room_id = room.room_id;
+          break;
+        }
+        case "remove_room": {
+          const room = roomFor(parameters.room_id);
+          if (!room) throw voi("unknown_room");
+          room.enabled = false;
+          room.released = false;
+          result.room_id = room.room_id;
+          break;
+        }
+        case "release_room": {
+          const room = roomFor(parameters.room_id);
+          if (!room) throw voi("unknown_room");
+          if (!RELEASE_KINDS.has(parameters.kind)) throw voi("invalid_parameters");
+          if ((parameters.kind === "timed") !== (parameters.duration_seconds !== undefined)) throw voi("release_duration_mismatch");
+          if (!room.enabled || room.area_missing) throw voi("room_unavailable");
+          room.release = W.wireRelease({ grant_id: nextId("grant"), kind: parameters.kind, granted_at: iso(), expires_at: parameters.kind === "timed" ? iso(parameters.duration_seconds * 1000) : null, queue_run_id: parameters.kind === "queue_run" && state.run?.active ? state.run.run_id : null });
+          room.released = true;
+          result.room_id = room.room_id;
+          result.grant_id = room.release.grant_id;
+          break;
+        }
+        case "revoke_room": {
+          const room = roomFor(parameters.room_id);
+          if (!room) throw voi("unknown_room");
+          room.release = null;
+          room.released = false;
+          result.room_id = room.room_id;
+          break;
+        }
+        case "add_robot": {
+          const configuration = parameters.configuration || {};
+          const reference = configuration.robot_entity_id || configuration.robot_registry_id;
+          const candidate = state.candidates.find((item) => item.entity_id === reference || item.registry_id === reference);
+          if (!candidate) throw voi("entity_not_registered");
+          if (state.robots.some((robot) => robot.configuration.robot_registry_id === candidate.registry_id)) throw voi("already_configured");
+          if (state.robots.length >= 20) throw voi("robot_limit_reached");
+          const robot = W.wireRobot({ robot_id: nextId("robot"), name: candidate.name, configuration: { ...copy(configuration), robot_registry_id: candidate.registry_id, robot_entity_id: candidate.entity_id, adapter: candidate.adapter, roles: copy(candidate.roles), protocol: candidate.protocol, target_areas: [] }, capabilities: { targets: {}, operations: ["vacuum"] } });
+          state.robots.push(robot);
+          result.robot_id = robot.robot_id;
+          break;
+        }
+        case "configure_robot": {
+          const robot = state.robots.find((item) => item.robot_id === parameters.robot_id);
+          if (!robot) throw voi("unknown_robot");
+          if (robot.active) throw voi("robot_busy");
+          const next = { ...robot.configuration, ...copy(parameters.configuration || {}) };
+          if (next.robot_registry_id !== robot.configuration.robot_registry_id && next.robot_entity_id !== robot.configuration.robot_entity_id) throw voi("robot_identity_change");
+          if (Array.isArray(next.allowed_operations) && next.allowed_operations.length === 0) throw voi("empty_allowed_operations");
+          robot.configuration = next;
+          result.robot_id = robot.robot_id;
+          break;
+        }
+        case "remove_robot": {
+          const index = state.robots.findIndex((item) => item.robot_id === parameters.robot_id);
+          if (index < 0) throw voi("unknown_robot");
+          if (state.robots[index].active) throw voi("robot_busy");
+          state.robots.splice(index, 1);
+          result.robot_id = parameters.robot_id;
+          break;
+        }
+        case "resolve_recovery": {
+          const index = state.recoveryTargets.findIndex((target) => target.robot_id === parameters.robot_id);
+          if (index < 0) throw voi("robot_not_needing_recovery");
+          if (parameters.confirm_stopped !== true) throw voi("robot_stopped_confirmation_required");
+          state.recoveryTargets.splice(index, 1);
+          for (const job of state.jobs.values()) if (job.state === "needs_attention") Object.assign(job, { state: "failed", failure_code: "operator_assumed_stopped", revision: job.revision + 1, updated_at: iso() });
+          result.robot_id = parameters.robot_id;
+          break;
+        }
+        case "save_template": {
+          if (!parameters.name || !parameters.intent) throw voi("invalid_parameters");
+          const intent = copy(parameters.intent);
+          const mode = MODES[intent.mode];
+          if (!mode || !Array.isArray(intent.areas) || !intent.areas.length) throw voi("invalid_parameters");
+          intent.mode = mode;
+          intent.passes = intent.passes ?? 1;
+          intent.settings_policy = intent.settings_policy ?? "best_effort";
+          intent.required_on = intent.required_on ?? [];
+          intent.required_off = intent.required_off ?? [];
+          const existing = state.templates.find((template) => template.template_id === parameters.template_id);
+          const template = W.wireTemplate({ template_id: existing?.template_id || parameters.template_id || nextId("template"), name: parameters.name, intent, enabled: parameters.enabled ?? true, automatic: parameters.automatic ?? false, updated_at: iso(), suppressed_room_ids: existing?.suppressed_room_ids || [] });
+          if (existing) Object.assign(existing, template);
+          else state.templates.push(template);
+          result.template_id = template.template_id;
+          break;
+        }
+        case "remove_template": {
+          const index = state.templates.findIndex((template) => template.template_id === parameters.template_id);
+          if (index < 0) throw voi("unknown_template");
+          state.templates.splice(index, 1);
+          result.template_id = parameters.template_id;
+          break;
+        }
+        case "create_job_from_template": {
+          const template = state.templates.find((item) => item.template_id === parameters.template_id);
+          if (!template) throw voi("unknown_template");
+          if (!template.enabled) throw voi("template_disabled");
+          result.job_id = createJob(copy(template.intent));
+          break;
+        }
+        case "reset_template_demand": {
+          const template = state.templates.find((item) => item.template_id === parameters.template_id);
+          if (!template) throw voi("unknown_template");
+          template.suppressed_room_ids = [];
+          result.template_id = template.template_id;
+          break;
+        }
+        default:
+          throw voi("invalid_parameters");
+      }
+      commit({ queueChanged: name === "create_job_from_template" });
+      return result;
+    }
+
+    // ---- actions ---------------------------------------------------------------------------
+
+    function createJob(data) {
+      const mode = MODES[data.mode];
+      if (!Array.isArray(data.areas) || data.areas.length === 0) throw validation("job_requires_area");
+      if (!mode) throw validation("invalid_cleaning_mode");
+      const rooms = data.areas.map((reference) => roomFor(reference));
+      if (rooms.some((room) => !room)) throw validation("unknown_room");
+      if ((data.vacuum_power === "off" && mode !== "mop") || (data.mop_intensity === "off" && mode !== "vacuum")) throw validation("preference_conflicts_with_cleaning_mode");
+      if (data.dedupe_key && state.queue.some((jobId) => state.jobs.get(jobId).dedupe_key === data.dedupe_key)) throw validation("dedupe_key_already_queued");
+      const job = W.wireJob({
+        job_id: nextId("job"),
+        state: "queued",
+        name: data.name ?? null,
+        areas: rooms.map((room) => room.area_id || room.room_id),
+        room_ids: rooms.map((room) => room.room_id),
+        mode,
+        vacuum_power: data.vacuum_power ?? null,
+        mop_intensity: data.mop_intensity ?? null,
+        mop_route: data.mop_route ?? null,
+        passes: data.passes ?? 1,
+        source: data.source ?? null,
+        reason: data.reason ?? null,
+        note: data.note ?? null,
+        dedupe_key: data.dedupe_key ?? null,
+        required_on: data.required_on ?? [],
+        required_off: data.required_off ?? [],
+        settings_policy: data.settings_policy ?? "best_effort",
+        created_at: iso(),
+        updated_at: iso(),
+      });
+      state.jobs.set(job.job_id, job);
+      state.queue.push(job.job_id);
+      return job.job_id;
+    }
+
+    function queued(jobId, code) {
+      const job = jobOrError(jobId);
+      if (!job) throw validation("unknown_job");
+      if (job.state !== "queued") throw validation(code);
+      return job;
+    }
+
+    function action(service, data) {
+      if (!state.admin) throw W.haError.homeAssistant("Unauthorized");
+      switch (service) {
+        case "create_job": {
+          const jobId = createJob(data);
+          commit({ queueChanged: true });
+          return { job_id: jobId };
+        }
+        case "update_job": {
+          const job = queued(data.job_id, "job_not_editable");
+          const patch = { ...data };
+          delete patch.job_id;
+          if (!Object.keys(patch).length) throw validation("empty_job_update");
+          if (patch.mode !== undefined) {
+            if (!MODES[patch.mode]) throw validation("invalid_cleaning_mode");
+            patch.mode = MODES[patch.mode];
+          }
+          if (patch.areas) {
+            const rooms = patch.areas.map((reference) => roomFor(reference));
+            if (rooms.some((room) => !room)) throw validation("unknown_room");
+            job.room_ids = rooms.map((room) => room.room_id);
+            patch.areas = rooms.map((room) => room.area_id || room.room_id);
+          }
+          for (const [key, value] of Object.entries(patch)) if (key in job) job[key] = copy(value);
+          job.revision += 1;
+          job.updated_at = iso();
+          commit({ queueChanged: true });
+          return { job_id: job.job_id };
+        }
+        case "delete_job": {
+          const job = jobOrError(data.job_id);
+          if (!job) throw validation("unknown_job");
+          if (job.state !== "queued" && !TERMINAL.has(job.state)) throw validation("job_not_deletable");
+          state.jobs.delete(job.job_id);
+          state.queue = state.queue.filter((jobId) => jobId !== job.job_id);
+          commit({ queueChanged: true });
+          return null;
+        }
+        case "move_job": {
+          queued(data.job_id, "job_not_movable");
+          const index = state.queue.indexOf(data.job_id);
+          const queue = state.queue.filter((jobId) => jobId !== data.job_id);
+          const target = { up: Math.max(0, index - 1), down: Math.min(queue.length, index + 1), top: 0, bottom: queue.length }[data.direction];
+          if (target === undefined) throw W.haError.invalidFormat();
+          queue.splice(target, 0, data.job_id);
+          state.queue = queue;
+          commit({ queueChanged: true });
+          return null;
+        }
+        case "start_job": {
+          const job = queued(data.job_id, "job_not_startable");
+          if (!state.robots.length) throw validation("no_robot_configured");
+          const robot = data.robot_id ? state.robots.find((item) => item.robot_id === data.robot_id) : state.robots.find((item) => !item.active);
+          if (!robot) throw validation(data.robot_id ? "unknown_robot" : "robot_busy");
+          if (robot.active) throw validation("robot_busy");
+          Object.assign(job, { state: "dispatching", revision: job.revision + 1, updated_at: iso(), active_attempt_id: nextId("attempt") });
+          state.queue = state.queue.filter((jobId) => jobId !== job.job_id);
+          robot.active = true;
+          commit({ queueChanged: true });
+          return { job_id: job.job_id, robot_id: robot.robot_id, omitted_preferences: [] };
+        }
+        case "cancel_job": {
+          const job = jobOrError(data.job_id);
+          if (!job) throw validation("unknown_job");
+          if (job.state === "queued") {
+            Object.assign(job, { state: "cancelled", revision: job.revision + 1, updated_at: iso() });
+            state.queue = state.queue.filter((jobId) => jobId !== job.job_id);
+          } else if (job.state === "dispatching" || job.state === "running") {
+            Object.assign(job, { state: "canceling", revision: job.revision + 1, updated_at: iso() });
+          } else {
+            throw validation("job_not_cancellable");
+          }
+          commit({ queueChanged: true });
+          return null;
+        }
+        case "retry_job": {
+          const job = jobOrError(data.job_id);
+          if (!job) throw validation("unknown_job");
+          if (!TERMINAL.has(job.state)) throw validation("job_not_retryable");
+          const jobId = createJob({ ...copy(job), areas: job.room_ids });
+          state.jobs.get(jobId).retries_job_id = job.job_id;
+          commit({ queueChanged: true });
+          return { job_id: jobId };
+        }
+        case "run_queue":
+        case "resume_queue": {
+          state.mode = "running";
+          if (!state.run?.active) state.run = W.wireQueueRun({ run_id: nextId("run"), started_at: iso() });
+          commit();
+          return { dispatched: 0, robot_ids: [] };
+        }
+        case "pause_queue":
+          state.mode = "paused";
+          commit();
+          return null;
+        case "get_queue":
+          return queuePage(pageParameters(data) || {});
+        case "get_job": {
+          const job = jobOrError(data.job_id);
+          if (!job) throw validation("unknown_job");
+          return presentJob(job, job.state === "queued");
+        }
+        default:
+          throw W.haError.notFound(`Service ${DOMAIN}.${service} not found.`);
+      }
+    }
+
+    function handleWs(message) {
+      calls.ws.push(copy(message));
+      const key = message.type === `${DOMAIN}/configuration/get` ? message.query : message.type === `${DOMAIN}/configuration/command` ? message.command : message.type;
+      const injected = failure(key);
+      if (injected) return reject(injected);
+      if (message.type === "manifest/get") return state.installed && message.integration === DOMAIN ? respond(W.wireManifest()) : reject(W.haError.notFound());
+      if (message.type === "config/entity_registry/list") return respond(state.registry);
+      if (!message.type.startsWith(`${DOMAIN}/`) || !state.setUp) return reject(W.haError.unknownCommand());
+      if (!state.runtimeLoaded) return reject(voi("orchestrator_not_loaded"));
+      try {
+        switch (message.type) {
+          case `${DOMAIN}/queue/get`:
+            return respond(queuePage(message));
+          case `${DOMAIN}/job/get`: {
+            const job = jobOrError(message.job_id);
+            return job ? respond(presentJob(job, state.queue.includes(job.job_id))) : reject(voi("unknown_job"));
+          }
+          case `${DOMAIN}/jobs/list`:
+            return respond(jobsList(message));
+          case `${DOMAIN}/configuration/get`:
+            if (!QUERIES.includes(message.query)) return reject(W.haError.invalidFormat());
+            return respond(query(message.query, message.parameters || {}));
+          case `${DOMAIN}/configuration/command`:
+            if (!COMMANDS.includes(message.command)) return reject(W.haError.invalidFormat());
+            return respond(command(message.command, message.parameters || {}));
+          default:
+            return reject(W.haError.unknownCommand());
+        }
+      } catch (error) {
+        return reject(error);
+      }
+    }
+
+    function handleService(domain, service, data = {}, _target, _notify, returnResponse = false) {
+      calls.services.push({ domain, service, data: copy(data), returnResponse });
+      const injected = failure(service);
+      if (injected) return reject(injected);
+      if (domain !== DOMAIN || !state.setUp || ![...ACTIONS, ...QUERY_ACTIONS, ...COMMANDS, ...QUERIES].includes(service)) return reject(W.haError.notFound(`Service ${domain}.${service} not found.`));
+      if (!state.runtimeLoaded) return reject(validation("orchestrator_not_loaded"));
+      const supportsResponse = ["create_job", "update_job", "start_job", "retry_job", "run_queue", "resume_queue", ...QUERY_ACTIONS].includes(service);
+      if (returnResponse && !supportsResponse) return reject(W.haError.serviceValidation("service_does_not_support_response"));
+      try {
+        const response = action(service, data);
+        return respond(returnResponse ? { context: { id: "context" }, response } : { context: { id: "context" } });
+      } catch (error) {
+        return reject(error);
+      }
+    }
+
+    const connection = {
+      sendMessagePromise: (message) => handleWs(message),
+      subscribeMessage(callback, message) {
+        calls.ws.push(copy(message));
+        const injected = failure(message.type);
+        if (injected) return reject(injected);
+        if (!state.setUp) return reject(W.haError.unknownCommand());
+        if (!state.runtimeLoaded) return reject(voi("orchestrator_not_loaded"));
+        subscribers.add(callback);
+        return respond(null).then(() => () => subscribers.delete(callback));
       },
-      sendMessagePromise: (message) => {
-        if (message?.type === "call_service") return handleService(message.service, message.service_data || {}, true);
-        return query(message);
+      addEventListener(name, listener) {
+        connectionListeners[name]?.add(listener);
       },
-    });
-    hass.callWS = (message) => query(message);
-    // The fake stands in for the integration, not for all of Home Assistant: a call to any
-    // other domain (the card toggles a room release through `homeassistant.toggle`) belongs to
-    // the underlying stub.
-    const foreignService = hass.callService;
-    hass.callService = (domain, service, data, target, returnResponse, wantsResponse) => {
-      calls.services.push({ domain, service, data: copy(data), target, returnResponse, wantsResponse });
-      if (domain !== DOMAIN) return foreignService ? foreignService(domain, service, data, target, returnResponse, wantsResponse) : Promise.resolve({ context: {} });
-      return handleService(service, data || {}, Boolean(wantsResponse));
+      removeEventListener(name, listener) {
+        connectionListeners[name]?.delete(listener);
+      },
     };
-    hass.user = hass.user || { is_admin: true };
-    hass.entities = hass.entities || [];
-    hass.config.components = hass.config.components;
-    hassBindings.add(hass);
-    return hass;
+
+    function services() {
+      if (!state.setUp) return {};
+      return { [DOMAIN]: Object.fromEntries([...ACTIONS, ...QUERY_ACTIONS, ...COMMANDS, ...QUERIES].map((name) => [name, {}])) };
+    }
+
+    const fake = {
+      state,
+      calls,
+      clock,
+      // Wires the fake into a hass object: the connection, the action call and the registered
+      // services and components that the card reads.
+      attachTo(hass) {
+        hass.connection = connection;
+        hass.callWS = (message) => handleWs(message);
+        hass.callService = handleService;
+        hass.services = { ...(hass.services || {}), ...services() };
+        const components = new Set(hass.config?.components || []);
+        if (state.setUp) components.add(DOMAIN);
+        hass.config = { ...(hass.config || {}), components: [...components] };
+        hass.user = { ...(hass.user || {}), is_admin: state.admin };
+        return hass;
+      },
+      failNext(key, error) {
+        failures.set(key, error);
+      },
+      // A readiness change without a commit: the integration notifies with a new runtime sequence.
+      setReadiness(jobId, readiness) {
+        state.readiness.set(jobId, W.wireReadiness(readiness));
+        notify();
+      },
+      setJob(jobId, patch) {
+        const job = state.jobs.get(jobId);
+        Object.assign(job, copy(patch), { revision: job.revision + 1, updated_at: iso() });
+        if (job.state !== "queued") state.queue = state.queue.filter((id) => id !== jobId);
+        commit({ queueChanged: true });
+      },
+      // A reloaded config entry: a new runtime, and old subscriptions silently stop.
+      reloadRuntime() {
+        state.runtimeId = `runtime-${state.runtimeId.split("-")[1] * 1 + 1}`;
+        state.runtimeSequence = 1;
+        subscribers.clear();
+      },
+      emitEvent(overrides = {}) {
+        for (const callback of [...subscribers]) callback({ ...event(), ...overrides });
+      },
+      notify,
+      commit,
+      disconnect() {
+        for (const listener of [...connectionListeners.disconnected]) listener();
+      },
+      reconnect() {
+        for (const listener of [...connectionListeners.ready]) listener();
+      },
+      subscriberCount: () => subscribers.size,
+    };
+    return fake;
   }
 
-  async function handleService(service, data, wantsResponse) {
-    const response = await mutate(service, data);
-    if (wantsResponse) return response;
-    return undefined;
-  }
-
-  function setCapabilities(next) {
-    const value = typeof next === "string" ? next : null;
-    if (value === "today" || value === "target") capabilities = [...(value === "target" ? TARGET_CAPABILITIES : BASE_CAPABILITIES)];
-    else if (Array.isArray(next)) capabilities = [...new Set(next)];
-    else if (next && Array.isArray(next.capabilities)) capabilities = [...new Set(next.capabilities)];
-    const targetProfile = capabilities.includes("describe");
-    profile = targetProfile ? "target" : "today";
-    for (const hass of hassBindings) hass.services[DOMAIN] = serviceNames(capabilities);
-    return Object.freeze([...capabilities]);
-  }
-
-  function failNext(code) {
-    failures.push(code);
-  }
-
-  function disconnect() {
-    connected = false;
-    connection.emit("disconnected", { code: "orchestrator_not_loaded" });
-  }
-
-  function reconnect() {
-    connected = true;
-    connection.emit("connected", null);
-  }
-
-  function advance(ms) {
-    if (typeof virtualClock.advance === "function") virtualClock.advance(ms);
-  }
-
-  function direct(action, data) {
-    return mutate(action, data).then((result) => ({ ok: true, commandId: result.command_id, data: result })).catch((reason) => ({ ok: false, commandId: nextCommandId(), code: reason.code || "unknown", group: "unknown", detail: reason.detail || null }));
-  }
-
-  const api = {
-    attachTo,
-    setCapabilities,
-    failNext,
-    disconnect,
-    reconnect,
-    advance,
-    getState: () => ({
-      apiVersion: 2,
-      commitId,
-      queueRevision,
-      sequence,
-      mode,
-      jobs: [...jobs.values()].map(copy),
-      queue: [...queue],
-      robots: robots.map(copy),
-      areas: [...areas.values()].map(copy),
-      capabilities: [...capabilities],
-      connected,
-    }),
-    createJob: (payload) => direct("create_job", payload),
-    updateJob: (jobId, patch) => direct("update_job", { job_id: jobId, ...patch }),
-    deleteJob: (jobId) => direct("delete_job", { job_id: jobId }),
-    moveJob: (jobId, direction) => direct("move_job", { job_id: jobId, direction }),
-    startJob: (jobId, robotId) => direct("start_job", { job_id: jobId, ...(robotId ? { robot_id: robotId } : {}) }),
-    cancelJob: (jobId) => direct("cancel_job", { job_id: jobId }),
-    retryJob: (jobId) => direct("retry_job", { job_id: jobId }),
-    runQueue: () => direct("run_queue", {}),
-    pauseQueue: () => direct("pause_queue", {}),
-    resumeQueue: () => direct("resume_queue", {}),
-    dispose: () => {
-      subscriptions.clear();
-      for (const hass of hassBindings) delete hass.callWS;
-    },
-    calls,
-    get failures() {
-      return [...failures];
-    },
-  };
-
-  const initial = seed || {};
-  for (const robot of initial.robots || (profile === "target" ? [defaultRobot()] : [])) robots.push(copy(robot));
-  for (const area of initial.areas || (profile === "target" ? ["kitchen", "hall", "bathroom"].map(defaultArea) : [])) {
-    const record = typeof area === "string" ? defaultArea(area) : copy(area);
-    if (record.area_id) areas.set(record.area_id, record);
-  }
-  const seededJobs = initial.jobs || initial.queue || [];
-  for (const value of seededJobs) {
-    const id = value.job_id || `job-${++jobCounter}`;
-    const job = defaultJob(virtualClock, id, value, value.revision || 1);
-    job.state = value.state || "queued";
-    jobs.set(id, job);
-    if (job.state === "queued") queue.push(id);
-  }
-  if (Array.isArray(initial.queue)) {
-    queue.splice(0, queue.length, ...initial.queue.map((item) => (typeof item === "string" ? item : item.job_id)).filter((id) => jobs.has(id)));
-  }
-
-  return Object.freeze(api);
-}
-
-module.exports = { createFakeOrchestrator, VirtualClock, BASE_CAPABILITIES, TARGET_CAPABILITIES };
+  const api = { createFakeOrchestrator, VirtualClock, DOMAIN };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.VocFake = api;
+})(typeof globalThis !== "undefined" ? globalThis : this);

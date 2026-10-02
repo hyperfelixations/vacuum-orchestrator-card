@@ -1,30 +1,77 @@
-import {
-  PASS_MAX,
-  PASS_MIN,
-  canonicalizeMode,
-  isMopRoute,
-  isSemanticLevel,
-  isSettingsPolicy,
-} from "./job-schema.js";
-const TEXT_FIELDS = ["name", "source", "reason", "note", "dedupeKey"];
-const OPTIONAL_FIELDS = [
+// The editor draft for a job intent, and for a template wrapping one. An immutable value: every
+// change returns a new frozen draft that keeps its baseline. Validation mirrors the integration's
+// input schema (`api/job_input.py`) so obvious mistakes are caught early; the integration
+// remains the authority. See internal dev doc §7 "Entwurf".
+
+import { PASS_MAX, PASS_MIN, canonicalizeMode, isMopRoute, isSemanticLevel, isSettingsPolicy } from "./job-schema.js";
+
+export const INTENT_FIELDS = Object.freeze([
+  "roomIds",
+  "mode",
   "name",
   "vacuumPower",
   "mopIntensity",
   "mopRoute",
+  "passes",
   "source",
   "reason",
   "note",
   "dedupeKey",
-];
+  "requiredOn",
+  "requiredOff",
+  "settingsPolicy",
+]);
+// The level choices a mode allows; "off" is valid only where the integration accepts it.
+export function levelOptionsFor(field, mode, levels) {
+  if (field === "vacuumPower" && mode !== "mop") return levels.filter((level) => level !== "off");
+  if (field === "mopIntensity" && mode !== "vacuum") return levels.filter((level) => level !== "off");
+  return levels;
+}
 
-function cloneValue(value) {
-  if (Array.isArray(value)) return value.map(cloneValue);
-  if (value && typeof value === "object") {
-    const copy = {};
-    for (const [key, item] of Object.entries(value)) copy[key] = cloneValue(item);
-    return copy;
-  }
+export const TEMPLATE_FIELDS = Object.freeze(["templateName", "enabled", "automatic"]);
+
+const WIRE_NAMES = Object.freeze({
+  roomIds: "areas",
+  mode: "mode",
+  name: "name",
+  vacuumPower: "vacuum_power",
+  mopIntensity: "mop_intensity",
+  mopRoute: "mop_route",
+  passes: "passes",
+  source: "source",
+  reason: "reason",
+  note: "note",
+  dedupeKey: "dedupe_key",
+  requiredOn: "required_on",
+  requiredOff: "required_off",
+  settingsPolicy: "settings_policy",
+});
+// Fields `update_job` accepts as an explicit null.
+const NULLABLE = new Set(["name", "vacuumPower", "mopIntensity", "mopRoute", "source", "reason", "note", "dedupeKey"]);
+const TEXT_FIELDS = Object.freeze(["name", "source", "reason", "note", "dedupeKey"]);
+const ENTITY_ID = /^[a-z0-9_]+\.[a-z0-9_]+$/;
+const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+const EMPTY_INTENT = Object.freeze({
+  roomIds: [],
+  mode: "vacuum",
+  name: null,
+  vacuumPower: null,
+  mopIntensity: null,
+  mopRoute: null,
+  passes: 1,
+  source: null,
+  reason: null,
+  note: null,
+  dedupeKey: null,
+  requiredOn: [],
+  requiredOff: [],
+  settingsPolicy: "best_effort",
+});
+
+function copy(value) {
+  if (Array.isArray(value)) return value.map(copy);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, copy(item)]));
   return value;
 }
 
@@ -34,317 +81,145 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 
-function freezeDraft(draft, metadata) {
-  const copy = cloneValue(draft);
-  Object.defineProperties(copy, {
-    _baseline: { enumerable: false, value: cloneValue(metadata.baseline), writable: false },
-    _jobId: { enumerable: false, value: metadata.jobId ?? null, writable: false },
-    _revision: { enumerable: false, value: metadata.revision ?? null, writable: false },
-  });
-  return deepFreeze(copy);
-}
-
-function areaValue(value) {
-  if (typeof value === "string") {
-    return { areaId: value.trim(), mapContext: null };
-  }
-  if (!value || typeof value !== "object") return { areaId: "", mapContext: null };
-  const { areaId, mapContext } = value;
+function intentOf(source) {
+  if (!source || typeof source !== "object") return { ...copy(EMPTY_INTENT) };
   return {
-    areaId: typeof areaId === "string" ? areaId.trim() : "",
-    mapContext: mapContext === null || mapContext === undefined ? null : String(mapContext).trim(),
+    roomIds: [...(source.roomIds ?? source.areas ?? [])],
+    mode: source.mode ?? EMPTY_INTENT.mode,
+    name: source.name ?? null,
+    vacuumPower: source.vacuumPower ?? null,
+    mopIntensity: source.mopIntensity ?? null,
+    mopRoute: source.mopRoute ?? null,
+    passes: source.passes ?? EMPTY_INTENT.passes,
+    source: source.source ?? null,
+    reason: source.reason ?? null,
+    note: source.note ?? null,
+    dedupeKey: source.dedupeKey ?? null,
+    requiredOn: [...(source.requiredOn ?? [])],
+    requiredOff: [...(source.requiredOff ?? [])],
+    settingsPolicy: source.settingsPolicy ?? EMPTY_INTENT.settingsPolicy,
   };
 }
 
-function areaIds(draft) {
-  return (Array.isArray(draft.areas) ? draft.areas : []).map((value) => areaValue(value).areaId);
+function freezeDraft(values, meta) {
+  return deepFreeze({ ...copy(values), meta: copy(meta) });
 }
 
-function stringList(value) {
-  if (!Array.isArray(value)) return [];
-  return value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean);
+// `kind`: "job" or "template"; `target`: the job or template being edited, or null for a new
+// one; `defaults` prefill a new draft (for example the room a job is created for).
+export function createDraft({ kind = "job", target = null, defaults = {} } = {}) {
+  const intentSource = kind === "template" ? target?.intent : target;
+  const values = { ...intentOf(intentSource) };
+  if (kind === "template") {
+    values.templateName = target?.name ?? null;
+    values.enabled = target ? target.enabled !== false : true;
+    values.automatic = target ? target.automatic === true : false;
+  }
+  for (const [key, value] of Object.entries(defaults || {})) {
+    if (value !== undefined && key in values) values[key] = copy(value);
+  }
+  const id = kind === "template" ? target?.templateId ?? null : target?.jobId ?? null;
+  return freezeDraft(values, { kind, id, baseline: copy(values) });
 }
 
-function canonicalSnapshot(draft) {
+export function applyDraftChange(draft, field, value) {
+  if (!draft || typeof field !== "string" || UNSAFE_KEYS.has(field) || !(field in draft) || field === "meta") return draft;
+  const { meta, ...values } = draft;
+  return freezeDraft({ ...values, [field]: copy(value) }, meta);
+}
+
+function textValue(value) {
+  if (value === null || value === undefined) return null;
+  const trimmed = String(value).trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+function same(one, other) {
+  if (Array.isArray(one) || Array.isArray(other)) {
+    return Array.isArray(one) && Array.isArray(other) && one.length === other.length && one.every((item, index) => item === other[index]);
+  }
+  return one === other;
+}
+
+function canonical(draft) {
   const values = {};
-  values.areas = areaIds(draft);
-  values.mode = canonicalizeMode(draft.mode);
-  values.name = draft.name ?? null;
-  values.vacuumPower = draft.vacuumPower ?? null;
-  values.mopIntensity = draft.mopIntensity ?? null;
-  values.mopRoute = draft.mopRoute ?? null;
-  values.passes = draft.passes;
-  values.source = draft.source ?? null;
-  values.reason = draft.reason ?? null;
-  values.note = draft.note ?? null;
-  values.dedupeKey = draft.dedupeKey ?? null;
-  values.requiredOn = stringList(draft.requiredOn);
-  values.requiredOff = stringList(draft.requiredOff);
-  values.settingsPolicy = draft.settingsPolicy ?? "best_effort";
+  for (const field of [...INTENT_FIELDS, ...TEMPLATE_FIELDS]) {
+    if (!(field in draft)) continue;
+    const value = draft[field];
+    if (TEXT_FIELDS.includes(field) || field === "templateName") values[field] = textValue(value);
+    else if (field === "mode") values[field] = canonicalizeMode(value);
+    else if (Array.isArray(value)) values[field] = value.map((item) => String(item).trim()).filter(Boolean);
+    else values[field] = value ?? null;
+  }
   return values;
 }
 
-function jobSnapshot(normalized) {
-  if (!normalized) return null;
-  return {
-    areas: [...normalized.areas],
-    mode: normalized.mode,
-    name: normalized.name,
-    vacuumPower: normalized.vacuumPower,
-    mopIntensity: normalized.mopIntensity,
-    mopRoute: normalized.mopRoute,
-    passes: normalized.passes,
-    source: normalized.source,
-    reason: normalized.reason,
-    note: normalized.note,
-    dedupeKey: normalized.dedupeKey,
-    requiredOn: [...normalized.requiredOn],
-    requiredOff: [...normalized.requiredOff],
-    settingsPolicy: normalized.settingsPolicy,
-  };
-}
-
-function sameValue(left, right) {
-  if (Array.isArray(left) || Array.isArray(right)) {
-    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
-    return left.every((value, index) => sameValue(value, right[index]));
-  }
-  return left === right;
-}
-
-function draftChanged(draft) {
-  const baseline = draft._baseline;
-  if (!baseline) return false;
-  const current = canonicalSnapshot(draft);
-  return Object.keys(current).some((key) => !sameValue(current[key], baseline[key]));
-}
-
-// `job` is an already normalized job (or null for a new one); the draft never sees wire data.
-export function createDraft(job = null, defaults = {}) {
-  const normalized = job && typeof job === "object" && job.jobId ? job : null;
-  const source = normalized
-    ? {
-        areas: [...normalized.areas],
-        mode: normalized.mode,
-        name: normalized.name,
-        vacuumPower: normalized.vacuumPower,
-        mopIntensity: normalized.mopIntensity,
-        mopRoute: normalized.mopRoute,
-        passes: normalized.passes,
-        source: normalized.source,
-        reason: normalized.reason,
-        note: normalized.note,
-        dedupeKey: normalized.dedupeKey,
-        requiredOn: [...normalized.requiredOn],
-        requiredOff: [...normalized.requiredOff],
-        settingsPolicy: normalized.settingsPolicy,
-      }
-    : {
-        areas: [],
-        mode: "vacuum",
-        name: null,
-        vacuumPower: null,
-        mopIntensity: null,
-        mopRoute: null,
-        passes: 1,
-        source: null,
-        reason: null,
-        note: null,
-        dedupeKey: null,
-        requiredOn: [],
-        requiredOff: [],
-        settingsPolicy: "best_effort",
-      };
-  const draft = { ...source };
-  for (const [key, value] of Object.entries(defaults || {})) {
-    if (value !== undefined) draft[key] = cloneValue(value);
-  }
-  return freezeDraft(draft, {
-    baseline: normalized ? jobSnapshot(normalized) : canonicalSnapshot(draft),
-    jobId: normalized?.jobId ?? null,
-    revision: normalized?.revision ?? null,
-  });
-}
-
-function setPath(root, path, value) {
-  const parts = Array.isArray(path) ? path.map(String) : String(path).split(".");
-  if (!parts.length || parts.some((part) => !part)) return root;
-  const unsafe = new Set(["__proto__", "constructor", "prototype"]);
-  if (parts.some((part) => unsafe.has(part))) return root;
-  const result = cloneValue(root);
-  let cursor = result;
-  for (let index = 0; index < parts.length - 1; index += 1) {
-    const part = parts[index];
-    const next = parts[index + 1];
-    if (cursor[part] === undefined || cursor[part] === null) {
-      cursor[part] = /^\d+$/.test(next) ? [] : {};
-    }
-    cursor = cursor[part];
-  }
-  cursor[parts[parts.length - 1]] = cloneValue(value);
-  return result;
-}
-
-export function applyDraftChange(draft, path, value) {
-  if (!draft || typeof draft !== "object") return createDraft(null);
-  const changed = setPath(draft, path, value);
-  return freezeDraft(changed, {
-    baseline: draft._baseline || canonicalSnapshot(draft),
-    jobId: draft._jobId ?? null,
-    revision: draft._revision ?? null,
-  });
-}
-
-function setError(errors, path, code) {
-  if (errors[path] === undefined) errors[path] = code;
-}
-
-function validText(value) {
-  return value === null || value === undefined || (typeof value === "string" && value.trim());
-}
-
-function payloadFrom(draft, { includeNulls = false } = {}) {
-  const snapshot = canonicalSnapshot(draft);
-  const result = {
-    areas: [...snapshot.areas],
-    mode: snapshot.mode,
-    passes: snapshot.passes,
-    settings_policy: snapshot.settingsPolicy,
-    required_on: [...snapshot.requiredOn],
-    required_off: [...snapshot.requiredOff],
-  };
-  const mappings = [
-    ["name", "name"],
-    ["vacuumPower", "vacuum_power"],
-    ["mopIntensity", "mop_intensity"],
-    ["mopRoute", "mop_route"],
-    ["source", "source"],
-    ["reason", "reason"],
-    ["note", "note"],
-    ["dedupeKey", "dedupe_key"],
-  ];
-  for (const [key, wireKey] of mappings) {
-    const value = snapshot[key];
-    if (includeNulls || value !== null && value !== undefined) result[wireKey] = value;
-  }
-  return result;
-}
-
-export function draftToCreatePayload(draft) {
-  return Object.freeze(payloadFrom(draft));
+export function isDirty(draft) {
+  const current = canonical(draft);
+  const baseline = canonical({ ...draft.meta.baseline });
+  return Object.keys(current).some((field) => !same(current[field], baseline[field]));
 }
 
 export function validateDraft(draft) {
-  const value = draft && typeof draft === "object" ? draft : createDraft(null);
+  const values = canonical(draft);
   const errors = {};
-  const areas = Array.isArray(value.areas) ? value.areas : [];
-  const normalizedAreas = areas.map(areaValue);
-  if (!normalizedAreas.length) setError(errors, "areas", "job_requires_area");
-  const seenAreas = new Set();
-  for (let index = 0; index < normalizedAreas.length; index += 1) {
-    const area = normalizedAreas[index];
-    if (!area.areaId) setError(errors, `areas.${index}`, "empty_target");
-    else if (seenAreas.has(area.areaId)) setError(errors, `areas.${index}`, "duplicate_area");
-    seenAreas.add(area.areaId);
-    if (area.mapContext === "") setError(errors, `areas.${index}`, "empty_map_context");
+  const fail = (field, code) => {
+    if (!(field in errors)) errors[field] = code;
+  };
+  if (values.roomIds.length === 0) fail("roomIds", "job_requires_area");
+  if (new Set(values.roomIds).size !== values.roomIds.length) fail("roomIds", "duplicate_area");
+  if (!values.mode) fail("mode", "invalid_cleaning_mode");
+  if (!Number.isInteger(values.passes) || values.passes < PASS_MIN || values.passes > PASS_MAX) fail("passes", "invalid_pass_count");
+  for (const field of ["vacuumPower", "mopIntensity"]) {
+    if (values[field] !== null && !isSemanticLevel(values[field])) fail(field, "unsupported_cleaning_preference");
   }
-  const contexts = normalizedAreas.map((area) => area.mapContext);
-  if (new Set(contexts).size > 1) setError(errors, "areas", "mixed_map_contexts");
-
-  const mode = canonicalizeMode(value.mode);
-  if (!mode) setError(errors, "mode", "invalid_cleaning_mode");
-  if (!Number.isInteger(value.passes) || value.passes < PASS_MIN || value.passes > PASS_MAX) {
-    setError(errors, "passes", "invalid_pass_count");
+  if (values.mopRoute !== null && !isMopRoute(values.mopRoute)) fail("mopRoute", "unsupported_cleaning_preference");
+  // `JobIntent`: suction off only while mopping, water off only while vacuuming.
+  if (values.vacuumPower === "off" && values.mode !== "mop") fail("vacuumPower", "preference_conflicts_with_cleaning_mode");
+  if (values.mopIntensity === "off" && values.mode !== "vacuum") fail("mopIntensity", "preference_conflicts_with_cleaning_mode");
+  if (!isSettingsPolicy(values.settingsPolicy)) fail("settingsPolicy", "unsupported_cleaning_preference");
+  for (const field of ["requiredOn", "requiredOff"]) {
+    if (values[field].some((entityId) => !ENTITY_ID.test(entityId))) fail(field, "invalid_entity_id");
+    if (new Set(values[field]).size !== values[field].length) fail(field, "duplicate_entity");
   }
-
-  for (const field of TEXT_FIELDS) {
-    if (!validText(value[field])) setError(errors, field, `empty_${field === "dedupeKey" ? "dedupe_key" : field}`);
+  if (values.requiredOn.some((entityId) => values.requiredOff.includes(entityId))) {
+    fail("requiredOn", "contradictory_state_requirement");
+    fail("requiredOff", "contradictory_state_requirement");
   }
-  if (value.vacuumPower !== null && value.vacuumPower !== undefined && !isSemanticLevel(value.vacuumPower)) {
-    setError(errors, "vacuumPower", "unsupported_cleaning_preference");
-  }
-  if (value.mopIntensity !== null && value.mopIntensity !== undefined && !isSemanticLevel(value.mopIntensity)) {
-    setError(errors, "mopIntensity", "unsupported_cleaning_preference");
-  }
-  if (value.mopRoute !== null && value.mopRoute !== undefined && !isMopRoute(value.mopRoute)) {
-    setError(errors, "mopRoute", "unsupported_cleaning_preference");
-  }
-  if (!isSettingsPolicy(value.settingsPolicy)) setError(errors, "settingsPolicy", "unsupported_cleaning_preference");
-
-  const requiredOn = Array.isArray(value.requiredOn) ? value.requiredOn : [];
-  const requiredOff = Array.isArray(value.requiredOff) ? value.requiredOff : [];
-  const normalizedOn = stringList(requiredOn);
-  const normalizedOff = stringList(requiredOff);
-  if (normalizedOn.length !== requiredOn.length || new Set(normalizedOn).size !== normalizedOn.length) {
-    setError(errors, "requiredOn", "invalid_required_on");
-  }
-  if (normalizedOff.length !== requiredOff.length || new Set(normalizedOff).size !== normalizedOff.length) {
-    setError(errors, "requiredOff", "invalid_required_off");
-  }
-  if (normalizedOn.some((item) => normalizedOff.includes(item))) {
-    setError(errors, "requiredOn", "contradictory_state_requirement");
-    setError(errors, "requiredOff", "contradictory_state_requirement");
-  }
-
-  const valid = Object.keys(errors).length === 0;
-  const payload = valid ? payloadFrom(value) : null;
-  return Object.freeze({
-    errors: Object.freeze({ ...errors }),
-    dirty: draftChanged(value),
-    payload,
-    valid,
-  });
+  if (draft.meta.kind === "template" && values.templateName === null) fail("templateName", "template_name_required");
+  return Object.freeze({ valid: Object.keys(errors).length === 0, errors: Object.freeze(errors), dirty: isDirty(draft) });
 }
 
-function canonicalField(draft, key) {
-  if (key === "areas") return areaIds({ areas: draft?.areas || [] });
-  if (key === "mode") return canonicalizeMode(draft?.mode);
-  if (key === "requiredOn" || key === "requiredOff") return stringList(draft?.[key]);
-  return draft?.[key] ?? null;
+// The full intent for `create_job` or a template: unset optional fields are omitted.
+export function draftToIntent(draft) {
+  const values = canonical(draft);
+  const result = {};
+  for (const field of INTENT_FIELDS) {
+    const value = values[field];
+    if (value === null && NULLABLE.has(field)) continue;
+    result[WIRE_NAMES[field]] = Array.isArray(value) ? [...value] : value;
+  }
+  return Object.freeze(result);
 }
 
-// Only fields that actually differ from the stored job travel to `update_job`.
-export function draftToUpdatePatch(draft, job) {
-  const normalized = job && typeof job === "object" && job.jobId ? job : null;
-  if (!normalized) return Object.freeze({});
-  const current = {
-    areas: [...normalized.areas],
-    mode: normalized.mode,
-    name: normalized.name,
-    vacuumPower: normalized.vacuumPower,
-    mopIntensity: normalized.mopIntensity,
-    mopRoute: normalized.mopRoute,
-    passes: normalized.passes,
-    source: normalized.source,
-    reason: normalized.reason,
-    note: normalized.note,
-    dedupeKey: normalized.dedupeKey,
-    requiredOn: [...normalized.requiredOn],
-    requiredOff: [...normalized.requiredOff],
-    settingsPolicy: normalized.settingsPolicy,
-  };
-  const wireNames = {
-    areas: "areas",
-    mode: "mode",
-    name: "name",
-    vacuumPower: "vacuum_power",
-    mopIntensity: "mop_intensity",
-    mopRoute: "mop_route",
-    passes: "passes",
-    source: "source",
-    reason: "reason",
-    note: "note",
-    dedupeKey: "dedupe_key",
-    requiredOn: "required_on",
-    requiredOff: "required_off",
-    settingsPolicy: "settings_policy",
-  };
+// Only the fields that differ from the job being edited travel to `update_job`; a cleared
+// optional field travels as an explicit null.
+export function draftToUpdatePatch(draft) {
+  const values = canonical(draft);
+  const baseline = canonical({ ...draft.meta.baseline });
   const patch = {};
-  for (const key of Object.keys(wireNames)) {
-    const next = canonicalField(draft, key);
-    if (!sameValue(next, current[key])) patch[wireNames[key]] = Array.isArray(next) ? [...next] : next;
+  for (const field of INTENT_FIELDS) {
+    if (same(values[field], baseline[field])) continue;
+    if (values[field] === null && !NULLABLE.has(field)) continue;
+    patch[WIRE_NAMES[field]] = Array.isArray(values[field]) ? [...values[field]] : values[field];
   }
   return Object.freeze(patch);
 }
 
-export { TEXT_FIELDS, OPTIONAL_FIELDS };
+// `save_template` replaces the whole template.
+export function draftToTemplate(draft) {
+  const values = canonical(draft);
+  const result = { name: values.templateName, intent: draftToIntent(draft), enabled: values.enabled !== false, automatic: values.automatic === true };
+  if (draft.meta.id) result.template_id = draft.meta.id;
+  return Object.freeze(result);
+}

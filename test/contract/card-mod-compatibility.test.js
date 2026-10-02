@@ -1,21 +1,26 @@
-"use strict";
-// The promise card-mod relies on: nodes the card did not create are never touched.
-// Boundary: the mount contract only; styling decisions live in the style slices.
+// The promise card-mod relies on: nodes the card did not create are never touched, in the
+// shadow root or inside ha-card, across renders of the assembled card.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { JSDOM } = require("jsdom");
+const { createTestEnvironment } = require("../helpers/load-card.jsdom.js");
+const { mountCard, FIXED_NOW } = require("../helpers/mount-card.js");
 
-test("shadow mount keeps foreign card-mod nodes outside owned nodes", async () => {
-  const { createShadowMount } = await import("../../src/render/composition/shadow-mount.js");
-  const { createRenderContext } = await import("../../src/render/primitives/render-context.js");
-  const dom = new JSDOM("<!doctype html><body></body>");
-  const root = dom.window.document.createElement("div");
-  const mount = createShadowMount(root);
-  mount.mount(createRenderContext(dom.window.document), { css: "a{}", bodyHtml: "<div>one</div>" });
-  const cardMod = dom.window.document.createElement("card-mod");
-  root.appendChild(cardMod);
-  mount.mount(createRenderContext(dom.window.document), { css: "b{}", bodyHtml: "<div>two</div>" });
-  assert.ok(mount.foreignNodes().includes(cardMod));
-  assert.equal(root.querySelector("ha-card").textContent.trim(), "two");
+test("foreign nodes in the shadow root and in ha-card survive every render", async () => {
+  const env = createTestEnvironment({ now: FIXED_NOW });
+  const card = await mountCard({ env });
+  const cardMod = env.document.createElement("card-mod");
+  card.root.appendChild(cardMod);
+  const style = env.document.createElement("style");
+  style.textContent = ".voc-title { color: red; }";
+  card.root.querySelector("ha-card").appendChild(style);
+  await card.click('[role="tab"][data-view="rooms"]');
+  card.card.setConfig({ type: "custom:vacuum-orchestrator-card", title: "Changed" });
+  await card.settle();
+  assert.equal(card.root.querySelector("card-mod"), cardMod);
+  assert.equal(card.root.querySelector("ha-card > style"), style);
+  assert.equal(card.root.querySelectorAll("ha-card").length, 1);
+  assert.deepEqual(card.card.config, { type: "custom:vacuum-orchestrator-card", title: "Changed" });
+  card.unmount();
+  env.cleanupAll();
 });

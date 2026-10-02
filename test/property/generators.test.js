@@ -1,4 +1,3 @@
-"use strict";
 // Generator and shrinking diagnostics remain reproducible across runs.
 
 const test = require("node:test");

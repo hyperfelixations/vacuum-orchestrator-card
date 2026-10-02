@@ -1,3 +1,8 @@
+// The keys a card configuration may carry at its top level, and what an unknown one means (RCC
+// key contract). A key within two edits of one of the card's options is a typo and refuses the
+// configuration with that option named; any other unknown key is foreign, warned about and
+// ignored, so a key Home Assistant or a frontend module adds later never breaks the card.
+
 import { createDiagnostic } from "../core/diagnostics.js";
 import { rejectConfiguration } from "./errors.js";
 import { nearestKey } from "./suggest.js";
@@ -9,36 +14,23 @@ export const TOP_LEVEL_KEYS = Object.freeze(new Set([
   "accent_line",
   "language",
   "show",
-  "sections",
-  "start_section",
+  "views",
+  "start_view",
   "page_size",
   "time_format",
-  "density",
   "confirm_destructive",
-  "tap_action",
-  "hold_action",
 ]));
 
-export const FRAMEWORK_KEYS = Object.freeze(new Set([
-  "type",
-  "index",
-  "view_index",
-  "view_layout",
-  "layout_options",
-  "grid_options",
-  "visibility",
-  "disabled",
-  "card_mod",
-]));
+// Written by Home Assistant (`LovelaceCardConfig`) and by card-mod; read by them, ignored here.
+export const FRAMEWORK_KEYS = Object.freeze(new Set(["type", "index", "view_index", "view_layout", "layout_options", "grid_options", "visibility", "disabled", "card_mod"]));
+
+const KNOWN_KEYS = Object.freeze(new Set([...TOP_LEVEL_KEYS, ...FRAMEWORK_KEYS]));
 
 export function checkTopLevelKeys(config, diagnostics) {
-  const known = new Set([...TOP_LEVEL_KEYS, ...FRAMEWORK_KEYS]);
   for (const key of Object.keys(config)) {
-    if (known.has(key)) continue;
-    const suggestion = nearestKey(key, known);
-    if (suggestion && TOP_LEVEL_KEYS.has(suggestion)) {
-      rejectConfiguration("config.unknown_key", { key, suggestion });
-    }
+    if (KNOWN_KEYS.has(key)) continue;
+    const suggestion = nearestKey(key, KNOWN_KEYS);
+    if (suggestion && TOP_LEVEL_KEYS.has(suggestion)) rejectConfiguration("config.unknown_key", { key, suggestion });
     diagnostics.push(createDiagnostic("config.foreign_key", { path: key, value: config[key] }));
   }
 }

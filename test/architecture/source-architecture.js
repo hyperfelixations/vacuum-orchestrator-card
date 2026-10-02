@@ -16,12 +16,14 @@ const LAYERS = Object.freeze([
   { prefix: "domain/", name: "domain", layer: 1 },
   { prefix: "backend/", name: "backend", layer: 2 },
   { prefix: "application/", name: "application", layer: 3 },
+  { prefix: "presentation/common/", name: "presentation/common", layer: 4 },
   { prefix: "presentation/shell/", name: "presentation/shell", layer: 4 },
-  { prefix: "presentation/sections/", name: "presentation/sections", layer: 4 },
+  { prefix: "presentation/views/", name: "presentation/views", layer: 4 },
+  { prefix: "presentation/overlays/", name: "presentation/overlays", layer: 4 },
   { prefix: "render/primitives/", name: "render/primitives", layer: 5 },
   { prefix: "render/composition/", name: "render/composition", layer: 5 },
   { prefix: "styles/", name: "styles", layer: 5 },
-  { prefix: "sections/", name: "sections", layer: 6 },
+  { prefix: "views/", name: "views", layer: 6 },
   { prefix: "controllers/render/", name: "controllers/render", layer: 7 },
   { prefix: "controllers/runtime/", name: "controllers/runtime", layer: 7 },
   { prefix: "element/", name: "element", layer: 8 },
@@ -30,7 +32,13 @@ const COMPOSITION_ROOT = Object.freeze({ name: "index", layer: 9 });
 
 // Same-layer imports that are part of the design. Everything else on one layer is a sibling
 // import and forbidden.
-const ALLOWED_SIBLING_IMPORTS = Object.freeze([["render/composition", "render/primitives"]]);
+const ALLOWED_SIBLING_IMPORTS = Object.freeze([
+  ["render/composition", "render/primitives"],
+  ["presentation/shell", "presentation/common"],
+  ["presentation/views", "presentation/common"],
+  ["presentation/overlays", "presentation/common"],
+  ["presentation/overlays", "presentation/views"],
+]);
 
 // Imports forbidden even though they point downwards.
 const FORBIDDEN_IMPORTS = Object.freeze([

@@ -1,74 +1,63 @@
-// The header: icon, title, the automatic status sentence and the status pill.
-// Precedence of both the pill and the sentence: a connection problem, then jobs that need
-// attention, then work in progress, then the waiting queue. See internal dev doc §5 "Kopfzeile".
+// The header: icon, title, the automatic status sentence and the pill (RCC header contract).
+// `show` decides whether a part is drawn; the option decides what it says.
 
-const CONNECTION_STATUS = Object.freeze({
-  connecting: "status.connecting",
-  backend_missing: "status.notInstalled",
-  backend_not_loaded: "status.notLoaded",
-  api_incompatible: "status.incompatible",
-  disconnected: "status.disconnected",
-  reconnecting: "status.reconnecting",
-});
+import { list, roomIndex, robotName, slotData, jobTitle } from "../common/lookups.js";
+import { jobStateLabel, relative, t } from "../common/texts.js";
 
-const CONNECTION_SENTENCE = Object.freeze({
-  backend_missing: "unavailable.backendMissing",
-  backend_not_loaded: "unavailable.backendNotLoaded",
-  api_incompatible: "unavailable.apiIncompatible",
-  disconnected: "unavailable.disconnected",
-});
-
-const MODE_SUFFIX = Object.freeze({ vacuum_and_mop: "vacuumAndMop", vacuum_then_mop: "vacuumThenMop" });
-
-function attentionCount(model) {
-  return model.attention?.jobs?.length ?? 0;
+function attentionSentence(model, texts) {
+  const targets = list(slotData(model, "queue")?.recoveryTargets);
+  if (targets.length === 1) return t(texts, "subtitle.recoveryOne", { robot: robotName(targets[0].robotId, model) });
+  if (targets.length > 1) return t(texts, "subtitle.recoveryMany", { count: targets.length });
+  const count = list(slotData(model, "openJobs")?.jobs).filter((job) => job.state === "needs_attention").length || model.summary?.attentionJobs || 0;
+  return count ? t(texts, "subtitle.attentionJobs", { count }) : t(texts, "subtitle.attention");
 }
 
-function statusLabel(model, texts) {
-  const key = CONNECTION_STATUS[model.connection?.state];
-  if (key) return texts.t(key);
-  if (attentionCount(model) > 0 || model.queue?.needsAttention) return texts.t("status.attention");
-  if (model.queue?.mode === "running" || model.active?.jobs?.length) return texts.t("status.running");
-  if (model.queue?.mode === "paused") return texts.t("status.paused");
-  if (model.permissions?.canCommand === false) return texts.t("status.readOnly");
-  return texts.t("status.idle");
-}
-
-function areaNames(job, model) {
-  const catalog = new Map((model.areas?.catalog || []).map((area) => [area.areaId, area.name]));
-  return job.areas.map((areaId) => catalog.get(areaId) || areaId).join(", ");
-}
-
-export function composeAutomaticSubtitle(model, texts) {
-  const connection = CONNECTION_SENTENCE[model.connection?.state];
-  if (connection) return texts.t(connection);
-  const attention = attentionCount(model);
-  if (attention > 0) return texts.t("subtitle.attention", { count: attention });
-  const active = model.active?.jobs?.[0];
-  if (active) {
-    return texts.t("subtitle.activeJob", {
-      name: active.name || areaNames(active, model),
-      operation: texts.t(`job.mode.${MODE_SUFFIX[active.mode] || active.mode}`),
-    });
+export function automaticSubtitle(model, status, texts) {
+  const queue = slotData(model, "queue");
+  const waiting = queue?.total ?? model.live?.pendingJobs ?? model.summary?.queueLength ?? 0;
+  switch (status) {
+    case "attention":
+      return attentionSentence(model, texts);
+    case "cleaning": {
+      const job = list(slotData(model, "openJobs")?.jobs).find((entry) => entry.state !== "needs_attention");
+      return t(texts, "subtitle.activeJob", { job: jobTitle(job, roomIndex(model), model), state: jobStateLabel(texts, job?.state) });
+    }
+    case "running":
+      if (queue?.run?.active && queue.run.deadline !== null) return t(texts, "subtitle.runEnding", { when: relative(texts, queue.run.deadline, model.nowMs) });
+      return waiting ? t(texts, "subtitle.waitingRunning", { count: waiting }) : t(texts, "subtitle.running");
+    case "paused":
+      return t(texts, "subtitle.waitingPaused", { count: waiting });
+    case "idle":
+      return waiting ? t(texts, "subtitle.waiting", { count: waiting }) : t(texts, "subtitle.nothingWaiting");
+    case "setup":
+      return waiting ? t(texts, "subtitle.waiting", { count: waiting }) : t(texts, "subtitle.setupIncomplete");
+    default:
+      return t(texts, `subtitle.${status}`);
   }
-  const queued = model.queue?.total ?? 0;
-  if (queued > 0) return texts.t(model.queue.mode === "paused" ? "subtitle.queuedPaused" : "subtitle.queued", { count: queued });
-  return texts.t("subtitle.nothingToDo");
 }
 
-export function buildHeader({ model = {}, config = {}, texts } = {}) {
-  const title = config.title?.text ?? texts.t("card.title");
-  const subtitle = config.subtitle?.text ?? composeAutomaticSubtitle(model, texts);
+// `data-parts` lists the present header parts when one is missing (RCC header layout).
+export function buildHeader({ model = {}, config = {}, texts, status } = {}) {
+  const show = config.show || {};
+  const title = config.title?.text ?? t(texts, "card.title");
+  const subtitle = config.subtitle?.text ?? automaticSubtitle(model, status, texts);
+  const hasIcon = show.icon !== false;
+  const hasTitle = show.title !== false && title !== "";
+  const hasSubtitle = show.subtitle !== false && subtitle !== "";
+  const hasPill = show.pill !== false;
+  const parts = [hasIcon && "icon", (hasTitle || hasSubtitle) && "title", hasPill && "pill"].filter(Boolean);
   return {
-    hasIcon: config.show?.icon !== false,
+    visible: parts.length > 0,
+    parts: parts.length === 3 ? null : parts.join(" "),
+    hasIcon,
     icon: config.icon || "mdi:robot-vacuum",
-    hasTitle: title !== "" && config.show?.title !== false,
+    hasTitle,
     title,
     titleOverflow: config.title?.overflow || "wrap",
-    hasSubtitle: subtitle !== "" && config.show?.subtitle !== false,
+    hasSubtitle,
     subtitle,
     subtitleOverflow: config.subtitle?.overflow || "clip",
-    hasPill: config.show?.pill !== false,
-    statusLabel: statusLabel(model, texts),
+    hasPill,
+    pill: t(texts, `status.${status}`),
   };
 }

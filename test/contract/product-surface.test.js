@@ -1,4 +1,3 @@
-"use strict";
 // The product surface: every vocabulary the card exposes to users and to YAML, held to the
 // manifest and to the public README.
 
@@ -8,16 +7,34 @@ const fs = require("node:fs");
 const path = require("node:path");
 const manifest = require("../manifests/product-surface.js");
 
-test("the source offers exactly the manifest's languages, sections and vocabularies", async () => {
+test("the source offers exactly the manifest's languages, views, options and vocabularies", async () => {
   const { TRANSLATIONS } = await import("../../src/i18n/registry.js");
-  const { SECTION_DEFINITIONS } = await import("../../src/sections/index.js");
+  const { VIEWS } = await import("../../src/views/registry.js");
   const schema = await import("../../src/domain/job-schema.js");
-  const { CAPABILITY_KEYS } = await import("../../src/backend/capabilities.js");
   assert.deepEqual(Object.keys(TRANSLATIONS), manifest.languages);
-  assert.deepEqual(SECTION_DEFINITIONS.map((definition) => definition.key), manifest.sections);
+  assert.deepEqual(VIEWS.map((view) => view.key), manifest.views);
+  assert.deepEqual(Object.fromEntries(VIEWS.map((view) => [view.key, Object.keys(view.optionsSchema)])), manifest.viewOptions);
   assert.deepEqual([...schema.CLEANING_MODES], manifest.modes);
   assert.deepEqual([...schema.JOB_STATES], manifest.states);
-  assert.deepEqual([...CAPABILITY_KEYS], manifest.capabilities);
+});
+
+test("the card uses every action, command and query of the integration", async () => {
+  const { ACTIONS, CONFIGURATION_COMMANDS, CONFIGURATION_QUERIES } = await import("../../src/backend/protocol.js");
+  assert.deepEqual(Object.keys(ACTIONS), manifest.actions);
+  assert.deepEqual([...CONFIGURATION_COMMANDS], manifest.commands);
+  assert.deepEqual([...CONFIGURATION_QUERIES], manifest.queries);
+  const sources = [];
+  const walk = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(".js") && !full.includes(`${path.sep}backend${path.sep}`)) sources.push(fs.readFileSync(full, "utf8"));
+    }
+  };
+  walk(path.join(__dirname, "..", "..", "src"));
+  const all = sources.join("\n");
+  const unused = [...manifest.actions, ...manifest.commands].filter((name) => !all.includes(`"${name}"`));
+  assert.deepEqual(unused, [], "every command is sent by some control");
 });
 
 test("the configuration keys are exactly the manifest's", async () => {
@@ -28,19 +45,10 @@ test("the configuration keys are exactly the manifest's", async () => {
 });
 
 // Every option the card reads has to be documented for the people who write the YAML.
-test("the public README documents every configuration key and section", () => {
+test("the public README documents every configuration key, view and view option", () => {
   const readme = fs.readFileSync(path.join(__dirname, "..", "..", "README.md"), "utf8");
-  for (const key of [...manifest.topLevelKeys, ...manifest.showKeys, ...manifest.sections]) {
+  const options = Object.values(manifest.viewOptions).flat();
+  for (const key of [...manifest.topLevelKeys, ...manifest.showKeys, ...manifest.views, ...options]) {
     assert.ok(readme.includes(`\`${key}\``), `README does not mention \`${key}\``);
-  }
-});
-
-test("every section has a translated label in every language", async () => {
-  const { TRANSLATIONS } = await import("../../src/i18n/registry.js");
-  for (const [language, table] of Object.entries(TRANSLATIONS)) {
-    for (const section of manifest.sections) {
-      assert.equal(typeof table[`section.${section}`], "string", `${language}: section.${section}`);
-      assert.equal(typeof table[`section.short.${section}`], "string", `${language}: section.short.${section}`);
-    }
   }
 });

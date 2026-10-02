@@ -1,0 +1,66 @@
+<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Living room · Cleaning</div>
+</div>
+<div class="voc-status-pill">Cleaning</div>
+</div>
+<div class="voc-body" id="voc-panel" data-body="overlay:release">
+<section class="voc-overlay" data-key="overlay:release" role="dialog" aria-modal="true" aria-labelledby="voc-overlay-title">
+<header class="voc-overlay-head">
+<button type="button" class="voc-button voc-button--icon voc-back" data-action="back" aria-label="Back" title="Back">
+<ha-icon icon="mdi:arrow-left" aria-hidden="true">
+</ha-icon>
+</button>
+<h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">Release Bathroom</h2>
+</header>
+<div class="voc-form">
+<div class="voc-field" data-key="field:overlay:releaseKind" data-field-control="segmented">
+<div class="voc-field-label" id="voc-field-overlay-releaseKind-label">Release</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-overlay-releaseKind-label" aria-describedby="voc-field-overlay-releaseKind-hint" data-control="choice">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:releaseKind&quot;,&quot;value&quot;:&quot;permanent&quot;}" data-value="permanent" data-key="option:permanent">
+<ha-icon icon="mdi:lock-open-variant-outline" aria-hidden="true">
+</ha-icon>
+<span>Until revoked</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:releaseKind&quot;,&quot;value&quot;:&quot;once&quot;}" data-value="once" data-key="option:once">
+<ha-icon icon="mdi:numeric-1-circle-outline" aria-hidden="true">
+</ha-icon>
+<span>For one job</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:releaseKind&quot;,&quot;value&quot;:&quot;timed&quot;}" data-value="timed" data-key="option:timed">
+<ha-icon icon="mdi:timer-outline" aria-hidden="true">
+</ha-icon>
+<span>For a set time</span>
+</button>
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:releaseKind&quot;,&quot;value&quot;:&quot;queue_run&quot;}" data-value="queue_run" data-key="option:queue_run">
+<ha-icon icon="mdi:playlist-play" aria-hidden="true">
+</ha-icon>
+<span>For this queue run</span>
+</button>
+</div>
+<div class="voc-field-hint" id="voc-field-overlay-releaseKind-hint">The room may be cleaned until the current queue run, or the next one, ends.</div>
+</div>
+</div>
+<div class="voc-overlay-actions">
+<button type="button" class="voc-button voc-button--quiet" data-action="back">
+<span class="voc-button-label">Cancel</span>
+</button>
+<button type="button" class="voc-button voc-button--primary" data-action="release-room" data-args="{&quot;roomId&quot;:&quot;room-bathroom&quot;}">
+<ha-icon icon="mdi:lock-open-variant-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Release</span>
+</button>
+</div>
+</section>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

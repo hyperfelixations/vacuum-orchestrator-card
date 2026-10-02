@@ -1,53 +1,49 @@
-// Readiness as the backend reports it. The card never evaluates requirements itself.
+// Readiness exactly as the integration reports it. The card never evaluates a requirement;
+// it only orders the backend's explanation for display. "ready" does not mean a robot can run
+// the job: that answer comes from the execution explanation.
 
-import { isReadinessState } from "./job-schema.js";
+import { isOperation, isReadinessState, isRequirementState } from "./job-schema.js";
+import { enumerated, isRecord, records, strings, text, unknownFields } from "./wire-values.js";
 
-const WIRE_FIELDS = new Set(["state", "failed_on", "failed_off", "unknown"]);
+const READINESS_FIELDS = new Set(["state", "failed_on", "failed_off", "unknown", "reason_codes", "blocked_room_ids", "requirements"]);
 
-function orderedUniqueStrings(value) {
-  if (!Array.isArray(value)) return [];
-  const result = [];
-  const seen = new Set();
-  for (const item of value) {
-    if (typeof item !== "string") continue;
-    const normalized = item.trim();
-    if (!normalized || seen.has(normalized)) continue;
-    seen.add(normalized);
-    result.push(normalized);
-  }
-  return Object.freeze(result);
+function requirementResult(wire) {
+  const entityId = text(wire.entity_id);
+  if (!entityId) return null;
+  return Object.freeze({
+    entityId,
+    state: enumerated(wire.state, isRequirementState) ?? "unknown",
+    reason: text(wire.reason),
+    roomId: text(wire.room_id),
+    robotId: text(wire.robot_id),
+    operation: enumerated(wire.operation, isOperation),
+  });
 }
 
 export function normalizeReadiness(wire) {
-  if (!wire || typeof wire !== "object") return null;
+  if (!isRecord(wire)) return null;
   return Object.freeze({
-    state: isReadinessState(wire.state) ? wire.state : "unknown",
-    failedOn: orderedUniqueStrings(wire.failed_on),
-    failedOff: orderedUniqueStrings(wire.failed_off),
-    unknown: orderedUniqueStrings(wire.unknown),
-    unknownFields: Object.freeze(Object.keys(wire).filter((key) => !WIRE_FIELDS.has(key))),
+    state: enumerated(wire.state, isReadinessState) ?? "unknown",
+    failedOn: strings(wire.failed_on),
+    failedOff: strings(wire.failed_off),
+    unknown: strings(wire.unknown),
+    reasonCodes: strings(wire.reason_codes),
+    blockedRoomIds: strings(wire.blocked_room_ids),
+    requirements: Object.freeze(records(wire.requirements).map(requirementResult).filter(Boolean)),
+    unknownFields: unknownFields(wire, READINESS_FIELDS),
   });
 }
 
-// The entities that explain a non-ready state, blocked ones before unknown ones.
-export function readinessSummary(report) {
-  const value = report && typeof report === "object" ? report : null;
-  const failedOn = value?.failedOn ?? [];
-  const failedOff = value?.failedOff ?? [];
-  const unknown = value?.unknown ?? [];
-  const reasonKeys = [];
-  if (failedOn.length || failedOff.length) reasonKeys.push("blockedBy");
-  if (unknown.length) reasonKeys.push("unknownEntities");
-  const entities = [];
-  const seen = new Set();
-  for (const entity of [...failedOn, ...failedOff, ...unknown]) {
-    if (seen.has(entity)) continue;
-    seen.add(entity);
-    entities.push(entity);
-  }
-  return Object.freeze({
-    state: value?.state ?? "unknown",
-    reasonKeys: Object.freeze(reasonKeys),
-    entities: Object.freeze(entities),
-  });
+// The requirement results that explain a non-ready state, blocked before stale before unknown.
+const PROBLEM_ORDER = Object.freeze({ blocked: 0, stale: 1, unknown: 2 });
+
+export function readinessProblems(readiness) {
+  if (!readiness) return Object.freeze([]);
+  return Object.freeze(
+    readiness.requirements
+      .filter((item) => item.state !== "ready")
+      .map((item, index) => ({ item, index }))
+      .sort((one, other) => PROBLEM_ORDER[one.item.state] - PROBLEM_ORDER[other.item.state] || one.index - other.index)
+      .map(({ item }) => item)
+  );
 }

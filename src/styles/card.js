@@ -1,14 +1,16 @@
+// Card surface, content root and accent line (RCC card slice). The surface is selected by type,
+// so an `ha-card` rule card-mod appends after this sheet wins at equal specificity.
+
 export const CARD_CSS = `
 ha-card {
-  /* An inline box cannot be a size container, so the element's own display is not left to chance. */
   display: block;
   container: voc-card / inline-size;
   border-radius: var(--voc-radius);
   padding: 0;
   overflow: hidden;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--primary-text-color) 6%, transparent), transparent), var(--ha-card-background, var(--card-background-color));
-  border: 1px solid color-mix(in srgb, var(--divider-color, var(--primary-text-color)) 70%, transparent);
-  box-shadow: var(--ha-card-box-shadow, 0 8px 26px color-mix(in srgb, var(--primary-text-color) 18%, transparent));
+  background: linear-gradient(135deg, var(--voc-top-overlay), transparent), var(--ha-card-background, var(--card-background-color));
+  border: 1px solid var(--voc-card-border);
+  box-shadow: var(--ha-card-box-shadow, var(--voc-card-shadow));
 }
 
 .voc-root {
@@ -17,40 +19,45 @@ ha-card {
   gap: 11px;
   padding: 15px 16px 16px;
   color: var(--primary-text-color);
+  outline: none;
 }
 
 .voc-top-line {
   position: absolute;
-  inset: 0 0 auto;
+  left: 0;
+  top: 0;
+  width: 100%;
   height: 3px;
   background: linear-gradient(90deg, var(--tone-color), transparent);
 }
 
 .voc-root[data-accent-line="bottom"] .voc-top-line {
-  inset: auto 0 0;
+  top: auto;
+  bottom: 0;
 }
 
 .voc-body {
   min-width: 0;
 }
 
-.voc-no-section,
 .voc-render-failed {
-  padding: 12px 4px;
-  color: var(--voc-muted);
+  padding: 6px 0;
+  color: var(--secondary-text-color);
   font-size: 13px;
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.3;
   text-align: center;
 }
 
-/* Text for assistive technology only. */
-.voc-sr-only {
+.voc-sr-only,
+.voc-live-region {
   position: absolute;
   width: 1px;
   height: 1px;
+  padding: 0;
   overflow: hidden;
   clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 `;
