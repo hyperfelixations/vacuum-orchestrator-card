@@ -57,13 +57,42 @@ It restores the ordinary bundle after the measurement build.
 
 No release has been published. The manual Release Candidate workflow accepts
 the exact package version, the approved full commit SHA from `main`, and a
-stable or development release kind. It builds the bundle from that commit,
+stable or development release kind. It audits the dependencies (see
+[Dependency security](#dependency-security)), builds the bundle from that commit,
 runs the complete Node suite and an extended property sweep, records the
 baseline anchor and bundle SHA-256, and uploads the candidate. Browser tests
 download and verify that same bundle. Independent official HACS validation
 must pass before the workflow can create an unpublished GitHub draft with the
 tested asset and checksum. Publishing the draft remains a separate owner
 action. `dist/` is never committed.
+
+## Dependency security
+
+```sh
+npm run check:security
+```
+
+The check runs three audits against the installed lockfile:
+
+| Audit | Fails on |
+| --- | --- |
+| `npm audit --omit=dev --audit-level=low` | any advisory against a runtime dependency |
+| `npm audit --audit-level=high` | a high or critical advisory against build and test tooling |
+| `npm audit signatures` | a package without a valid registry signature |
+
+The card has no runtime dependencies today, so the first audit guards the
+moment one is added. The Security workflow runs the check on every push and
+pull request and weekly, and the Release Candidate workflow runs it before the
+build. Dependabot proposes npm and action updates weekly and opens a pull
+request for each security advisory.
+
+An `overrides` entry only raises a transitive package that is in the lockfile
+to a caret minimum such as `^6.16.0`, for a fix its parent does not yet allow.
+An exact pin is rejected: it holds a package on a vulnerable version after its
+fix ships. Every workflow action is pinned to a full commit SHA with its
+version as a comment, and Dependabot moves both together. `hacs/action`
+publishes no current release; its pin is a commit of `main`, renewed by hand.
+`test/architecture/dependency-security.test.js` enforces all of this.
 
 ## Development bundle
 
