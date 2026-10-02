@@ -1,6 +1,7 @@
 // The settings view driven through the built card: the queue run's wait time is changed in
-// minutes, sent in seconds and shown again from the integration's answer; the queue itself no
-// longer carries the setting; a user who may not change it sees it locked and explained.
+// minutes, sent in seconds and shown again from the integration's answer; the queue view does not
+// carry the setting; integration and card name their versions; a user who may not change the
+// setting sees it locked and explained.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -37,6 +38,14 @@ test("the integration block names the version and opens the integration in Home 
   assert.match(integration, /API version/);
   const open = card.root.querySelector('[data-key="integration"] [data-action="navigate"]');
   assert.equal(JSON.parse(open.dataset.args).path, "/_my_redirect/integration?domain=vacuum_orchestrator");
+  card.unmount();
+});
+
+test("the card block names the running card version", async () => {
+  const { CARD_VERSION } = await import("../../../src/core/card-metadata.js");
+  const card = await mountCard({ env, config: { start_view: "settings" } });
+  assert.equal(card.text('[data-key="card"] .voc-block-title'), "Card");
+  assert.deepEqual([...card.root.querySelectorAll('[data-key="card"] .voc-facts dt, [data-key="card"] .voc-facts dd')].map((node) => node.textContent), ["Version", CARD_VERSION]);
   card.unmount();
 });
 

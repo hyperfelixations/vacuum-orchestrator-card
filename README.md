@@ -134,7 +134,7 @@ show:
 | `templates` | Templates for recurring jobs. | Always |
 | `history` | Finished jobs and recorded cleaning runs. | Always |
 | `diagnostics` | Connection, versions, the setup checklist and the integration's event trace. | When something needs a look |
-| `settings` | How long a queue run waits for new work before it ends, and the integration's version. | For administrators |
+| `settings` | How long a queue run waits for new work before it ends, and the versions of the integration and the card. | For administrators |
 
 A string and an object without `enabled` both switch a view on:
 
@@ -325,8 +325,8 @@ If none of this helps, please open a
 and include:
 
 - your Home Assistant version;
-- the card version (open your browser's developer console, type
-  `vacuumOrchestratorCardVersion`, and press Enter);
+- the card version (shown in the **Settings** tab; without it, open your browser's
+  developer console, type `vacuumOrchestratorCardVersion`, and press Enter);
 - the Vacuum Orchestrator version (shown in the **Settings** and
   **Diagnostics** tabs);
 - your browser and its version;

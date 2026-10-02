@@ -774,6 +774,7 @@ export const en = {
   "settings.version": "Version",
   "settings.apiVersion": "API version",
   "settings.openIntegration": "Open in Home Assistant",
+  "settings.card": "Card",
   "queueSettings.title": "Queue run",
   "queueSettings.lead": "When no started job is left and no waiting job can start, Vacuum Orchestrator waits this long before the run ends. New work that can start resets the wait. Rooms released until the end of the run are locked again afterwards.",
   "queueSettings.grace": "Wait time (minutes)",

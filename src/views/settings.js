@@ -27,8 +27,12 @@ function integrationBlock(context, vm) {
   return block(context.t("settings.integration"), `<p class="voc-overlay-lead">${e(context.t("settings.integrationHint"))}</p>${facts(vm.integration.facts)}${open}`, { iconName: "mdi:puzzle-outline", key: "integration" });
 }
 
+function cardBlock(context, vm) {
+  return block(context.t("settings.card"), facts(vm.card.facts), { iconName: "mdi:card-text-outline", key: "card" });
+}
+
 export function renderSettings(context, vm) {
-  return `<div class="voc-view voc-settings" data-key="view:settings">${queueBlock(context, vm)}${integrationBlock(context, vm)}</div>`;
+  return `<div class="voc-view voc-settings" data-key="view:settings">${queueBlock(context, vm)}${integrationBlock(context, vm)}${cardBlock(context, vm)}</div>`;
 }
 
 export const settingsView = Object.freeze({

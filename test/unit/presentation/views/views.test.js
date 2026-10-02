@@ -161,9 +161,11 @@ test("setup starts at the robots with discovery's candidates and moves on with t
   assert.deepEqual(done.steps.find((step) => step.key === "rooms").uncovered.map((room) => room.roomId), ["room-bedroom"]);
 });
 
-// The one integration-wide setting, plus where the integration lives in Home Assistant.
+// The one integration-wide setting, where the integration lives in Home Assistant, and which card
+// version is running.
 test("settings show the queue run's wait time and who may change it", async () => {
   const { buildSettingsView } = await view("settings");
+  const { CARD_VERSION } = await import("../../../../src/core/card-metadata.js");
   const { affordanceContext } = await import("../../../../src/domain/affordances.js");
   const typical = await modelFor("typical");
   const settings = buildSettingsView(typical);
@@ -172,6 +174,7 @@ test("settings show the queue run's wait time and who may change it", async () =
   assert.deepEqual(settings.integration.facts.map((fact) => fact.label), [typical.texts.t("settings.version"), typical.texts.t("settings.apiVersion")]);
   assert.ok(settings.integration.facts.every((fact) => fact.value), "version and API version are known");
   assert.equal(settings.integration.open.path, "/_my_redirect/integration?domain=vacuum_orchestrator");
+  assert.deepEqual(settings.card.facts, [{ label: typical.texts.t("settings.version"), value: CARD_VERSION }]);
   const queue = typical.model.slots.queue;
   const immediate = buildSettingsView({ ...typical, model: { ...typical.model, slots: { ...typical.model.slots, queue: { ...queue, data: { ...queue.data, graceSeconds: 0 } } } } });
   assert.equal(immediate.grace.value, typical.texts.t("settings.graceOff"));

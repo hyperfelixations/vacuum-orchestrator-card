@@ -774,6 +774,7 @@ export const de = {
   "settings.version": "Version",
   "settings.apiVersion": "API-Version",
   "settings.openIntegration": "In Home Assistant öffnen",
+  "settings.card": "Karte",
   "queueSettings.title": "Warteschlangenlauf",
   "queueSettings.lead": "Bleibt kein gestarteter Auftrag übrig und kann kein wartender starten, wartet Vacuum Orchestrator so lange, bevor der Lauf endet. Neue startbare Arbeit setzt die Wartezeit zurück. Räume, die bis zum Laufende freigegeben waren, werden danach wieder gesperrt.",
   "queueSettings.grace": "Wartezeit (Minuten)",
