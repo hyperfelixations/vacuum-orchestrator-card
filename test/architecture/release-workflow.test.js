@@ -52,7 +52,7 @@ test("stable and dev versions use the RCC version contract", () => {
 test("browser and draft consume the same checked candidate bundle", () => {
   assert.match(workflow, /browser-tests:\n(?:.|\n)*?needs: build-and-test/);
   assert.match(workflow, /create-draft:\n(?:.|\n)*?needs:\n      - build-and-test\n      - browser-tests\n      - hacs-validation/);
-  assert.match(workflow, /hacs-validation:\n(?:.|\n)*?uses: hacs\/action@[0-9a-f]{40} # main\n        with:\n          category: plugin/);
+  assert.match(workflow, /hacs-validation:\n(?:.|\n)*?uses: hacs\/action@main\n        with:\n          category: plugin/);
   assert.match(workflow, /path: dist\/vacuum-orchestrator-card\.js/);
   assert.match(workflow, /EXPECTED_SHA256: \$\{\{ needs\.build-and-test\.outputs\.artifact_sha256 \}\}/);
   assert.match(workflow, /npm run test:browser:run -- --retries=0/);
