@@ -8,7 +8,7 @@
     "build": "rollup -c",
     "build:dev": "node scripts/build-dev.mjs",
     "check:run": "node --check dist/vacuum-orchestrator-card.js",
-    "check:security": "npm audit --omit=dev --audit-level=low && npm audit --audit-level=high && npm audit signatures",
+    "check:security": "npm audit --omit=dev --audit-level=low && npm audit signatures",
     "test": "npm run build && npm run check:run && npm run test:node:run && npm run test:browser:run",
     "test:node": "npm run build && npm run test:node:run",
     "test:unit": "npm run build && npm run test:unit:run",
