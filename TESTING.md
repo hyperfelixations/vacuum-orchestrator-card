@@ -56,15 +56,20 @@ It restores the ordinary bundle after the measurement build.
 ## Release preparation
 
 No release has been published. The manual Release Candidate workflow accepts
-the exact package version, the approved full commit SHA from `main`, and a
-stable or development release kind. It audits the dependencies (see
-[Dependency security](#dependency-security)), builds the bundle from that commit,
-runs the complete Node suite and an extended property sweep, records the
+the exact package version, the full SHA of any commit in the history of `main`,
+and a stable or development release kind. A stable version must be higher than
+every published stable version, and every earlier stable release must be an
+ancestor of the approved commit. The workflow audits the dependencies (see
+[Dependency security](#dependency-security)), builds the bundle from the approved
+commit, runs the complete Node suite and an extended property sweep, records the
 baseline anchor and bundle SHA-256, and uploads the candidate. Browser tests
-download and verify that same bundle. Independent official HACS validation
-must pass before the workflow can create an unpublished GitHub draft with the
-tested asset and checksum. Publishing the draft remains a separate owner
-action. `dist/` is never committed.
+download and verify that same bundle. Once a stable release is published,
+official HACS validation must pass before the workflow can create an
+unpublished GitHub draft with the tested asset and checksum; HACS cannot
+validate a repository that has neither a stable release nor a committed bundle,
+so the check is skipped until then and the Validate workflow is run manually
+after the first release is published. Publishing the draft remains a separate
+owner action. `dist/` is never committed.
 
 ## Dependency security
 
