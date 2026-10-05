@@ -49,16 +49,24 @@ export function settingChips(job, texts) {
   return chips;
 }
 
+// A name that already names every room says where the job cleans; any other name is followed
+// by the rooms.
+function nameNamesRooms(name, rooms, language) {
+  const lower = name.toLocaleLowerCase(language);
+  return rooms.every((room) => lower.includes(room.toLocaleLowerCase(language)));
+}
+
 export function buildJobRow(job, { model, texts, index, context, total = 0, timeFormat = "auto" }) {
   const readiness = job.readiness;
   const reasons = readinessReasons(readiness, { index, model, texts });
+  const rooms = list(job.roomIds).map((roomId) => roomName(roomId, index, model));
   return {
     key: job.jobId,
     jobId: job.jobId,
     position: Number.isInteger(job.position) ? String(job.position) : "",
     title: jobTitle(job, index, model),
-    rooms: list(job.roomIds).map((roomId) => roomName(roomId, index, model)).join(", "),
-    showRooms: Boolean(job.name),
+    rooms: rooms.join(", "),
+    showRooms: Boolean(job.name) && !nameNamesRooms(job.name, rooms, texts?.language),
     mode: job.mode,
     modeIcon: MODE_ICONS[job.mode] || "mdi:robot-vacuum",
     modeLabel: modeLabel(texts, job.mode),

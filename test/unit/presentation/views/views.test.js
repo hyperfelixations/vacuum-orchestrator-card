@@ -35,6 +35,18 @@ test("the queue groups recovery, work in progress, attention and waiting jobs", 
   assert.equal("grace" in queue, false, "the wait time is a setting, not part of the queue");
 });
 
+test("a row repeats a job's rooms only when its own name does not already name them", async () => {
+  const { buildJobRow } = await import("../../../../src/presentation/views/job-row.js");
+  const { roomIndex } = await import("../../../../src/presentation/common/lookups.js");
+  const typical = await modelFor("typical");
+  const shared = { model: typical.model, texts: typical.texts, context: typical.context, index: roomIndex(typical.model) };
+  const kitchen = typical.model.slots.queue.data.jobs.find((job) => job.jobId === "job-kitchen");
+  const row = (name) => buildJobRow({ ...kitchen, name }, shared);
+  assert.deepEqual([row("Kitchen and hall").showRooms, row("KITCHEN + HALL").showRooms, row(null).showRooms], [false, false, false]);
+  assert.deepEqual([row("Before guests").showRooms, row("Kitchen").showRooms], [true, true]);
+  assert.equal(row("Before guests").rooms, "Kitchen, Hall");
+});
+
 test("a waiting row explains its readiness in the integration's order", async () => {
   const { buildQueueView } = await view("queue");
   const typical = await modelFor("typical");
