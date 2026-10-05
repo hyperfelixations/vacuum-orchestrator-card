@@ -14,7 +14,7 @@ test("publishes one card registration and the production version identity", asyn
   }));
   expect(registration.customElement).toBe("VacuumOrchestratorCard");
   expect(registration.pickerCount).toBe(1);
-  expect(registration.version).toBe("0.0.1");
+  expect(registration.version).toBe("0.1.0");
 });
 
 test("the null configuration renders the connected queue", async ({ page }) => {

@@ -18,7 +18,7 @@ test("the bundle registers exactly one element and one picker entry", () => {
   assert.equal(dom.window.customCards.filter((entry) => entry.type === "vacuum-orchestrator-card").length, 1);
   assert.equal(dom.window.customCards[0].preview, true);
   assert.match(dom.window.customCards[0].documentationURL, /github\.com/);
-  assert.equal(dom.window.vacuumOrchestratorCardVersion, "0.0.1");
+  assert.equal(dom.window.vacuumOrchestratorCardVersion, "0.1.0");
   const Card = dom.window.customElements.get("vacuum-orchestrator-card");
   assert.deepEqual([typeof Card.getConfigForm, typeof Card.getConfigElement], ["undefined", "undefined"]);
   const suggest = dom.window.customCards[0].getEntitySuggestion;
