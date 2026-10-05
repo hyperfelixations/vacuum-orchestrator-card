@@ -4,7 +4,7 @@
 // refusal becomes this card's notice. See internal dev doc §9 "Aktionsvertrag".
 
 import { CREATE_TARGET, QUEUE_TARGET, jobTarget, robotTarget, roomTarget, templateTarget } from "../../domain/affordances.js";
-import { applyDraftChange, createDraft, draftToIntent, draftToTemplate, draftToUpdatePatch, validateDraft } from "../../domain/job-draft.js";
+import { applyDraftChange, createDraft, draftToIntent, draftToTemplate, draftToUpdatePatch, toggleRoom, validateDraft } from "../../domain/job-draft.js";
 import { createRoomDraft, newBinding, newRequirement, roomDraftToPatch, updateRoomDraft, validateRoomDraft } from "../../domain/room-draft.js";
 import { createRobotDraft, robotDraftToConfiguration, updateRobotDraft, validateRobotDraft } from "../../domain/robot-draft.js";
 import { GRACE_MAX_MINUTES } from "../../presentation/overlays/dialogs.js";
@@ -163,6 +163,10 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
         const current = field.split(".").reduce((node, part) => node?.[part], overlay.draft);
         editDraft(field, current === value ? null : value);
         ui.updateOverlay({ queries: { ...(ui.overlay.queries || {}), [field]: "" } });
+        return;
+      }
+      if (overlay?.kind === "job-editor" && field === "roomIds") {
+        ui.updateOverlay({ draft: toggleRoom(overlay.draft, value) });
         return;
       }
       if ((overlay?.kind === "room-editor" || overlay?.kind === "robot-editor") && field === "requirementsAdd") {

@@ -108,6 +108,10 @@ test("templates show their intent, switches and the rooms whose due period alrea
   assert.equal(weekly.actions.resetDemand.state, "enabled");
   const guests = templates.find((template) => template.templateId === "template-guests");
   assert.deepEqual([guests.tone, guests.actions.instantiate.reason], ["muted", "template_disabled"]);
+  const W = require("../../../fixtures/voi/wire.js");
+  const everywhere = await modelFor("typical", { requests: { templates: { name: "templates", params: {} } }, setup: (fake) => fake.state.templates.push(W.wireTemplate({ template_id: "template-all", intent: { areas: "all", mode: "vacuum" } })) });
+  const all = buildTemplatesView(everywhere).templates.find((template) => template.templateId === "template-all");
+  assert.equal(all.rooms, everywhere.texts.t("field.allRooms"));
 });
 
 test("history pages through all jobs or through cleaning runs", async () => {

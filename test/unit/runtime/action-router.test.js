@@ -39,6 +39,20 @@ async function setup({ config = {}, answer = () => ({ ok: true, data: null }), m
   return { router, ui, commands, navigated };
 }
 
+test("all rooms in the editor excludes single rooms, and a single room ends all rooms", async () => {
+  const { router, ui } = await setup();
+  router.handle("create-job");
+  const rooms = () => [ui.overlay.draft.allRooms, [...ui.overlay.draft.roomIds]];
+  router.handle("toggle-value", { field: "roomIds", value: "room-kitchen" });
+  router.handle("toggle-value", { field: "roomIds", value: "all" });
+  assert.deepEqual(rooms(), [true, []]);
+  router.handle("toggle-value", { field: "roomIds", value: "room-kitchen" });
+  assert.deepEqual(rooms(), [false, ["room-kitchen"]]);
+  router.handle("toggle-value", { field: "roomIds", value: "all" });
+  router.handle("toggle-value", { field: "roomIds", value: "all" });
+  assert.deepEqual(rooms(), [false, []]);
+});
+
 test("queue control sends the command its mode asks for", async () => {
   const { router, commands } = await setup();
   await router.handle("queue-control");

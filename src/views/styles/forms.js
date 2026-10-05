@@ -32,6 +32,7 @@ export const FORMS_CSS = `
 .voc-option:hover { color: var(--primary-text-color); }
 .voc-option.is-selected { border-color: var(--tone-border); background: var(--tone-soft); color: var(--tone-ink); }
 .voc-option[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.voc-option.is-muted { opacity: .55; }
 .voc-option-badge { display: inline-flex; color: var(--voc-warning-ink); }
 .voc-option-badge ha-icon { --mdc-icon-size: 14px; width: 14px; height: 14px; }
 .voc-field.is-invalid .voc-segmented, .voc-field.is-invalid .voc-chips { padding: 4px; margin: -4px; border-radius: 14px; outline: 1px solid color-mix(in srgb, var(--voc-error) 55%, transparent); }

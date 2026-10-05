@@ -4,7 +4,7 @@
 
 import { CREATE_TARGET, decide, jobAffordances, jobTarget, templateAffordances, templateTarget } from "../../domain/affordances.js";
 import { findJob } from "../common/lookups.js";
-import { levelOptionsFor, validateDraft } from "../../domain/job-draft.js";
+import { ALL_ROOMS, levelOptionsFor, validateDraft } from "../../domain/job-draft.js";
 import { CLEANING_MODES, MOP_ROUTES, PASS_MAX, PASS_MIN, SEMANTIC_LEVELS, SETTINGS_POLICIES } from "../../domain/job-schema.js";
 import { coveredRoomIds } from "../../application/setup-status.js";
 import { list, robotsOf, roomsOf } from "../common/lookups.js";
@@ -13,6 +13,14 @@ import { MODE_ICONS } from "../views/job-row.js";
 import { entityField, errorText, field } from "./editor-fields.js";
 
 const notSet = (texts) => ({ value: null, label: t(texts, "value.notSet") });
+
+// All rooms first; while it is chosen the single rooms stay offered but muted.
+function roomField(model, texts, draft, error) {
+  const allRooms = draft.allRooms === true;
+  const options = [{ value: ALL_ROOMS, label: t(texts, "field.allRooms"), icon: "mdi:select-all" }, ...roomOptions(model, texts, list(draft.roomIds)).map((option) => (allRooms ? { ...option, muted: true } : option))];
+  const hintKey = allRooms ? (draft.meta.kind === "template" ? "editor.allRoomsTemplate" : "editor.allRoomsJob") : roomsOf(model).length ? null : "editor.noRooms";
+  return field(texts, { key: "roomIds", labelKey: "field.rooms", control: "chips", value: allRooms ? [ALL_ROOMS] : list(draft.roomIds), options, error, hintKey });
+}
 
 function roomOptions(model, texts, selected) {
   const covered = coveredRoomIds(robotsOf(model));
@@ -49,7 +57,7 @@ export function buildJobEditor({ model, texts, context, overlay }) {
     : [];
 
   const basics = [
-    field(texts, { key: "roomIds", labelKey: "field.rooms", control: "chips", value: list(draft.roomIds), options: roomOptions(model, texts, list(draft.roomIds)), error: error("roomIds"), hintKey: roomsOf(model).length ? null : "editor.noRooms" }),
+    roomField(model, texts, draft, error("roomIds")),
     field(texts, { key: "mode", labelKey: "field.mode", control: "segmented", value: draft.mode, options: CLEANING_MODES.map((mode) => ({ value: mode, label: modeLabel(texts, mode), icon: MODE_ICONS[mode] })), error: error("mode") }),
   ];
 

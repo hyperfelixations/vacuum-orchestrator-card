@@ -25,7 +25,7 @@ test("a new job editor offers rooms by name with a mark for unreachable rooms", 
   assert.equal(vm.save.label, built.texts.t("action.addToQueue"));
   assert.equal(vm.remove, null);
   const rooms = fieldsOf(vm, "basics").roomIds.options;
-  assert.deepEqual(rooms.map((room) => room.label), ["Bathroom", "Bedroom", "Hall", "Kitchen", "Living room"]);
+  assert.deepEqual(rooms.map((room) => room.label), ["All rooms", "Bathroom", "Bedroom", "Hall", "Kitchen", "Living room"]);
   assert.equal(rooms.find((room) => room.value === "room-bedroom").badge, "mdi:robot-vacuum-alert");
   assert.equal(rooms.find((room) => room.value === "room-bathroom").badge, "mdi:lock-outline");
   assert.equal(rooms.find((room) => room.value === "room-kitchen").badge, null);
@@ -44,6 +44,21 @@ test("level choices follow the mode, and errors show only after a save attempt",
   const submitted = buildJobEditor({ ...built, overlay: { draft, submitted: true } });
   assert.equal(submitted.invalid, true);
   assert.equal(fieldsOf(submitted, "basics").roomIds.error, built.texts.t("validation.job_requires_area"));
+});
+
+test("the room choice starts with all rooms; chosen, it mutes the single rooms and says what it means", async () => {
+  const { buildJobEditor } = await overlays("job-editor");
+  const { createDraft, applyDraftChange } = await draftModule();
+  const built = await modelFor("typical");
+  const roomsField = (draft) => fieldsOf(buildJobEditor({ ...built, overlay: { draft } }), "basics").roomIds;
+  const plain = roomsField(createDraft());
+  assert.deepEqual([plain.options[0].value, plain.options[0].icon, plain.options[0].label], ["all", "mdi:select-all", built.texts.t("field.allRooms")]);
+  assert.equal(plain.options.some((option) => option.muted), false);
+  const all = roomsField(applyDraftChange(createDraft(), "allRooms", true));
+  assert.deepEqual(all.value, ["all"]);
+  assert.ok(all.options.slice(1).length > 0 && all.options.slice(1).every((option) => option.muted));
+  assert.equal(all.hint, built.texts.t("editor.allRoomsJob"));
+  assert.equal(roomsField(applyDraftChange(createDraft({ kind: "template" }), "allRooms", true)).hint, built.texts.t("editor.allRoomsTemplate"));
 });
 
 test("editing a job or a template offers removing it from the editor", async () => {

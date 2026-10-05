@@ -4,14 +4,19 @@
 import { PASS_MAX, PASS_MIN, canonicalizeMode, isMopRoute, isSemanticLevel, isSettingsPolicy } from "./job-schema.js";
 import { enumerated, instant, integer, isRecord, strings, text } from "./wire-values.js";
 
+// The integration's token for "every room a robot can clean when the job is created".
+const ALL_ROOMS = "all";
+
 export function normalizeIntent(wire) {
   if (!isRecord(wire)) return null;
   const mode = canonicalizeMode(wire.mode);
-  const areas = strings(wire.areas);
-  if (!mode || areas.length === 0) return null;
+  const allRooms = wire.areas === ALL_ROOMS || (Array.isArray(wire.areas) && wire.areas.length === 1 && wire.areas[0] === ALL_ROOMS);
+  const areas = allRooms ? Object.freeze([]) : strings(wire.areas);
+  if (!mode || (!allRooms && areas.length === 0)) return null;
   const passes = integer(wire.passes);
   return Object.freeze({
     areas,
+    allRooms,
     mode,
     name: text(wire.name),
     vacuumPower: enumerated(wire.vacuum_power, isSemanticLevel),

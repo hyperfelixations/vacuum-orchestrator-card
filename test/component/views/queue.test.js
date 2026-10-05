@@ -87,6 +87,18 @@ test("a new job is built in the editor and added with the chosen rooms", async (
   card.unmount();
 });
 
+test("a job for all rooms leaves the choice of rooms to the integration", async () => {
+  const card = await mountCard({ env });
+  await card.click(".voc-primary-action");
+  await card.click('[data-field-control="chips"] [data-value="all"]');
+  assert.equal(card.root.querySelector('[data-field-control="chips"] [data-value="all"]').getAttribute("aria-selected"), "true");
+  assert.ok(card.root.querySelector('[data-field-control="chips"] [data-value="room-hall"]').classList.contains("is-muted"));
+  await card.click('[data-action="save-draft"]');
+  await card.settle(32);
+  assert.equal(card.services("create_job")[0].data.areas, "all");
+  card.unmount();
+});
+
 test("saving an empty draft stays in the editor and names what is missing", async () => {
   const card = await mountCard({ env });
   await card.click(".voc-primary-action");

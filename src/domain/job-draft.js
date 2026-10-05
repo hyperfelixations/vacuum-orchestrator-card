@@ -30,6 +30,10 @@ export function levelOptionsFor(field, mode, levels) {
 
 export const TEMPLATE_FIELDS = Object.freeze(["templateName", "enabled", "automatic"]);
 
+// The integration resolves "all" to the rooms a robot can clean when a job is created; a
+// template keeps the choice itself.
+export const ALL_ROOMS = "all";
+
 const WIRE_NAMES = Object.freeze({
   roomIds: "areas",
   mode: "mode",
@@ -54,6 +58,7 @@ const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 const EMPTY_INTENT = Object.freeze({
   roomIds: [],
+  allRooms: false,
   mode: "vacuum",
   name: null,
   vacuumPower: null,
@@ -85,6 +90,7 @@ function intentOf(source) {
   if (!source || typeof source !== "object") return { ...copy(EMPTY_INTENT) };
   return {
     roomIds: [...(source.roomIds ?? source.areas ?? [])],
+    allRooms: source.allRooms === true,
     mode: source.mode ?? EMPTY_INTENT.mode,
     name: source.name ?? null,
     vacuumPower: source.vacuumPower ?? null,
@@ -128,6 +134,14 @@ export function applyDraftChange(draft, field, value) {
   return freezeDraft({ ...values, [field]: copy(value) }, meta);
 }
 
+// All rooms and single rooms exclude each other: choosing one ends the other.
+export function toggleRoom(draft, value) {
+  if (value === ALL_ROOMS) return applyDraftChange(applyDraftChange(draft, "roomIds", []), "allRooms", !draft.allRooms);
+  const current = draft.allRooms ? [] : draft.roomIds;
+  const roomIds = current.includes(value) ? current.filter((roomId) => roomId !== value) : [...current, value];
+  return applyDraftChange(applyDraftChange(draft, "allRooms", false), "roomIds", roomIds);
+}
+
 function textValue(value) {
   if (value === null || value === undefined) return null;
   const trimmed = String(value).trim();
@@ -142,7 +156,7 @@ function same(one, other) {
 }
 
 function canonical(draft) {
-  const values = {};
+  const values = { allRooms: draft.allRooms === true };
   for (const field of [...INTENT_FIELDS, ...TEMPLATE_FIELDS]) {
     if (!(field in draft)) continue;
     const value = draft[field];
@@ -166,8 +180,8 @@ export function validateDraft(draft) {
   const fail = (field, code) => {
     if (!(field in errors)) errors[field] = code;
   };
-  if (values.roomIds.length === 0) fail("roomIds", "job_requires_area");
-  if (new Set(values.roomIds).size !== values.roomIds.length) fail("roomIds", "duplicate_area");
+  if (!values.allRooms && values.roomIds.length === 0) fail("roomIds", "job_requires_area");
+  if (!values.allRooms && new Set(values.roomIds).size !== values.roomIds.length) fail("roomIds", "duplicate_area");
   if (!values.mode) fail("mode", "invalid_cleaning_mode");
   if (!Number.isInteger(values.passes) || values.passes < PASS_MIN || values.passes > PASS_MAX) fail("passes", "invalid_pass_count");
   for (const field of ["vacuumPower", "mopIntensity"]) {
@@ -199,6 +213,7 @@ export function draftToIntent(draft) {
     if (value === null && NULLABLE.has(field)) continue;
     result[WIRE_NAMES[field]] = Array.isArray(value) ? [...value] : value;
   }
+  if (values.allRooms) result.areas = ALL_ROOMS;
   return Object.freeze(result);
 }
 
@@ -209,9 +224,13 @@ export function draftToUpdatePatch(draft) {
   const baseline = canonical({ ...draft.meta.baseline });
   const patch = {};
   for (const field of INTENT_FIELDS) {
+    if (field === "roomIds") continue;
     if (same(values[field], baseline[field])) continue;
     if (values[field] === null && !NULLABLE.has(field)) continue;
     patch[WIRE_NAMES[field]] = Array.isArray(values[field]) ? [...values[field]] : values[field];
+  }
+  if (values.allRooms !== baseline.allRooms || (!values.allRooms && !same(values.roomIds, baseline.roomIds))) {
+    patch.areas = values.allRooms ? ALL_ROOMS : [...values.roomIds];
   }
   return Object.freeze(patch);
 }

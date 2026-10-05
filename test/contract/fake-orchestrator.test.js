@@ -112,6 +112,18 @@ test("rooms are excluded and included with their history and release kept", asyn
   assert.equal(await code(command("remove_room", { room_id: "room-kitchen" })), "invalid_format");
 });
 
+test("all rooms resolves to the enabled rooms with an area that a robot reaches, in room order", async () => {
+  const { fake, call, command, job } = fakeFor();
+  const created = await call("create_job", { areas: "all", mode: "vacuum" }, true);
+  const eligible = fake.state.rooms.filter((room) => room.enabled && !room.area_missing && fake.state.robots.some((robot) => Object.hasOwn(robot.capabilities?.targets || {}, room.room_id))).map((room) => room.room_id);
+  assert.ok(eligible.length > 0);
+  assert.deepEqual((await job(created.response.job_id)).room_ids, eligible);
+  await command("save_template", { name: "Everywhere", intent: { areas: ["all"], mode: "vacuum" } });
+  assert.equal(fake.state.templates.at(-1).intent.areas, "all", "a template keeps the choice, not the rooms");
+  for (const room of fake.state.rooms) room.enabled = false;
+  assert.equal(await code(call("create_job", { areas: "all", mode: "vacuum" })), "no_eligible_rooms");
+});
+
 test("an unchanged queue mode commits nothing, as in the integration", async () => {
   const { fake, call } = fakeFor();
   await call("pause_queue", {});

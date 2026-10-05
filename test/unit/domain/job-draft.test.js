@@ -85,6 +85,24 @@ test("an update patch carries only changed fields and clears an optional one wit
   assert.deepEqual({ ...draftToUpdatePatch(draft) }, { name: null, passes: 3 });
 });
 
+test("all rooms is a choice of its own: it needs no room, travels as \"all\" and replaces single rooms", async () => {
+  const { ALL_ROOMS, createDraft, applyDraftChange, validateDraft, draftToIntent, draftToUpdatePatch, draftToTemplate, normalizeJob, normalizeTemplate } = await load();
+  assert.equal(ALL_ROOMS, "all");
+  const fresh = createDraft();
+  assert.equal(fresh.allRooms, false);
+  const all = applyDraftChange(fresh, "allRooms", true);
+  assert.deepEqual([validateDraft(all).valid, validateDraft(all).dirty], [true, true]);
+  assert.equal(draftToIntent(all).areas, "all");
+  const job = createDraft({ target: normalizeJob(W.wireJob()) });
+  assert.equal(job.allRooms, false, "a job holds the rooms it was created with");
+  assert.deepEqual({ ...draftToUpdatePatch(applyDraftChange(job, "allRooms", true)) }, { areas: "all" });
+  assert.deepEqual({ ...draftToUpdatePatch(applyDraftChange(applyDraftChange(job, "allRooms", true), "allRooms", false)) }, {});
+  const template = createDraft({ kind: "template", target: normalizeTemplate(W.wireTemplate({ intent: { areas: "all", mode: "vacuum" } })) });
+  assert.deepEqual([template.allRooms, [...template.roomIds], validateDraft(template).dirty], [true, [], false]);
+  assert.equal(draftToTemplate(template).intent.areas, "all");
+  assert.equal(validateDraft(applyDraftChange(template, "allRooms", false)).errors.roomIds, "job_requires_area");
+});
+
 test("a template draft wraps the intent and needs a name", async () => {
   const { createDraft, applyDraftChange, validateDraft, draftToTemplate, normalizeTemplate } = await load();
   const fresh = createDraft({ kind: "template" });

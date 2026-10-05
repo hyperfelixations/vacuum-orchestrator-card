@@ -64,6 +64,8 @@ test("a field ties its label, hint and error to the control", async () => {
   assert.deepEqual([...group.querySelectorAll("[role=radio]")].map((radio) => [radio.getAttribute("aria-checked"), radio.tabIndex]), [["false", -1], ["true", 0]]);
   const none = parse(document, renderField(context, { key: "rooms", label: "Rooms", control: "chips", value: [], options: [{ value: "a", label: "A" }, { value: "b", label: "B" }] }));
   assert.deepEqual([...none.querySelectorAll("[role=option]")].map((option) => option.tabIndex), [0, -1], "the first option is the tab stop when none is chosen");
+  const muted = parse(document, renderField(context, { key: "rooms", label: "Rooms", control: "chips", value: ["all"], options: [{ value: "all", label: "All" }, { value: "b", label: "B", muted: true }] }));
+  assert.deepEqual([...muted.querySelectorAll("[role=option]")].map((option) => [option.classList.contains("is-muted"), option.getAttribute("aria-selected")]), [[false, "true"], [true, "false"]]);
   assert.equal(renderField(context, { key: "x", control: "text", hidden: true }), "");
 });
 

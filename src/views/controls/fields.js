@@ -17,7 +17,7 @@ function describedBy(field) {
 function choice(field, option, { role, selected, multiple }) {
   const action = multiple ? "toggle-value" : "set-field";
   const disabled = option.disabled === true;
-  return `<button type="button" class="voc-option${selected ? " is-selected" : ""}" role="${role}" ${role === "radio" ? "aria-checked" : "aria-selected"}="${selected}" tabindex="${selected ? 0 : -1}" data-action="${action}"${argsAttr({ field: field.key, value: option.value })} data-value="${e(option.value ?? "")}" data-key="option:${e(option.value ?? "")}"${disabled ? ' aria-disabled="true"' : ""}${attr("title", option.title || null)}>${icon(option.icon)}<span>${e(option.label)}</span>${option.badge ? `<span class="voc-option-badge">${icon(option.badge)}</span>` : ""}</button>`;
+  return `<button type="button" class="voc-option${selected ? " is-selected" : ""}${option.muted ? " is-muted" : ""}" role="${role}" ${role === "radio" ? "aria-checked" : "aria-selected"}="${selected}" tabindex="${selected ? 0 : -1}" data-action="${action}"${argsAttr({ field: field.key, value: option.value })} data-value="${e(option.value ?? "")}" data-key="option:${e(option.value ?? "")}"${disabled ? ' aria-disabled="true"' : ""}${attr("title", option.title || null)}>${icon(option.icon)}<span>${e(option.label)}</span>${option.badge ? `<span class="voc-option-badge">${icon(option.badge)}</span>` : ""}</button>`;
 }
 
 function roving(markup) {

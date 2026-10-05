@@ -26,7 +26,7 @@ export function buildTemplatesView({ model, texts, context }) {
         tone: !template.enabled ? "muted" : template.automatic ? "running" : "neutral",
         modeIcon: MODE_ICONS[intent.mode] || "mdi:robot-vacuum",
         modeLabel: modeLabel(texts, intent.mode),
-        rooms: rooms(intent.areas),
+        rooms: intent.allRooms ? t(texts, "field.allRooms") : rooms(intent.areas),
         badges: [
           template.enabled ? null : { key: "disabled", text: t(texts, "templates.disabled"), tone: "muted" },
           template.enabled && template.automatic ? { key: "automatic", text: t(texts, "templates.automatic"), tone: "running" } : null,

@@ -382,7 +382,11 @@
           if (!parameters.name || !parameters.intent) throw voi("invalid_parameters");
           const intent = copy(parameters.intent);
           const mode = MODES[intent.mode];
-          if (!mode || !Array.isArray(intent.areas) || !intent.areas.length) throw voi("invalid_parameters");
+          if (isAllRooms(intent.areas)) {
+            eligibleRoomIds(voi);
+            intent.areas = "all";
+          }
+          if (!mode || (intent.areas !== "all" && (!Array.isArray(intent.areas) || !intent.areas.length))) throw voi("invalid_parameters");
           intent.mode = mode;
           intent.passes = intent.passes ?? 1;
           intent.settings_policy = intent.settings_policy ?? "best_effort";
@@ -426,7 +430,19 @@
 
     // ---- actions ---------------------------------------------------------------------------
 
-    function createJob(data) {
+    // "all", alone or as the only item, as the integration's input schema reads it.
+    const isAllRooms = (areas) => areas === "all" || (Array.isArray(areas) && areas.length === 1 && areas[0] === "all");
+
+    // The integration's eligible rooms: enabled, with an area, reached by a robot; in room order.
+    function eligibleRoomIds(fail = validation) {
+      const reached = new Set(state.robots.flatMap((robot) => Object.keys(robot.capabilities?.targets || {})));
+      const ids = state.rooms.filter((room) => room.enabled && !room.area_missing && reached.has(room.room_id)).map((room) => room.room_id);
+      if (!ids.length) throw fail("no_eligible_rooms");
+      return ids;
+    }
+
+    function createJob(input) {
+      const data = isAllRooms(input.areas) ? { ...input, areas: eligibleRoomIds() } : input;
       const mode = MODES[data.mode];
       if (!Array.isArray(data.areas) || data.areas.length === 0) throw validation("job_requires_area");
       if (!mode) throw validation("invalid_cleaning_mode");
@@ -485,6 +501,7 @@
             patch.mode = MODES[patch.mode];
           }
           if (patch.areas) {
+            if (isAllRooms(patch.areas)) patch.areas = eligibleRoomIds();
             const rooms = patch.areas.map((reference) => roomFor(reference));
             if (rooms.some((room) => !room)) throw validation("unknown_room");
             job.room_ids = rooms.map((room) => room.room_id);

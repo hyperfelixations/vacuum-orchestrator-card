@@ -15,6 +15,11 @@ test("a template keeps its intent, switches and the rooms its current due period
   assert.equal(template.intent.settingsPolicy, "best_effort");
   assert.equal(template.intent.mopRoute, "deep");
   assert.equal(normalizeTemplate(W.wireTemplate({ intent: { areas: [], mode: "vacuum" } })), null);
+  for (const areas of ["all", ["all"]]) {
+    const all = normalizeTemplate(W.wireTemplate({ intent: { areas, mode: "vacuum" } })).intent;
+    assert.deepEqual([all.allRooms, [...all.areas]], [true, []], JSON.stringify(areas));
+  }
+  assert.equal(template.intent.allRooms, false);
   assert.equal(normalizeTemplate(W.wireTemplate({ template_id: "" })), null);
   assert.equal(normalizeTemplate(W.wireTemplate({ enabled: undefined })).enabled, true);
 });

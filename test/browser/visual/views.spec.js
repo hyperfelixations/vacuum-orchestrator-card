@@ -104,6 +104,16 @@ test.describe("job pages", () => {
     await shot(page, "editor-medium-light.png", MEDIUM);
   });
 
+  test("new job editor for all rooms, narrow, German", async ({ page }) => {
+    const card = await mountCard(page, { config: { ...BASE, language: "de" } });
+    await act(page, card.locator(".voc-primary-action"));
+    await act(page, card.locator('[data-key="field:roomIds"] [data-value="all"]'));
+    await expect(card.locator('[data-key="field:roomIds"] [data-value="all"]')).toHaveAttribute("aria-selected", "true");
+    await expect(card.locator('[data-key="field:roomIds"] [data-value="room-hall"]')).toHaveClass(/is-muted/);
+    await expect(card.locator('[data-key="field:roomIds"]')).toContainText("Der Auftrag behält diese Liste.");
+    await shot(page, "editor-all-rooms-german-narrow-light.png", NARROW);
+  });
+
   test("template editor, narrow", async ({ page }) => {
     const card = await mountCard(page, { config: BASE });
     await open(page, card, "templates");
