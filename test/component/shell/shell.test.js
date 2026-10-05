@@ -6,6 +6,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createTestEnvironment } = require("../../helpers/load-card.jsdom.js");
 const { mountCard, FIXED_NOW } = require("../../helpers/mount-card.js");
+const { haError } = require("../../fixtures/voi/wire.js");
+const { EXCEPTIONS } = require("../../fixtures/voi/exceptions.js");
 
 let env;
 test.before(() => {
@@ -99,5 +101,14 @@ test("a command's notice is announced and can be dismissed", async () => {
   assert.equal(card.text(".voc-live-region"), card.text(".voc-notice-text"));
   await card.click(".voc-notice-close");
   assert.equal(card.root.querySelector(".voc-notice"), null);
+  card.unmount();
+});
+
+test("a command the integration refuses shows the integration's own text in the card's language", async () => {
+  const card = await mountCard({ env, config: { language: "de" } });
+  card.fake.failNext("pause_queue", haError.serviceValidation("critical_storage_state_uncertain"));
+  await card.click(".voc-queue-control");
+  await card.settle(32);
+  assert.equal(card.text(".voc-notice-text"), EXCEPTIONS.de.critical_storage_state_uncertain);
   card.unmount();
 });

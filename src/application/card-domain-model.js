@@ -94,6 +94,7 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
     phaseFailure: snapshot?.phaseFailure ?? null,
     apiVersion: snapshot?.apiVersion ?? null,
     integrationVersion: slots.manifest?.data?.version ?? null,
+    errorTexts: slots.errorTexts?.data ?? null,
     runtime: snapshot?.runtime ?? { id: null, sequence: null, commitId: null },
     live: snapshot?.live ?? null,
     subscription: snapshot?.subscription ?? "idle",

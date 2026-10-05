@@ -21,6 +21,8 @@ const BASE_REQUESTS = Object.freeze({
   manifest: { name: "manifest", params: {} },
 });
 
+const errorTextsRequest = (language) => ({ name: "errorTexts", params: { language } });
+
 // `requests`: extra slots, e.g. { templates: { name: "templates", params: {} } }.
 async function modelFor(scenario = "typical", { requests = {}, admin = true, language = "en", fake: fakeOptions = {}, needsEntityCatalog = false, setup = null } = {}) {
   const { createTransport } = await import("../../src/backend/transport.js");
@@ -36,14 +38,14 @@ async function modelFor(scenario = "typical", { requests = {}, admin = true, lan
   const hass = fake.attachTo(hassFor(household, { language, admin }));
   const platform = { now: () => clock.now(), setTimeout: (fn, ms) => clock.setTimeout(fn, ms), clearTimeout: (handle) => clock.clearTimeout(handle), isDocumentHidden: () => false };
   const session = createSession({ transport: createTransport({ getHass: () => hass, platform }), platform, getHass: () => hass });
-  const all = { ...BASE_REQUESTS, ...requests };
+  const all = { ...BASE_REQUESTS, errorTexts: errorTextsRequest(language), ...requests };
   session.syncHass();
   await tick();
   session.setDemand("test", Object.values(all));
   await tick();
   const model = buildCardDomainModel({ snapshot: session.getSnapshot(), requests: all, home: readHomeAssistant(hass), nowMs: FIXED_NOW, needsEntityCatalog });
   session.dispose();
-  const texts = textService(language);
+  const texts = textService(language, { backend: model.errorTexts });
   const context = affordanceContext({ canCommand: model.permissions.canCommand, operations: model.operations, pending: model.pending });
   return { model, texts, context, fake, household };
 }

@@ -14,7 +14,7 @@ export const releaseOverlay = Object.freeze({
   key: "release",
   build: ({ model, texts, context, overlay }) => buildRelease({ model, texts, context, overlay }),
   render(context, vm) {
-    if (vm.missing) return frame(context, { key: "release", title: vm.title, lead: context.t("error.code.unknown_room"), dialog: true });
+    if (vm.missing) return frame(context, { key: "release", title: vm.title, lead: context.t("release.missingRoom"), dialog: true });
     const current = vm.current ? `<p class="voc-overlay-lead">${e(context.t("release.current", { kind: vm.current }))}</p>` : "";
     const revoke = vm.revoke ? button({ action: "revoke-room", args: { roomId: vm.roomId, close: true }, label: context.t("rooms.lock"), iconName: "mdi:lock-outline", variant: "danger", decision: vm.revoke, reasonText: context.reason(vm.revoke), className: "voc-action-start" }) : "";
     const actions = `${revoke}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "release-room", args: { roomId: vm.roomId }, label: context.t("rooms.release"), iconName: "mdi:lock-open-variant-outline", variant: "primary", decision: vm.submit, reasonText: context.reason(vm.submit) })}`;

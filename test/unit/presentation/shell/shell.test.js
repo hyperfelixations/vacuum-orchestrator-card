@@ -157,5 +157,5 @@ test("the card view model puts onboarding, an overlay or the active view into th
   assert.equal(overlay.body.kind, "overlay");
   assert.equal(overlay.primary, null, "a page has its own actions");
   const notice = buildCardViewModel({ model, config: cfg, texts, ui: { notice: { kind: "error", operation: "run_queue", failure: { code: "unauthorized" } } }, tabs, definitions: VIEWS, context, viewContent: {} });
-  assert.equal(notice.notice.text, texts.t("error.code.unauthorized", { detail: "" }));
+  assert.equal(notice.notice.text, texts.t("error.code.unauthorized"));
 });

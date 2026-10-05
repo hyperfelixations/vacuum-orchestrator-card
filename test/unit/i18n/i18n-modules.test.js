@@ -39,3 +39,13 @@ test("Intl formatters support plurals, dates, relative values and durations", as
   assert.equal(formatters.formatDuration("en", 45 * 60000, t), "45 min");
   assert.equal(formatters.formatDuration("en", null, t), "");
 });
+
+test("the text port words an integration code from the integration's texts, filling its placeholders", async () => {
+  const { textService } = await import("../../../src/i18n/text-service.js");
+  const texts = textService("de", { backend: { robot_busy: "Roboter beschäftigt", unknown_area: "Bereich {detail} fehlt ({code})" } });
+  assert.equal(texts.backend("robot_busy"), "Roboter beschäftigt");
+  assert.equal(texts.backend("unknown_area", { code: "unknown_area", detail: "garage" }), "Bereich garage fehlt (unknown_area)");
+  assert.equal(texts.backend("unknown_area", { code: "unknown_area", detail: null }), "Bereich  fehlt (unknown_area)");
+  assert.equal(texts.backend("no_such_code"), null);
+  assert.equal(textService("en").backend("robot_busy"), null);
+});

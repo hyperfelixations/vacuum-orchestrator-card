@@ -8,7 +8,7 @@ import { entityName } from "../common/lookups.js";
 export const ENTITY_MATCH_LIMIT = 8;
 
 export function errorText(texts, code) {
-  return code ? t(texts, `error.code.${code}`, { detail: "" }) : null;
+  return code ? t(texts, `validation.${code}`) : null;
 }
 
 export function field(texts, { key, labelKey, labelVars = undefined, control, value, options = [], hintKey = null, hint = null, error = null, optional = false, ...extra }) {

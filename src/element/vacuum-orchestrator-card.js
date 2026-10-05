@@ -212,6 +212,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
       candidates: { name: "candidates", params: {} },
       registry: { name: "registry", params: {} },
       manifest: { name: "manifest", params: {} },
+      errorTexts: { name: "errorTexts", params: { language: this._language() } },
     };
     const add = (list) => {
       for (const request of list || []) requests[request.slot || request.name] = { name: request.name, params: request.params || {}, hints: request.hints };
@@ -224,8 +225,13 @@ export class VacuumOrchestratorCard extends HTMLElement {
     return requests;
   }
 
-  _texts() {
-    return textService(resolveLanguage(this._config?.language || "auto", this._hass));
+  _language() {
+    return resolveLanguage(this._config?.language || "auto", this._hass);
+  }
+
+  // The integration's own error texts arrive as a scope in the card language.
+  _texts(model) {
+    return textService(this._language(), { backend: model?.errorTexts ?? null });
   }
 
   // Model, tabs and scope demand settle together: the active view decides the demand, and the
@@ -234,8 +240,8 @@ export class VacuumOrchestratorCard extends HTMLElement {
     const snapshot = this._hold?.session.getSnapshot() ?? null;
     const overlay = this._ui.overlay;
     const needsEntityCatalog = Boolean(overlay && overlayFor(overlay.kind)?.needsEntityCatalog);
-    const texts = this._texts();
     let model = buildCardDomainModel({ snapshot, requests: this._lastRequests || {}, home: readHomeAssistant(this._hass), nowMs: this._platform.now(), needsEntityCatalog });
+    let texts = this._texts(model);
     const tabs = buildTabs({ definitions: VIEWS, model, config: this._config, ui: this._ui.snapshot, texts });
     this._model = model;
     const requests = this._requests(tabs);
@@ -243,6 +249,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
       this._lastRequests = requests;
       this._hold?.session.setDemand(this._owner, Object.values(requests));
       model = buildCardDomainModel({ snapshot: this._hold?.session.getSnapshot() ?? null, requests, home: readHomeAssistant(this._hass), nowMs: this._platform.now(), needsEntityCatalog });
+      texts = this._texts(model);
     }
     this._model = model;
     return { model, tabs: buildTabs({ definitions: VIEWS, model, config: this._config, ui: this._ui.snapshot, texts }), texts };

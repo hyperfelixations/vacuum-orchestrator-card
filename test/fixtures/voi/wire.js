@@ -6,6 +6,8 @@
 "use strict";
 
 const VOI_API_VERSION = 2;
+const DOMAIN = "vacuum_orchestrator";
+const { EXCEPTIONS } = typeof module !== "undefined" && module.exports ? require("./exceptions.js") : root.VocExceptions;
 
 function wireReadiness(overrides = {}) {
   return {
@@ -399,15 +401,22 @@ function wireRegistryEntry(entityId, id, overrides = {}) {
   return { entity_id: entityId, id, platform: entityId.split(".")[0], device_id: null, disabled_by: null, hidden_by: null, ...overrides };
 }
 
+// An integration error as `api/errors.py` raises it: Home Assistant words it in English from the
+// translations and carries code and detail in the translation fields.
+function translated(code, detail) {
+  return { translation_key: code, translation_domain: DOMAIN, translation_placeholders: { code, detail: detail ?? "" } };
+}
+const englishText = (code) => EXCEPTIONS.en[code] ?? code;
+
 // Home Assistant error frames as `home-assistant-js-websocket` rejects them.
 const haError = Object.freeze({
-  serviceValidation: (code, detail = null) => ({ code: "service_validation_error", message: `Validation error: ${detail ? `${code}: ${detail}` : code}` }),
+  serviceValidation: (code, detail = null) => ({ code: "service_validation_error", message: `Validation error: ${englishText(code)}`, ...translated(code, detail) }),
   homeAssistant: (message) => ({ code: "home_assistant_error", message }),
   unauthorized: () => ({ code: "unauthorized", message: "Unauthorized" }),
   unknownCommand: () => ({ code: "unknown_command", message: "Unknown command." }),
   notFound: (message = "Integration not found") => ({ code: "not_found", message }),
   invalidFormat: (message = "extra keys not allowed") => ({ code: "invalid_format", message }),
-  voi: (code, message = code) => ({ code, message }),
+  voi: (code, detail = null) => ({ code, message: englishText(code), ...translated(code, detail) }),
   connectionLost: () => ({ type: "result", success: false, error: { code: 3, message: "Connection lost" } }),
 });
 

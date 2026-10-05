@@ -7,28 +7,31 @@ const { haError } = require("../../fixtures/voi/wire.js");
 
 const load = () => import("../../../src/backend/error-decoding.js");
 
-test("an action's validation error yields the integration's code and detail", async () => {
+test("an action's validation error yields the code and detail of its translation fields", async () => {
   const { decodeError } = await load();
-  assert.deepEqual({ ...decodeError(haError.serviceValidation("job_not_editable"), "service") }, { ok: false, code: "job_not_editable", group: "job", detail: null, channel: "service" });
+  assert.deepEqual({ ...decodeError(haError.serviceValidation("job_not_editable"), "service") }, { ok: false, code: "job_not_editable", detail: null, channel: "service" });
   const withDetail = decodeError(haError.serviceValidation("unknown_area", "garage"), "service");
   assert.equal(withDetail.code, "unknown_area");
   assert.equal(withDetail.detail, "garage");
 });
 
-test("a validation message without a code stays an invalid request with its text", async () => {
+test("an integration WebSocket error yields the same record as the action", async () => {
   const { decodeError } = await load();
-  const failure = decodeError({ code: "service_validation_error", message: "Validation error: Something odd happened." }, "service");
-  assert.equal(failure.code, "invalid_request");
-  assert.equal(failure.detail, "Validation error: Something odd happened.");
+  assert.deepEqual({ ...decodeError(haError.voi("unknown_room", "room-x"), "ws") }, { ok: false, code: "unknown_room", detail: "room-x", channel: "ws" });
+  assert.equal(decodeError(haError.voi("unknown_job"), "ws").detail, null);
 });
 
-test("a VOI WebSocket error keeps its code; a repeated code in the message is not a detail", async () => {
+test("the English message is never read for the code", async () => {
   const { decodeError } = await load();
-  assert.equal(decodeError(haError.voi("unknown_job"), "ws").detail, null);
-  const failure = decodeError(haError.voi("unknown_room", "unknown_room: room-x"), "ws");
-  assert.equal(failure.code, "unknown_room");
-  assert.equal(failure.detail, "room-x");
-  assert.equal(decodeError(haError.voi("conflict", "The job changed meanwhile"), "ws").detail, "The job changed meanwhile");
+  const frame = { ...haError.serviceValidation("robot_busy"), message: "Validation error: unknown_job: job-1" };
+  assert.equal(decodeError(frame, "service").code, "robot_busy");
+  assert.equal(decodeError({ code: "service_validation_error", message: "Validation error: job_not_editable" }, "service").code, "invalid_request");
+});
+
+test("translation fields of another domain do not name an integration code", async () => {
+  const { decodeError } = await load();
+  const foreign = { code: "home_assistant_error", message: "Service called another service", translation_domain: "websocket_api", translation_key: "child_service_not_found", translation_placeholders: {} };
+  assert.equal(decodeError(foreign, "service").code, "unknown");
 });
 
 test("permission errors from actions and from admin-only WebSocket types both read unauthorized", async () => {

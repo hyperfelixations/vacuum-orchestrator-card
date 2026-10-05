@@ -1,8 +1,9 @@
 // Wording and formatting through the injected text port. Every user-visible word of a view
-// model passes through here; protocol codes become translation keys, an unknown code is
-// named by its group with the code quoted. See internal dev doc §8 "Wortwahl".
+// model passes through here; the card's own codes become translation keys, an integration code
+// reads in the integration's own text, and a code without any text is named.
+// See internal dev doc §8 "Wortwahl".
 
-import { DUE_REASONS, FAILURE_CODES, READINESS_REASONS, errorGroup, isKnownErrorCode } from "../../domain/backend-errors.js";
+import { DUE_REASONS, FAILURE_CODES, READINESS_REASONS, isClientCode } from "../../domain/backend-errors.js";
 
 const FAILURES = new Set(FAILURE_CODES);
 const READINESS = new Set(READINESS_REASONS);
@@ -76,20 +77,24 @@ export function adapterLabel(texts, adapter) {
   return ADAPTERS[adapter] ? t(texts, ADAPTERS[adapter]) : adapter || t(texts, "value.unknown");
 }
 
+// The integration's text for one of its codes, or null while none is known.
+function integrationText(texts, code, detail = null) {
+  return typeof texts?.backend === "function" ? texts.backend(code, { code, detail: detail ?? "" }) : null;
+}
+
 // A failed request in one sentence.
 export function failureText(texts, failure) {
   if (!failure) return "";
   const code = failure.code || "unknown";
-  if (isKnownErrorCode(code)) return t(texts, `error.code.${code}`, { detail: failure.detail ?? "" });
-  return t(texts, `error.group.${errorGroup(code)}`, { code });
+  if (isClientCode(code)) return t(texts, `error.code.${code}`, { detail: failure.detail ?? "" });
+  return integrationText(texts, code, failure.detail) ?? t(texts, "error.unknownCode", { code });
 }
 
 // Why a job, attempt or run ended without success (`failure_code`).
 export function outcomeText(texts, code) {
   if (!code) return null;
   if (FAILURES.has(code)) return t(texts, `failure.${code}`);
-  if (isKnownErrorCode(code)) return t(texts, `error.code.${code}`, { detail: "" });
-  return t(texts, "failure.other", { code });
+  return integrationText(texts, code) ?? t(texts, "failure.other", { code });
 }
 
 // Why a robot cannot take a phase (`eligibility_reason`) or a profile is blocked.
@@ -97,8 +102,7 @@ export function reasonText(texts, code) {
   if (!code) return null;
   if (READINESS.has(code)) return t(texts, `readiness.reason.${code}`);
   if (FAILURES.has(code)) return t(texts, `failure.${code}`);
-  if (isKnownErrorCode(code)) return t(texts, `error.code.${code}`, { detail: "" });
-  return t(texts, "reason.other", { code });
+  return integrationText(texts, code) ?? t(texts, "reason.other", { code });
 }
 
 export function readinessReasonText(texts, code) {

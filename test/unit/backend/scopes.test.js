@@ -166,7 +166,25 @@ test("the manifest gives the installed version; the registry keeps identity fiel
   assert.equal(registry.data.length, 1);
 });
 
+test("the integration's error texts load in one language and are keyed by code", async () => {
+  const { loadErrorTexts } = await load();
+  const transport = scripted(() => ({
+    resources: {
+      "component.vacuum_orchestrator.exceptions.robot_busy.message": "Der Roboter ist beschäftigt",
+      "component.vacuum_orchestrator.exceptions.unknown_job.message": "Der Job existiert nicht",
+      "component.vacuum_orchestrator.issues.voc_card_missing.title": "not an exception",
+      "component.other.exceptions.robot_busy.message": "another domain",
+      "component.vacuum_orchestrator.exceptions.empty.message": "",
+    },
+  }));
+  const result = await loadErrorTexts(transport, { language: "de" });
+  assert.deepEqual({ ...result.data }, { robot_busy: "Der Roboter ist beschäftigt", unknown_job: "Der Job existiert nicht" });
+  assert.ok(Object.isFrozen(result.data));
+  assert.deepEqual(transport.sent, [{ type: "frontend/get_translations", language: "de", category: "exceptions", integration: ["vacuum_orchestrator"] }]);
+  assert.equal((await loadErrorTexts(scripted(() => ({ resources: null })), { language: "en" })).code, "invalid_response");
+});
+
 test("every scope the session can demand has a loader", async () => {
   const { SCOPES } = await load();
-  assert.deepEqual([...SCOPES].sort(), ["candidates", "diagnostics", "execution", "job", "jobLog", "manifest", "openJobs", "queue", "registry", "robots", "rooms", "runs", "templates", "trace"]);
+  assert.deepEqual([...SCOPES].sort(), ["candidates", "diagnostics", "errorTexts", "execution", "job", "jobLog", "manifest", "openJobs", "queue", "registry", "robots", "rooms", "runs", "templates", "trace"]);
 });

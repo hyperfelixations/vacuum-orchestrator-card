@@ -147,6 +147,20 @@ export async function loadEntityRegistry(transport) {
   return done(Object.freeze(entries));
 }
 
+const EXCEPTION_KEY = /^component\.vacuum_orchestrator\.exceptions\.([a-z0-9_]+)\.message$/;
+
+// The integration's exception texts in one language, by error code.
+export async function loadErrorTexts(transport, { language }) {
+  const result = await guarded(transport.ws(messages.errorTexts(language)), guards.translations, "frontend/get_translations");
+  if (!result.ok) return result;
+  const texts = {};
+  for (const [key, value] of Object.entries(result.data.resources)) {
+    const match = EXCEPTION_KEY.exec(key);
+    if (match && typeof value === "string" && value.trim()) texts[match[1]] = value;
+  }
+  return done(Object.freeze(texts));
+}
+
 export const SCOPE_LOADERS = Object.freeze({
   queue: loadQueue,
   openJobs: loadOpenJobs,
@@ -162,6 +176,7 @@ export const SCOPE_LOADERS = Object.freeze({
   diagnostics: loadDiagnostics,
   manifest: loadManifest,
   registry: loadEntityRegistry,
+  errorTexts: loadErrorTexts,
 });
 
 export const SCOPES = Object.freeze(Object.keys(SCOPE_LOADERS));

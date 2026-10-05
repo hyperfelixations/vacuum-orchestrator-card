@@ -1,27 +1,16 @@
-// The error catalog: every known code belongs to exactly one group, a code the card does not
-// know stays readable in the unknown group, and failure records are frozen and recognizable.
+// Failure records and the vocabularies the card words itself: the codes it raises or receives
+// from Home Assistant, execution outcomes, readiness and due reasons. Integration codes are the
+// integration's and stay open.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const load = () => import("../../../src/domain/backend-errors.js");
 
-test("each known code has exactly one group", async () => {
-  const { ERROR_GROUPS, KNOWN_ERROR_CODES, errorGroup } = await load();
-  const seen = new Map();
-  for (const [group, codes] of Object.entries(ERROR_GROUPS)) for (const code of codes) seen.set(code, [...(seen.get(code) || []), group]);
-  assert.deepEqual([...seen].filter(([, groups]) => groups.length > 1), []);
-  assert.equal(seen.size, KNOWN_ERROR_CODES.length);
-  for (const [code, [group]] of seen) assert.equal(errorGroup(code), group);
-});
-
-test("an unknown code is kept with the unknown group", async () => {
-  const { backendFailure, errorGroup, isKnownErrorCode, ERROR_GROUP_NAMES } = await load();
-  assert.equal(errorGroup("quantum_flux"), "unknown");
-  assert.equal(isKnownErrorCode("quantum_flux"), false);
-  assert.ok(ERROR_GROUP_NAMES.includes("unknown"));
+test("a failure record keeps any code, with its detail as text, frozen", async () => {
+  const { backendFailure } = await load();
   const failure = backendFailure(" quantum_flux ", { detail: 42, channel: "ws" });
-  assert.deepEqual({ ...failure }, { ok: false, code: "quantum_flux", group: "unknown", detail: "42", channel: "ws" });
+  assert.deepEqual({ ...failure }, { ok: false, code: "quantum_flux", detail: "42", channel: "ws" });
   assert.ok(Object.isFrozen(failure));
 });
 
@@ -39,15 +28,14 @@ test("failure records are recognized by shape", async () => {
   assert.equal(isBackendFailure(null), false);
 });
 
-test("permission, availability and client codes sit in their own groups", async () => {
-  const { errorGroup } = await load();
-  assert.equal(errorGroup("unauthorized"), "permission");
-  assert.equal(errorGroup("orchestrator_not_loaded"), "availability");
-  assert.equal(errorGroup("connection_lost"), "client");
-  assert.equal(errorGroup("preference_conflicts_with_cleaning_mode"), "job");
-  assert.equal(errorGroup("release_duration_mismatch"), "room");
-  assert.equal(errorGroup("robot_busy"), "robot");
-  assert.equal(errorGroup("invalid_role_entity"), "robotConfiguration");
+test("client codes are the card's and Home Assistant's own, never an integration code", async () => {
+  const { CLIENT_CODES, isClientCode } = await load();
+  const { EXCEPTIONS } = require("../../fixtures/voi/exceptions.js");
+  assert.ok(Object.isFrozen(CLIENT_CODES));
+  assert.equal(new Set(CLIENT_CODES).size, CLIENT_CODES.length);
+  assert.deepEqual(CLIENT_CODES.filter((code) => code in EXCEPTIONS.en), []);
+  assert.equal(isClientCode("connection_lost"), true);
+  assert.equal(isClientCode("robot_busy"), false);
 });
 
 test("outcome, readiness and due vocabularies are closed lists without duplicates", async () => {

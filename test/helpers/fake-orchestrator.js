@@ -8,6 +8,7 @@
   "use strict";
 
   const W = typeof module !== "undefined" && module.exports ? require("../fixtures/voi/wire.js") : root.VocWire;
+  const { EXCEPTIONS } = typeof module !== "undefined" && module.exports ? require("../fixtures/voi/exceptions.js") : root.VocExceptions;
   const DOMAIN = "vacuum_orchestrator";
   const ACTIONS = ["create_job", "update_job", "delete_job", "move_job", "start_job", "cancel_job", "retry_job", "run_queue", "pause_queue", "resume_queue"];
   const QUERY_ACTIONS = ["get_queue", "get_job"];
@@ -531,11 +532,19 @@
       }
     }
 
+    // Home Assistant's frontend translations: the requested language over English, flattened.
+    function translations({ language, category, integration }) {
+      if (category !== "exceptions" || !state.installed || !(integration || []).includes(DOMAIN)) return { resources: {} };
+      const texts = { ...EXCEPTIONS.en, ...(EXCEPTIONS[language] || {}) };
+      return { resources: Object.fromEntries(Object.entries(texts).map(([code, text]) => [`component.${DOMAIN}.exceptions.${code}.message`, text])) };
+    }
+
     function handleWs(message) {
       calls.ws.push(copy(message));
       const key = message.type === `${DOMAIN}/configuration/get` ? message.query : message.type === `${DOMAIN}/configuration/command` ? message.command : message.type;
       const injected = failure(key);
       if (injected) return reject(injected);
+      if (message.type === "frontend/get_translations") return respond(translations(message));
       if (message.type === "manifest/get") return state.installed && message.integration === DOMAIN ? respond(W.wireManifest()) : reject(W.haError.notFound());
       if (message.type === "config/entity_registry/list") return respond(state.registry);
       if (!message.type.startsWith(`${DOMAIN}/`) || !state.setUp) return reject(W.haError.unknownCommand());

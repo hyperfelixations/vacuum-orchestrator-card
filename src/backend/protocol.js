@@ -13,6 +13,7 @@ export const WS = Object.freeze({
   CONFIGURATION_COMMAND: "vacuum_orchestrator/configuration/command",
   MANIFEST_GET: "manifest/get",
   ENTITY_REGISTRY_LIST: "config/entity_registry/list",
+  TRANSLATIONS_GET: "frontend/get_translations",
 });
 
 // Job and queue commands travel as Home Assistant actions; `response` marks the ones that
@@ -92,6 +93,11 @@ export const messages = Object.freeze({
   },
   manifest: () => Object.freeze({ type: WS.MANIFEST_GET, integration: "vacuum_orchestrator" }),
   entityRegistry: () => Object.freeze({ type: WS.ENTITY_REGISTRY_LIST }),
+  // The integration's exception texts, as Home Assistant serves them to its own frontend.
+  errorTexts: (language) => {
+    if (typeof language !== "string" || !language) throw new TypeError("language is required");
+    return Object.freeze({ type: WS.TRANSLATIONS_GET, language, category: "exceptions", integration: ["vacuum_orchestrator"] });
+  },
 });
 
 const isObject = (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -125,6 +131,7 @@ export const guards = Object.freeze({
   event: (value) => isObject(value) && typeof value.runtime_id === "string" && isCount(value.runtime_sequence) && isCount(value.commit_id),
   manifest: (value) => isObject(value) && value.domain === "vacuum_orchestrator",
   entityRegistry: (value) => Array.isArray(value),
+  translations: (value) => isObject(value) && isObject(value.resources),
   commandResult: (value) => value === null || isObject(value),
 });
 

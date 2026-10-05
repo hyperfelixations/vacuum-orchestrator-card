@@ -17,7 +17,9 @@ export const HEARTBEAT_MS = 30_000;
 
 // Home Assistant's own data and the robot discovery derived from its entity registry; the
 // integration's invalidation events do not concern them.
-const HOME_ASSISTANT_SCOPES = new Set(["registry", "manifest", "candidates"]);
+const HOME_ASSISTANT_SCOPES = new Set(["registry", "manifest", "candidates", "errorTexts"]);
+// Served by Home Assistant from the integration's files: needed to word why it is not ready.
+const ANY_PHASE_SCOPES = new Set(["errorTexts"]);
 const ENTITY_REGISTRY_SCOPES = Object.freeze(["registry", "candidates"]);
 
 const LOAD_FAILED_CODES = new Set(["orchestrator_not_loaded", "orchestrator_not_initialized", "orchestrator_shutting_down", "multiple_orchestrator_entries_loaded"]);
@@ -138,10 +140,9 @@ export function createSession({ transport, platform, getHass } = {}) {
   }
 
   function refreshDemanded({ onlyStale = true } = {}) {
-    if (phase !== "ready") return;
     for (const key of demandedKeys()) {
       const scope = scopes.get(key);
-      if (!scope) continue;
+      if (!scope || (phase !== "ready" && !ANY_PHASE_SCOPES.has(scope.name))) continue;
       if (!onlyStale || scope.status === "idle" || scope.stale || scope.status === "error") void load(scope);
     }
   }

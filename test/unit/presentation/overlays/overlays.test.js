@@ -43,7 +43,7 @@ test("level choices follow the mode, and errors show only after a save attempt",
   assert.equal(fieldsOf(vacuum, "basics").roomIds.error, null);
   const submitted = buildJobEditor({ ...built, overlay: { draft, submitted: true } });
   assert.equal(submitted.invalid, true);
-  assert.equal(fieldsOf(submitted, "basics").roomIds.error, built.texts.t("error.code.job_requires_area", { detail: "" }));
+  assert.equal(fieldsOf(submitted, "basics").roomIds.error, built.texts.t("validation.job_requires_area"));
 });
 
 test("editing a job or a template offers removing it from the editor", async () => {
@@ -69,7 +69,7 @@ test("the detail page shows readiness, unreleased rooms to release and the execu
   assert.equal(vm.readiness.state, "blocked");
   assert.deepEqual(vm.releaseable.map((room) => [room.roomId, room.decision.state]), [["room-bathroom", "enabled"]]);
   assert.deepEqual(vm.execution.map((group) => [group.key, group.eligible]), [["mop", false]]);
-  assert.deepEqual(vm.execution[0].robots.map((robot) => robot.reason), [built.texts.t("error.code.robot_busy", { detail: "" }), built.texts.t("error.code.unsupported_operation", { detail: "" })]);
+  assert.deepEqual(vm.execution[0].robots.map((robot) => robot.reason), [built.texts.backend("robot_busy"), built.texts.backend("unsupported_operation")]);
   assert.deepEqual([vm.actions.delete.state, vm.actions.retry.state], ["enabled", "hidden"]);
 });
 
@@ -97,7 +97,7 @@ test("the small dialogs word their command and validate their input", async () =
   assert.equal(recovery.reason, built.texts.t("failure.physical_run_ownership_uncertain"));
   assert.equal(dialogs.buildRecovery({ ...built, overlay: { robotId: "robot-dusty" } }).open, false);
   const settings = dialogs.buildQueueSettings({ ...built, overlay: { minutes: 2000, submitted: true } });
-  assert.equal(settings.field.error, built.texts.t("error.code.queue_grace_out_of_range", { detail: "" }));
+  assert.equal(settings.field.error, built.texts.t("validation.queue_grace_out_of_range"));
   assert.equal(dialogs.buildQueueSettings({ ...built, overlay: { minutes: 15 } }).field.error, null);
 });
 

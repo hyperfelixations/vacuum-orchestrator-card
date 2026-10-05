@@ -32,7 +32,7 @@ export function buildRelease({ model, texts, context, overlay }) {
       ...(kind === "timed"
         ? [
             field(texts, { key: "overlay:hours", labelKey: "release.hours", control: "text", inputType: "number", min: 0, step: 1, value: overlay.hours ?? 2 }),
-            field(texts, { key: "overlay:minutes", labelKey: "release.minutes", control: "text", inputType: "number", min: 0, max: 59, step: 5, value: overlay.minutes ?? 0, error: durationValid || !overlay.submitted ? null : t(texts, "error.code.release_duration_mismatch") }),
+            field(texts, { key: "overlay:minutes", labelKey: "release.minutes", control: "text", inputType: "number", min: 0, max: 59, step: 5, value: overlay.minutes ?? 0, error: durationValid || !overlay.submitted ? null : t(texts, "validation.release_duration_mismatch") }),
           ]
         : []),
     ],
@@ -132,7 +132,7 @@ export function buildRoomCreate({ model, texts, context, overlay }) {
     key: "room-create",
     title: t(texts, "room.createTitle"),
     fields: [
-      field(texts, { key: "overlay:name", labelKey: "room.name", control: "text", value: overlay.name ?? "", error: overlay.submitted && !name ? t(texts, "error.code.room_name_required") : null }),
+      field(texts, { key: "overlay:name", labelKey: "room.name", control: "text", value: overlay.name ?? "", error: overlay.submitted && !name ? t(texts, "validation.room_name_required") : null }),
       field(texts, { key: "overlay:areaId", labelKey: "room.area", control: "segmented", value: overlay.areaId ?? null, options: [{ value: null, label: t(texts, "room.noArea") }, ...areas.map((area) => ({ value: area.areaId, label: area.name }))], hintKey: "room.areaHint" }),
     ],
     save: decide(context, { operation: "create_room", target: CREATE_TARGET }),

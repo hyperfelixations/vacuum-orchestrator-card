@@ -21,7 +21,7 @@ const code = async (promise) => {
     await promise;
     return "ok";
   } catch (error) {
-    return error.code === "service_validation_error" ? error.message.replace("Validation error: ", "") : error.code;
+    return error.translation_key ?? error.code;
   }
 };
 

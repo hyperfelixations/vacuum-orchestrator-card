@@ -69,7 +69,7 @@ export function buildQueueSettings({ texts, context, overlay }) {
       min: 0,
       max: GRACE_MAX_MINUTES,
       hint: t(texts, "queueSettings.graceHint"),
-      error: overlay.submitted && !valid ? t(texts, "error.code.queue_grace_out_of_range", { detail: "" }) : null,
+      error: overlay.submitted && !valid ? t(texts, "validation.queue_grace_out_of_range") : null,
     },
     save: decide(context, { operation: "configure_queue", target: QUEUE_TARGET }),
   };

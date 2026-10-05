@@ -85,7 +85,8 @@ test("the fake answers every query the card can build in a shape the guards acce
 test("errors the fake raises decode to the integration's codes on both channels", async () => {
   const { createTransport } = await import("../../src/backend/transport.js");
   const { messages } = await import("../../src/backend/protocol.js");
-  const { isKnownErrorCode } = await import("../../src/domain/backend-errors.js");
+  const { isClientCode } = await import("../../src/domain/backend-errors.js");
+  const { EXCEPTIONS } = require("../fixtures/voi/exceptions.js");
   const household = SCENARIOS.typical();
   const fake = createFakeOrchestrator({ seed: household.seed });
   const hass = fake.attachTo(hassFor(household));
@@ -98,5 +99,5 @@ test("errors the fake raises decode to the integration's codes on both channels"
     await transport.ws({ type: "vacuum_orchestrator/unknown" }),
   ];
   assert.deepEqual(results.map((result) => result.code), ["job_not_editable", "unknown_job", "unknown_room", "robot_not_needing_recovery", "unknown_command"]);
-  assert.ok(results.every((result) => isKnownErrorCode(result.code)));
+  assert.deepEqual(results.filter((result) => !isClientCode(result.code) && !(result.code in EXCEPTIONS.en)).map((result) => result.code), []);
 });

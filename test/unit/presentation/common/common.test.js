@@ -5,25 +5,38 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { modelFor, FIXED_NOW } = require("../../../helpers/model.js");
 
-const texts = async (language = "en") => (await import("../../../../src/i18n/text-service.js")).textService(language);
+const { EXCEPTIONS } = require("../../../../test/fixtures/voi/exceptions.js");
+
+const texts = async (language = "en", backend = EXCEPTIONS[language]) => (await import("../../../../src/i18n/text-service.js")).textService(language, { backend });
 const common = () => import("../../../../src/presentation/common/texts.js");
 
-test("a failure reads in the integration's terms; an unknown code through its group", async () => {
+test("an integration failure reads in the integration's own words, in the card's language", async () => {
   const { failureText } = await common();
-  const en = await texts();
-  assert.equal(failureText(en, { code: "job_not_editable" }), en.t("error.code.job_not_editable", { detail: "" }));
-  assert.match(failureText(en, { code: "some_future_code" }), /some_future_code/);
-  assert.equal(failureText(en, null), "");
+  const de = await texts("de");
+  assert.equal(failureText(de, { code: "job_not_editable", detail: "job-1" }), EXCEPTIONS.de.job_not_editable);
+  assert.equal(failureText(await texts("en"), { code: "robot_busy" }), EXCEPTIONS.en.robot_busy);
+  assert.equal(failureText(de, null), "");
+});
+
+test("the card words its own codes; a code without any text is named", async () => {
+  const { failureText } = await common();
+  const de = await texts("de");
+  assert.equal(failureText(de, { code: "connection_lost" }), de.t("error.code.connection_lost"));
+  assert.equal(failureText(de, { code: "unauthorized" }), de.t("error.code.unauthorized"));
+  assert.match(failureText(de, { code: "some_future_code" }), /some_future_code/);
+  const withoutTexts = await texts("de", null);
+  assert.match(failureText(withoutTexts, { code: "robot_busy" }), /robot_busy/);
 });
 
 test("outcomes, reasons and due reasons fall back to naming the code", async () => {
   const { outcomeText, reasonText, readinessReasonText, dueReasonText } = await common();
   const en = await texts();
   assert.equal(outcomeText(en, "start_timeout"), en.t("failure.start_timeout"));
+  assert.equal(outcomeText(en, "setting_confirmation_timeout"), EXCEPTIONS.en.setting_confirmation_timeout);
   assert.match(outcomeText(en, "new_outcome"), /new_outcome/);
   assert.equal(outcomeText(en, null), null);
   assert.equal(reasonText(en, "room_not_released"), en.t("readiness.reason.room_not_released"));
-  assert.equal(reasonText(en, "robot_busy"), en.t("error.code.robot_busy", { detail: "" }));
+  assert.equal(reasonText(en, "robot_busy"), EXCEPTIONS.en.robot_busy);
   assert.match(reasonText(en, "mystery"), /mystery/);
   assert.match(readinessReasonText(en, "mystery"), /mystery/);
   assert.equal(dueReasonText(en, "never_cleaned"), en.t("due.reason.never_cleaned"));

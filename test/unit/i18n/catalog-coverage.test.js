@@ -1,9 +1,24 @@
-// Every vocabulary the card words has a text in every language: error codes, execution
-// outcomes, readiness and due reasons, job and attempt states, robot roles, setup steps, views.
+// Every vocabulary the card words has a text in every language: the card's own error codes, form
+// validation codes, execution outcomes, readiness and due reasons, job and attempt states, robot roles, setup steps, views.
 // Template texts produce text for the parameters they are called with.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const DOMAIN = path.join(__dirname, "../../../src/domain");
+// Codes the editors check themselves outside a draft validator.
+const DIALOG_CODES = ["queue_grace_out_of_range", "release_duration_mismatch", "room_name_required"];
+
+// Every `fail(field, "code")` of a draft validator.
+function validatorCodes() {
+  const codes = new Set(DIALOG_CODES);
+  for (const file of fs.readdirSync(DOMAIN).filter((name) => name.endsWith("-draft.js"))) {
+    for (const match of fs.readFileSync(path.join(DOMAIN, file), "utf8").matchAll(/fail\([^,]+,\s*"([a-z_]+)"/g)) codes.add(match[1]);
+  }
+  return [...codes];
+}
 
 const camel = (value) => value.replace(/_([a-z])/g, (_match, letter) => letter.toUpperCase());
 
@@ -19,10 +34,18 @@ function missing(TRANSLATIONS, keys) {
   return Object.entries(TRANSLATIONS).flatMap(([language, catalog]) => keys.filter((key) => !(key in catalog)).map((key) => `${language}:${key}`));
 }
 
-test("every known error code and error group is worded", async () => {
+test("every client code is worded; integration codes are the integration's to word", async () => {
   const { TRANSLATIONS, errors } = await catalogs();
-  assert.deepEqual(missing(TRANSLATIONS, errors.KNOWN_ERROR_CODES.map((code) => `error.code.${code}`)), []);
-  assert.deepEqual(missing(TRANSLATIONS, errors.ERROR_GROUP_NAMES.map((group) => `error.group.${group}`)), []);
+  assert.deepEqual(missing(TRANSLATIONS, [...errors.CLIENT_CODES.map((code) => `error.code.${code}`), "error.unknownCode"]), []);
+  const worded = Object.keys(TRANSLATIONS.en).filter((key) => key.startsWith("error.code.")).map((key) => key.slice("error.code.".length));
+  assert.deepEqual(worded.filter((code) => !errors.isClientCode(code)), []);
+});
+
+test("every code a form validator raises is worded", async () => {
+  const { TRANSLATIONS } = await catalogs();
+  const codes = validatorCodes();
+  assert.ok(codes.includes("job_requires_area") && codes.includes("invalid_minimum_battery") && codes.includes("interval_positive"));
+  assert.deepEqual(missing(TRANSLATIONS, codes.map((code) => `validation.${code}`)), []);
 });
 
 test("every outcome, readiness reason and due reason is worded", async () => {

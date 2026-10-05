@@ -260,6 +260,23 @@ test("a confirmed command reloads the scopes it names", async () => {
   env.session.dispose();
 });
 
+test("the integration's error texts load in any phase and ignore integration events", async () => {
+  const env = await setup({ fake: { runtimeLoaded: false } });
+  await env.start();
+  assert.equal(env.snapshot().phase, "load_failed");
+  env.session.setDemand("card", [{ name: "errorTexts", params: { language: "de" } }]);
+  await tick();
+  const texts = scope(env.snapshot(), 'errorTexts|{"language":"de"}');
+  assert.equal(texts.status, "ready");
+  assert.equal(texts.data.orchestrator_not_loaded, "Vacuum Orchestrator ist nicht geladen");
+  env.fake.state.runtimeLoaded = true;
+  await env.session.probe();
+  env.fake.commit();
+  await env.advance(env.QUIET_MS);
+  assert.equal(env.fake.calls.ws.filter((message) => message.type === "frontend/get_translations").length, 1);
+  env.session.dispose();
+});
+
 test("a scope failure that means the integration unloaded changes the phase", async () => {
   const env = await setup();
   await env.start();
