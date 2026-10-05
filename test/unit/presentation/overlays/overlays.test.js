@@ -73,6 +73,20 @@ test("the detail page shows readiness, unreleased rooms to release and the execu
   assert.deepEqual([vm.actions.delete.state, vm.actions.retry.state], ["enabled", "hidden"]);
 });
 
+test("a job waiting between phases explains why and offers the release the integration names", async () => {
+  const { buildJobDetail } = await overlays("job-detail");
+  const built = await modelFor("typical", { requests: { job: { name: "job", params: { jobId: "job-kitchen" } } }, setup: (fake) => {
+    fake.setJob("job-kitchen", { state: "dispatching", active_attempt_id: null });
+    fake.setReadiness("job-kitchen", { state: "blocked", reason_codes: ["room_not_released"], blocked_room_ids: ["room-kitchen"] });
+  } });
+  const vm = buildJobDetail({ ...built, overlay: { jobId: "job-kitchen" }, config: {} });
+  assert.equal(vm.state, "dispatching");
+  assert.equal(vm.readiness.state, "blocked");
+  assert.deepEqual(vm.releaseable.map((room) => room.roomId), ["room-kitchen"]);
+  const running = await modelFor("typical", { requests: { job: { name: "job", params: { jobId: "job-running" } } } });
+  assert.equal(buildJobDetail({ ...running, overlay: { jobId: "job-running" }, config: {} }).readiness, null, "a running attempt is not re-evaluated");
+});
+
 test("a job the integration no longer has is a missing page", async () => {
   const { buildJobDetail } = await overlays("job-detail");
   const built = await modelFor("typical");

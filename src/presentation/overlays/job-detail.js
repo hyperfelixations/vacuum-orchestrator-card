@@ -26,7 +26,8 @@ export function buildJobDetail({ model, texts, context, overlay, config }) {
   const position = list(queue?.jobs).find((entry) => entry.jobId === job.jobId)?.position ?? null;
   const actions = jobAffordances(job, context, { position, total: queue?.total ?? 0 });
   const execution = slotData(model, "execution");
-  const releaseable = job.state === "queued" && job.readiness?.blockedRoomIds?.length
+  // The integration explains a start only where one is due (queued, or between phases).
+  const releaseable = job.readiness?.blockedRoomIds?.length
     ? job.readiness.blockedRoomIds.map((roomId) => ({ roomId, name: roomName(roomId, index, model), decision: decide(context, { operation: "release_room", target: roomTarget(roomId) }) }))
     : [];
   const trace = traceRows(slotData(model, "trace")?.records, { model, texts, limit: TRACE_LIMIT });
@@ -43,7 +44,7 @@ export function buildJobDetail({ model, texts, context, overlay, config }) {
     settings: settingChips(job, texts),
     position,
     outcome: outcomeText(texts, job.failureCode),
-    readiness: job.state === "queued" && job.readiness
+    readiness: job.readiness
       ? { state: job.readiness.state, reasons: readinessReasons(job.readiness, { index, model, texts }) }
       : null,
     releaseable,

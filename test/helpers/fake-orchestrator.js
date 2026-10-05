@@ -176,6 +176,10 @@
       return result;
     }
 
+    // The integration explains the next start of a queued job and of one between phases;
+    // a running attempt is never re-evaluated.
+    const explainsStart = (job) => job.state === "queued" || (job.state === "dispatching" && !job.active_attempt_id);
+
     function page(items, { offset = 0, limit = 50 } = {}) {
       return { offset, limit, total: items.length, slice: items.slice(offset, offset + limit) };
     }
@@ -564,7 +568,7 @@
         case "get_job": {
           const job = jobOrError(data.job_id);
           if (!job) throw validation("unknown_job");
-          return { ...presentJob(job, job.state === "queued"), ...viewMetadata() };
+          return { ...presentJob(job, explainsStart(job)), ...viewMetadata() };
         }
         default:
           throw W.haError.notFound(`Service ${DOMAIN}.${service} not found.`);
@@ -594,7 +598,7 @@
             return respond(queuePage(message));
           case `${DOMAIN}/job/get`: {
             const job = jobOrError(message.job_id);
-            return job ? respond({ ...presentJob(job, state.queue.includes(job.job_id)), ...viewMetadata() }) : reject(voi("unknown_job"));
+            return job ? respond({ ...presentJob(job, explainsStart(job)), ...viewMetadata() }) : reject(voi("unknown_job"));
           }
           case `${DOMAIN}/jobs/list`:
             return respond(jobsList(message));

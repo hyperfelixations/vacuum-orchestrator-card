@@ -59,6 +59,18 @@ test("a row opens its detail page with the execution explanation, and Back retur
   card.unmount();
 });
 
+test("a job between phases shows why it waits, and its room can be released from there", async () => {
+  const card = await mountCard({ env });
+  card.fake.setJob("job-kitchen", { state: "dispatching", active_attempt_id: null });
+  card.fake.setReadiness("job-kitchen", { state: "blocked", reason_codes: ["room_not_released"], blocked_room_ids: ["room-kitchen"] });
+  await card.settle(48);
+  await card.click(`${row("job-kitchen")} .voc-job-main`);
+  await card.settle(32);
+  assert.match(card.text('[data-key="readiness"]'), /Kitchen/);
+  assert.ok(card.root.querySelector('[data-key="readiness"] [data-action="open-release"][data-args*="room-kitchen"]'));
+  card.unmount();
+});
+
 test("a new job is built in the editor and added with the chosen rooms", async () => {
   const card = await mountCard({ env });
   await card.click(".voc-primary-action");

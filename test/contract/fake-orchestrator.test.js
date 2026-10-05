@@ -90,6 +90,16 @@ test("the queue names the version and counts; jobs filter by state, newest first
   assert.deepEqual([events[0].active_count, events[0].attention_count], [1, 1]);
 });
 
+test("a job explains its next start while queued or between phases, never while running", async () => {
+  const { fake, job } = fakeFor();
+  assert.equal(typeof (await job("job-kitchen")).readiness, "object");
+  assert.equal((await job("job-running")).readiness, undefined);
+  fake.setJob("job-kitchen", { state: "dispatching", active_attempt_id: null });
+  assert.equal(typeof (await job("job-kitchen")).readiness, "object");
+  fake.setJob("job-kitchen", { active_attempt_id: "attempt-1" });
+  assert.equal((await job("job-kitchen")).readiness, undefined);
+});
+
 test("an unchanged queue mode commits nothing, as in the integration", async () => {
   const { fake, call } = fakeFor();
   await call("pause_queue", {});
