@@ -114,13 +114,19 @@
       return new Promise((_resolve, rejectLater) => clock.setTimeout(() => rejectLater(error), state.latencyMs));
     }
 
+    // The integration's view event; while no runtime is loaded it only says so.
     function event() {
-      return { api_version: 2, commit_id: state.commitId, runtime_id: state.runtimeId, runtime_sequence: state.runtimeSequence, queue_revision: state.queueRevision, mode: state.mode, pending_jobs: state.queue.length, needs_attention: needsAttention() };
+      if (!state.runtimeLoaded) return { api_version: 2, loaded: false };
+      return { api_version: 2, loaded: true, commit_id: state.commitId, runtime_id: state.runtimeId, runtime_sequence: state.runtimeSequence, queue_revision: state.queueRevision, mode: state.mode, pending_jobs: state.queue.length, needs_attention: needsAttention() };
+    }
+
+    function publish() {
+      for (const callback of [...subscribers]) callback(event());
     }
 
     function notify() {
       state.runtimeSequence += 1;
-      for (const callback of [...subscribers]) callback(event());
+      publish();
     }
 
     function commit({ queueChanged = false } = {}) {
@@ -186,6 +192,8 @@
         limit,
       });
       base.api_version = state.apiVersion;
+      base.runtime_id = state.runtimeId;
+      base.runtime_sequence = state.runtimeSequence;
       return base;
     }
 
@@ -596,9 +604,12 @@
         const injected = failure(message.type);
         if (injected) return reject(injected);
         if (!state.setUp) return reject(W.haError.unknownCommand());
-        if (!state.runtimeLoaded) return reject(voi("orchestrator_not_loaded"));
+        // The integration keeps a subscription across reloads and tells an unloaded state at once.
         subscribers.add(callback);
-        return respond(null).then(() => () => subscribers.delete(callback));
+        return respond(null).then(() => {
+          if (!state.runtimeLoaded) callback(event());
+          return () => subscribers.delete(callback);
+        });
       },
       addEventListener(name, listener) {
         connectionListeners[name]?.add(listener);
@@ -644,11 +655,21 @@
         if (job.state !== "queued") state.queue = state.queue.filter((id) => id !== jobId);
         commit({ queueChanged: true });
       },
-      // A reloaded config entry: a new runtime, and old subscriptions silently stop.
-      reloadRuntime() {
+      // The config entry unloads: subscribers hear it and stay subscribed.
+      unloadRuntime() {
+        state.runtimeLoaded = false;
+        publish();
+      },
+      // The config entry loads again: a new runtime announces itself to every subscriber.
+      loadRuntime() {
         state.runtimeId = `runtime-${state.runtimeId.split("-")[1] * 1 + 1}`;
         state.runtimeSequence = 1;
-        subscribers.clear();
+        state.runtimeLoaded = true;
+        publish();
+      },
+      reloadRuntime() {
+        fake.unloadRuntime();
+        fake.loadRuntime();
       },
       emitEvent(overrides = {}) {
         for (const callback of [...subscribers]) callback({ ...event(), ...overrides });

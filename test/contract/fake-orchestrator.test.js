@@ -67,7 +67,7 @@ test("an action asked for a response it does not give is refused", async () => {
   assert.equal(await code(call("pause_queue", {}, true)), "service_does_not_support_response");
 });
 
-test("every commit and readiness change notifies subscribers; a reloaded runtime ends them silently", async () => {
+test("every commit and readiness change notifies subscribers; a reload announces the unload and the new runtime", async () => {
   const { fake, hass } = fakeFor();
   const events = [];
   await hass.connection.subscribeMessage((event) => events.push(event), { type: "vacuum_orchestrator/subscribe" });
@@ -75,8 +75,16 @@ test("every commit and readiness change notifies subscribers; a reloaded runtime
   fake.setReadiness("job-kitchen", { state: "blocked" });
   assert.deepEqual(events.map((event) => event.runtime_sequence), [2, 3]);
   assert.equal(events[1].commit_id, events[0].commit_id, "readiness changes without a commit");
+  assert.ok(events.every((event) => event.loaded === true));
   fake.reloadRuntime();
-  fake.commit();
-  assert.equal(events.length, 2);
-  assert.equal(fake.subscriberCount(), 0);
+  assert.deepEqual(events.slice(2).map((event) => [event.loaded, event.runtime_id ?? null]), [[false, null], [true, "runtime-2"]]);
+  assert.deepEqual(Object.keys(events[2]).sort(), ["api_version", "loaded"]);
+  assert.equal(fake.subscriberCount(), 1);
+});
+
+test("a subscription to an unloaded integration is accepted and hears that it is unloaded", async () => {
+  const { hass } = fakeFor("typical", { runtimeLoaded: false });
+  const events = [];
+  await hass.connection.subscribeMessage((event) => events.push(event), { type: "vacuum_orchestrator/subscribe" });
+  assert.deepEqual(events, [{ api_version: 2, loaded: false }]);
 });

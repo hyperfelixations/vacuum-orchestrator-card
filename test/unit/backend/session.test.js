@@ -1,6 +1,6 @@
 // The shared session against the fake integration on a virtual clock: connection phases, demand-
-// driven loading, coalesced invalidation, runtime changes, the heartbeat that notices a silently
-// ended subscription, reconnects and the command contract.
+// driven loading, coalesced invalidation, runtime changes and reloads followed through the
+// subscription, the retry outside ready, reconnects and the command contract.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -14,7 +14,7 @@ const tick = async (rounds = 12) => {
 
 async function setup({ scenario = "typical", fake: fakeOptions = {}, hidden = () => false } = {}) {
   const { createTransport } = await import("../../../src/backend/transport.js");
-  const { createSession, HEARTBEAT_MS } = await import("../../../src/backend/session.js");
+  const { createSession, RETRY_MS, UNLOADED_GRACE_MS } = await import("../../../src/backend/session.js");
   const { QUIET_MS } = await import("../../../src/backend/subscription.js");
   const clock = new VirtualClock(FIXED_NOW);
   const household = SCENARIOS[scenario]();
@@ -33,7 +33,8 @@ async function setup({ scenario = "typical", fake: fakeOptions = {}, hidden = ()
     session,
     queries,
     advance,
-    HEARTBEAT_MS,
+    RETRY_MS,
+    UNLOADED_GRACE_MS,
     QUIET_MS,
     setHass(next) {
       hass = next;
@@ -141,37 +142,86 @@ test("an event from a new runtime reloads everything at once", async () => {
   env.session.dispose();
 });
 
-test("a reloaded entry that silently ends the subscription is noticed on the second heartbeat", async () => {
+test("the probe takes the runtime identity from the queue it reads", async () => {
   const env = await setup();
   await env.start();
-  env.fake.reloadRuntime();
-  env.fake.commit();
-  assert.equal(env.fake.subscriberCount(), 0);
-  await env.advance(env.HEARTBEAT_MS);
-  assert.equal(env.fake.subscriberCount(), 0, "one unexplained commit is only a suspicion");
-  await env.advance(env.HEARTBEAT_MS);
-  assert.equal(env.fake.subscriberCount(), 1);
+  assert.deepEqual({ ...env.snapshot().runtime }, { id: env.fake.state.runtimeId, sequence: env.fake.state.runtimeSequence, commitId: env.fake.state.commitId });
+  env.session.dispose();
+});
+
+test("a reloaded entry is followed through the subscription: unloaded, then a new runtime", async () => {
+  const env = await setup();
+  await env.start();
+  env.session.setDemand("card", [{ name: "rooms" }]);
+  await tick();
+  env.fake.unloadRuntime();
+  await tick();
+  assert.equal(env.snapshot().phase, "probing");
+  assert.equal(env.snapshot().live, null);
+  env.fake.loadRuntime();
+  await tick();
+  assert.equal(env.snapshot().phase, "ready");
+  assert.equal(env.snapshot().runtime.id, "runtime-2");
+  assert.equal(env.fake.subscriberCount(), 1, "the subscription outlives the runtime");
+  assert.equal(env.queries("get_rooms"), 2);
+  env.session.dispose();
+});
+
+test("an integration that stays unloaded is a load failure after a grace period, and its return is followed", async () => {
+  const env = await setup();
+  await env.start();
+  env.fake.unloadRuntime();
+  await env.advance(env.UNLOADED_GRACE_MS - 1);
+  assert.equal(env.snapshot().phase, "probing");
+  await env.advance(1);
+  assert.equal(env.snapshot().phase, "load_failed");
+  env.fake.loadRuntime();
+  await tick();
   assert.equal(env.snapshot().phase, "ready");
   env.session.dispose();
 });
 
-test("a hidden dashboard sends no heartbeat", async () => {
-  let hidden = false;
-  const env = await setup({ hidden: () => hidden });
+test("an integration that loads after the card is followed without a retry", async () => {
+  const env = await setup({ fake: { runtimeLoaded: false } });
   await env.start();
-  hidden = true;
+  assert.equal(env.snapshot().phase, "load_failed");
+  assert.equal(env.fake.subscriberCount(), 1);
+  env.fake.loadRuntime();
+  await tick();
+  assert.equal(env.snapshot().phase, "ready");
+  env.session.dispose();
+});
+
+test("an incompatible integration is not probed again on each of its events", async () => {
+  const env = await setup({ fake: { apiVersion: 3 } });
+  await env.start();
+  assert.equal(env.snapshot().phase, "api_incompatible");
+  const reads = () => env.fake.calls.ws.filter((message) => message.type === "vacuum_orchestrator/queue/get").length;
+  const before = reads();
+  env.fake.commit();
+  await tick();
+  assert.equal(reads(), before);
+  env.session.dispose();
+});
+
+test("ready sends no periodic reads", async () => {
+  const env = await setup();
+  await env.start();
   const sent = env.fake.calls.ws.length;
-  await env.advance(env.HEARTBEAT_MS * 3);
+  await env.advance(env.RETRY_MS * 3);
   assert.equal(env.fake.calls.ws.length, sent);
   env.session.dispose();
 });
 
-test("outside ready the heartbeat probes again, so a late setup is picked up", async () => {
-  const env = await setup({ fake: { runtimeLoaded: false } });
+test("outside ready the retry probes again on a visible dashboard", async () => {
+  let hidden = true;
+  const env = await setup({ fake: { runtimeLoaded: false }, hidden: () => hidden });
   await env.start();
-  assert.equal(env.snapshot().phase, "load_failed");
   env.fake.state.runtimeLoaded = true;
-  await env.advance(env.HEARTBEAT_MS);
+  await env.advance(env.RETRY_MS * 2);
+  assert.equal(env.snapshot().phase, "load_failed", "a hidden dashboard does not retry");
+  hidden = false;
+  await env.advance(env.RETRY_MS);
   assert.equal(env.snapshot().phase, "ready");
   env.session.dispose();
 });

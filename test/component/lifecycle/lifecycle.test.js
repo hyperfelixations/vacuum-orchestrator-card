@@ -132,3 +132,16 @@ test("the visual editor gets a form with the view types; the grid and size hints
   assert.deepEqual(plain(Card.getStubConfig()), {});
   card.unmount();
 });
+
+test("a reloaded integration is followed through the subscription, with no read while it waits", async () => {
+  const card = await mountCard({ env });
+  card.fake.unloadRuntime();
+  await settle(16);
+  assert.equal(card.root.querySelector(".voc-root").dataset.state, "onboarding");
+  card.fake.loadRuntime();
+  await settle(24);
+  assert.equal(card.root.querySelector(".voc-root").dataset.state, "view");
+  assert.equal(card.all(".voc-job").length, 4);
+  assert.equal(card.fake.subscriberCount(), 1);
+  card.unmount();
+});

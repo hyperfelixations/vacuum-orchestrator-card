@@ -1,6 +1,7 @@
 // One backend session per Home Assistant connection, shared by every card on it. It finds out
-// whether the integration is installed, set up and compatible, keeps one live subscription,
-// loads exactly the scopes some card currently shows, and sends commands one per target.
+// whether the integration is installed, set up and compatible, keeps one subscription that
+// follows the integration across reloads, loads exactly the scopes some card currently shows,
+// and sends commands one per target.
 // It holds no domain rule. See internal dev doc §6 "Sitzung".
 
 import { backendFailure, isBackendFailure } from "../domain/backend-errors.js";
@@ -13,7 +14,10 @@ export const DOMAIN = "vacuum_orchestrator";
 // Phases of the connection to the integration, in the order a fresh install passes them.
 export const PHASES = Object.freeze(["probing", "not_installed", "not_set_up", "load_failed", "api_incompatible", "offline", "ready"]);
 
-export const HEARTBEAT_MS = 30_000;
+// Outside `ready`, a visible card probes again this often; `ready` reads nothing periodically.
+export const RETRY_MS = 30_000;
+// How long an unloaded integration may take to load again before the card shows a load failure.
+export const UNLOADED_GRACE_MS = 5_000;
 
 // Home Assistant's own data and the robot discovery derived from its entity registry; the
 // integration's invalidation events do not concern them.
@@ -72,9 +76,9 @@ export function createSession({ transport, platform, getHass } = {}) {
   let version = 0;
   let snapshot = null;
   let commandCounter = 0;
-  let heartbeat = null;
+  let retry = null;
+  let unloadedProbe = null;
   let knownEntities = null;
-  let suspectCommit = null;
   const invalidation = createInvalidationTimer({ platform, onFire: () => invalidateAll() });
 
   function changed() {
@@ -160,8 +164,42 @@ export function createSession({ transport, platform, getHass } = {}) {
     refreshDemanded();
   }
 
+  function cancelUnloadedProbe() {
+    if (unloadedProbe !== null) platform?.clearTimeout?.(unloadedProbe);
+    unloadedProbe = null;
+  }
+
+  // The integration unloaded its runtime: wait briefly for a reload before calling it a failure.
+  function onUnloaded() {
+    live = null;
+    if (phase !== "ready") {
+      changed();
+      return;
+    }
+    invalidation.cancel();
+    setPhase("probing");
+    if (unloadedProbe === null && typeof platform?.setTimeout === "function") {
+      unloadedProbe = platform.setTimeout(() => {
+        unloadedProbe = null;
+        void probe();
+      }, UNLOADED_GRACE_MS);
+    }
+  }
+
   function onEvent(event) {
-    if (disposed || !guards.event(event)) return;
+    if (disposed) return;
+    if (guards.unloadedEvent(event)) {
+      onUnloaded();
+      return;
+    }
+    if (!guards.event(event)) return;
+    // An incompatible integration changes only with an update, which restarts Home Assistant.
+    if (phase === "api_incompatible") return;
+    if (phase !== "ready") {
+      cancelUnloadedProbe();
+      void probe();
+      return;
+    }
     live = Object.freeze({ mode: event.mode, pendingJobs: event.pending_jobs, needsAttention: event.needs_attention === true, queueRevision: event.queue_revision });
     if (runtime.id !== null && event.runtime_id !== runtime.id) {
       runtime = { id: event.runtime_id, sequence: event.runtime_sequence, commitId: event.commit_id };
@@ -192,10 +230,10 @@ export function createSession({ transport, platform, getHass } = {}) {
     return true;
   }
 
-  async function runProbe({ resubscribe = false } = {}) {
+  async function runProbe() {
     const hass = getHass();
-    if (resubscribe || phase !== "ready") dropSubscription();
     if (!componentLoaded(hass)) {
+      dropSubscription();
       const manifest = await SCOPE_LOADERS.manifest(transport);
       if (disposed) return;
       Object.assign(entry(scopeKey("manifest"), "manifest", {}), manifest.ok ? { status: "ready", data: manifest.data, error: null } : { status: "error", data: null, error: manifest });
@@ -221,50 +259,35 @@ export function createSession({ transport, platform, getHass } = {}) {
       return;
     }
     apiVersion = check.data.apiVersion;
-    runtime = { ...runtime, commitId: check.data.commitId };
-    suspectCommit = null;
+    runtime = { id: check.data.runtimeId, sequence: check.data.runtimeSequence, commitId: check.data.commitId };
+    cancelUnloadedProbe();
     setPhase("ready");
     const manifestScope = entry(scopeKey("manifest"), "manifest", {});
     if (manifestScope.status === "idle") void load(manifestScope);
     invalidateAll();
   }
 
-  function probe(options) {
+  function probe() {
     if (disposed) return Promise.resolve();
     if (!probing) {
-      probing = runProbe(options).finally(() => {
+      probing = runProbe().finally(() => {
         probing = null;
-        scheduleHeartbeat();
+        scheduleRetry();
       });
     }
     return probing;
   }
 
-  // The integration binds a subscription to the runtime that served it; a reloaded config entry
-  // ends it silently. A commit the subscription did not report on two consecutive beats means
-  // the subscription is gone. Outside `ready`, the beat retries the probe.
-  async function beat() {
-    heartbeat = null;
-    if (disposed) return;
-    if (!platform?.isDocumentHidden?.()) {
-      if (phase === "ready") {
-        const check = await SCOPE_LOADERS.queue(transport, { offset: 0, limit: 1 });
-        if (disposed) return;
-        if (!check.ok) handleFailure(check);
-        else if (runtime.commitId !== null && check.data.commitId > runtime.commitId) {
-          if (suspectCommit !== null && check.data.commitId >= suspectCommit) await probe({ resubscribe: true });
-          else suspectCommit = check.data.commitId;
-        } else suspectCommit = null;
-      } else if (phase !== "probing") {
-        await probe();
-      }
-    }
-    scheduleHeartbeat();
-  }
-
-  function scheduleHeartbeat() {
-    if (disposed || heartbeat !== null || typeof platform?.setTimeout !== "function") return;
-    heartbeat = platform.setTimeout(() => void beat(), HEARTBEAT_MS);
+  // The subscription reports reloads; only a card that is not ready retries on its own, for
+  // what no event announces (a lost connection, a late install).
+  function scheduleRetry() {
+    if (disposed || retry !== null || phase === "ready" || phase === "probing" || typeof platform?.setTimeout !== "function") return;
+    retry = platform.setTimeout(() => {
+      retry = null;
+      if (disposed || phase === "ready") return;
+      if (platform?.isDocumentHidden?.()) scheduleRetry();
+      else void probe();
+    }, RETRY_MS);
   }
 
   function dropSubscription() {
@@ -395,8 +418,9 @@ export function createSession({ transport, platform, getHass } = {}) {
       if (disposed) return;
       disposed = true;
       invalidation.cancel();
-      if (heartbeat !== null) platform?.clearTimeout?.(heartbeat);
-      heartbeat = null;
+      cancelUnloadedProbe();
+      if (retry !== null) platform?.clearTimeout?.(retry);
+      retry = null;
       dropSubscription();
       for (const cleanup of cleanups.splice(0)) cleanup();
       transport.dispose?.();

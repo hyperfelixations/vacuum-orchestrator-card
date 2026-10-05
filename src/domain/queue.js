@@ -36,6 +36,8 @@ export function normalizeQueuePage(wire) {
   return Object.freeze({
     mode: isQueueMode(wire.mode) ? wire.mode : "idle",
     commitId: integer(wire.commit_id),
+    runtimeId: text(wire.runtime_id),
+    runtimeSequence: integer(wire.runtime_sequence),
     queueRevision: integer(wire.queue_revision),
     needsAttention: bool(wire.needs_attention) === true,
     recoveryTargets: Object.freeze(records(wire.recovery_targets).map(recoveryTarget).filter(Boolean)),

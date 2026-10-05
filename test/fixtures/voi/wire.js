@@ -372,6 +372,7 @@ function wireDiagnostics(overrides = {}) {
 function wireSubscriptionEvent(overrides = {}) {
   return {
     api_version: VOI_API_VERSION,
+    loaded: true,
     commit_id: 1,
     runtime_id: "runtime-1",
     runtime_sequence: 1,
@@ -381,6 +382,11 @@ function wireSubscriptionEvent(overrides = {}) {
     needs_attention: false,
     ...overrides,
   };
+}
+
+// What a subscriber hears while no runtime is loaded.
+function wireUnloadedEvent() {
+  return { api_version: VOI_API_VERSION, loaded: false };
 }
 
 function wireManifest(overrides = {}) {
@@ -447,6 +453,7 @@ const api = {
   wireTracePage,
   wireDiagnostics,
   wireSubscriptionEvent,
+  wireUnloadedEvent,
   wireManifest,
   wireRegistryEntry,
   haError,
