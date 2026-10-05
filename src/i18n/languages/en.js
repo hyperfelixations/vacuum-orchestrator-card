@@ -315,11 +315,6 @@ export const en = {
   "time.durationHours": (v) => `${v.hours} h`,
   "time.durationMinutes": (v) => `${v.minutes} min`,
 
-  "config.title": "Title",
-  "config.subtitle": "Subtitle",
-  "config.start_view": "Start view",
-  "config.language": "Language",
-
   "action.addToQueue": "Add to queue",
   "editor.newJob": "New job",
   "editor.editJob": "Edit job",

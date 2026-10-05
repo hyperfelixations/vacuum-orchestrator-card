@@ -15,7 +15,7 @@ const SHARED = ["fixtures", "helpers", "manifests", "baseline"];
 const NODE_DIRECTORIES = new Set([
   "unit/application", "unit/backend", "unit/config", "unit/core", "unit/domain", "unit/i18n",
   "unit/presentation/common", "unit/presentation/shell", "unit/presentation/views", "unit/presentation/overlays",
-  "unit/render", "unit/runtime", "unit/views",
+  "unit/element", "unit/render", "unit/runtime", "unit/views",
   "component/lifecycle", "component/views", "component/shell", "contract", "architecture",
   "characterization", "property",
 ]);

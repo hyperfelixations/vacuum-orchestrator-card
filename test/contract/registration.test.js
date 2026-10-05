@@ -1,5 +1,6 @@
 "use strict";
-// What Home Assistant sees on load: one custom element and one picker entry.
+// What Home Assistant sees on load: one custom element and one picker entry, configured in
+// YAML only.
 // Boundary: registration only; the element's lifecycle belongs to the component tests.
 
 const test = require("node:test");
@@ -18,4 +19,9 @@ test("the bundle registers exactly one element and one picker entry", () => {
   assert.equal(dom.window.customCards[0].preview, true);
   assert.match(dom.window.customCards[0].documentationURL, /github\.com/);
   assert.equal(dom.window.vacuumOrchestratorCardVersion, "0.0.1");
+  const Card = dom.window.customElements.get("vacuum-orchestrator-card");
+  assert.deepEqual([typeof Card.getConfigForm, typeof Card.getConfigElement], ["undefined", "undefined"]);
+  const suggest = dom.window.customCards[0].getEntitySuggestion;
+  assert.equal(JSON.stringify(suggest({ states: { "vacuum.rocky": {} } }, "vacuum.rocky")), '{"config":{"type":"custom:vacuum-orchestrator-card"}}');
+  assert.equal(suggest(undefined, "vacuum.rocky"), null);
 });

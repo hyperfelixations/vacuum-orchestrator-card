@@ -47,7 +47,9 @@ There is no published release yet. Build the card from source as described in
 ## Quickstart
 
 The card picker knows this card: start from **Add card** and pick
-**Vacuum Orchestrator Card**. In YAML, this is all you need:
+**Vacuum Orchestrator Card**, or choose a vacuum or a Vacuum Orchestrator entity
+under **By entity** and take the suggested card. Configuration is YAML only, and
+this is all you need:
 
 ```yaml
 type: custom:vacuum-orchestrator-card
@@ -281,8 +283,7 @@ card_mod:
 
 ## Known limitations
 
-- The visual editor covers `title`, `subtitle`, `start_view` and `language`;
-  `views:` and `show:` are YAML.
+- Configuration is YAML only; the card needs none to start.
 - The integration's own options and logs are on its page in Home Assistant:
   Settings → Devices & services → Vacuum Orchestrator.
 - The card is available in English and German.

@@ -86,23 +86,6 @@ export class VacuumOrchestratorCard extends HTMLElement {
     return {};
   }
 
-  static getConfigForm() {
-    return {
-      schema: [
-        { name: "title", selector: { text: {} } },
-        { name: "subtitle", selector: { text: {} } },
-        { name: "start_view", selector: { select: { mode: "dropdown", options: VIEW_TYPES } } },
-        { name: "language", selector: { select: { mode: "dropdown", options: ["auto", "en", "de"] } } },
-      ],
-      computeLabel: (entry) => {
-        const key = `config.${entry.name}`;
-        const label = translate(DEFAULT_LANGUAGE, key);
-        return label === key ? entry.name : label;
-      },
-      assertConfig: (config) => normalizeConfig(config, COLLABORATORS),
-    };
-  }
-
   // The configuration as written, read by frontend modules such as card-mod.
   get config() {
     return this._lovelaceConfig;

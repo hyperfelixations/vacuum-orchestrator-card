@@ -315,11 +315,6 @@ export const de = {
   "time.durationHours": (v) => `${v.hours} h`,
   "time.durationMinutes": (v) => `${v.minutes} min`,
 
-  "config.title": "Titel",
-  "config.subtitle": "Untertitel",
-  "config.start_view": "Startansicht",
-  "config.language": "Sprache",
-
   "action.addToQueue": "Zur Warteschlange",
   "editor.newJob": "Neuer Auftrag",
   "editor.editJob": "Auftrag bearbeiten",

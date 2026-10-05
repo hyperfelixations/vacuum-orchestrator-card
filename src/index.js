@@ -1,4 +1,5 @@
 import { CARD_NAME, CARD_TYPE, CARD_VERSION, CARD_VERSION_GLOBAL } from "./core/card-metadata.js";
+import { suggestionForEntity } from "./element/card-suggestions.js";
 import { VacuumOrchestratorCard } from "./element/vacuum-orchestrator-card.js";
 
 if (!customElements.get(CARD_TYPE)) customElements.define(CARD_TYPE, VacuumOrchestratorCard);
@@ -10,6 +11,7 @@ const metadata = {
   preview: true,
   description: "Queue and job controls for the Home Assistant Vacuum Orchestrator integration.",
   documentationURL: "https://github.com/hyperfelixations/vacuum-orchestrator-card",
+  getEntitySuggestion: suggestionForEntity,
 };
 const existing = window.customCards.find((entry) => entry.type === CARD_TYPE);
 if (existing) Object.assign(existing, metadata);

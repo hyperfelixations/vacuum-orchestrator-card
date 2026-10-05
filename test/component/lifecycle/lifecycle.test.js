@@ -118,15 +118,12 @@ test("a render that fails leaves one localized line and the next good render rec
   card.unmount();
 });
 
-test("the visual editor gets a form with the view types; the grid and size hints are present", async () => {
+test("the card offers no form editor and starts from an empty stub; the grid and size hints are present", async () => {
   const card = await mountCard({ env });
   const Card = env.window.customElements.get("vacuum-orchestrator-card");
   // Objects from the card's realm are compared by value.
-  const form = Card.getConfigForm();
   const plain = (value) => JSON.parse(JSON.stringify(value));
-  assert.deepEqual(plain(form.schema.map((entry) => entry.name)), ["title", "subtitle", "start_view", "language"]);
-  assert.deepEqual(plain(form.schema[2].selector.select.options), ["setup", "queue", "rooms", "robots", "templates", "history", "diagnostics", "settings"]);
-  assert.throws(() => form.assertConfig({ show: { panle: false } }));
+  assert.deepEqual([typeof Card.getConfigForm, typeof Card.getConfigElement], ["undefined", "undefined"]);
   assert.deepEqual(plain(card.card.getGridOptions()), { columns: 12, min_columns: 6, max_columns: 12 });
   assert.ok(card.card.getCardSize() >= 4);
   assert.deepEqual(plain(Card.getStubConfig()), {});
