@@ -10,17 +10,12 @@ const load = () => import("../../../src/backend/protocol.js");
 
 test("the catalog names the 10 actions, 14 commands, 9 queries and both read actions", async () => {
   const { ACTIONS, CONFIGURATION_COMMANDS, CONFIGURATION_QUERIES, OPERATIONS } = await load();
-  assert.equal(Object.keys(ACTIONS).length, 10);
+  assert.equal(ACTIONS.length, 10);
+  assert.ok(Object.isFrozen(ACTIONS));
   assert.equal(CONFIGURATION_COMMANDS.length, 14);
   assert.equal(CONFIGURATION_QUERIES.length, 9);
   assert.equal(new Set(OPERATIONS).size, OPERATIONS.length);
   assert.ok(OPERATIONS.includes("get_queue") && OPERATIONS.includes("get_job"));
-});
-
-test("exactly the actions with an optional response are marked as answering", async () => {
-  const { ACTIONS } = await load();
-  const answering = Object.entries(ACTIONS).filter(([, spec]) => spec.response).map(([name]) => name).sort();
-  assert.deepEqual(answering, ["create_job", "resume_queue", "retry_job", "run_queue", "start_job", "update_job"]);
 });
 
 test("message builders produce the integration's message types", async () => {

@@ -114,17 +114,40 @@
       return new Promise((_resolve, rejectLater) => clock.setTimeout(() => rejectLater(error), state.latencyMs));
     }
 
+    // What each public read model of the integration is made of; a view changed when its part
+    // of the state did, as the integration's `changed_scopes` decides.
+    function viewParts() {
+      const jobs = [[...state.jobs.values()], [...state.readiness]];
+      return {
+        jobs: JSON.stringify(jobs),
+        queue: JSON.stringify([state.queue, state.queueRevision, state.mode, state.run, state.graceSeconds, state.recoveryTargets, jobs]),
+        rooms: JSON.stringify(state.rooms),
+        robots: JSON.stringify([state.robots, state.recoveryTargets]),
+        templates: JSON.stringify(state.templates),
+      };
+    }
+    let lastViews = viewParts();
+    let lastChanged = Object.keys(lastViews);
+
     // The integration's view event; while no runtime is loaded it only says so.
     function event() {
       if (!state.runtimeLoaded) return { api_version: 2, loaded: false };
-      return { api_version: 2, loaded: true, commit_id: state.commitId, runtime_id: state.runtimeId, runtime_sequence: state.runtimeSequence, queue_revision: state.queueRevision, mode: state.mode, pending_jobs: state.queue.length, needs_attention: needsAttention() };
+      return { api_version: 2, loaded: true, commit_id: state.commitId, runtime_id: state.runtimeId, runtime_sequence: state.runtimeSequence, queue_revision: state.queueRevision, mode: state.mode, pending_jobs: state.queue.length, needs_attention: needsAttention(), changed: lastChanged };
+    }
+
+    function viewMetadata() {
+      return { commit_id: state.commitId, runtime_id: state.runtimeId, runtime_sequence: state.runtimeSequence };
     }
 
     function publish() {
       for (const callback of [...subscribers]) callback(event());
     }
 
-    function notify() {
+    // `changed`: the views to name; by default those whose state differs since the last event.
+    function notify({ changed } = {}) {
+      const views = viewParts();
+      lastChanged = changed !== undefined ? changed : Object.keys(views).filter((name) => views[name] !== lastViews[name]);
+      lastViews = views;
       state.runtimeSequence += 1;
       publish();
     }
@@ -192,15 +215,13 @@
         limit,
       });
       base.api_version = state.apiVersion;
-      base.runtime_id = state.runtimeId;
-      base.runtime_sequence = state.runtimeSequence;
-      return base;
+      return { ...base, ...viewMetadata() };
     }
 
     function jobsList(message) {
       const ordered = [...state.jobs.values()].sort((one, other) => (one.created_at === other.created_at ? (one.job_id < other.job_id ? 1 : -1) : one.created_at < other.created_at ? 1 : -1));
       const { offset, limit, total, slice } = page(ordered, message);
-      return W.wireJobListPage(slice.map((job) => presentJob(job, false)), { total, offset, limit });
+      return { ...W.wireJobListPage(slice.map((job) => presentJob(job, false)), { total, offset, limit }), ...viewMetadata() };
     }
 
     function query(name, parameters) {
@@ -387,6 +408,7 @@
           throw voi("invalid_parameters");
       }
       commit({ queueChanged: name === "create_job_from_template" });
+      result.commit_id = state.commitId;
       return result;
     }
 
@@ -469,7 +491,7 @@
           state.jobs.delete(job.job_id);
           state.queue = state.queue.filter((jobId) => jobId !== job.job_id);
           commit({ queueChanged: true });
-          return null;
+          return { job_id: job.job_id };
         }
         case "move_job": {
           queued(data.job_id, "job_not_movable");
@@ -480,7 +502,7 @@
           queue.splice(target, 0, data.job_id);
           state.queue = queue;
           commit({ queueChanged: true });
-          return null;
+          return { job_id: data.job_id };
         }
         case "start_job": {
           const job = queued(data.job_id, "job_not_startable");
@@ -506,7 +528,7 @@
             throw validation("job_not_cancellable");
           }
           commit({ queueChanged: true });
-          return null;
+          return { job_id: job.job_id };
         }
         case "retry_job": {
           const job = jobOrError(data.job_id);
@@ -525,15 +547,18 @@
           return { dispatched: 0, robot_ids: [] };
         }
         case "pause_queue":
-          state.mode = "paused";
-          commit();
-          return null;
+          // An unchanged state commits nothing, as in the integration.
+          if (state.mode !== "paused") {
+            state.mode = "paused";
+            commit();
+          }
+          return { mode: state.mode };
         case "get_queue":
           return queuePage(pageParameters(data) || {});
         case "get_job": {
           const job = jobOrError(data.job_id);
           if (!job) throw validation("unknown_job");
-          return presentJob(job, job.state === "queued");
+          return { ...presentJob(job, job.state === "queued"), ...viewMetadata() };
         }
         default:
           throw W.haError.notFound(`Service ${DOMAIN}.${service} not found.`);
@@ -563,13 +588,13 @@
             return respond(queuePage(message));
           case `${DOMAIN}/job/get`: {
             const job = jobOrError(message.job_id);
-            return job ? respond(presentJob(job, state.queue.includes(job.job_id))) : reject(voi("unknown_job"));
+            return job ? respond({ ...presentJob(job, state.queue.includes(job.job_id)), ...viewMetadata() }) : reject(voi("unknown_job"));
           }
           case `${DOMAIN}/jobs/list`:
             return respond(jobsList(message));
           case `${DOMAIN}/configuration/get`:
             if (!QUERIES.includes(message.query)) return reject(W.haError.invalidFormat());
-            return respond(query(message.query, message.parameters || {}));
+            return respond({ ...query(message.query, message.parameters || {}), ...viewMetadata() });
           case `${DOMAIN}/configuration/command`:
             if (!COMMANDS.includes(message.command)) return reject(W.haError.invalidFormat());
             return respond(command(message.command, message.parameters || {}));
@@ -587,10 +612,10 @@
       if (injected) return reject(injected);
       if (domain !== DOMAIN || !state.setUp || ![...ACTIONS, ...QUERY_ACTIONS, ...COMMANDS, ...QUERIES].includes(service)) return reject(W.haError.notFound(`Service ${domain}.${service} not found.`));
       if (!state.runtimeLoaded) return reject(validation("orchestrator_not_loaded"));
-      const supportsResponse = ["create_job", "update_job", "start_job", "retry_job", "run_queue", "resume_queue", ...QUERY_ACTIONS].includes(service);
-      if (returnResponse && !supportsResponse) return reject(W.haError.serviceValidation("service_does_not_support_response"));
       try {
-        const response = action(service, data);
+        const ids = action(service, data);
+        // Every action answers optionally: reads with their page, changes with the confirmed commit.
+        const response = QUERY_ACTIONS.includes(service) ? ids : { api_version: 2, commit_id: state.commitId, ...ids };
         return respond(returnResponse ? { context: { id: "context" }, response } : { context: { id: "context" } });
       } catch (error) {
         return reject(error);

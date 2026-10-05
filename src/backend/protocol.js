@@ -18,18 +18,7 @@ export const WS = Object.freeze({
 
 // Job and queue commands travel as Home Assistant actions; `response` marks the ones that
 // return a payload (`SupportsResponse.OPTIONAL`). Asking any other action for a response fails.
-export const ACTIONS = Object.freeze({
-  create_job: { response: true },
-  update_job: { response: true },
-  delete_job: { response: false },
-  move_job: { response: false },
-  start_job: { response: true },
-  cancel_job: { response: false },
-  retry_job: { response: true },
-  run_queue: { response: true },
-  pause_queue: { response: false },
-  resume_queue: { response: true },
-});
+export const ACTIONS = Object.freeze(["create_job", "update_job", "delete_job", "move_job", "start_job", "cancel_job", "retry_job", "run_queue", "pause_queue", "resume_queue"]);
 
 // Configuration commands and queries share the action schemas and travel over the integration's
 // own WebSocket types, which report stable error codes.
@@ -64,7 +53,7 @@ export const CONFIGURATION_QUERIES = Object.freeze([
 
 // Every operation name the card may use. Their presence as registered actions under
 // `hass.services.vacuum_orchestrator` is the integration's own statement of what it offers.
-export const OPERATIONS = Object.freeze([...Object.keys(ACTIONS), ...CONFIGURATION_COMMANDS, ...CONFIGURATION_QUERIES, "get_queue", "get_job"]);
+export const OPERATIONS = Object.freeze([...ACTIONS, ...CONFIGURATION_COMMANDS, ...CONFIGURATION_QUERIES, "get_queue", "get_job"]);
 
 export const PAGE_LIMIT = 100;
 

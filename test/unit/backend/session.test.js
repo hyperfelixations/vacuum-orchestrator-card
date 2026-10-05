@@ -100,14 +100,89 @@ test("a burst of commits reloads demanded scopes once after a quiet gap", async 
   await env.start();
   env.session.setDemand("card", [{ name: "rooms" }]);
   await tick();
-  env.fake.commit();
-  env.fake.commit();
-  env.fake.commit();
+  env.fake.notify({ changed: ["rooms"] });
+  env.fake.notify({ changed: ["rooms"] });
+  env.fake.notify({ changed: ["rooms"] });
   await tick();
   assert.equal(env.queries("get_rooms"), 1, "nothing reloads before the quiet gap");
   await env.advance(env.QUIET_MS);
   assert.equal(env.queries("get_rooms"), 2);
-  assert.equal(env.snapshot().runtime.commitId, env.fake.state.commitId);
+  assert.equal(env.snapshot().runtime.sequence, env.fake.state.runtimeSequence);
+  env.session.dispose();
+});
+
+test("an event reloads only the scopes reading the views it names, and the volatile ones", async () => {
+  const env = await setup();
+  await env.start();
+  env.session.setDemand("card", [{ name: "rooms" }, { name: "templates" }, { name: "diagnostics" }]);
+  await tick();
+  env.fake.notify({ changed: ["rooms"] });
+  await env.advance(env.QUIET_MS);
+  assert.deepEqual([env.queries("get_rooms"), env.queries("get_templates"), env.queries("get_diagnostics")], [2, 1, 2]);
+  env.fake.notify({ changed: ["queue"] });
+  env.fake.notify({ changed: ["templates"] });
+  await env.advance(env.QUIET_MS);
+  assert.deepEqual([env.queries("get_rooms"), env.queries("get_templates")], [2, 2], "a burst reloads the union of its views");
+  env.session.dispose();
+});
+
+test("an event naming an unknown view, or none, reloads everything", async () => {
+  const env = await setup();
+  await env.start();
+  env.session.setDemand("card", [{ name: "rooms" }, { name: "templates" }]);
+  await tick();
+  env.fake.notify({ changed: ["future_view"] });
+  await env.advance(env.QUIET_MS);
+  assert.deepEqual([env.queries("get_rooms"), env.queries("get_templates")], [2, 2]);
+  env.fake.notify({ changed: null });
+  await env.advance(env.QUIET_MS);
+  assert.deepEqual([env.queries("get_rooms"), env.queries("get_templates")], [3, 3]);
+  env.session.dispose();
+});
+
+test("a scope already read at the event's sequence is not read again", async () => {
+  const env = await setup();
+  await env.start();
+  env.session.setDemand("card", [{ name: "rooms" }]);
+  await tick();
+  env.fake.state.runtimeSequence += 1;
+  env.session.reload("rooms");
+  await tick();
+  assert.equal(env.queries("get_rooms"), 2);
+  env.fake.emitEvent({ changed: ["rooms"] });
+  await env.advance(env.QUIET_MS);
+  assert.equal(env.queries("get_rooms"), 2);
+  env.session.dispose();
+});
+
+test("a confirmed command and the event of its commit read the queue once", async () => {
+  const env = await setup();
+  await env.start();
+  const queue = { name: "queue", params: { offset: 0, limit: 25 } };
+  env.session.setDemand("card", [queue, { name: "rooms" }]);
+  await tick();
+  const reads = () => env.fake.calls.ws.filter((message) => message.type.endsWith("/queue/get")).length;
+  const before = reads();
+  const moved = await env.session.command("move_job", { job_id: "job-bathroom", direction: "up" }, { target: "job:job-bathroom", invalidates: ["queue"] });
+  assert.equal(typeof moved.data.commit_id, "number");
+  await env.advance(env.QUIET_MS);
+  assert.equal(reads(), before + 1);
+  assert.equal(env.queries("get_rooms"), 1);
+  env.session.dispose();
+});
+
+test("a command does not reload a scope that already shows its commit", async () => {
+  const env = await setup();
+  await env.start();
+  env.session.setDemand("card", [{ name: "rooms" }]);
+  await tick();
+  await env.session.command("pause_queue", {}, { target: "queue", invalidates: ["rooms"] });
+  await tick();
+  assert.equal(env.queries("get_rooms"), 2, "rooms were read before the commit");
+  const again = await env.session.command("pause_queue", {}, { target: "queue", invalidates: ["rooms"] });
+  await tick();
+  assert.equal(again.data.commit_id, env.snapshot().scopes["rooms|{}"].view.commitId, "an unchanged queue mode commits nothing");
+  assert.equal(env.queries("get_rooms"), 2);
   env.session.dispose();
 });
 
@@ -132,7 +207,7 @@ test("an event from a new runtime reloads everything at once", async () => {
   await env.start();
   env.session.setDemand("card", [{ name: "rooms" }]);
   await tick();
-  env.fake.notify();
+  env.fake.notify({ changed: ["rooms"] });
   await env.advance(env.QUIET_MS);
   assert.equal(env.queries("get_rooms"), 2);
   env.fake.emitEvent({ runtime_id: "runtime-9", runtime_sequence: 1 });
@@ -256,17 +331,16 @@ test("a new entity registry reloads the registry and the discovery derived from 
   env.session.dispose();
 });
 
-test("an action asks for a response only where the integration offers one", async () => {
+test("every action asks for the integration's response with the confirmed commit", async () => {
   const env = await setup();
   await env.start();
   const created = await env.session.command("create_job", { areas: ["kitchen"], mode: "vacuum" }, { target: "create" });
   assert.equal(created.ok, true);
   assert.equal(typeof created.data.job_id, "string");
   const paused = await env.session.command("pause_queue", {}, { target: "queue" });
-  assert.equal(paused.ok, true);
-  assert.equal(paused.data, null);
+  assert.deepEqual({ ...paused.data }, { api_version: 2, commit_id: env.fake.state.commitId, mode: "paused" });
   const calls = env.fake.calls.services.map((call) => [call.service, call.returnResponse]);
-  assert.deepEqual(calls, [["create_job", true], ["pause_queue", false]]);
+  assert.deepEqual(calls, [["create_job", true], ["pause_queue", true]]);
   env.session.dispose();
 });
 

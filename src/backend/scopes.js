@@ -20,8 +20,37 @@ export const MAX_JOB_SCAN_PAGES = 10;
 // Without the integration's summary counts the scan cannot know when it is done.
 export const BLIND_JOB_SCAN_PAGES = 2;
 
+// The integration's read models as its events name them, and the scopes that read each one.
+// Trace, execution and diagnostics change without a commit and follow every event.
+export const VIEW_SCOPES = Object.freeze({
+  queue: Object.freeze(["queue", "job"]),
+  jobs: Object.freeze(["openJobs", "jobLog", "job", "runs"]),
+  rooms: Object.freeze(["rooms"]),
+  robots: Object.freeze(["robots"]),
+  templates: Object.freeze(["templates"]),
+});
+export const VOLATILE_SCOPES = Object.freeze(["trace", "execution", "diagnostics"]);
+
+// The scopes an event's `changed` list concerns; anything the card does not know means "all".
+export function scopesForChanges(changed) {
+  if (!Array.isArray(changed) || changed.some((name) => !Object.hasOwn(VIEW_SCOPES, name))) return "all";
+  return new Set([...changed.flatMap((name) => VIEW_SCOPES[name]), ...VOLATILE_SCOPES]);
+}
+
 const invalid = (detail) => backendFailure("invalid_response", { detail });
-const done = (data) => Object.freeze({ ok: true, data });
+const done = (data, view = null) => Object.freeze({ ok: true, data, view });
+
+// The integration view a response was read at, or null without its metadata.
+function viewOf(wire) {
+  if (!wire || typeof wire.runtime_id !== "string" || !Number.isInteger(wire.runtime_sequence) || !Number.isInteger(wire.commit_id)) return null;
+  return Object.freeze({ runtimeId: wire.runtime_id, sequence: wire.runtime_sequence, commitId: wire.commit_id });
+}
+
+// Pages of one collection form a view only within one runtime; the oldest page bounds it.
+function oldestView(views) {
+  if (!views.length || views.some((view) => !view || view.runtimeId !== views[0].runtimeId)) return null;
+  return Object.freeze({ runtimeId: views[0].runtimeId, sequence: Math.min(...views.map((view) => view.sequence)), commitId: Math.min(...views.map((view) => view.commitId)) });
+}
 
 async function guarded(request, guard, detail) {
   const result = await request;
@@ -33,17 +62,19 @@ async function guarded(request, guard, detail) {
 async function collection(transport, query, idOf, normalize) {
   const { key, guard } = QUERY_COLLECTIONS[query];
   const byId = new Map();
+  const views = [];
   let offset = 0;
   let total = 0;
   for (let pageIndex = 0; pageIndex < MAX_COLLECTION_PAGES; pageIndex += 1) {
     const result = await guarded(transport.ws(messages.query(query, { offset, limit: PAGE_LIMIT })), guard, query);
     if (!result.ok) return result;
+    views.push(viewOf(result.data));
     total = result.data.total;
     for (const item of result.data[key].map(normalize).filter(Boolean)) if (!byId.has(idOf(item))) byId.set(idOf(item), item);
     offset += result.data[key].length;
-    if (result.data[key].length === 0 || offset >= total) return done(Object.freeze({ items: Object.freeze([...byId.values()]), total, complete: true }));
+    if (result.data[key].length === 0 || offset >= total) return done(Object.freeze({ items: Object.freeze([...byId.values()]), total, complete: true }), oldestView(views));
   }
-  return done(Object.freeze({ items: Object.freeze([...byId.values()]), total, complete: false }));
+  return done(Object.freeze({ items: Object.freeze([...byId.values()]), total, complete: false }), oldestView(views));
 }
 
 export async function loadQueue(transport, { offset = 0, limit = 25 } = {}) {
@@ -51,19 +82,21 @@ export async function loadQueue(transport, { offset = 0, limit = 25 } = {}) {
   if (!result.ok) return result;
   const apiVersion = apiVersionOf(result.data);
   if (!isSupportedApiVersion(apiVersion)) return backendFailure("api_incompatible", { detail: String(apiVersion) });
-  return done(Object.freeze({ apiVersion, ...normalizeQueuePage(result.data) }));
+  return done(Object.freeze({ apiVersion, ...normalizeQueuePage(result.data) }), viewOf(result.data));
 }
 
 // Jobs that left the pending queue but are not finished. There is no state filter, so pages are
 // read newest first until the expected counts are reached (when known) or the registry ends.
 export async function loadOpenJobs(transport, { expected = null } = {}) {
   const found = new Map();
+  const views = [];
   let offset = 0;
   let total = 0;
   const pages = Number.isInteger(expected) ? MAX_JOB_SCAN_PAGES : BLIND_JOB_SCAN_PAGES;
   for (let pageIndex = 0; pageIndex < pages; pageIndex += 1) {
     const result = await guarded(transport.ws(messages.jobsList({ offset, limit: PAGE_LIMIT })), guards.jobsPage, "jobs/list");
     if (!result.ok) return result;
+    views.push(viewOf(result.data));
     total = result.data.total;
     for (const job of result.data.jobs.map(normalizeJob).filter(Boolean)) {
       if (job.state === "queued" || job.state === "completed" || job.state === "failed" || job.state === "cancelled") continue;
@@ -72,24 +105,24 @@ export async function loadOpenJobs(transport, { expected = null } = {}) {
     offset += result.data.jobs.length;
     const reached = Number.isInteger(expected) && found.size >= expected;
     if (reached || result.data.jobs.length === 0 || offset >= total) {
-      return done(Object.freeze({ jobs: Object.freeze([...found.values()]), complete: true }));
+      return done(Object.freeze({ jobs: Object.freeze([...found.values()]), complete: true }), oldestView(views));
     }
   }
-  return done(Object.freeze({ jobs: Object.freeze([...found.values()]), complete: false }));
+  return done(Object.freeze({ jobs: Object.freeze([...found.values()]), complete: false }), oldestView(views));
 }
 
 export async function loadJobLog(transport, { offset = 0, limit = 25 } = {}) {
   const result = await guarded(transport.ws(messages.jobsList({ offset, limit })), guards.jobsPage, "jobs/list");
   if (!result.ok) return result;
   const { total, offset: pageOffset, limit: pageLimit } = result.data;
-  return done(Object.freeze({ jobs: Object.freeze(result.data.jobs.map(normalizeJob).filter(Boolean)), total, offset: pageOffset, limit: pageLimit }));
+  return done(Object.freeze({ jobs: Object.freeze(result.data.jobs.map(normalizeJob).filter(Boolean)), total, offset: pageOffset, limit: pageLimit }), viewOf(result.data));
 }
 
 export async function loadJob(transport, { jobId }) {
   const result = await guarded(transport.ws(messages.jobGet(jobId)), guards.job, "job/get");
   if (!result.ok) return result;
   const job = normalizeJob(result.data);
-  return job ? done(job) : invalid("job/get");
+  return job ? done(job, viewOf(result.data)) : invalid("job/get");
 }
 
 export const loadRooms = (transport) => collection(transport, "get_rooms", (room) => room.roomId, normalizeRoom);
@@ -101,7 +134,7 @@ export async function loadRuns(transport, { offset = 0, limit = 25 } = {}) {
   const result = await guarded(transport.ws(messages.query("get_history", { offset, limit })), guards.runsPage, "get_history");
   if (!result.ok) return result;
   const { total, offset: pageOffset, limit: pageLimit } = result.data;
-  return done(Object.freeze({ runs: Object.freeze(result.data.runs.map(normalizeRun).filter(Boolean)), total, offset: pageOffset, limit: pageLimit }));
+  return done(Object.freeze({ runs: Object.freeze(result.data.runs.map(normalizeRun).filter(Boolean)), total, offset: pageOffset, limit: pageLimit }), viewOf(result.data));
 }
 
 export async function loadTrace(transport, { jobId = null } = {}) {
@@ -109,19 +142,19 @@ export async function loadTrace(transport, { jobId = null } = {}) {
   if (jobId) parameters.job_id = jobId;
   const result = await guarded(transport.ws(messages.query("get_trace", parameters)), guards.tracePage, "get_trace");
   if (!result.ok) return result;
-  return done(normalizeTracePage(result.data));
+  return done(normalizeTracePage(result.data), viewOf(result.data));
 }
 
 export async function loadExecution(transport, { jobId }) {
   const result = await guarded(transport.ws(messages.query("get_job_execution", { job_id: jobId })), guards.execution, "get_job_execution");
   if (!result.ok) return result;
-  return done(normalizeExecution(result.data));
+  return done(normalizeExecution(result.data), viewOf(result.data));
 }
 
 export async function loadDiagnostics(transport) {
   const result = await guarded(transport.ws(messages.query("get_diagnostics")), guards.diagnostics, "get_diagnostics");
   if (!result.ok) return result;
-  return done(normalizeDiagnosticsSummary(result.data));
+  return done(normalizeDiagnosticsSummary(result.data), viewOf(result.data));
 }
 
 export async function loadManifest(transport) {

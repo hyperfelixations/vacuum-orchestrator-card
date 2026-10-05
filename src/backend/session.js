@@ -6,7 +6,7 @@
 
 import { backendFailure, isBackendFailure } from "../domain/backend-errors.js";
 import { ACTIONS, CONFIGURATION_COMMANDS, guards, messages } from "./protocol.js";
-import { SCOPE_LOADERS } from "./scopes.js";
+import { SCOPE_LOADERS, scopesForChanges } from "./scopes.js";
 import { createInvalidationTimer } from "./subscription.js";
 
 export const DOMAIN = "vacuum_orchestrator";
@@ -79,7 +79,7 @@ export function createSession({ transport, platform, getHass } = {}) {
   let retry = null;
   let unloadedProbe = null;
   let knownEntities = null;
-  const invalidation = createInvalidationTimer({ platform, onFire: () => invalidateAll() });
+  const invalidation = createInvalidationTimer({ platform, onFire: (change) => invalidateChanged(change) });
 
   function changed() {
     version += 1;
@@ -107,7 +107,7 @@ export function createSession({ transport, platform, getHass } = {}) {
   }
 
   function entry(key, name, params) {
-    if (!scopes.has(key)) scopes.set(key, { key, name, params, hints: {}, status: "idle", stale: false, data: null, error: null, loadedAt: null, reload: false });
+    if (!scopes.has(key)) scopes.set(key, { key, name, params, hints: {}, status: "idle", stale: false, data: null, view: null, requested: null, error: null, loadedAt: null, reload: false });
     return scopes.get(key);
   }
 
@@ -118,12 +118,16 @@ export function createSession({ transport, platform, getHass } = {}) {
     }
     scope.status = "loading";
     scope.reload = false;
+    scope.stale = false;
+    // The integration answers in order: a read sent now shows at least what the session has seen.
+    scope.requested = { runtimeId: runtime.id, sequence: runtime.sequence, commitId: runtime.commitId };
     changed();
     const result = await SCOPE_LOADERS[scope.name](transport, { ...scope.hints, ...scope.params });
     if (disposed) return;
     if (result.ok) {
       scope.status = "ready";
       scope.data = result.data;
+      scope.view = result.view ?? null;
       scope.error = null;
       scope.stale = false;
       scope.loadedAt = platform?.now?.() ?? null;
@@ -157,9 +161,34 @@ export function createSession({ transport, platform, getHass } = {}) {
     refreshDemanded();
   }
 
-  function invalidate(names) {
+  // A scope read, or being read, in this runtime at or after the given point already shows what
+  // changed.
+  function shows(scope, { sequence = null, commitId = null }) {
+    const view = scope.status === "loading" ? scope.requested : scope.view;
+    if (!view || view.runtimeId !== runtime.id) return false;
+    if (Number.isInteger(sequence)) return view.sequence >= sequence;
+    return Number.isInteger(commitId) && view.commitId >= commitId;
+  }
+
+  // After the events of a burst: the scopes they named that do not show the newest of them.
+  function invalidateChanged({ scopes: names, sequence }) {
+    for (const scope of scopes.values()) {
+      if (scope.status === "idle" || HOME_ASSISTANT_SCOPES.has(scope.name)) continue;
+      if (names !== "all" && !names.has(scope.name)) continue;
+      if (!shows(scope, { sequence })) scope.stale = true;
+    }
+    changed();
+    refreshDemanded();
+  }
+
+  // `commitId`: a confirmed commit; scopes read at or after it are already current.
+  function invalidate(names, { commitId = null } = {}) {
     const wanted = names === "all" ? null : new Set(names);
-    for (const scope of scopes.values()) if (!wanted || wanted.has(scope.name)) scope.stale = scope.status !== "idle";
+    for (const scope of scopes.values()) {
+      if (wanted && !wanted.has(scope.name)) continue;
+      if (shows(scope, { commitId })) continue;
+      scope.stale = scope.status !== "idle";
+    }
     changed();
     refreshDemanded();
   }
@@ -210,7 +239,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     if (runtime.sequence !== null && event.runtime_sequence <= runtime.sequence) return;
     runtime = { id: event.runtime_id, sequence: event.runtime_sequence, commitId: event.commit_id };
     changed();
-    invalidation.schedule();
+    invalidation.schedule({ scopes: scopesForChanges(event.changed), sequence: event.runtime_sequence });
   }
 
   async function subscribe() {
@@ -353,8 +382,8 @@ export function createSession({ transport, platform, getHass } = {}) {
     if (scope) void load(scope);
   }
 
-  // `invalidates`: scope names reloaded after a confirmed command; the subscription event that
-  // follows every commit is coalesced into the same reload.
+  // `invalidates`: scope names reloaded after a confirmed command, unless already read at its
+  // commit; the subscription event of the same commit then finds them current.
   async function command(operation, parameters = {}, { target = operation, invalidates = "all" } = {}) {
     const commandId = `voc-${++commandCounter}`;
     if (disposed) return backendFailure("connection_lost", { detail: "disposed" });
@@ -364,8 +393,8 @@ export function createSession({ transport, platform, getHass } = {}) {
     pending.set(target, { operation, commandId });
     changed();
     let result;
-    if (ACTIONS[operation]) {
-      result = await transport.service(operation, parameters, { returnResponse: ACTIONS[operation].response });
+    if (ACTIONS.includes(operation)) {
+      result = await transport.service(operation, parameters, { returnResponse: true });
     } else if (CONFIGURATION_COMMANDS.includes(operation)) {
       result = await transport.ws(messages.command(operation, parameters));
       if (result.ok && !guards.commandResult(result.data)) result = backendFailure("invalid_response", { detail: operation });
@@ -374,7 +403,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     }
     pending.delete(target);
     if (disposed) return result;
-    if (result.ok) invalidate(invalidates);
+    if (result.ok) invalidate(invalidates, { commitId: result.data?.commit_id ?? null });
     else {
       handleFailure(result);
       changed();
@@ -386,7 +415,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     if (snapshot) return snapshot;
     const scopeState = {};
     for (const scope of scopes.values()) {
-      scopeState[scope.key] = { name: scope.name, params: scope.params, status: scope.status, stale: scope.stale, data: scope.data, error: scope.error, loadedAt: scope.loadedAt };
+      scopeState[scope.key] = { name: scope.name, params: scope.params, status: scope.status, stale: scope.stale, data: scope.data, view: scope.view, error: scope.error, loadedAt: scope.loadedAt };
     }
     snapshot = freeze({
       version,

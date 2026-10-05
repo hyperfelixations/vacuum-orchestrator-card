@@ -1,5 +1,6 @@
 // Coalescing of invalidation events: a reload waits for a quiet gap, never longer than the
-// maximum delay after the first event, and can be cancelled.
+// maximum delay after the first event, carries the union of the named scopes up to the newest
+// sequence, and can be cancelled.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -33,6 +34,23 @@ test("events inside the gap extend it, but never past the maximum delay", async 
   }
   assert.equal(fired(), 1);
   assert.ok(clock.now() >= MAX_WAIT_MS);
+});
+
+test("a burst fires once with the union of its scopes and its newest sequence", async () => {
+  const { createInvalidationTimer, QUIET_MS } = await import("../../../src/backend/subscription.js");
+  const clock = new VirtualClock(0);
+  const changes = [];
+  const platform = { now: () => clock.now(), setTimeout: (fn, ms) => clock.setTimeout(fn, ms), clearTimeout: (handle) => clock.clearTimeout(handle) };
+  const coalescer = createInvalidationTimer({ platform, onFire: (change) => changes.push(change) });
+  coalescer.schedule({ scopes: new Set(["rooms"]), sequence: 4 });
+  coalescer.schedule({ scopes: new Set(["queue"]), sequence: 6 });
+  coalescer.schedule({ scopes: new Set(["rooms"]), sequence: 5 });
+  clock.advance(QUIET_MS);
+  assert.deepEqual(changes.map((change) => [[...change.scopes].sort(), change.sequence]), [[["queue", "rooms"], 6]]);
+  coalescer.schedule({ scopes: new Set(["rooms"]), sequence: 7 });
+  coalescer.schedule();
+  clock.advance(QUIET_MS);
+  assert.deepEqual([changes[1].scopes, changes[1].sequence], ["all", 7], "an unspecified event widens the burst to everything");
 });
 
 test("after firing, the next burst starts a new window", async () => {

@@ -20,7 +20,7 @@ test("the source offers exactly the manifest's languages, views, options and voc
 
 test("the card uses every action, command and query of the integration", async () => {
   const { ACTIONS, CONFIGURATION_COMMANDS, CONFIGURATION_QUERIES } = await import("../../src/backend/protocol.js");
-  assert.deepEqual(Object.keys(ACTIONS), manifest.actions);
+  assert.deepEqual([...ACTIONS], manifest.actions);
   assert.deepEqual([...CONFIGURATION_COMMANDS], manifest.commands);
   assert.deepEqual([...CONFIGURATION_QUERIES], manifest.queries);
   const sources = [];

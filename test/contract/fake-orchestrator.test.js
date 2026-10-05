@@ -62,9 +62,35 @@ test("non-admins are refused in Home Assistant's frames: actions and WebSocket c
   await assert.rejects(command("revoke_room", { room_id: "room-kitchen" }), { code: "unauthorized" });
 });
 
-test("an action asked for a response it does not give is refused", async () => {
-  const { call } = fakeFor();
-  assert.equal(await code(call("pause_queue", {}, true)), "service_does_not_support_response");
+test("every action can answer with the confirmed commit, and every read names its view", async () => {
+  const { fake, call, job, command } = fakeFor();
+  const paused = await call("pause_queue", {}, true);
+  assert.deepEqual(paused.response, { api_version: 2, commit_id: fake.state.commitId, mode: "paused" });
+  assert.equal((await call("move_job", { job_id: "job-bathroom", direction: "up" }, true)).response.job_id, "job-bathroom");
+  assert.equal((await command("revoke_room", { room_id: "room-kitchen" })).commit_id, fake.state.commitId);
+  const view = (read) => [read.commit_id, read.runtime_id, read.runtime_sequence];
+  const current = [fake.state.commitId, fake.state.runtimeId, fake.state.runtimeSequence];
+  assert.deepEqual(view(await job("job-kitchen")), current);
+  assert.deepEqual(view(await fake.attachTo({}).connection.sendMessagePromise({ type: "vacuum_orchestrator/jobs/list", offset: 0, limit: 5 })), current);
+  assert.deepEqual(view(await fake.attachTo({}).connection.sendMessagePromise({ type: "vacuum_orchestrator/configuration/get", query: "get_rooms", parameters: { offset: 0, limit: 5 } })), current);
+});
+
+test("an unchanged queue mode commits nothing, as in the integration", async () => {
+  const { fake, call } = fakeFor();
+  await call("pause_queue", {});
+  const commit = fake.state.commitId;
+  assert.equal((await call("pause_queue", {}, true)).response.commit_id, commit);
+});
+
+test("each event names the views whose state changed", async () => {
+  const { fake, hass, call } = fakeFor();
+  const events = [];
+  await hass.connection.subscribeMessage((event) => events.push(event), { type: "vacuum_orchestrator/subscribe" });
+  await call("pause_queue", {});
+  fake.setReadiness("job-kitchen", { state: "blocked" });
+  await call("move_job", { job_id: "job-bathroom", direction: "up" });
+  fake.commit();
+  assert.deepEqual(events.map((event) => event.changed), [["queue"], ["jobs", "queue"], ["queue"], []]);
 });
 
 test("every commit and readiness change notifies subscribers; a reload announces the unload and the new runtime", async () => {

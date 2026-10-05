@@ -184,6 +184,33 @@ test("the integration's error texts load in one language and are keyed by code",
   assert.equal((await loadErrorTexts(scripted(() => ({ resources: null })), { language: "en" })).code, "invalid_response");
 });
 
+test("every read carries the view it was read at; a collection the oldest of its pages", async () => {
+  const { loadQueue, loadRooms } = await load();
+  const meta = (sequence, commit, runtime = "runtime-1") => ({ commit_id: commit, runtime_id: runtime, runtime_sequence: sequence });
+  const queue = await loadQueue(scripted(() => ({ ...W.wireQueuePage([]), ...meta(4, 7) })));
+  assert.deepEqual({ ...queue.view }, { runtimeId: "runtime-1", sequence: 4, commitId: 7 });
+  assert.ok(Object.isFrozen(queue.view));
+  const all = rooms(150);
+  const paged = (metaFor) => scripted((message) => {
+    const { offset, limit } = message.parameters;
+    return { ...W.wirePage("rooms", all.slice(offset, offset + limit), { total: all.length, offset, limit }), ...metaFor(offset) };
+  });
+  assert.deepEqual({ ...(await loadRooms(paged((offset) => (offset ? meta(6, 9) : meta(5, 8))))).view }, { runtimeId: "runtime-1", sequence: 5, commitId: 8 });
+  assert.equal((await loadRooms(paged((offset) => meta(5, 8, offset ? "runtime-2" : "runtime-1")))).view, null, "pages of two runtimes are no view");
+  assert.equal((await loadQueue(scripted(() => W.wireQueuePage([])))).view, null, "a read without metadata has no view");
+});
+
+test("each integration view names the scopes that read it; volatile scopes follow every event", async () => {
+  const { SCOPES, VIEW_SCOPES, VOLATILE_SCOPES, scopesForChanges } = await load();
+  assert.deepEqual(Object.keys(VIEW_SCOPES).sort(), ["jobs", "queue", "robots", "rooms", "templates"]);
+  for (const names of [...Object.values(VIEW_SCOPES), VOLATILE_SCOPES]) for (const name of names) assert.ok(SCOPES.includes(name), name);
+  assert.deepEqual([...scopesForChanges(["rooms"])].sort(), ["diagnostics", "execution", "rooms", "trace"]);
+  assert.deepEqual([...scopesForChanges(["queue"])].sort(), ["diagnostics", "execution", "job", "queue", "trace"]);
+  assert.equal(scopesForChanges(["rooms", "future_view"]), "all");
+  assert.equal(scopesForChanges(undefined), "all");
+  assert.equal(scopesForChanges("rooms"), "all");
+});
+
 test("every scope the session can demand has a loader", async () => {
   const { SCOPES } = await load();
   assert.deepEqual([...SCOPES].sort(), ["candidates", "diagnostics", "errorTexts", "execution", "job", "jobLog", "manifest", "openJobs", "queue", "registry", "robots", "rooms", "runs", "templates", "trace"]);
