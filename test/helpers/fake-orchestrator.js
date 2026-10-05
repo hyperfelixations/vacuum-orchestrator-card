@@ -12,7 +12,7 @@
   const DOMAIN = "vacuum_orchestrator";
   const ACTIONS = ["create_job", "update_job", "delete_job", "move_job", "start_job", "cancel_job", "retry_job", "run_queue", "pause_queue", "resume_queue"];
   const QUERY_ACTIONS = ["get_queue", "get_job"];
-  const COMMANDS = ["configure_queue", "create_room", "update_room", "remove_room", "release_room", "revoke_room", "add_robot", "configure_robot", "remove_robot", "resolve_recovery", "save_template", "remove_template", "create_job_from_template", "reset_template_demand"];
+  const COMMANDS = ["configure_queue", "create_room", "update_room", "disable_room", "enable_room", "release_room", "revoke_room", "add_robot", "configure_robot", "remove_robot", "resolve_recovery", "save_template", "remove_template", "create_job_from_template", "reset_template_demand"];
   const QUERIES = ["get_rooms", "get_room", "get_robots", "get_robot_candidates", "get_templates", "get_history", "get_trace", "get_diagnostics", "get_job_execution"];
   const TERMINAL = new Set(["completed", "failed", "cancelled"]);
   const MODES = { vacuum: "vacuum", vac: "vacuum", mop: "mop", vacuum_and_mop: "vacuum_and_mop", vac_and_mop: "vacuum_and_mop", vacuum_then_mop: "vacuum_then_mop", vac_then_mop: "vacuum_then_mop" };
@@ -308,11 +308,13 @@
           result.room_id = room.room_id;
           break;
         }
-        case "remove_room": {
+        // Excluding keeps the room's history and release; a disabled room is never released.
+        case "disable_room":
+        case "enable_room": {
           const room = roomFor(parameters.room_id);
           if (!room) throw voi("unknown_room");
-          room.enabled = false;
-          room.released = false;
+          room.enabled = name === "enable_room";
+          room.released = room.enabled && !room.area_missing && Boolean(room.release);
           result.room_id = room.room_id;
           break;
         }

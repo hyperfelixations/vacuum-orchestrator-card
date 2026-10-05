@@ -24,7 +24,7 @@ function releaseToggle(context, room) {
 function roomCard(context, room) {
   const actions = [
     button({ action: "create-job", args: { roomIds: [room.roomId] }, label: context.t("rooms.addJob"), iconName: "mdi:plus", variant: "quiet", decision: room.actions.createJob, reasonText: context.reason(room.actions.createJob) }),
-    button({ action: "restore-room", args: { roomId: room.roomId }, label: context.t("rooms.restore"), iconName: "mdi:eye-outline", variant: "quiet", decision: room.actions.restore, reasonText: context.reason(room.actions.restore) }),
+    button({ action: "enable-room", args: { roomId: room.roomId }, label: context.t("rooms.enable"), iconName: "mdi:eye-outline", variant: "quiet", decision: room.actions.enable, reasonText: context.reason(room.actions.enable) }),
     releaseToggle(context, room),
   ].join("");
   const robots = room.unreachable

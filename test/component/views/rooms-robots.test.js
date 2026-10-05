@@ -48,6 +48,24 @@ test("a timed release sends its duration; locking sends a revoke", async () => {
   card.unmount();
 });
 
+test("a room is excluded after a confirmation and included again from the room list", async () => {
+  const card = await rooms();
+  await card.click(`${room("room-hall")} [data-action="edit-room"]`);
+  await card.click('[data-action="disable-room"]');
+  assert.equal(card.text("#voc-overlay-title"), "Exclude room?");
+  await card.click('[data-action="confirm-command"]');
+  await card.settle(32);
+  assert.deepEqual(card.commands("disable_room").map((message) => message.parameters), [{ room_id: "room-hall" }]);
+  assert.equal(card.text(".voc-notice-text"), "Room excluded.");
+  await card.click('[data-key="excluded"] [data-action="toggle"]');
+  await card.click(`${room("room-hall")} [data-action="enable-room"]`);
+  await card.settle(32);
+  assert.deepEqual(card.commands("enable_room").map((message) => message.parameters), [{ room_id: "room-hall" }]);
+  assert.equal(card.text(".voc-notice-text"), "Room included.");
+  assert.deepEqual(card.commands("update_room"), [], "including a room is its own command");
+  card.unmount();
+});
+
 test("room settings save only what changed", async () => {
   const card = await rooms();
   await card.click(`${room("room-hall")} [data-action="edit-room"]`);

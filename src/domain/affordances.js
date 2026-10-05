@@ -78,8 +78,8 @@ export function roomAffordances(room, context) {
     release: decide(context, { visible: usable, operation: "release_room", target }),
     revoke: decide(context, { visible: room?.release !== null && room?.release !== undefined, operation: "revoke_room", target }),
     edit: decide(context, { operation: "update_room", target }),
-    remove: decide(context, { visible: Boolean(room?.enabled), operation: "remove_room", target }),
-    restore: decide(context, { visible: room?.enabled === false, operation: "update_room", target }),
+    disable: decide(context, { visible: Boolean(room?.enabled), operation: "disable_room", target }),
+    enable: decide(context, { visible: room?.enabled === false, operation: "enable_room", target }),
     createJob: decide(context, { visible: usable, operation: "create_job", target: CREATE_TARGET }),
   });
 }

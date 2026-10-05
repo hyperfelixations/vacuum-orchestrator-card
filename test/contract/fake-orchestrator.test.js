@@ -100,6 +100,18 @@ test("a job explains its next start while queued or between phases, never while 
   assert.equal((await job("job-kitchen")).readiness, undefined);
 });
 
+test("rooms are excluded and included with their history and release kept", async () => {
+  const { fake, command } = fakeFor();
+  const before = fake.state.rooms.find((item) => item.room_id === "room-kitchen");
+  const release = before.release;
+  await command("disable_room", { room_id: "room-kitchen" });
+  assert.deepEqual([before.enabled, before.released, before.release], [false, false, release]);
+  await command("enable_room", { room_id: "room-kitchen" });
+  assert.deepEqual([before.enabled, before.released], [true, Boolean(release)]);
+  assert.equal(await code(command("disable_room", { room_id: "room-unknown" })), "unknown_room");
+  assert.equal(await code(command("remove_room", { room_id: "room-kitchen" })), "invalid_format");
+});
+
 test("an unchanged queue mode commits nothing, as in the integration", async () => {
   const { fake, call } = fakeFor();
   await call("pause_queue", {});

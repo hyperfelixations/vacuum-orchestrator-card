@@ -251,11 +251,11 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     "remove-requirement": ({ index }) => editDraft("requirements", ui.overlay.draft.requirements.filter((_item, position) => position !== index)),
     "add-binding": ({ robotId }) => ui.updateOverlay({ draft: updateRoomDraft(ui.overlay.draft, "bindings", [...ui.overlay.draft.bindings, newBinding(robotId)]), bindingsOpen: true }),
     "remove-binding": ({ index }) => editDraft("bindings", ui.overlay.draft.bindings.filter((_item, position) => position !== index)),
-    "remove-room": ({ roomId }) => confirmOr(
-      { operation: "remove_room", parameters: { room_id: roomId }, options: { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: ui.overlay?.kind === "room-editor", success: { key: "notice.roomRemoved" } } },
-      { titleKey: "confirm.removeRoom.title", textKey: "confirm.removeRoom.text", confirmKey: "confirm.removeRoom.confirm", icon: "mdi:eye-off-outline", vars: { room: findRoom(roomId)?.name ?? "" } }
+    "disable-room": ({ roomId }) => confirmOr(
+      { operation: "disable_room", parameters: { room_id: roomId }, options: { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: ui.overlay?.kind === "room-editor", success: { key: "notice.roomDisabled" } } },
+      { titleKey: "confirm.disableRoom.title", textKey: "confirm.disableRoom.text", confirmKey: "confirm.disableRoom.confirm", icon: "mdi:eye-off-outline", vars: { room: findRoom(roomId)?.name ?? "" } }
     ),
-    "restore-room": ({ roomId }) => run("update_room", { room_id: roomId, configuration: { enabled: true } }, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, success: { key: "notice.roomSaved" } }),
+    "enable-room": ({ roomId }) => run("enable_room", { room_id: roomId }, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, success: { key: "notice.roomEnabled" } }),
     "create-room": () => ui.openOverlay({ kind: "room-create", name: "", areaId: null }),
     "save-new-room": () => {
       const overlay = ui.overlay;

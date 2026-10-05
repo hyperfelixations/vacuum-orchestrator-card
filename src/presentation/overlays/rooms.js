@@ -120,7 +120,7 @@ export function buildRoomEditor({ model, texts, context, overlay }) {
     dirty: validation.dirty,
     invalid: Boolean(overlay.submitted) && !validation.valid,
     save: decide(context, { operation: "update_room", target: roomTarget(draft.meta.roomId) }),
-    remove: actions?.remove ?? null,
+    disable: actions?.disable ?? null,
   };
 }
 

@@ -6,7 +6,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const load = () => import("../../../src/domain/affordances.js");
-const ALL = ["move_job", "update_job", "start_job", "cancel_job", "delete_job", "retry_job", "run_queue", "pause_queue", "resume_queue", "create_job", "configure_queue", "release_room", "revoke_room", "update_room", "remove_room", "configure_robot", "remove_robot", "resolve_recovery", "add_robot", "create_job_from_template", "save_template", "remove_template", "reset_template_demand"];
+const ALL = ["move_job", "update_job", "start_job", "cancel_job", "delete_job", "retry_job", "run_queue", "pause_queue", "resume_queue", "create_job", "configure_queue", "release_room", "revoke_room", "update_room", "disable_room", "enable_room", "configure_robot", "remove_robot", "resolve_recovery", "add_robot", "create_job_from_template", "save_template", "remove_template", "reset_template_demand"];
 
 async function context(overrides = {}) {
   const { affordanceContext } = await load();
@@ -61,9 +61,12 @@ test("the queue control follows the queue mode", async () => {
 test("a room can be released while usable and revoked while it holds a grant", async () => {
   const { roomAffordances } = await load();
   const ctx = await context();
-  assert.deepEqual(states(roomAffordances({ roomId: "r", enabled: true, areaMissing: false, release: null }, ctx)), { release: "enabled", revoke: "hidden", edit: "enabled", remove: "enabled", restore: "hidden", createJob: "enabled" });
-  assert.deepEqual(states(roomAffordances({ roomId: "r", enabled: true, areaMissing: true, release: { kind: "once" } }, ctx)), { release: "hidden", revoke: "enabled", edit: "enabled", remove: "enabled", restore: "hidden", createJob: "hidden" });
-  assert.deepEqual(states(roomAffordances({ roomId: "r", enabled: false, release: null }, ctx)), { release: "hidden", revoke: "hidden", edit: "enabled", remove: "hidden", restore: "enabled", createJob: "hidden" });
+  assert.deepEqual(states(roomAffordances({ roomId: "r", enabled: true, areaMissing: false, release: null }, ctx)), { release: "enabled", revoke: "hidden", edit: "enabled", disable: "enabled", enable: "hidden", createJob: "enabled" });
+  assert.deepEqual(states(roomAffordances({ roomId: "r", enabled: true, areaMissing: true, release: { kind: "once" } }, ctx)), { release: "hidden", revoke: "enabled", edit: "enabled", disable: "enabled", enable: "hidden", createJob: "hidden" });
+  assert.deepEqual(states(roomAffordances({ roomId: "r", enabled: false, release: null }, ctx)), { release: "hidden", revoke: "hidden", edit: "enabled", disable: "hidden", enable: "enabled", createJob: "hidden" });
+  const without = (name) => context({ operations: ALL.filter((operation) => operation !== name) });
+  assert.equal(roomAffordances({ roomId: "r", enabled: true }, await without("disable_room")).disable.state, "disabled");
+  assert.equal(roomAffordances({ roomId: "r", enabled: false }, await without("enable_room")).enable.state, "disabled");
 });
 
 test("a robot under a lease cannot be reconfigured or removed", async () => {
