@@ -42,7 +42,7 @@ test("a state change reaches the card without a backend event", async () => {
 test("a missing integration shows how to get it, and the card follows once it is set up", async () => {
   const card = await mountCard({ env, fake: { installed: false, setUp: false } });
   assert.equal(card.root.querySelector(".voc-onboarding").dataset.phase, "not_installed");
-  assert.match(card.root.querySelector(".voc-onboarding a").getAttribute("href"), /github.com\/hyperfelixations\/vacuum-orchestrator/);
+  assert.deepEqual([...card.root.querySelectorAll(".voc-onboarding a")].map((link) => link.getAttribute("href")), ["https://my.home-assistant.io/redirect/hacs_repository/?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration", "https://github.com/hyperfelixations/vacuum-orchestrator#installation"]);
   card.fake.state.installed = true;
   card.fake.state.setUp = true;
   await card.updateHass({});

@@ -41,6 +41,7 @@
     "characterize:update": "npm run build && node scripts/update-characterization.mjs",
     "baseline:anchor": "node scripts/baseline-anchor.mjs",
     "validate:release": "node scripts/validate-release.mjs",
+    "readme:image": "npm run build && node scripts/capture-readme-image.mjs",
     "test:install": "playwright install chromium firefox webkit"
   },
   "devDependencies": {

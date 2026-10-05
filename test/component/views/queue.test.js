@@ -187,3 +187,13 @@ test("a read-only user sees the queue with every command locked and explained", 
   assert.equal(card.root.querySelector(".voc-overlay"), null);
   card.unmount();
 });
+
+test("the showcase household is everyday use: one job cleaning and every waiting job ready", async () => {
+  const card = await mountCard({ env, scenario: "showcase" });
+  assert.equal(card.all('[data-key="active"] .voc-job').length, 1);
+  const waiting = card.all('[data-key="waiting"] .voc-job');
+  assert.equal(waiting.length, 3);
+  for (const job of waiting) assert.match(job.textContent, /Ready/);
+  assert.equal(card.root.querySelector('[data-key^="recovery"], [data-key="grace"], .voc-warning'), null);
+  card.unmount();
+});

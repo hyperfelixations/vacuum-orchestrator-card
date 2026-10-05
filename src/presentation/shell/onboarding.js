@@ -2,7 +2,7 @@
 // how to set it up, or why it does not answer. Navigation targets are Home Assistant's own
 // "My" redirects, so Home Assistant keeps ownership of installation and setup.
 
-import { INTEGRATION_PAGE_PATH, INTEGRATION_URL, SET_UP_PATH } from "../common/links.js";
+import { HACS_INTEGRATION_URL, INTEGRATION_PAGE_PATH, INTEGRATION_URL, SET_UP_PATH } from "../common/links.js";
 import { failureText, t } from "../common/texts.js";
 
 const ICONS = Object.freeze({
@@ -30,7 +30,9 @@ export function buildOnboarding({ model = {}, texts } = {}) {
   };
   if (phase === "not_installed") {
     base.steps = [1, 2, 3].map((step) => t(texts, `onboarding.not_installed.step${step}`));
-    base.actions = [{ kind: "link", href: INTEGRATION_URL, label: t(texts, "onboarding.action.guide"), icon: "mdi:open-in-new" }];
+    const guide = { kind: "link", href: INTEGRATION_URL, label: t(texts, "onboarding.action.guide"), icon: "mdi:open-in-new" };
+    base.actions = isAdmin ? [{ kind: "link", href: HACS_INTEGRATION_URL, label: t(texts, "onboarding.action.hacs"), icon: "mdi:open-in-new" }, guide] : [guide];
+    if (!isAdmin) base.note = t(texts, "onboarding.adminInstall");
   } else if (phase === "not_set_up") {
     base.actions = isAdmin ? [{ kind: "navigate", path: SET_UP_PATH, label: t(texts, "onboarding.action.setUp"), icon: "mdi:plus" }] : [];
     if (!isAdmin) base.note = t(texts, "onboarding.adminRequired");

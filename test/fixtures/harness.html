@@ -64,6 +64,21 @@
       vacuum-orchestrator-card {
         display: block;
       }
+      /* A themed panel for pictures that show light and dark side by side: it carries its own
+         page background and the gutter the stage otherwise gives, and the dark panel redefines
+         the dark neutrals above for its subtree. */
+      .voc-theme {
+        padding: 40px;
+        background: var(--primary-background-color);
+      }
+      .voc-theme-dark {
+        --primary-background-color: #111111;
+        --card-background-color: #1c1c1c;
+        --secondary-background-color: #202020;
+        --primary-text-color: #e1e1e1;
+        --secondary-text-color: #9b9b9b;
+        --divider-color: rgba(225, 225, 225, 0.12);
+      }
     </style>
   </head>
   <body>

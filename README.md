@@ -1,10 +1,18 @@
 # Vacuum Orchestrator Card
 
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories)
+[![Questions](https://img.shields.io/badge/Questions%3F-Join%20the%20community-5865F2)](https://discord.gg/zfGKCVEvwe)
+[![Downloads](https://img.shields.io/github/downloads/hyperfelixations/vacuum-orchestrator-card/total?label=Downloads)](https://github.com/hyperfelixations/vacuum-orchestrator-card/releases/latest)
+
+[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=hyperfelixations&repository=vacuum-orchestrator-card&category=plugin)
+
 A custom dashboard card for [Home Assistant](https://www.home-assistant.io/)
 that shows and controls the
 [Vacuum Orchestrator](https://github.com/hyperfelixations/vacuum-orchestrator)
 integration: its cleaning queue, rooms, robots, templates and history. The card
 follows your dashboard's light or dark theme.
+
+![Vacuum Orchestrator Card showing the cleaning queue in light and dark mode](vacuum-orchestrator-card.png)
 
 ## Features
 
@@ -25,8 +33,11 @@ follows your dashboard's light or dark theme.
 ## What you need
 
 - **Home Assistant 2026.9 or newer.**
-- **The Vacuum Orchestrator integration**, installed and set up. Without it the
-  card shows how to get it.
+- **The [Vacuum Orchestrator](https://github.com/hyperfelixations/vacuum-orchestrator)
+  integration**, installed through HACS and set up. Without it the card shows how
+  to get it.
+
+  [![Add Vacuum Orchestrator to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration)
 - **An administrator account to change anything.** Other users see the card
   read-only.
 - **A current browser.** The layout uses CSS container queries, so any currently
@@ -34,11 +45,23 @@ follows your dashboard's light or dark theme.
 
 ## Installation
 
-There is no published release yet. Build the card from source as described in
-[TESTING.md](TESTING.md), then:
+### HACS
 
-1. Copy `dist/vacuum-orchestrator-card.js` into your Home Assistant `www/`
-   folder.
+[![Open your Home Assistant instance and add this repository to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=hyperfelixations&repository=vacuum-orchestrator-card&category=plugin)
+
+Add Vacuum Orchestrator Card as a custom repository using the button above or
+manually:
+
+1. Open HACS → the three-dot menu → **Custom repositories**.
+2. Add `https://github.com/hyperfelixations/vacuum-orchestrator-card`, category
+   **Dashboard**.
+3. Install "Vacuum Orchestrator Card" and reload your browser.
+
+### Manual
+
+1. Download
+   [`vacuum-orchestrator-card.js`](https://github.com/hyperfelixations/vacuum-orchestrator-card/releases/latest/download/vacuum-orchestrator-card.js)
+   from the latest release and copy it into your Home Assistant `www/` folder.
 2. Add it as a dashboard resource: Settings → Dashboards → the three-dot menu →
    **Resources** → add `/local/vacuum-orchestrator-card.js` as a JavaScript
    module.
@@ -57,8 +80,8 @@ type: custom:vacuum-orchestrator-card
 
 The card then leads you to a working setup:
 
-1. **Vacuum Orchestrator is not installed** — follow the three steps on the card,
-   or **Installation guide**.
+1. **Vacuum Orchestrator is not installed** — **Open in HACS** and follow the
+   three steps on the card, or read the **Installation guide**.
 2. **Installed but not set up** — **Set up integration** opens Home Assistant's
    dialog for adding it.
 3. **Could not start** — **Open integration** shows Home Assistant's error for

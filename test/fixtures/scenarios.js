@@ -90,6 +90,21 @@
     ];
   }
 
+  // Everyday use for the README picture: every room released and reached, one job cleaning and
+  // the next ones ready, with no special case.
+  function showcase() {
+    const released = (room) => (room.released ? room : { ...room, release: { grant_id: `grant-${room.area_id}`, kind: "permanent", granted_at: at(-3 * DAY) }, released: true });
+    const reached = (robot) => (robot.robot_id === "robot-rocky" ? { ...robot, capabilities: { ...robot.capabilities, targets: { ...robot.capabilities.targets, "room-bedroom": ["20"] } } } : robot);
+    const ready = { state: "ready" };
+    const waiting = [
+      { job_id: "job-kitchen", state: "queued", name: "Kitchen and hall", areas: ["kitchen", "hall"], room_ids: ["room-kitchen", "room-hall"], mode: "vacuum_then_mop", vacuum_power: "standard", mop_intensity: "medium", created_at: at(-30), updated_at: at(-30), source: "Dashboard", readiness: ready },
+      { job_id: "job-bathroom", state: "queued", name: "Bathroom", areas: ["bathroom"], room_ids: ["room-bathroom"], mode: "mop", mop_intensity: "high", created_at: at(-25), updated_at: at(-25), source: "Routine", readiness: ready },
+      { job_id: "job-bedroom", state: "queued", name: "Bedroom", areas: ["bedroom"], room_ids: ["room-bedroom"], mode: "vacuum", vacuum_power: "standard", created_at: at(-20), updated_at: at(-20), source: "Dashboard", readiness: ready },
+    ];
+    const rest = jobs().filter((job) => job.state !== "queued");
+    return household({ mode: "running", run: { run_id: "run-1", started_at: at(-HOUR) }, rooms: rooms().map(released), robots: robots().map(reached), candidates: candidates(), jobs: [rest[0], ...waiting, ...rest.slice(1)], templates: templates().filter((template) => template.enabled !== false), runs: runs() });
+  }
+
   function templates() {
     return [
       { template_id: "template-daily", name: "Daily vacuum", intent: { areas: ["room-kitchen", "room-hall", "room-living"], mode: "vacuum", passes: 1, settings_policy: "best_effort", required_on: [], required_off: [] } },
@@ -204,6 +219,7 @@
       runs: runs(),
     }),
     empty: () => household({ rooms: rooms(), robots: robots({ rockyActive: false }), candidates: candidates(), jobs: [], templates: templates(), runs: [] }),
+    showcase,
     fresh: () => household({ rooms: Object.values(AREAS).map((area) => ({ room_id: `room-${area.area_id}`, name: area.name, area_id: area.area_id })), robots: [], candidates: candidates(), jobs: [], templates: [], runs: [] }),
   };
 

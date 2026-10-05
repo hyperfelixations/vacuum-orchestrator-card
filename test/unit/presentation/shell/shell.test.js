@@ -138,11 +138,18 @@ test("one warning is a sentence, several a count; a hint is appended to the subt
 
 test("onboarding explains each unusable phase and offers Home Assistant's own pages", async () => {
   const { buildOnboarding } = await import("../../../../src/presentation/shell/onboarding.js");
-  const { INTEGRATION_URL, SET_UP_PATH, INTEGRATION_PAGE_PATH } = await import("../../../../src/presentation/common/links.js");
+  const { HACS_INTEGRATION_URL, INTEGRATION_URL, SET_UP_PATH, INTEGRATION_PAGE_PATH } = await import("../../../../src/presentation/common/links.js");
+  assert.equal(HACS_INTEGRATION_URL, "https://my.home-assistant.io/redirect/hacs_repository/?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration");
   const missing = await modelFor("typical", { fake: { installed: false, setUp: false } });
   const notInstalled = buildOnboarding({ model: missing.model, texts: missing.texts });
   assert.equal(notInstalled.steps.length, 3);
-  assert.deepEqual(notInstalled.actions.map((action) => [action.kind, action.href]), [["link", INTEGRATION_URL]]);
+  assert.match(notInstalled.steps[0], /HACS/);
+  assert.deepEqual(notInstalled.actions.map((action) => [action.kind, action.href]), [["link", HACS_INTEGRATION_URL], ["link", INTEGRATION_URL]]);
+  assert.equal(notInstalled.note, null);
+  const missingAsUser = await modelFor("typical", { fake: { installed: false, setUp: false }, admin: false });
+  const notInstalledAsUser = buildOnboarding({ model: missingAsUser.model, texts: missingAsUser.texts });
+  assert.deepEqual(notInstalledAsUser.actions.map((action) => action.href), [INTEGRATION_URL]);
+  assert.equal(notInstalledAsUser.note, missingAsUser.texts.t("onboarding.adminInstall"));
   const unset = await modelFor("typical", { fake: { setUp: false } });
   assert.deepEqual(buildOnboarding({ model: unset.model, texts: unset.texts }).actions.map((action) => action.path), [SET_UP_PATH]);
   const nonAdmin = await modelFor("typical", { fake: { setUp: false }, admin: false });

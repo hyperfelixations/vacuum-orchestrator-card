@@ -44,7 +44,9 @@ test("a missing integration shows how to install it", async ({ page }) => {
   const card = await mountCard(page, { installed: false, setUp: false });
   await expect(card.locator(".voc-status-pill")).toHaveText("Not installed");
   await expect(card.locator(".voc-onboarding")).toHaveAttribute("data-phase", "not_installed");
-  await expect(card.locator(".voc-onboarding a")).toHaveAttribute("rel", "noopener noreferrer");
+  const links = card.locator(".voc-onboarding a");
+  await expect(links).toHaveText(["Open in HACS", "Installation guide"]);
+  for (const link of await links.all()) await expect(link).toHaveAttribute("rel", "noopener noreferrer");
 });
 
 test("configured header text stays text", async ({ page }) => {

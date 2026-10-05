@@ -57,10 +57,10 @@ for (const colorScheme of ["light", "dark"]) {
   });
 }
 
-// A link styled as a button (the installation guide) is exactly as tall as a real button.
+// A link styled as a button (the onboarding links) is exactly as tall as a real button.
 test("a link button and a real button share one height", async ({ page }) => {
   const card = await mountCard(page, { installed: false, setUp: false });
-  const link = await card.locator("a.voc-button").boundingBox();
+  const link = await card.locator("a.voc-button").first().boundingBox();
   await page.evaluate(() => window.vocHarness.mount({ width: 640 }));
   const button = await page.locator("vacuum-orchestrator-card").first().locator(".voc-primary-action").boundingBox();
   expect(Math.round(link.height)).toBe(Math.round(button.height));

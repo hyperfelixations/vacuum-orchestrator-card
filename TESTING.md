@@ -55,7 +55,7 @@ It restores the ordinary bundle after the measurement build.
 
 ## Release preparation
 
-No release has been published. The manual Release Candidate workflow accepts
+The manual Release Candidate workflow accepts
 the exact package version, the full SHA of any commit in the history of `main`,
 and a stable or development release kind. A stable version must be higher than
 every published stable version, and every earlier stable release must be an
@@ -67,9 +67,15 @@ download and verify that same bundle. Once a stable release is published,
 official HACS validation must pass before the workflow can create an
 unpublished GitHub draft with the tested asset and checksum; HACS cannot
 validate a repository that has neither a stable release nor a committed bundle,
-so the check is skipped until then and the Validate workflow is run manually
-after the first release is published. Publishing the draft remains a separate
+so until a stable release exists the check is skipped and the Validate workflow
+is run manually after that release is published. Publishing the draft remains a separate
 owner action. `dist/` is never committed.
+
+## README image
+
+`npm run readme:image` builds the card and records `vacuum-orchestrator-card.png`: the queue
+of the typical household on the test harness, light and dark side by side, with the fixed
+clock of the goldens. No test compares it; look at the picture before committing it.
 
 ## Dependency security
 

@@ -280,6 +280,7 @@ test.describe("onboarding and setup", () => {
   test("not installed", async ({ page }) => {
     const card = await mountCard(page, { installed: false, setUp: false, config: BASE });
     await expect(card.locator(".voc-onboarding ol li")).toHaveCount(3);
+    await expect(card.locator(".voc-onboarding-actions a").first()).toHaveText("Open in HACS");
     await shot(page, "onboarding-not-installed-medium-light.png", MEDIUM);
   });
 

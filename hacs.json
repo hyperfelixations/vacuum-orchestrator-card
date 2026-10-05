@@ -2,6 +2,6 @@
   "name": "Vacuum Orchestrator Card",
   "filename": "vacuum-orchestrator-card.js",
   "render_readme": true,
-  "hide_default_branch": true
+  "hide_default_branch": true,
+  "homeassistant": "2026.9.0"
 }
-
