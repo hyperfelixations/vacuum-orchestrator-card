@@ -75,6 +75,21 @@ test("every action can answer with the confirmed commit, and every read names it
   assert.deepEqual(view(await fake.attachTo({}).connection.sendMessagePromise({ type: "vacuum_orchestrator/configuration/get", query: "get_rooms", parameters: { offset: 0, limit: 5 } })), current);
 });
 
+test("the queue names the version and counts; jobs filter by state, newest first", async () => {
+  const { fake, hass } = fakeFor();
+  const ws = (message) => hass.connection.sendMessagePromise(message);
+  const queue = await ws({ type: "vacuum_orchestrator/queue/get", offset: 0, limit: 1 });
+  assert.deepEqual([queue.integration_version, queue.active_count, queue.attention_count], ["0.1.0", 1, 0]);
+  const open = await ws({ type: "vacuum_orchestrator/jobs/list", offset: 0, limit: 50, states: ["running", "needs_attention"] });
+  assert.deepEqual(open.jobs.map((job) => job.state), ["running"]);
+  assert.equal(open.total, 1);
+  fake.setJob("job-kitchen", { state: "needs_attention" });
+  const events = [];
+  await hass.connection.subscribeMessage((event) => events.push(event), { type: "vacuum_orchestrator/subscribe" });
+  fake.commit();
+  assert.deepEqual([events[0].active_count, events[0].attention_count], [1, 1]);
+});
+
 test("an unchanged queue mode commits nothing, as in the integration", async () => {
   const { fake, call } = fakeFor();
   await call("pause_queue", {});

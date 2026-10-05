@@ -202,20 +202,17 @@ export class VacuumOrchestratorCard extends HTMLElement {
   _requests(tabs) {
     const ui = this._ui.snapshot;
     const pageSize = this._config.page_size;
-    const summary = this._model?.summary;
-    const expected = Number.isInteger(summary?.activeJobs) && Number.isInteger(summary?.attentionJobs) ? summary.activeJobs + summary.attentionJobs : null;
     const requests = {
       queue: { name: "queue", params: { offset: ui.pages.queue ?? 0, limit: pageSize } },
-      openJobs: { name: "openJobs", params: {}, hints: { expected } },
+      openJobs: { name: "openJobs", params: {} },
       rooms: { name: "rooms", params: {} },
       robots: { name: "robots", params: {} },
       candidates: { name: "candidates", params: {} },
       registry: { name: "registry", params: {} },
-      manifest: { name: "manifest", params: {} },
       errorTexts: { name: "errorTexts", params: { language: this._language() } },
     };
     const add = (list) => {
-      for (const request of list || []) requests[request.slot || request.name] = { name: request.name, params: request.params || {}, hints: request.hints };
+      for (const request of list || []) requests[request.slot || request.name] = { name: request.name, params: request.params || {} };
     };
     const definition = viewFor(tabs?.active);
     if (definition?.scopes) add(definition.scopes({ ui, options: resolvedOptions(definition, tabs.activeTab?.options), config: this._config }));
@@ -262,7 +259,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
       language: texts.language,
       minute: Math.floor(model.nowMs / 60000),
       ui: this._ui.snapshot,
-      hass: [model.summary, model.robotsLive, model.entityReadings, model.areas, model.operations, model.permissions, model.entityCatalog.length],
+      hass: [model.robotsLive, model.entityReadings, model.areas, model.operations, model.permissions, model.entityCatalog.length],
     });
   }
 

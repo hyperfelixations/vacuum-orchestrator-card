@@ -1,12 +1,10 @@
-// Read-only views of Home Assistant entities the integration names: its own summary sensors,
-// and the vacuum and role entities of each robot profile. Values are displayed as Home
+// Read-only views of Home Assistant entities the integration names: the vacuum and role
+// entities of each robot profile. Values are displayed as Home
 // Assistant reports them; nothing here decides what a robot can do.
 // See internal dev doc §7 "Home-Assistant-Entitäten".
 
 import { ROBOT_ROLES } from "../domain/job-schema.js";
 
-const PLATFORM = "vacuum_orchestrator";
-const SUMMARY_KEYS = Object.freeze({ queue_mode: "queueMode", queue_length: "queueLength", active_jobs: "activeJobs", attention_jobs: "attentionJobs", needs_attention: "needsAttention" });
 const UNUSABLE = new Set(["unknown", "unavailable"]);
 
 export function indexRegistry(entries) {
@@ -17,31 +15,6 @@ export function indexRegistry(entries) {
     byEntityId.set(entry.entityId, entry);
   }
   return Object.freeze({ byId, byEntityId, entries: entries || [] });
-}
-
-function usableState(states, entityId) {
-  const state = entityId ? states?.[entityId] : null;
-  if (!state || typeof state.state !== "string" || UNUSABLE.has(state.state)) return null;
-  return state;
-}
-
-// The integration's summary sensors, identified by unique id, never by entity id.
-export function summaryFrom(registry, states) {
-  const result = { available: false, queueMode: null, queueLength: null, activeJobs: null, attentionJobs: null, needsAttention: null };
-  for (const entry of registry?.entries || []) {
-    if (entry.platform !== PLATFORM || entry.disabled || !entry.uniqueId) continue;
-    const key = SUMMARY_KEYS[entry.uniqueId.replace(/^vacuum_orchestrator_/, "")];
-    const state = key ? usableState(states, entry.entityId) : null;
-    if (!state) continue;
-    result.available = true;
-    if (key === "queueMode") result.queueMode = state.state;
-    else if (key === "needsAttention") result.needsAttention = state.state === "on";
-    else {
-      const value = Number(state.state);
-      result[key] = Number.isInteger(value) ? value : null;
-    }
-  }
-  return Object.freeze(result);
 }
 
 // A role reference is a registry id; an entity id is accepted as well.

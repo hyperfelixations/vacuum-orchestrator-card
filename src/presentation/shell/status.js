@@ -17,10 +17,13 @@ export function cardStatus(model = {}) {
   if (model.phase && model.phase !== "ready") return PHASE_STATUS[model.phase] || "connecting";
   const queue = slotData(model, "queue");
   const openJobs = list(slotData(model, "openJobs")?.jobs);
-  const attention = openJobs.some((job) => job.state === "needs_attention") || queue?.needsAttention || list(queue?.recoveryTargets).length > 0 || model.summary?.needsAttention === true;
+  // The integration's counts; a live event is newer than the last queue read.
+  const attentionCount = model.live?.attentionCount ?? queue?.attentionCount ?? 0;
+  const activeCount = model.live?.activeCount ?? queue?.activeCount ?? 0;
+  const attention = openJobs.some((job) => job.state === "needs_attention") || attentionCount > 0 || queue?.needsAttention || model.live?.needsAttention === true || list(queue?.recoveryTargets).length > 0;
   if (attention) return "attention";
-  if (openJobs.some((job) => job.state !== "needs_attention")) return "cleaning";
-  const mode = queue?.mode ?? model.live?.mode ?? model.summary?.queueMode ?? null;
+  if (openJobs.some((job) => job.state !== "needs_attention") || activeCount > 0) return "cleaning";
+  const mode = queue?.mode ?? model.live?.mode ?? null;
   if (mode === "running") return "running";
   if (mode === "paused") return "paused";
   if (!queue) return "connecting";

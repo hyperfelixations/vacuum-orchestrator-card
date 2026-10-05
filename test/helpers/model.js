@@ -18,7 +18,6 @@ const BASE_REQUESTS = Object.freeze({
   robots: { name: "robots", params: {} },
   candidates: { name: "candidates", params: {} },
   registry: { name: "registry", params: {} },
-  manifest: { name: "manifest", params: {} },
 });
 
 const errorTextsRequest = (language) => ({ name: "errorTexts", params: { language } });

@@ -35,6 +35,9 @@ export function normalizeQueuePage(wire) {
     .map((job, index) => Object.freeze({ ...job, position: offset + index + 1 }));
   return Object.freeze({
     mode: isQueueMode(wire.mode) ? wire.mode : "idle",
+    integrationVersion: text(wire.integration_version),
+    activeCount: integer(wire.active_count),
+    attentionCount: integer(wire.attention_count),
     commitId: integer(wire.commit_id),
     runtimeId: text(wire.runtime_id),
     runtimeSequence: integer(wire.runtime_sequence),

@@ -24,11 +24,12 @@ const rooms = (count) => Array.from({ length: count }, (_, index) => W.wireRoom(
 
 test("the queue loader normalizes the page and records the API version", async () => {
   const { loadQueue } = await load();
-  const transport = scripted(() => W.wireQueuePage([W.wireJob({ position: 1 })], { mode: "running", total: 1 }));
+  const transport = scripted(() => W.wireQueuePage([W.wireJob({ position: 1 })], { mode: "running", total: 1, integration_version: "0.1.0", active_count: 2, attention_count: 1 }));
   const result = await loadQueue(transport, { offset: 0, limit: 25 });
   assert.equal(result.ok, true);
   assert.equal(result.data.apiVersion, 2);
   assert.equal(result.data.mode, "running");
+  assert.deepEqual([result.data.integrationVersion, result.data.activeCount, result.data.attentionCount], ["0.1.0", 2, 1]);
   assert.equal(result.data.jobs[0].jobId, "job-1");
   assert.deepEqual(transport.sent, [{ type: "vacuum_orchestrator/queue/get", offset: 0, limit: 25 }]);
   assert.ok(Object.isFrozen(result.data));
@@ -96,32 +97,24 @@ test("records a normalizer cannot use are dropped, the rest kept", async () => {
   assert.equal(result.data.items.length, 1);
 });
 
-test("open jobs skip queued and finished jobs and stop once the expected count is found", async () => {
-  const { loadOpenJobs } = await load();
-  const jobs = [
-    W.wireJob({ job_id: "q", state: "queued" }),
-    W.wireJob({ job_id: "run", state: "running" }),
-    W.wireJob({ job_id: "done", state: "completed" }),
-    W.wireJob({ job_id: "help", state: "needs_attention" }),
-    W.wireJob({ job_id: "old", state: "dispatching" }),
-  ];
-  const transport = scripted((message) => W.wireJobListPage(jobs.slice(message.offset, message.offset + 2), { total: jobs.length, offset: message.offset, limit: 2 }));
-  const original = transport.ws;
-  transport.ws = (message) => original({ ...message, limit: 2 });
-  const result = await loadOpenJobs(transport, { expected: 2 });
-  assert.deepEqual(result.data.jobs.map((job) => job.jobId), ["run", "help"]);
+test("open jobs are read through the integration's state filter, every page, each job once", async () => {
+  const { loadOpenJobs, OPEN_JOB_STATES } = await load();
+  assert.deepEqual([...OPEN_JOB_STATES], ["dispatching", "running", "canceling", "needs_attention"]);
+  const jobs = Array.from({ length: 150 }, (_, index) => W.wireJob({ job_id: `job-${index}`, state: index % 2 ? "running" : "needs_attention" }));
+  const transport = scripted((message) => ({ ...W.wireJobListPage(jobs.slice(message.offset, message.offset + message.limit), { total: jobs.length, offset: message.offset, limit: message.limit }), commit_id: 3, runtime_id: "runtime-1", runtime_sequence: 9 }));
+  const result = await loadOpenJobs(transport);
+  assert.deepEqual(transport.sent.map((message) => [message.offset, message.limit, message.states]), [[0, 100, [...OPEN_JOB_STATES]], [100, 100, [...OPEN_JOB_STATES]]]);
+  assert.equal(result.data.jobs.length, 150);
   assert.equal(result.data.complete, true);
-  assert.equal(transport.sent.length, 2);
+  assert.equal(result.view.sequence, 9);
 });
 
-test("without expected counts the open-job scan reads two pages and says when it stopped early", async () => {
-  const { loadOpenJobs, BLIND_JOB_SCAN_PAGES } = await load();
-  const transport = scripted((message) => W.wireJobListPage([W.wireJob({ job_id: `job-${message.offset}`, state: "running" })], { total: 50, offset: message.offset, limit: 1 }));
-  const result = await loadOpenJobs(transport, {});
-  assert.equal(transport.sent.length, BLIND_JOB_SCAN_PAGES);
+test("open jobs beyond the page bound are marked incomplete", async () => {
+  const { loadOpenJobs, MAX_COLLECTION_PAGES } = await load();
+  const transport = scripted((message) => W.wireJobListPage([W.wireJob({ job_id: `job-${message.offset}`, state: "running" })], { total: 5000, offset: message.offset, limit: message.limit }));
+  const result = await loadOpenJobs(transport);
+  assert.equal(transport.sent.length, MAX_COLLECTION_PAGES);
   assert.equal(result.data.complete, false);
-  const short = await loadOpenJobs(scripted(() => W.wireJobListPage([W.wireJob({ state: "running" })], { total: 1 })), {});
-  assert.equal(short.data.complete, true);
 });
 
 test("the job log keeps the page position; single records load by id", async () => {

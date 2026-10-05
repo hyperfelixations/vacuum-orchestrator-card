@@ -70,7 +70,12 @@ export const messages = Object.freeze({
     if (typeof jobId !== "string" || !jobId) throw new TypeError("job_id is required");
     return Object.freeze({ type: WS.JOB_GET, job_id: jobId });
   },
-  jobsList: ({ offset, limit } = {}) => Object.freeze({ type: WS.JOBS_LIST, ...page(offset, limit) }),
+  // `states`: the integration's job state filter; without it every job.
+  jobsList: ({ offset, limit, states } = {}) => {
+    if (states === undefined) return Object.freeze({ type: WS.JOBS_LIST, ...page(offset, limit) });
+    if (!Array.isArray(states) || !states.length || states.some((state) => typeof state !== "string")) throw new TypeError("invalid job states");
+    return Object.freeze({ type: WS.JOBS_LIST, ...page(offset, limit), states: [...states] });
+  },
   subscribe: () => Object.freeze({ type: WS.SUBSCRIBE }),
   query: (query, parameters = {}) => {
     if (!CONFIGURATION_QUERIES.includes(query)) throw new TypeError(`unknown query ${query}`);

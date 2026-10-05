@@ -61,8 +61,17 @@ test("a working integration reaches ready with a live subscription and its versi
   assert.equal(snapshot.apiVersion, 2);
   assert.equal(snapshot.subscription, "live");
   assert.equal(env.fake.subscriberCount(), 1);
-  assert.equal(scope(snapshot, "manifest|{}").data.version, "0.1.0");
+  assert.equal(env.fake.calls.ws.some((message) => message.type === "manifest/get"), false, "the queue names the version");
   env.session.dispose();
+});
+
+test("the live values follow the integration's events, counts included", async () => {
+  const env = await setup();
+  await env.start();
+  env.fake.setJob("job-kitchen", { state: "needs_attention" });
+  await tick();
+  const live = env.snapshot().live;
+  assert.deepEqual([live.activeCount, live.attentionCount, live.pendingJobs], [1, 1, 2]);
 });
 
 test("each way the integration can be unusable is its own phase", async () => {

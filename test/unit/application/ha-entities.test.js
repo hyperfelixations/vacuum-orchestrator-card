@@ -1,5 +1,5 @@
-// Home Assistant entities the integration names: summary sensors found by unique id, role
-// references resolved through the registry, and readings copied value by value.
+// Home Assistant entities the integration names: role references resolved through the
+// registry, and readings copied value by value.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -8,24 +8,9 @@ const load = () => import("../../../src/application/ha-entities.js");
 
 const entry = (id, entityId, extra = {}) => ({ id, entityId, platform: "roborock", uniqueId: `${id}-u`, deviceId: null, disabled: false, ...extra });
 
-test("summary sensors are found by the integration's unique ids, not by entity ids", async () => {
-  const { indexRegistry, summaryFrom } = await load();
-  const registry = indexRegistry([
-    entry("a", "sensor.renamed_mode", { platform: "vacuum_orchestrator", uniqueId: "vacuum_orchestrator_queue_mode" }),
-    entry("b", "sensor.length", { platform: "vacuum_orchestrator", uniqueId: "vacuum_orchestrator_queue_length" }),
-    entry("c", "binary_sensor.attention", { platform: "vacuum_orchestrator", uniqueId: "vacuum_orchestrator_needs_attention" }),
-    entry("d", "sensor.active", { platform: "vacuum_orchestrator", uniqueId: "vacuum_orchestrator_active_jobs", disabled: true }),
-    entry("e", "sensor.queue_length", { platform: "template", uniqueId: "vacuum_orchestrator_queue_length" }),
-  ]);
-  const summary = summaryFrom(registry, {
-    "sensor.renamed_mode": { state: "paused" },
-    "sensor.length": { state: "4" },
-    "binary_sensor.attention": { state: "on" },
-    "sensor.active": { state: "1" },
-    "sensor.queue_length": { state: "99" },
-  });
-  assert.deepEqual({ ...summary }, { available: true, queueMode: "paused", queueLength: 4, activeJobs: null, attentionJobs: null, needsAttention: true });
-  assert.equal(summaryFrom(registry, { "sensor.length": { state: "unavailable" } }).available, false);
+test("the integration's own sensors are not read: its counts come from its API", async () => {
+  const module = await load();
+  assert.equal("summaryFrom" in module, false);
 });
 
 test("a role reference resolves through the registry and fails closed when disabled", async () => {

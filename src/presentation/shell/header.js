@@ -8,13 +8,13 @@ function attentionSentence(model, texts) {
   const targets = list(slotData(model, "queue")?.recoveryTargets);
   if (targets.length === 1) return t(texts, "subtitle.recoveryOne", { robot: robotName(targets[0].robotId, model) });
   if (targets.length > 1) return t(texts, "subtitle.recoveryMany", { count: targets.length });
-  const count = list(slotData(model, "openJobs")?.jobs).filter((job) => job.state === "needs_attention").length || model.summary?.attentionJobs || 0;
+  const count = list(slotData(model, "openJobs")?.jobs).filter((job) => job.state === "needs_attention").length || model.live?.attentionCount || slotData(model, "queue")?.attentionCount || 0;
   return count ? t(texts, "subtitle.attentionJobs", { count }) : t(texts, "subtitle.attention");
 }
 
 export function automaticSubtitle(model, status, texts) {
   const queue = slotData(model, "queue");
-  const waiting = queue?.total ?? model.live?.pendingJobs ?? model.summary?.queueLength ?? 0;
+  const waiting = queue?.total ?? model.live?.pendingJobs ?? 0;
   switch (status) {
     case "attention":
       return attentionSentence(model, texts);

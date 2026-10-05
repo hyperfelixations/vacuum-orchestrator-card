@@ -129,10 +129,14 @@
     let lastViews = viewParts();
     let lastChanged = Object.keys(lastViews);
 
+    const ACTIVE = new Set(["dispatching", "running", "canceling"]);
+    const countJobs = (states) => [...state.jobs.values()].filter((job) => states.has(job.state)).length;
+    const counts = () => ({ active_count: countJobs(ACTIVE), attention_count: countJobs(new Set(["needs_attention"])) });
+
     // The integration's view event; while no runtime is loaded it only says so.
     function event() {
       if (!state.runtimeLoaded) return { api_version: 2, loaded: false };
-      return { api_version: 2, loaded: true, commit_id: state.commitId, runtime_id: state.runtimeId, runtime_sequence: state.runtimeSequence, queue_revision: state.queueRevision, mode: state.mode, pending_jobs: state.queue.length, needs_attention: needsAttention(), changed: lastChanged };
+      return { api_version: 2, loaded: true, commit_id: state.commitId, runtime_id: state.runtimeId, runtime_sequence: state.runtimeSequence, queue_revision: state.queueRevision, mode: state.mode, pending_jobs: state.queue.length, needs_attention: needsAttention(), ...counts(), changed: lastChanged };
     }
 
     function viewMetadata() {
@@ -210,6 +214,7 @@
         recovery_targets: copy(state.recoveryTargets),
         queue_grace_seconds: state.graceSeconds,
         queue_run: copy(state.run),
+        ...counts(),
         total,
         offset,
         limit,
@@ -219,7 +224,8 @@
     }
 
     function jobsList(message) {
-      const ordered = [...state.jobs.values()].sort((one, other) => (one.created_at === other.created_at ? (one.job_id < other.job_id ? 1 : -1) : one.created_at < other.created_at ? 1 : -1));
+      const states = Array.isArray(message.states) ? new Set(message.states) : null;
+      const ordered = [...state.jobs.values()].filter((job) => !states || states.has(job.state)).sort((one, other) => (one.created_at === other.created_at ? (one.job_id < other.job_id ? 1 : -1) : one.created_at < other.created_at ? 1 : -1));
       const { offset, limit, total, slice } = page(ordered, message);
       return { ...W.wireJobListPage(slice.map((job) => presentJob(job, false)), { total, offset, limit }), ...viewMetadata() };
     }

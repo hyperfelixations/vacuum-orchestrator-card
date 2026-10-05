@@ -107,7 +107,7 @@ export function createSession({ transport, platform, getHass } = {}) {
   }
 
   function entry(key, name, params) {
-    if (!scopes.has(key)) scopes.set(key, { key, name, params, hints: {}, status: "idle", stale: false, data: null, view: null, requested: null, error: null, loadedAt: null, reload: false });
+    if (!scopes.has(key)) scopes.set(key, { key, name, params, status: "idle", stale: false, data: null, view: null, requested: null, error: null, loadedAt: null, reload: false });
     return scopes.get(key);
   }
 
@@ -122,7 +122,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     // The integration answers in order: a read sent now shows at least what the session has seen.
     scope.requested = { runtimeId: runtime.id, sequence: runtime.sequence, commitId: runtime.commitId };
     changed();
-    const result = await SCOPE_LOADERS[scope.name](transport, { ...scope.hints, ...scope.params });
+    const result = await SCOPE_LOADERS[scope.name](transport, scope.params);
     if (disposed) return;
     if (result.ok) {
       scope.status = "ready";
@@ -229,7 +229,8 @@ export function createSession({ transport, platform, getHass } = {}) {
       void probe();
       return;
     }
-    live = Object.freeze({ mode: event.mode, pendingJobs: event.pending_jobs, needsAttention: event.needs_attention === true, queueRevision: event.queue_revision });
+    const count = (value) => (Number.isInteger(value) ? value : null);
+    live = Object.freeze({ mode: event.mode, pendingJobs: event.pending_jobs, needsAttention: event.needs_attention === true, queueRevision: event.queue_revision, activeCount: count(event.active_count), attentionCount: count(event.attention_count) });
     if (runtime.id !== null && event.runtime_id !== runtime.id) {
       runtime = { id: event.runtime_id, sequence: event.runtime_sequence, commitId: event.commit_id };
       invalidation.cancel();
@@ -291,8 +292,6 @@ export function createSession({ transport, platform, getHass } = {}) {
     runtime = { id: check.data.runtimeId, sequence: check.data.runtimeSequence, commitId: check.data.commitId };
     cancelUnloadedProbe();
     setPhase("ready");
-    const manifestScope = entry(scopeKey("manifest"), "manifest", {});
-    if (manifestScope.status === "idle") void load(manifestScope);
     invalidateAll();
   }
 
@@ -359,12 +358,10 @@ export function createSession({ transport, platform, getHass } = {}) {
 
   function setDemand(owner, requests = []) {
     const keys = new Set();
-    // `hints` steer a loader without naming a different scope (an expected count, for example).
-    for (const { name, params = {}, hints = null } of requests) {
+    for (const { name, params = {} } of requests) {
       if (!SCOPE_LOADERS[name]) continue;
       const key = scopeKey(name, params);
-      const scope = entry(key, name, params);
-      if (hints) scope.hints = { ...hints };
+      entry(key, name, params);
       keys.add(key);
     }
     const previous = demands.get(owner);

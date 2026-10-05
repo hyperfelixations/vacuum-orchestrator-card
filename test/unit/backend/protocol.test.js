@@ -23,6 +23,7 @@ test("message builders produce the integration's message types", async () => {
   assert.deepEqual({ ...messages.queueGet({ offset: 25, limit: 25 }) }, { type: "vacuum_orchestrator/queue/get", offset: 25, limit: 25 });
   assert.deepEqual({ ...messages.jobGet("job-1") }, { type: "vacuum_orchestrator/job/get", job_id: "job-1" });
   assert.deepEqual({ ...messages.jobsList() }, { type: "vacuum_orchestrator/jobs/list", offset: 0, limit: 50 });
+  assert.deepEqual({ ...messages.jobsList({ offset: 0, limit: 100, states: ["running"] }) }, { type: "vacuum_orchestrator/jobs/list", offset: 0, limit: 100, states: ["running"] });
   assert.deepEqual({ ...messages.subscribe() }, { type: "vacuum_orchestrator/subscribe" });
   assert.deepEqual({ ...messages.query("get_trace", { job_id: "j" }) }, { type: "vacuum_orchestrator/configuration/get", query: "get_trace", parameters: { job_id: "j" } });
   assert.deepEqual({ ...messages.command("revoke_room", { room_id: "r" }) }, { type: "vacuum_orchestrator/configuration/command", command: "revoke_room", parameters: { room_id: "r" } });
@@ -35,6 +36,7 @@ test("builders refuse what the integration's schema refuses", async () => {
   assert.throws(() => messages.queueGet({ offset: -1, limit: 10 }), TypeError);
   assert.throws(() => messages.queueGet({ offset: 0, limit: 101 }), TypeError);
   assert.throws(() => messages.jobsList({ offset: 0, limit: 0 }), TypeError);
+  assert.throws(() => messages.jobsList({ offset: 0, limit: 10, states: [] }), TypeError);
   assert.throws(() => messages.jobGet(""), TypeError);
   assert.throws(() => messages.query("get_everything"), TypeError);
   assert.throws(() => messages.command("delete_job"), TypeError);

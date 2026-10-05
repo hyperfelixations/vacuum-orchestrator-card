@@ -5,7 +5,7 @@
 
 import { scopeKey } from "../backend/session.js";
 import { collectSourceDiagnostics } from "./source-diagnostics.js";
-import { indexRegistry, robotLive, summaryFrom } from "./ha-entities.js";
+import { indexRegistry, robotLive } from "./ha-entities.js";
 import { setupStatus } from "./setup-status.js";
 
 function deepFreeze(value) {
@@ -93,7 +93,7 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
     phase: snapshot?.phase ?? "probing",
     phaseFailure: snapshot?.phaseFailure ?? null,
     apiVersion: snapshot?.apiVersion ?? null,
-    integrationVersion: slots.manifest?.data?.version ?? null,
+    integrationVersion: slots.queue?.data?.integrationVersion ?? slots.manifest?.data?.version ?? null,
     errorTexts: slots.errorTexts?.data ?? null,
     runtime: snapshot?.runtime ?? { id: null, sequence: null, commitId: null },
     live: snapshot?.live ?? null,
@@ -102,7 +102,6 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
     operations: [...(home?.operations || [])],
     pending: Object.keys(snapshot?.pending || {}).sort(),
     slots,
-    summary: summaryFrom(registry, states),
     robotsLive,
     entityReadings,
     areas: areaCatalog(home?.areas),

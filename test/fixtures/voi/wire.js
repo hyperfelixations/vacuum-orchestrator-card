@@ -79,10 +79,13 @@ function wireQueueRun(overrides = {}) {
 function wireQueuePage(jobs = [], overrides = {}) {
   return {
     api_version: VOI_API_VERSION,
+    integration_version: "0.1.0",
     commit_id: 1,
     queue_revision: 1,
     mode: "idle",
     needs_attention: false,
+    active_count: 0,
+    attention_count: 0,
     recovery_targets: [],
     queue_grace_seconds: 900,
     queue_run: null,

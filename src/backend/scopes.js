@@ -14,11 +14,11 @@ import { normalizeTemplate } from "../domain/templates.js";
 import { normalizeDiagnosticsSummary, normalizeTracePage } from "../domain/trace.js";
 import { PAGE_LIMIT, QUERY_COLLECTIONS, apiVersionOf, guards, isSupportedApiVersion, messages } from "./protocol.js";
 
-// Safety bounds for collections read page by page.
+// Safety bound for collections read page by page.
 export const MAX_COLLECTION_PAGES = 20;
-export const MAX_JOB_SCAN_PAGES = 10;
-// Without the integration's summary counts the scan cannot know when it is done.
-export const BLIND_JOB_SCAN_PAGES = 2;
+
+// Jobs that left the pending queue but are not finished.
+export const OPEN_JOB_STATES = Object.freeze(["dispatching", "running", "canceling", "needs_attention"]);
 
 // The integration's read models as its events name them, and the scopes that read each one.
 // Trace, execution and diagnostics change without a commit and follow every event.
@@ -85,28 +85,20 @@ export async function loadQueue(transport, { offset = 0, limit = 25 } = {}) {
   return done(Object.freeze({ apiVersion, ...normalizeQueuePage(result.data) }), viewOf(result.data));
 }
 
-// Jobs that left the pending queue but are not finished. There is no state filter, so pages are
-// read newest first until the expected counts are reached (when known) or the registry ends.
-export async function loadOpenJobs(transport, { expected = null } = {}) {
+// The open jobs through the integration's state filter, every page, de-duplicated by id.
+export async function loadOpenJobs(transport) {
   const found = new Map();
   const views = [];
   let offset = 0;
   let total = 0;
-  const pages = Number.isInteger(expected) ? MAX_JOB_SCAN_PAGES : BLIND_JOB_SCAN_PAGES;
-  for (let pageIndex = 0; pageIndex < pages; pageIndex += 1) {
-    const result = await guarded(transport.ws(messages.jobsList({ offset, limit: PAGE_LIMIT })), guards.jobsPage, "jobs/list");
+  for (let pageIndex = 0; pageIndex < MAX_COLLECTION_PAGES; pageIndex += 1) {
+    const result = await guarded(transport.ws(messages.jobsList({ offset, limit: PAGE_LIMIT, states: OPEN_JOB_STATES })), guards.jobsPage, "jobs/list");
     if (!result.ok) return result;
     views.push(viewOf(result.data));
     total = result.data.total;
-    for (const job of result.data.jobs.map(normalizeJob).filter(Boolean)) {
-      if (job.state === "queued" || job.state === "completed" || job.state === "failed" || job.state === "cancelled") continue;
-      if (!found.has(job.jobId)) found.set(job.jobId, job);
-    }
+    for (const job of result.data.jobs.map(normalizeJob).filter(Boolean)) if (!found.has(job.jobId)) found.set(job.jobId, job);
     offset += result.data.jobs.length;
-    const reached = Number.isInteger(expected) && found.size >= expected;
-    if (reached || result.data.jobs.length === 0 || offset >= total) {
-      return done(Object.freeze({ jobs: Object.freeze([...found.values()]), complete: true }), oldestView(views));
-    }
+    if (result.data.jobs.length === 0 || offset >= total) return done(Object.freeze({ jobs: Object.freeze([...found.values()]), complete: true }), oldestView(views));
   }
   return done(Object.freeze({ jobs: Object.freeze([...found.values()]), complete: false }), oldestView(views));
 }

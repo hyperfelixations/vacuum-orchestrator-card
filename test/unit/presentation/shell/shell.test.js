@@ -25,6 +25,18 @@ test("status precedence: phase, attention, work in progress, queue mode, unfinis
   assert.equal(await statusOf({ phase: "ready", slots: {} }), "connecting");
 });
 
+test("the integration's counts mark attention and work before the open jobs are read", async () => {
+  const { cardStatus } = await import("../../../../src/presentation/shell/status.js");
+  const { automaticSubtitle } = await import("../../../../src/presentation/shell/header.js");
+  const { textService } = await import("../../../../src/i18n/text-service.js");
+  const texts = textService("en");
+  const queue = (fields) => ({ phase: "ready", slots: { queue: { data: { mode: "idle", needsAttention: false, recoveryTargets: [], total: 0, activeCount: 0, attentionCount: 0, ...fields } } } });
+  assert.equal(cardStatus(queue({ attentionCount: 2 })), "attention");
+  assert.equal(automaticSubtitle(queue({ attentionCount: 2 }), "attention", texts), texts.t("subtitle.attentionJobs", { count: 2 }));
+  assert.equal(cardStatus(queue({ activeCount: 1 })), "cleaning");
+  assert.equal(cardStatus({ ...queue({}), live: { mode: "idle", attentionCount: 1, activeCount: 0 } }), "attention", "a live event is newer than the queue read");
+});
+
 test("each status has a tone in the RCC token derivation", async () => {
   const { toneFor } = await import("../../../../src/presentation/shell/status.js");
   const tone = toneFor("paused");

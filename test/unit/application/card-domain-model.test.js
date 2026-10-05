@@ -27,7 +27,7 @@ async function fixture({ admin = true } = {}) {
     { id: "reg-mode", entityId: "sensor.voi_mode", platform: "vacuum_orchestrator", uniqueId: "vacuum_orchestrator_queue_mode", deviceId: null, disabled: false },
   ];
   const scopes = {
-    [m.scopeKey("queue", { offset: 0, limit: 25 })]: ready({ apiVersion: 2, ...m.normalizeQueuePage(W.wireQueuePage([W.wireJob({ required_on: ["binary_sensor.door"] })], { mode: "running" })) }),
+    [m.scopeKey("queue", { offset: 0, limit: 25 })]: ready({ apiVersion: 2, ...m.normalizeQueuePage(W.wireQueuePage([W.wireJob({ required_on: ["binary_sensor.door"] })], { mode: "running", integration_version: "0.1.0" })) }),
     [m.scopeKey("robots", {})]: ready({ items: [m.normalizeRobot(W.wireRobot({ configuration: { roles: { status: null } } }))], total: 1, complete: true }),
     [m.scopeKey("candidates", {})]: ready({ items: [m.normalizeCandidate(W.wireCandidate({ roles: { battery: "reg-rocky-battery", status: "reg-rocky-status" } }))], total: 1, complete: true }),
     [m.scopeKey("rooms", {})]: ready({ items: [m.normalizeRoom(W.wireRoom())], total: 1, complete: true }),
@@ -83,7 +83,15 @@ test("entities the views name get a reading; areas become a catalog", async () =
   const model = buildCardDomainModel({ snapshot, requests, home });
   assert.deepEqual({ ...model.entityReadings["binary_sensor.door"] }, { state: "on", name: "Door", available: true });
   assert.deepEqual(model.areas.map((area) => ({ ...area })), [{ areaId: "kitchen", name: "Kitchen", icon: null, floorId: "ground" }]);
-  assert.equal(model.summary.queueMode, "running");
+  assert.equal("summary" in model, false, "counts come from the queue, not from sensors");
+});
+
+test("the integration version comes from the queue, the manifest only before the queue is read", async () => {
+  const { buildCardDomainModel, requests, snapshot, home } = await fixture();
+  assert.equal(buildCardDomainModel({ snapshot, requests, home }).integrationVersion, "0.1.0");
+  const { scopeKey } = await modules();
+  const withoutQueue = { ...snapshot, scopes: { [scopeKey("manifest", {})]: ready({ version: "0.0.9", documentation: null }) } };
+  assert.equal(buildCardDomainModel({ snapshot: withoutQueue, requests: { manifest: { name: "manifest", params: {} } }, home }).integrationVersion, "0.0.9");
 });
 
 test("the entity catalog is built only for an editor", async () => {
