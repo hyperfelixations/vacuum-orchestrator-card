@@ -70,13 +70,19 @@ export function createTabStripRuntime({ root, platform }) {
     if (event.target?.classList?.contains("voc-tabs")) mark(event.target);
   }
 
+  // A web font that finishes loading changes the label widths but not the host's size.
+  const fonts = () => root.host?.ownerDocument?.fonts ?? null;
+  const onFontsLoaded = () => sync({ force: true });
+
   return {
     connect() {
       root.addEventListener("scroll", onScroll, { capture: true, passive: true });
+      fonts()?.addEventListener?.("loadingdone", onFontsLoaded);
       stopObserving = platform.observeResize(root.host, () => sync({ force: true }));
     },
     disconnect() {
       root.removeEventListener("scroll", onScroll, { capture: true });
+      fonts()?.removeEventListener?.("loadingdone", onFontsLoaded);
       stopObserving?.();
       stopObserving = null;
       shownView = null;

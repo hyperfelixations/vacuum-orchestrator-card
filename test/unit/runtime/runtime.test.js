@@ -270,3 +270,29 @@ test("the tab row drops the action label, then inactive labels, then all labels,
   runtime.sync();
   assert.deepEqual([level(), strip.hasAttribute("data-overflow-end")], ["icons", true]);
 });
+
+test("the tab row is measured again once a web font has loaded, until it disconnects", async () => {
+  const { createTabStripRuntime } = await import("../../../src/controllers/runtime/tab-strip-runtime.js");
+  const dom = new JSDOM('<!doctype html><div id="host"></div>');
+  const fonts = new dom.window.EventTarget();
+  Object.defineProperty(dom.window.document, "fonts", { value: fonts });
+  const root = dom.window.document.getElementById("host").attachShadow({ mode: "open" });
+  root.innerHTML = '<div class="voc-tab-row"><div class="voc-tabs"><button role="tab" data-view="queue" aria-selected="true"></button></div></div>';
+  const row = root.querySelector(".voc-tab-row");
+  const strip = root.querySelector(".voc-tabs");
+  let labelled = 520;
+  Object.defineProperty(strip, "clientWidth", { get: () => 480 });
+  Object.defineProperty(strip, "scrollWidth", { get: () => (row.hasAttribute("data-compact") ? 480 : labelled) });
+  Object.defineProperty(strip, "scrollLeft", { get: () => 0, set: () => {} });
+  const runtime = createTabStripRuntime({ root, platform: { observeResize: () => () => {} } });
+  runtime.connect();
+  runtime.sync();
+  assert.equal(row.getAttribute("data-compact"), "action", "the fallback font is wider");
+  labelled = 470;
+  fonts.dispatchEvent(new dom.window.Event("loadingdone"));
+  assert.equal(row.hasAttribute("data-compact"), false, "the loaded font fits");
+  runtime.disconnect();
+  labelled = 520;
+  fonts.dispatchEvent(new dom.window.Event("loadingdone"));
+  assert.equal(row.hasAttribute("data-compact"), false);
+});
