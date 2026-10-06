@@ -21,6 +21,7 @@ const CASES = Object.freeze([
   { name: "onboarding-not-set-up", options: { fake: { setUp: false } } },
   { name: "onboarding-load-failed", options: { fake: { runtimeLoaded: false } } },
   { name: "setup-fresh", options: { scenario: "fresh" } },
+  { name: "setup-guide", options: { config: { start_view: "settings" } }, steps: ['[data-action="open-setup"]'] },
   { name: "rooms", options: {}, steps: ['[role="tab"][data-view="rooms"]'] },
   { name: "robots", options: {}, steps: ['[role="tab"][data-view="robots"]'] },
   { name: "templates", options: {}, steps: ['[role="tab"][data-view="templates"]'] },

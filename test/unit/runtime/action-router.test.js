@@ -137,6 +137,14 @@ test("ending the queue asks how started jobs end, and only confirms without any"
   assert.deepEqual([quick.commands[0].operation, quick.commands[0].parameters, quick.ui.overlay], ["end_queue", {}, null], "without confirmations the integration's default applies");
 });
 
+test("the setup opens as a page, and a setup step can switch the view", async () => {
+  const { router, ui } = await setup();
+  router.handle("open-setup");
+  assert.deepEqual({ ...ui.overlay }, { kind: "setup-guide" });
+  router.handle("show-view", { view: "rooms" });
+  assert.deepEqual([ui.snapshot.view, ui.overlay], ["rooms", null]);
+});
+
 test("a robot is sent home through its own command", async () => {
   const { router, ui, commands } = await setup();
   await router.handle("return-robot", { robotId: "robot-rocky" });

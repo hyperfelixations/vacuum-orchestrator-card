@@ -17,10 +17,11 @@ import { releaseOverlay, roomCreateOverlay, roomEditorOverlay } from "./overlays
 import { jobEditorOverlay } from "./overlays/job-editor.js";
 import { jobDetailOverlay } from "./overlays/job-detail.js";
 import { jobDefaultsOverlay, saveTemplateOverlay } from "./overlays/job-defaults.js";
+import { setupGuideOverlay } from "./setup.js";
 import { cancelJobOverlay, confirmOverlay, queueEndOverlay, queueSettingsOverlay, recoveryOverlay, startJobOverlay } from "./overlays/dialogs.js";
 
 export const VIEWS = Object.freeze([setupView, queueView, roomsView, robotsView, templatesView, historyView, diagnosticsView, settingsView]);
-export const OVERLAYS = Object.freeze([jobEditorOverlay, jobDetailOverlay, confirmOverlay, startJobOverlay, recoveryOverlay, queueSettingsOverlay, releaseOverlay, roomEditorOverlay, roomCreateOverlay, robotAddOverlay, robotEditorOverlay, saveTemplateOverlay, jobDefaultsOverlay, cancelJobOverlay, queueEndOverlay]);
+export const OVERLAYS = Object.freeze([jobEditorOverlay, jobDetailOverlay, confirmOverlay, startJobOverlay, recoveryOverlay, queueSettingsOverlay, releaseOverlay, roomEditorOverlay, roomCreateOverlay, robotAddOverlay, robotEditorOverlay, saveTemplateOverlay, jobDefaultsOverlay, cancelJobOverlay, queueEndOverlay, setupGuideOverlay]);
 
 function verify() {
   const keys = new Set();

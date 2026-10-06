@@ -106,7 +106,15 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
     entityReadings,
     areas: areaCatalog(home?.areas),
     entityCatalog: needsEntityCatalog ? entityCatalog(states) : [],
-    setup: setupStatus({ robots, rooms, queueTotal: slots.queue?.data?.total ?? null, openJobs: slots.openJobs?.data?.jobs ?? null }),
+    setup: setupStatus({
+      robots,
+      rooms,
+      queueTotal: slots.queue?.data?.total ?? null,
+      openJobs: slots.openJobs?.data?.jobs ?? null,
+      jobDefaults: slots.queue?.data?.jobDefaults ?? null,
+      templates: slots.templates?.data?.items ?? null,
+      graceSeconds: Number.isFinite(slots.queue?.data?.graceSeconds) ? slots.queue.data.graceSeconds : null,
+    }),
     nowMs,
     diagnostics: { warnings: [], hints: [] },
   };

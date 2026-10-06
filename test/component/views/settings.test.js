@@ -47,6 +47,22 @@ test("the job defaults are changed on their own page and shown again from the in
   card.unmount();
 });
 
+test("the setup opens from the settings with all nine steps, and any step opens on request", async () => {
+  const card = await mountCard({ env, config: { start_view: "settings" } });
+  await card.click('[data-action="open-setup"]');
+  await card.settle(32);
+  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:setup-guide");
+  assert.equal(card.all(".voc-setup-step").length, 9);
+  assert.equal(card.root.querySelector('[data-current="true"]').dataset.key, "step:defaults");
+  assert.match(card.text('[data-key="step:defaults"]'), /Built-in defaults/);
+  assert.equal(card.all('.voc-setup-mark').filter((node) => node.textContent === "Optional").length, 7);
+  await card.click('[data-key="step:queue"] .voc-setup-open');
+  assert.equal(card.root.querySelector('[data-current="true"]').dataset.key, "step:queue");
+  await card.click('[data-key="step:queue"] [data-action="open-queue-settings"]');
+  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:queue-settings");
+  card.unmount();
+});
+
 test("the integration block names the version and opens the integration in Home Assistant", async () => {
   const card = await mountCard({ env, config: { start_view: "settings" } });
   const integration = card.text('[data-key="integration"]');

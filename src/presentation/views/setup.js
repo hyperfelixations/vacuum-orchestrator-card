@@ -1,12 +1,16 @@
-// The setup assistant: the four setup steps in order, each with what the integration reports and
-// the action that completes it. The current step is the first one not done; finished steps
-// collapse to one line. See internal dev doc §8 "Einrichtung".
+// The setup assistant: the nine setup steps in order, each with what the integration reports and
+// the action that completes it. The open step is the one the user picked, else the first one
+// not done; the others collapse to one line. Optional steps say so, and the job defaults say
+// while the built-in ones apply. See internal dev doc §8 "Einrichtung".
 
-import { SETUP_STEPS } from "../../application/setup-status.js";
-import { CREATE_TARGET, candidateAffordance, decide, roomAffordances } from "../../domain/affordances.js";
+import { REQUIRED_STEPS, SETUP_STEPS } from "../../application/setup-status.js";
+import { CREATE_TARGET, QUEUE_TARGET, candidateAffordance, decide, queueAffordances, roomAffordances } from "../../domain/affordances.js";
 import { isConfiguredCandidate } from "../../domain/robots.js";
 import { list, robotsOf, roomIndex, roomName, roomsOf, slotData } from "../common/lookups.js";
-import { adapterLabel, number, t } from "../common/texts.js";
+import { adapterLabel, number, seconds, t } from "../common/texts.js";
+
+// The UI choice naming the step the user opened.
+export const SETUP_STEP_CHOICE = "setup:step";
 
 export const SETUP_ROOM_LIMIT = 6;
 
@@ -54,6 +58,26 @@ function releaseStep(model, texts, context, step) {
   };
 }
 
+// The optional steps beyond the release each explain themselves and lead to where they are set.
+function linkStep(key, action) {
+  return (model, texts, context, step) => ({
+    summary: step.done && step.count !== undefined ? t(texts, `setup.step.${key}.done`, { count: step.count }) : step.done ? t(texts, `setup.step.${key}.done`) : null,
+    text: t(texts, `setup.step.${key}.text`),
+    link: { ...action(model, context), label: t(texts, `setup.step.${key}.action`) },
+  });
+}
+
+const ROOMS_LINK = () => ({ action: "show-view", args: { view: "rooms" }, icon: "mdi:floor-plan", decision: null });
+
+function queueStep(model, texts, context, step) {
+  const queue = slotData(model, "queue");
+  return {
+    summary: step.done ? t(texts, "setup.step.queue.done", { value: step.graceSeconds > 0 ? seconds(texts, step.graceSeconds) : t(texts, "settings.graceOff") }) : null,
+    text: t(texts, "setup.step.queue.text"),
+    link: { action: "open-queue-settings", args: {}, icon: "mdi:timer-sand", label: t(texts, "setup.step.queue.action"), decision: queueAffordances(queue?.mode ?? "idle", context).configure },
+  };
+}
+
 function firstJobStep(model, texts, context, step) {
   return {
     summary: step.done ? t(texts, "setup.step.firstJob.done") : null,
@@ -62,11 +86,23 @@ function firstJobStep(model, texts, context, step) {
   };
 }
 
-export function buildSetupView({ model, texts, context }) {
+const BUILDERS = Object.freeze({
+  robots: robotsStep,
+  rooms: roomsStep,
+  defaults: linkStep("defaults", (model, context) => ({ action: "open-job-defaults", args: {}, icon: "mdi:tune-variant", decision: decide(context, { operation: "configure_job_defaults", target: QUEUE_TARGET }) })),
+  conditions: linkStep("conditions", ROOMS_LINK),
+  release: releaseStep,
+  due: linkStep("due", ROOMS_LINK),
+  templates: linkStep("templates", (model, context) => ({ action: "create-template", args: {}, icon: "mdi:plus", decision: decide(context, { operation: "save_template", target: CREATE_TARGET }) })),
+  queue: queueStep,
+  firstJob: firstJobStep,
+});
+
+export function buildSetupView({ model, texts, context, ui = {} }) {
   const setup = model.setup;
   if (!setup?.known) return { key: "setup", loading: true, steps: [] };
-  const builders = { robots: robotsStep, rooms: roomsStep, release: releaseStep, firstJob: firstJobStep };
-  const current = setup.next;
+  const chosen = ui.choices?.[SETUP_STEP_CHOICE];
+  const current = SETUP_STEPS.includes(chosen) ? chosen : setup.next;
   return {
     key: "setup",
     loading: false,
@@ -80,7 +116,9 @@ export function buildSetupView({ model, texts, context }) {
         title: t(texts, `setup.step.${key}.title`),
         done: state.done,
         current: key === current,
-        ...builders[key](model, texts, context, state),
+        optional: !REQUIRED_STEPS.includes(key),
+        builtIn: state.builtIn === true,
+        ...BUILDERS[key](model, texts, context, state),
       };
     }),
   };

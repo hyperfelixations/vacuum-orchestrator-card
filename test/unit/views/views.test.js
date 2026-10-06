@@ -34,7 +34,8 @@ function assertMarkupContract(host, label) {
 test("the registry declares every view and page once with build and render", async () => {
   const { VIEWS, OVERLAYS, VIEW_TYPES, viewFor, overlayFor, optionSchemaForView, VIEW_CSS } = await import("../../../src/views/registry.js");
   assert.deepEqual(VIEW_TYPES, ["setup", "queue", "rooms", "robots", "templates", "history", "diagnostics", "settings"]);
-  assert.equal(OVERLAYS.length, 15);
+  assert.equal(OVERLAYS.length, 16);
+  assert.equal(overlayFor("setup-guide").key, "setup-guide");
   assert.equal(overlayFor("cancel-job").key, "cancel-job");
   assert.equal(overlayFor("queue-end").key, "queue-end");
   assert.equal(overlayFor("save-template").key, "save-template");

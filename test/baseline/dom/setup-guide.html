@@ -1,0 +1,199 @@
+<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Living room · Cleaning</div>
+</div>
+<div class="voc-status-pill">Cleaning</div>
+</div>
+<div class="voc-body" id="voc-panel" data-body="overlay:setup-guide">
+<section class="voc-overlay" data-key="overlay:setup-guide" role="region" aria-labelledby="voc-overlay-title">
+<header class="voc-overlay-head">
+<button type="button" class="voc-button voc-button--icon voc-back" data-action="back" aria-label="Back" title="Back">
+<ha-icon icon="mdi:arrow-left" aria-hidden="true">
+</ha-icon>
+</button>
+<h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">Setup</h2>
+</header>
+<div class="voc-view voc-setup" data-key="view:setup">
+<p class="voc-setup-lead" data-key="lead">Vacuum Orchestrator can clean. The remaining steps are optional.</p>
+<ol class="voc-setup-steps">
+<li class="voc-setup-step" data-key="step:robots" data-done="true" data-current="false">
+<span class="voc-setup-marker" aria-hidden="true">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;robots&quot;}" aria-expanded="false">Add a robot</button>
+</h3>
+<span class="voc-sr-only">Done</span>
+<span class="voc-setup-summary">
+<span>Rocky, Dusty</span>
+</span>
+</div>
+</div>
+</li>
+<li class="voc-setup-step" data-key="step:rooms" data-done="true" data-current="false">
+<span class="voc-setup-marker" aria-hidden="true">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;rooms&quot;}" aria-expanded="false">Assign rooms to a robot</button>
+</h3>
+<span class="voc-sr-only">Done</span>
+<span class="voc-setup-summary">
+<span>4 of 5 rooms reached by a robot</span>
+</span>
+</div>
+</div>
+</li>
+<li class="voc-setup-step" data-key="step:defaults" data-done="false" data-current="true" aria-current="step">
+<span class="voc-setup-marker" aria-hidden="true">
+<span>3</span>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">Check the job defaults</h3>
+<span class="voc-setup-summary">
+<span class="voc-setup-mark">Optional</span>
+<span class="voc-setup-mark" data-tone="default">Built-in defaults</span>
+</span>
+</div>
+<div class="voc-setup-body">
+<p class="voc-setup-text">New jobs start with these values: mode, suction, water, mop route and passes. Unchanged, the built-in defaults apply.</p>
+<div class="voc-inline-actions">
+<button type="button" class="voc-button voc-button--text" data-action="open-job-defaults">
+<ha-icon icon="mdi:tune-variant" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Check defaults</span>
+</button>
+</div>
+</div>
+</div>
+</li>
+<li class="voc-setup-step" data-key="step:conditions" data-done="true" data-current="false">
+<span class="voc-setup-marker" aria-hidden="true">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;conditions&quot;}" aria-expanded="false">Doors and conditions</button>
+</h3>
+<span class="voc-sr-only">Done</span>
+<span class="voc-setup-summary">
+<span class="voc-setup-mark">Optional</span>
+<span>1 condition</span>
+</span>
+</div>
+</div>
+</li>
+<li class="voc-setup-step" data-key="step:release" data-done="true" data-current="false">
+<span class="voc-setup-marker" aria-hidden="true">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;release&quot;}" aria-expanded="false">Release rooms for cleaning</button>
+</h3>
+<span class="voc-sr-only">Done</span>
+<span class="voc-setup-summary">
+<span class="voc-setup-mark">Optional</span>
+<span>2 rooms released</span>
+</span>
+</div>
+</div>
+</li>
+<li class="voc-setup-step" data-key="step:due" data-done="true" data-current="false">
+<span class="voc-setup-marker" aria-hidden="true">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;due&quot;}" aria-expanded="false">Due dates and presence</button>
+</h3>
+<span class="voc-sr-only">Done</span>
+<span class="voc-setup-summary">
+<span class="voc-setup-mark">Optional</span>
+<span>4 rooms with their own rule</span>
+</span>
+</div>
+</div>
+</li>
+<li class="voc-setup-step" data-key="step:templates" data-done="true" data-current="false">
+<span class="voc-setup-marker" aria-hidden="true">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;templates&quot;}" aria-expanded="false">Templates</button>
+</h3>
+<span class="voc-sr-only">Done</span>
+<span class="voc-setup-summary">
+<span class="voc-setup-mark">Optional</span>
+<span>3 templates</span>
+</span>
+</div>
+</div>
+</li>
+<li class="voc-setup-step" data-key="step:queue" data-done="true" data-current="false">
+<span class="voc-setup-marker" aria-hidden="true">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;queue&quot;}" aria-expanded="false">Queue</button>
+</h3>
+<span class="voc-sr-only">Done</span>
+<span class="voc-setup-summary">
+<span class="voc-setup-mark">Optional</span>
+<span>Wait time: 15 min</span>
+</span>
+</div>
+</div>
+</li>
+<li class="voc-setup-step" data-key="step:firstJob" data-done="true" data-current="false">
+<span class="voc-setup-marker" aria-hidden="true">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;firstJob&quot;}" aria-expanded="false">Create the first job</button>
+</h3>
+<span class="voc-sr-only">Done</span>
+<span class="voc-setup-summary">
+<span class="voc-setup-mark">Optional</span>
+<span>There is work in the queue.</span>
+</span>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</section>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

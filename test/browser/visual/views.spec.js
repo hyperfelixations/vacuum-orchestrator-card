@@ -366,6 +366,14 @@ test.describe("onboarding and setup", () => {
     await shot(page, "setup-robots-medium-light.png", MEDIUM);
   });
 
+  test("setup again from the settings, German, narrow", async ({ page }) => {
+    const card = await mountCard(page, { config: { ...BASE, language: "de", start_view: "settings" } });
+    await act(page, card.locator('[data-action="open-setup"]'));
+    await expect(card.locator(".voc-setup-step")).toHaveCount(9);
+    await expect(card.locator('[data-key="step:defaults"]')).toHaveAttribute("data-current", "true");
+    await shot(page, "setup-guide-german-narrow-light.png", NARROW);
+  });
+
   test("setup, rooms step after adding a robot", async ({ page }) => {
     const card = await mountCard(page, { scenario: "fresh", config: BASE });
     await act(page, card.locator('[data-action="add-candidate"][data-args*="vacuum.rocky"]'));

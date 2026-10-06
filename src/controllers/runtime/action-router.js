@@ -164,6 +164,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     },
     toggle: ({ key }) => ui.toggle(key),
     choose: ({ key, value }) => ui.choose(key, value),
+    "show-view": ({ view }) => ui.setView(view),
+    "open-setup": () => ui.openOverlay({ kind: "setup-guide" }),
     page: ({ scope, direction }) => {
       const model = getModel();
       const data = model?.slots?.[scope]?.data;

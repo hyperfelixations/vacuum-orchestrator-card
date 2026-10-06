@@ -45,6 +45,7 @@ export function buildSettingsView({ model, texts, context }) {
         { label: t(texts, "settings.apiVersion"), value: Number.isInteger(model.apiVersion) ? number(texts, model.apiVersion) : null },
       ],
       open: model.permissions?.isAdmin ? { path: INTEGRATION_PAGE_PATH } : null,
+      setup: model.setup?.known ? { action: "open-setup" } : null,
     },
     card: { facts: [{ label: t(texts, "settings.version"), value: CARD_VERSION }] },
   };

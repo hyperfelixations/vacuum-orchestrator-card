@@ -169,7 +169,7 @@ test("diagnostics show versions, runtime, setup and the trace; the tab turns on 
   assert.equal(facts[built.texts.t("diagnostics.integrationVersion")], "0.1.0");
   assert.equal(facts[built.texts.t("diagnostics.apiVersion")], "3");
   assert.equal(diagnostics.connection.tone, "ready");
-  assert.equal(diagnostics.setup.length, 4);
+  assert.equal(diagnostics.setup.length, 9);
   assert.ok(diagnostics.trace.length > 0);
   assert.ok(diagnostics.download);
   assert.equal(buildDiagnosticsView({ ...built, options: { show_trace: false } }).trace, null);
@@ -183,14 +183,20 @@ test("setup starts at the robots with discovery's candidates and moves on with t
   const fresh = await modelFor("fresh");
   assert.equal(setupNeeded(fresh.model), true);
   const steps = buildSetupView(fresh).steps;
-  assert.deepEqual(steps.map((step) => [step.key, step.done, step.current]), [["robots", false, true], ["rooms", false, false], ["release", false, false], ["firstJob", false, false]]);
+  assert.deepEqual(steps.map((step) => [step.key, step.done, step.current, step.optional]), [["robots", false, true, false], ["rooms", false, false, false], ["defaults", false, false, true], ["conditions", false, false, true], ["release", false, false, true], ["due", false, false, true], ["templates", false, false, true], ["queue", true, false, true], ["firstJob", false, false, true]]);
   assert.deepEqual(steps[0].candidates.map((candidate) => candidate.entityId), ["vacuum.rocky", "vacuum.dusty"]);
-  const typical = await modelFor("typical");
+  const typical = await modelFor("typical", { requests: { templates: { name: "templates", params: {} } } });
   assert.equal(setupNeeded(typical.model), false);
   const done = buildSetupView(typical);
-  assert.equal(done.allDone, true);
-  assert.equal(done.steps.some((step) => step.current), false);
-  assert.deepEqual(done.steps.find((step) => step.key === "rooms").uncovered.map((room) => room.roomId), ["room-bedroom"]);
+  assert.equal(done.allDone, false);
+  const step = (vm, key) => vm.steps.find((entry) => entry.key === key);
+  assert.deepEqual([step(done, "defaults").current, step(done, "defaults").builtIn, step(done, "defaults").link.action], [true, true, "open-job-defaults"], "the built-in defaults are the open step");
+  assert.deepEqual(["conditions", "due", "templates", "queue"].map((key) => step(done, key).summary), ["1 condition", "4 rooms with their own rule", "3 templates", "Wait time: 15 min"]);
+  assert.deepEqual([step(done, "due").link.action, step(done, "due").link.args], ["show-view", { view: "rooms" }]);
+  assert.deepEqual(done.steps.find((entry) => entry.key === "rooms").uncovered.map((room) => room.roomId), ["room-bedroom"]);
+  const picked = buildSetupView({ ...typical, ui: { choices: { "setup:step": "templates" } } });
+  assert.deepEqual(picked.steps.filter((entry) => entry.current).map((entry) => entry.key), ["templates"], "a step the user opens is shown instead");
+  assert.equal(buildSetupView({ ...typical, ui: { choices: { "setup:step": "garden" } } }).steps.find((entry) => entry.current).key, "defaults");
 });
 
 // The one integration-wide setting, where the integration lives in Home Assistant, and which card
@@ -206,6 +212,7 @@ test("settings show the queue run's wait time and who may change it", async () =
   assert.deepEqual(settings.integration.facts.map((fact) => fact.label), [typical.texts.t("settings.version"), typical.texts.t("settings.apiVersion")]);
   assert.ok(settings.integration.facts.every((fact) => fact.value), "version and API version are known");
   assert.equal(settings.integration.open.path, "/_my_redirect/integration?domain=vacuum_orchestrator");
+  assert.deepEqual(settings.integration.setup, { action: "open-setup" });
   assert.deepEqual(settings.card.facts, [{ label: typical.texts.t("settings.version"), value: CARD_VERSION }]);
   assert.deepEqual(settings.defaults.facts.map((fact) => fact.value), ["Vacuum", "Standard", "Medium", "Standard", "1", "Best effort"]);
   assert.deepEqual([settings.defaults.builtIn, settings.defaults.decision.state], [typical.texts.t("settings.defaultsBuiltIn"), "enabled"]);

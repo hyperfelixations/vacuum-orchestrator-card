@@ -15,7 +15,12 @@ export const SETUP_CSS = `
 .voc-setup-head { display: grid; gap: 2px; }
 .voc-setup-title { margin: 0; font-size: 13.5px; font-weight: 850; }
 .voc-setup-step[data-done="false"][data-current="false"] .voc-setup-title { color: var(--voc-muted); }
-.voc-setup-summary { font-size: 12px; font-weight: 650; color: var(--voc-muted); overflow-wrap: anywhere; }
+.voc-setup-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; font-weight: 650; color: var(--voc-muted); overflow-wrap: anywhere; }
+.voc-setup-mark { display: inline-flex; align-items: center; min-height: 18px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--voc-hairline); font-size: 10.5px; font-weight: 800; color: var(--voc-muted); }
+.voc-setup-mark[data-tone="default"] { border-color: var(--tone-border); color: var(--tone-ink); }
+.voc-setup-open { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.voc-setup-open:hover { text-decoration: underline; }
+.voc-setup-open:focus-visible { outline: 2px solid var(--tone-ink); outline-offset: 2px; border-radius: 4px; }
 .voc-setup-body { display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); }
 .voc-setup-text { margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.4; }
 .voc-setup-note { display: flex; gap: 6px; margin: 0; font-size: 12px; font-weight: 650; line-height: 1.35; color: var(--voc-muted); }

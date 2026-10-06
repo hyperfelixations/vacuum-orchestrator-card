@@ -29,9 +29,11 @@ function queueBlock(context, vm) {
 }
 
 function integrationBlock(context, vm) {
-  const open = vm.integration.open
-    ? `<div class="voc-inline-actions">${button({ action: "navigate", args: { path: vm.integration.open.path }, label: context.t("settings.openIntegration"), iconName: "mdi:open-in-app" })}</div>`
-    : "";
+  const actions = [
+    vm.integration.setup ? button({ action: vm.integration.setup.action, label: context.t("settings.openSetup"), iconName: "mdi:clipboard-check-outline" }) : "",
+    vm.integration.open ? button({ action: "navigate", args: { path: vm.integration.open.path }, label: context.t("settings.openIntegration"), iconName: "mdi:open-in-app" }) : "",
+  ].join("");
+  const open = actions ? `<div class="voc-inline-actions">${actions}</div>` : "";
   return block(context.t("settings.integration"), `<p class="voc-overlay-lead">${e(context.t("settings.integrationHint"))}</p>${facts(vm.integration.facts)}${open}`, { iconName: "mdi:puzzle-outline", key: "integration" });
 }
 

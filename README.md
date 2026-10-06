@@ -95,9 +95,12 @@ The card then leads you to a working setup:
    dialog for adding it.
 3. **Could not start** — **Open integration** shows Home Assistant's error for
    it.
-4. **No robot or room yet** — the **Setup** tab lists four steps: add a robot,
-   assign rooms to a robot, release rooms for cleaning, create the first job.
-   It is shown until a robot and a room it reaches exist.
+4. **No robot or room yet** — the **Setup** tab lists nine steps. Two are
+   needed: add a robot and assign rooms to a robot. The others are optional:
+   check the job defaults, doors and conditions, release rooms, due dates and
+   presence, templates, the queue's wait time and the first job. The tab is
+   shown until a robot and a room it reaches exist; afterwards **View setup**
+   in the **Settings** tab opens the steps again.
 
 See [Configuration](#configuration) below for every available option.
 
@@ -161,7 +164,7 @@ show:
 
 | View | What it shows | Shown without `views:` |
 | --- | --- | --- |
-| `setup` | The four setup steps with the next action. | While the setup is unfinished |
+| `setup` | The nine setup steps with the next action; optional steps are marked. | While the setup is unfinished |
 | `queue` | The queue run, jobs in progress and needing attention, the waiting jobs in order, and shortcuts to create a job from a template. | Always |
 | `rooms` | Room cards: due bars, last cleaning, release, reaching robots and conditions. | Always |
 | `robots` | Robot cards: live state, battery, capabilities, reachable rooms and map. | Always |
