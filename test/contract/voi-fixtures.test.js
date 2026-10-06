@@ -69,10 +69,16 @@ test("the fake offers exactly the card's operation catalog as registered actions
 
 test("the fake answers every query the card can build in a shape the guards accept", async () => {
   const { messages, guards, QUERY_COLLECTIONS } = await import("../../src/backend/protocol.js");
+  const { createTransport } = await import("../../src/backend/transport.js");
   const household = SCENARIOS.typical();
   const fake = createFakeOrchestrator({ seed: household.seed, clock: new VirtualClock() });
   const hass = fake.attachTo(hassFor(household));
-  const ws = (message) => hass.connection.sendMessagePromise(message);
+  const transport = createTransport({ getHass: () => hass });
+  const ws = async (message) => {
+    const result = await transport.ws(message);
+    assert.equal(result.ok, true, `${message.type} ${message.query ?? ""} ${result.code ?? ""}`);
+    return result.data;
+  };
   assert.equal(guards.queuePage(await ws(messages.queueGet({ offset: 0, limit: 10 }))), true);
   assert.equal(guards.jobsPage(await ws(messages.jobsList({ offset: 0, limit: 10 }))), true);
   assert.equal(guards.job(await ws(messages.jobGet("job-kitchen"))), true);

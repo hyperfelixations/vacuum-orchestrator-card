@@ -166,8 +166,22 @@ test("onboarding explains each unusable phase and offers Home Assistant's own pa
   const failed = await modelFor("typical", { fake: { runtimeLoaded: false } });
   assert.deepEqual(buildOnboarding({ model: failed.model, texts: failed.texts }).actions.map((action) => action.path), [INTEGRATION_PAGE_PATH]);
   const newer = await modelFor("typical", { fake: { apiVersion: 4 } });
-  assert.match(buildOnboarding({ model: newer.model, texts: newer.texts }).text, /4/);
+  assert.equal(buildOnboarding({ model: newer.model, texts: newer.texts }).text, newer.texts.t("onboarding.api_incompatible.text", { version: "4", supported: "3" }));
   assert.equal(buildOnboarding({ model: (await modelFor("typical")).model, texts: failed.texts }), null);
+});
+
+test("a failed check names its failure and is not shown as a lost connection", async () => {
+  const { buildOnboarding } = await import("../../../../src/presentation/shell/onboarding.js");
+  const { cardStatus, toneFor } = await import("../../../../src/presentation/shell/status.js");
+  const { textService } = await import("../../../../src/i18n/text-service.js");
+  const texts = textService("en");
+  const model = { phase: "check_failed", phaseFailure: { ok: false, code: "unknown", detail: "Boom", channel: "ws" }, permissions: { isAdmin: true } };
+  const onboarding = buildOnboarding({ model, texts });
+  assert.deepEqual([onboarding.title, onboarding.text, onboarding.note, onboarding.actions, onboarding.busy], [texts.t("onboarding.check_failed.title"), texts.t("onboarding.check_failed.text"), texts.t("error.code.unknown", { detail: "Boom" }), [], false]);
+  assert.equal(onboarding.icon, "mdi:help-network-outline");
+  assert.equal(cardStatus(model), "checkFailed");
+  assert.equal(toneFor("checkFailed").style, toneFor("loadFailed").style.replace(/loadFailed/g, "checkFailed"));
+  assert.equal(buildOnboarding({ model: { ...model, phase: "offline" }, texts }).note, null);
 });
 
 test("the card view model puts onboarding, an overlay or the active view into the body", async () => {

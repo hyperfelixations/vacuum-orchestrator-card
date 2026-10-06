@@ -360,6 +360,14 @@ test.describe("onboarding and setup", () => {
     await shot(page, "onboarding-load-failed-narrow-light.png", NARROW);
   });
 
+  test("check failed", async ({ page }) => {
+    const card = await mountCard(page, { installed: false, setUp: false, failNext: { "manifest/get": { code: "home_assistant_error", message: "Unknown error" } }, config: BASE });
+    await expect(card.locator(".voc-onboarding")).toHaveAttribute("data-phase", "check_failed");
+    await expect(card.locator(".voc-onboarding-note")).toHaveText("The request failed: Unknown error");
+    await expect(card.locator(".voc-status-pill")).toHaveText("Error");
+    await shot(page, "onboarding-check-failed-narrow-light.png", NARROW);
+  });
+
   test("setup, first step", async ({ page }) => {
     const card = await mountCard(page, { scenario: "fresh", config: BASE });
     await expect(card.locator('[data-key="step:robots"]')).toHaveAttribute("data-current", "true");

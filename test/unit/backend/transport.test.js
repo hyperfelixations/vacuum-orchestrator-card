@@ -21,6 +21,38 @@ test("a WebSocket message goes through the hass object current at call time", as
   assert.equal((await transport.ws({ type: "y" })).data, "second:y");
 });
 
+// home-assistant-js-websocket writes the command id into the message object it is handed, in
+// strict mode: a frozen message throws.
+function stamp(message, id) {
+  "use strict";
+  message.id = id;
+}
+
+const stampingConnection = (sent) => ({
+  sendMessagePromise: async (message) => { stamp(message, sent.length + 1); sent.push(message); return "sent"; },
+  subscribeMessage: async (_callback, message) => { stamp(message, sent.length + 1); sent.push(message); return () => {}; },
+});
+
+test("Home Assistant receives copies it may write to; the frozen originals stay as built", async () => {
+  const { createTransport } = await load();
+  const sent = [];
+  const connection = stampingConnection(sent);
+  const ws = Object.freeze({ type: "x", parameters: { offset: 0 } });
+  const subscription = Object.freeze({ type: "y" });
+  const data = Object.freeze({ job_id: "j" });
+  let serviceData = null;
+  const viaCallWS = createTransport({ getHass: () => ({ callWS: (message) => connection.sendMessagePromise(message), connection }) });
+  const viaConnection = createTransport({ getHass: () => ({ connection, callService: async (_domain, _service, value) => { serviceData = value; value.touched = true; return {}; } }) });
+  assert.equal((await viaCallWS.ws(ws)).ok, true);
+  assert.equal((await viaConnection.ws(ws)).ok, true);
+  assert.equal((await viaConnection.subscribe(subscription, () => {})).ok, true);
+  assert.equal((await viaConnection.service("run_queue", data)).ok, true);
+  assert.deepEqual(sent.map((message) => message.id), [1, 2, 3]);
+  assert.deepEqual(sent.map(({ id: _id, ...message }) => message), [{ type: "x", parameters: { offset: 0 } }, { type: "x", parameters: { offset: 0 } }, { type: "y" }]);
+  assert.deepEqual(serviceData, { job_id: "j", touched: true });
+  assert.deepEqual([ws, subscription, data], [{ type: "x", parameters: { offset: 0 } }, { type: "y" }, { job_id: "j" }]);
+});
+
 test("a rejection becomes a failure record instead of a thrown error", async () => {
   const { createTransport } = await load();
   const transport = createTransport({ getHass: () => ({ callWS: async () => Promise.reject(haError.voi("unknown_job")) }) });

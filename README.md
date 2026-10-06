@@ -347,6 +347,10 @@ account.
 **“This card does not support the installed version.”**
 The installed integration is newer than this card. Update the card.
 
+**“Vacuum Orchestrator could not be checked.”**
+The last line on the card names the error. Hard-reload the dashboard; if the message
+comes back, report it with that line.
+
 **A tab is dimmed.**
 The installed integration does not offer that view. Update the integration, or
 hide such tabs with `show: {unavailable_views: false}`.

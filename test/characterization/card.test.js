@@ -7,6 +7,7 @@ const test = require("node:test");
 const { createTestEnvironment } = require("../helpers/load-card.jsdom.js");
 const { mountCard, FIXED_NOW } = require("../helpers/mount-card.js");
 const { expectBaseline, serializeCard } = require("../helpers/characterization.js");
+const { haError } = require("../fixtures/voi/wire.js");
 
 const BASE_CONFIG = Object.freeze({ time_format: "absolute" });
 
@@ -20,6 +21,7 @@ const CASES = Object.freeze([
   { name: "onboarding-not-installed", options: { fake: { installed: false, setUp: false } } },
   { name: "onboarding-not-set-up", options: { fake: { setUp: false } } },
   { name: "onboarding-load-failed", options: { fake: { runtimeLoaded: false } } },
+  { name: "onboarding-check-failed", options: { fake: { installed: false, setUp: false, failNext: { "manifest/get": haError.homeAssistant("Unknown error") } } } },
   { name: "setup-fresh", options: { scenario: "fresh" } },
   { name: "setup-guide", options: { config: { start_view: "settings" } }, steps: ['[data-action="open-setup"]'] },
   { name: "rooms", options: {}, steps: ['[role="tab"][data-view="rooms"]'] },

@@ -36,6 +36,10 @@ function withTimeout(promise, platform, timeoutMs, channel) {
 
 const ok = (data) => Object.freeze({ ok: true, data: data ?? null });
 
+// home-assistant-js-websocket writes the command id into the message it sends; Home Assistant
+// gets a copy it may change. See internal dev doc §6 "Protokoll".
+const sendable = (value) => ({ ...value });
+
 export function createTransport({ getHass, platform, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
   let disposed = false;
   const hass = () => (disposed ? null : getHass?.() ?? null);
@@ -55,8 +59,8 @@ export function createTransport({ getHass, platform, timeoutMs = DEFAULT_TIMEOUT
   function ws(message, { timeoutMs: limit } = {}) {
     return settle("ws", () => {
       const current = hass();
-      if (typeof current?.callWS === "function") return current.callWS(message);
-      if (typeof current?.connection?.sendMessagePromise === "function") return current.connection.sendMessagePromise(message);
+      if (typeof current?.callWS === "function") return current.callWS(sendable(message));
+      if (typeof current?.connection?.sendMessagePromise === "function") return current.connection.sendMessagePromise(sendable(message));
       return backendFailure("connection_lost", { detail: "no connection", channel: "ws" });
     }, limit);
   }
@@ -65,9 +69,9 @@ export function createTransport({ getHass, platform, timeoutMs = DEFAULT_TIMEOUT
   async function service(name, data = {}, { returnResponse = false, timeoutMs: limit } = {}) {
     const result = await settle("service", () => {
       const current = hass();
-      if (typeof current?.callService === "function") return current.callService(DOMAIN, name, data, undefined, false, returnResponse);
+      if (typeof current?.callService === "function") return current.callService(DOMAIN, name, sendable(data), undefined, false, returnResponse);
       if (typeof current?.connection?.sendMessagePromise === "function") {
-        return current.connection.sendMessagePromise({ type: "call_service", domain: DOMAIN, service: name, service_data: data, return_response: returnResponse });
+        return current.connection.sendMessagePromise({ type: "call_service", domain: DOMAIN, service: name, service_data: sendable(data), return_response: returnResponse });
       }
       return backendFailure("connection_lost", { detail: "no connection", channel: "service" });
     }, limit);
@@ -82,7 +86,7 @@ export function createTransport({ getHass, platform, timeoutMs = DEFAULT_TIMEOUT
     return settle("ws", () => {
       const connection = hass()?.connection;
       if (typeof connection?.subscribeMessage !== "function") return backendFailure("connection_lost", { detail: "no connection", channel: "ws" });
-      return connection.subscribeMessage(onEvent, message);
+      return connection.subscribeMessage(onEvent, sendable(message));
     });
   }
 

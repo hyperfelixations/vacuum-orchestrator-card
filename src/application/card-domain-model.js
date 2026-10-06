@@ -3,6 +3,7 @@
 // requests. Pure and total; it is plain data so it can be compared by value.
 // See internal dev doc §7 "CardDomainModel".
 
+import { SUPPORTED_API_VERSIONS } from "../backend/protocol.js";
 import { scopeKey } from "../backend/session.js";
 import { collectSourceDiagnostics } from "./source-diagnostics.js";
 import { indexRegistry, robotLive } from "./ha-entities.js";
@@ -93,6 +94,7 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
     phase: snapshot?.phase ?? "probing",
     phaseFailure: snapshot?.phaseFailure ?? null,
     apiVersion: snapshot?.apiVersion ?? null,
+    supportedApiVersions: [...SUPPORTED_API_VERSIONS],
     integrationVersion: slots.queue?.data?.integrationVersion ?? slots.manifest?.data?.version ?? null,
     errorTexts: slots.errorTexts?.data ?? null,
     runtime: snapshot?.runtime ?? { id: null, sequence: null, commitId: null },

@@ -89,6 +89,35 @@ test("each way the integration can be unusable is its own phase", async () => {
   }
 });
 
+test("only a lost connection is offline; any other failed check is check_failed with its failure", async () => {
+  const notInstalled = { installed: false, setUp: false };
+  const cases = [
+    [notInstalled, "manifest/get", haError.connectionLost(), "offline", "connection_lost"],
+    [notInstalled, "manifest/get", haError.homeAssistant("Boom"), "check_failed", "unknown"],
+    [{}, "vacuum_orchestrator/subscribe", haError.connectionLost(), "offline", "connection_lost"],
+    [{}, "vacuum_orchestrator/subscribe", haError.unauthorized(), "check_failed", "unauthorized"],
+    [{}, "vacuum_orchestrator/queue/get", haError.connectionLost(), "offline", "connection_lost"],
+    [{}, "vacuum_orchestrator/queue/get", haError.homeAssistant("Boom"), "check_failed", "unknown"],
+  ];
+  for (const [fake, key, error, phase, code] of cases) {
+    const env = await setup({ fake });
+    env.fake.failNext(key, error);
+    await env.start();
+    assert.deepEqual([env.snapshot().phase, env.snapshot().phaseFailure?.code], [phase, code], `${key} ${code}`);
+    env.session.dispose();
+  }
+});
+
+test("a failed check is retried and reaches the phase the integration is in", async () => {
+  const env = await setup();
+  env.fake.failNext("vacuum_orchestrator/queue/get", haError.homeAssistant("Boom"));
+  await env.start();
+  assert.equal(env.snapshot().phase, "check_failed");
+  await env.advance(env.RETRY_MS);
+  assert.equal(env.snapshot().phase, "ready");
+  env.session.dispose();
+});
+
 test("a scope loads once while any owner demands it and is not loaded before", async () => {
   const env = await setup();
   await env.start();

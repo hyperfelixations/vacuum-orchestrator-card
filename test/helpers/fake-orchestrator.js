@@ -105,7 +105,16 @@
     }
 
     const calls = { ws: [], services: [] };
-    const failures = new Map();
+    // What reached the integration, without the connection's command id.
+    const received = ({ id: _id, ...message }) => copy(message);
+    let commandId = 0;
+    // home-assistant-js-websocket writes the command id into the message it is handed
+    // (`Connection.sendMessage`); a frozen message throws there.
+    function stamp(message) {
+      message.id = ++commandId;
+    }
+    // `options.failNext`: the first answer per message type or operation is this error frame.
+    const failures = new Map(Object.entries(options.failNext || {}));
     const subscribers = new Set();
     const connectionListeners = { ready: new Set(), disconnected: new Set() };
 
@@ -735,7 +744,7 @@
     }
 
     function handleWs(message) {
-      calls.ws.push(copy(message));
+      calls.ws.push(received(message));
       const key = message.type === `${DOMAIN}/configuration/get` ? message.query : message.type === `${DOMAIN}/configuration/command` ? message.command : message.type;
       const injected = failure(key);
       if (injected) return reject(injected);
@@ -784,10 +793,22 @@
       }
     }
 
+    // A command whose message cannot carry the id is rejected with that error.
+    const sendMessagePromise = (message) => new Promise((resolve) => {
+      stamp(message);
+      resolve(handleWs(message));
+    });
+
     const connection = {
-      sendMessagePromise: (message) => handleWs(message),
+      sendMessagePromise,
       subscribeMessage(callback, message) {
-        calls.ws.push(copy(message));
+        // The library swallows that error for a subscription, which then never answers.
+        try {
+          stamp(message);
+        } catch (_error) {
+          return new Promise(() => {});
+        }
+        calls.ws.push(received(message));
         const injected = failure(message.type);
         if (injected) return reject(injected);
         if (!state.setUp) return reject(W.haError.unknownCommand());
@@ -819,7 +840,7 @@
       // services and components that the card reads.
       attachTo(hass) {
         hass.connection = connection;
-        hass.callWS = (message) => handleWs(message);
+        hass.callWS = sendMessagePromise;
         hass.callService = handleService;
         hass.services = { ...(hass.services || {}), ...services() };
         const components = new Set(hass.config?.components || []);

@@ -77,8 +77,12 @@ test("every job state, attempt state, mode, setting rung, origin and role is wor
 test("every view, setup step and phase has its texts", async () => {
   const { TRANSLATIONS, SETUP_STEPS } = await catalogs();
   const views = ["setup", "queue", "rooms", "robots", "templates", "history", "diagnostics"];
-  const phases = ["probing", "not_installed", "not_set_up", "load_failed", "api_incompatible", "offline"];
+  const { PHASES } = await import("../../../src/backend/session.js");
+  const phases = PHASES.filter((phase) => phase !== "ready");
+  const { cardStatus } = await import("../../../src/presentation/shell/status.js");
+  const statuses = phases.map((phase) => cardStatus({ phase }));
   const keys = [
+    ...statuses.flatMap((status) => [`status.${status}`, `subtitle.${status}`]),
     ...views.map((view) => `view.${view}`),
     ...SETUP_STEPS.flatMap((step) => [`setup.step.${step}.title`, `setup.step.${step}.text`]),
     ...phases.flatMap((phase) => [`onboarding.${phase}.title`, `onboarding.${phase}.text`]),

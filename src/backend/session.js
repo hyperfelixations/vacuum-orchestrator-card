@@ -12,7 +12,7 @@ import { createInvalidationTimer } from "./subscription.js";
 export const DOMAIN = "vacuum_orchestrator";
 
 // Phases of the connection to the integration, in the order a fresh install passes them.
-export const PHASES = Object.freeze(["probing", "not_installed", "not_set_up", "load_failed", "api_incompatible", "offline", "ready"]);
+export const PHASES = Object.freeze(["probing", "not_installed", "not_set_up", "load_failed", "api_incompatible", "check_failed", "offline", "ready"]);
 
 // Outside `ready`, a visible card probes again this often; `ready` reads nothing periodically.
 export const RETRY_MS = 30_000;
@@ -29,6 +29,14 @@ const ENTITY_REGISTRY_SCOPES = Object.freeze(["registry", "candidates"]);
 const DRAFT_SCOPES = new Set(["preview"]);
 
 const LOAD_FAILED_CODES = new Set(["orchestrator_not_loaded", "orchestrator_not_initialized", "orchestrator_shutting_down", "multiple_orchestrator_entries_loaded"]);
+const TRANSPORT_CODES = new Set(["connection_lost", "timeout"]);
+
+// The phase a failed probe step leaves, given the codes that step reads as a phase of its own.
+function failurePhase(failure, own = {}) {
+  if (Object.hasOwn(own, failure.code)) return own[failure.code];
+  if (LOAD_FAILED_CODES.has(failure.code)) return "load_failed";
+  return TRANSPORT_CODES.has(failure.code) ? "offline" : "check_failed";
+}
 
 function stableJson(value) {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
@@ -270,24 +278,19 @@ export function createSession({ transport, platform, getHass } = {}) {
       if (disposed) return;
       Object.assign(entry(scopeKey("manifest"), "manifest", {}), manifest.ok ? { status: "ready", data: manifest.data, error: null } : { status: "error", data: null, error: manifest });
       if (manifest.ok) setPhase("not_set_up");
-      else if (manifest.code === "not_found") setPhase("not_installed");
-      else setPhase("offline", manifest);
+      else setPhase(failurePhase(manifest, { not_found: "not_installed" }), manifest);
       return;
     }
     const subscribed = await subscribe();
     if (disposed) return;
     if (isBackendFailure(subscribed)) {
-      if (LOAD_FAILED_CODES.has(subscribed.code)) setPhase("load_failed", subscribed);
-      else if (subscribed.code === "unknown_command") setPhase("not_set_up", subscribed);
-      else setPhase("offline", subscribed);
+      setPhase(failurePhase(subscribed, { unknown_command: "not_set_up" }), subscribed);
       return;
     }
     const check = await SCOPE_LOADERS.queue(transport, { offset: 0, limit: 1 });
     if (disposed) return;
     if (!check.ok) {
-      if (LOAD_FAILED_CODES.has(check.code)) setPhase("load_failed", check);
-      else if (check.code === "api_incompatible" || check.code === "invalid_response") setPhase("api_incompatible", check);
-      else setPhase("offline", check);
+      setPhase(failurePhase(check, { api_incompatible: "api_incompatible", invalid_response: "api_incompatible" }), check);
       return;
     }
     apiVersion = check.data.apiVersion;

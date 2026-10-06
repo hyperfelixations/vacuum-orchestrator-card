@@ -11,6 +11,7 @@ const ICONS = Object.freeze({
   not_set_up: "mdi:puzzle-plus-outline",
   load_failed: "mdi:alert-circle-outline",
   api_incompatible: "mdi:swap-horizontal-circle-outline",
+  check_failed: "mdi:help-network-outline",
   offline: "mdi:lan-disconnect",
 });
 
@@ -40,8 +41,10 @@ export function buildOnboarding({ model = {}, texts } = {}) {
     base.actions = isAdmin ? [{ kind: "navigate", path: INTEGRATION_PAGE_PATH, label: t(texts, "onboarding.action.openIntegration"), icon: "mdi:cog-outline" }] : [];
     base.note = model.phaseFailure ? failureText(texts, model.phaseFailure) : null;
   } else if (phase === "api_incompatible") {
-    base.text = t(texts, "onboarding.api_incompatible.text", { version: model.phaseFailure?.detail ?? "?", supported: "2" });
+    base.text = t(texts, "onboarding.api_incompatible.text", { version: model.phaseFailure?.detail ?? "?", supported: (model.supportedApiVersions || []).join(", ") || "?" });
     base.actions = [{ kind: "link", href: INTEGRATION_URL, label: t(texts, "onboarding.action.guide"), icon: "mdi:open-in-new" }];
+  } else if (phase === "check_failed") {
+    base.note = model.phaseFailure ? failureText(texts, model.phaseFailure) : null;
   }
   return base;
 }

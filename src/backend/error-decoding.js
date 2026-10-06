@@ -11,6 +11,7 @@
 //   unknown action                    {code: "not_found", message: "Service <domain>.<service> not found."}
 //   schema error                      {code: "invalid_format"}
 //   connection lost                   {type: "result", success: false, error: {code: 3}}
+//   socket not connected              3 (thrown by `Connection.sendMessage`)
 // The message is English prose and is never parsed.
 
 import { backendFailure, isBackendFailure } from "../domain/backend-errors.js";
@@ -32,6 +33,7 @@ function integrationFailure(frame, channel) {
 
 export function decodeError(error, channel) {
   if (isBackendFailure(error)) return error;
+  if (error === CONNECTION_LOST) return backendFailure("connection_lost", { channel });
   const frame = errorObject(error);
   if (!frame) return backendFailure("unknown", { detail: typeof error === "string" ? error : null, channel });
   const integration = integrationFailure(frame, channel);

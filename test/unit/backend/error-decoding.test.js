@@ -53,6 +53,12 @@ test("schema, missing-action, unknown-type and lost-connection frames have their
   assert.equal(decodeError({ code: 3 }, "service").code, "connection_lost");
 });
 
+test("the bare connection-lost code a disconnected socket throws reads connection_lost", async () => {
+  const { decodeError } = await load();
+  assert.deepEqual({ ...decodeError(3, "ws") }, { ok: false, code: "connection_lost", detail: null, channel: "ws" });
+  assert.equal(decodeError(4, "ws").code, "unknown");
+});
+
 test("anything else is unknown, and a failure record passes through unchanged", async () => {
   const { decodeError } = await load();
   const { backendFailure } = await import("../../../src/domain/backend-errors.js");

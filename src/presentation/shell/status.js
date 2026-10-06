@@ -10,6 +10,7 @@ const PHASE_STATUS = Object.freeze({
   not_set_up: "notSetUp",
   load_failed: "loadFailed",
   api_incompatible: "incompatible",
+  check_failed: "checkFailed",
   offline: "offline",
 });
 
@@ -43,6 +44,7 @@ const TONES = Object.freeze({
   notInstalled: ["var(--secondary-text-color)"],
   notSetUp: ["var(--primary-color, #03a9f4)"],
   loadFailed: ["var(--error-color, #db4437)"],
+  checkFailed: ["var(--error-color, #db4437)"],
   incompatible: ["var(--warning-color, #ffa600)"],
 });
 

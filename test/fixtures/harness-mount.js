@@ -7,11 +7,12 @@
   const { SCENARIOS, hassFor } = window.VocScenarios;
 
   // options: scenario, config, width, language, admin, installed, setUp, runtimeLoaded,
-  // apiVersion, count (cards side by side), configs (one config per card), themes ("light" or
-  // "dark" per card, each card on its own themed panel).
+  // apiVersion, failNext (first error frame per message type or operation), count (cards side
+  // by side), configs (one config per card), themes ("light" or "dark" per card, each card on
+  // its own themed panel).
   async function mount(options = {}) {
     const household = (SCENARIOS[options.scenario || "typical"] || SCENARIOS.typical)();
-    const fake = createFakeOrchestrator({ seed: household.seed, admin: options.admin !== false, installed: options.installed !== false, setUp: options.setUp !== false, runtimeLoaded: options.runtimeLoaded !== false, apiVersion: options.apiVersion });
+    const fake = createFakeOrchestrator({ seed: household.seed, admin: options.admin !== false, installed: options.installed !== false, setUp: options.setUp !== false, runtimeLoaded: options.runtimeLoaded !== false, apiVersion: options.apiVersion, failNext: options.failNext });
     const hass = fake.attachTo(hassFor(household, { language: options.language || "en", admin: options.admin !== false }));
     const stage = document.getElementById("stage");
     stage.innerHTML = "";
