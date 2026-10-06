@@ -4,7 +4,7 @@
 
 export const RESPONSIVE_CSS = `
 @container voc-card (max-width: 559px) {
-  .voc-root { padding: 14px; }
+  .voc-root { --voc-pad-top: 14px; --voc-pad-x: 14px; --voc-pad-bottom: 14px; }
   .voc-tabs { gap: 2px; }
   .voc-tab:not([aria-selected="true"]) { min-width: var(--voc-icon-target); justify-content: center; padding: 6px 7px; }
   .voc-tab:not([aria-selected="true"]) .voc-tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -24,7 +24,7 @@ export const RESPONSIVE_CSS = `
 
 @supports not (container-type: inline-size) {
   @media (max-width: 699px) {
-    .voc-root { padding: 14px; }
+    .voc-root { --voc-pad-top: 14px; --voc-pad-x: 14px; --voc-pad-bottom: 14px; }
     .voc-tab:not([aria-selected="true"]) { min-width: var(--voc-icon-target); justify-content: center; padding: 6px 7px; }
     .voc-tab:not([aria-selected="true"]) .voc-tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .voc-primary-action .voc-button-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

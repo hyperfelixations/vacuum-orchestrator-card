@@ -49,10 +49,13 @@ ha-card {
 }
 
 .voc-root {
+  --voc-pad-top: 15px;
+  --voc-pad-x: 16px;
+  --voc-pad-bottom: 16px;
   position: relative;
   display: grid;
   gap: 11px;
-  padding: 15px 16px 16px;
+  padding: var(--voc-pad-top) var(--voc-pad-x) var(--voc-pad-bottom);
   color: var(--primary-text-color);
   outline: none;
 }
@@ -74,6 +77,9 @@ ha-card {
 .voc-body {
   min-width: 0;
 }
+
+.voc-body:focus { outline: none; }
+.voc-body:focus-visible { outline: 2px solid var(--voc-focus); outline-offset: -2px; border-radius: 14px; }
 
 .voc-render-failed {
   padding: 6px 0;
@@ -400,6 +406,7 @@ button { font: inherit; color: inherit; }
 .voc-chip ha-icon { --mdc-icon-size: 13px; width: 13px; height: 13px; flex: none; }
 
 .voc-overlay { display: grid; gap: 12px; min-width: 0; }
+.voc-overlay-scroll { display: grid; gap: 12px; min-width: 0; }
 .voc-overlay-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .voc-overlay-title:focus { outline: none; }
 .voc-overlay-title { flex: 1; min-width: 0; margin: 0; font-size: 17px; font-weight: 900; line-height: 1.15; overflow-wrap: anywhere; }
@@ -452,6 +459,48 @@ button { font: inherit; color: inherit; }
 .voc-onboarding-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .voc-onboarding[data-busy="true"] ha-icon { animation: voc-pulse 1.4s ease-in-out infinite; }
 @keyframes voc-pulse { 50% { opacity: .35; } }
+
+:host([data-voc-frame]) { height: 100%; }
+
+ha-card[data-frame] { display: flex; flex-direction: column; box-sizing: border-box; height: 100%; }
+ha-card[data-frame="lock"] { height: var(--voc-frame-height); }
+ha-card[data-frame] > .voc-root { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+ha-card[data-frame] > .voc-root > * { flex: none; }
+
+ha-card[data-frame] .voc-body,
+ha-card[data-frame] .voc-overlay-scroll {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-padding-block: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--voc-hairline) transparent;
+}
+
+ha-card[data-frame] > .voc-root > .voc-body {
+  flex: 1 1 auto;
+  margin: -4px calc(-1 * var(--voc-pad-x)) calc(-1 * var(--voc-pad-bottom));
+  padding: 4px max(0px, calc(var(--voc-pad-x) - var(--voc-scrollbar, 0px))) var(--voc-pad-bottom) var(--voc-pad-x);
+}
+
+ha-card[data-frame] .voc-body[data-body^="onboarding:"] { display: flex; flex-direction: column; }
+ha-card[data-frame] .voc-body[data-body^="onboarding:"] > .voc-onboarding { flex: none; margin-block: auto; }
+
+ha-card[data-frame] .voc-body[data-body^="overlay:"] { overflow-y: hidden; display: flex; flex-direction: column; }
+ha-card[data-frame] .voc-body[data-body^="overlay:"] > .voc-overlay { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+ha-card[data-frame] .voc-overlay > * { flex: none; }
+ha-card[data-frame] .voc-overlay > .voc-overlay-scroll {
+  flex: 1 1 auto;
+  align-content: start;
+  margin: -4px calc(-1 * var(--voc-pad-x));
+  padding: 4px max(0px, calc(var(--voc-pad-x) - var(--voc-scrollbar, 0px))) 4px var(--voc-pad-x);
+}
+
+ha-card[data-frame] .voc-overlay-scroll[data-overflow-bottom] + .voc-overlay-actions { margin-top: -6px; padding-top: 9px; border-top: 1px solid var(--divider-color, var(--voc-hairline)); }
+
+ha-card[data-frame] [data-scroll][data-overflow-top] { mask-image: linear-gradient(to bottom, transparent, #000 16px); }
+ha-card[data-frame] [data-scroll][data-overflow-bottom] { mask-image: linear-gradient(to top, transparent, #000 16px); }
+ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mask-image: linear-gradient(to bottom, transparent, #000 16px, #000 calc(100% - 16px), transparent); }
 
 .voc-setup-lead { margin: 0; font-size: 12.5px; font-weight: 650; line-height: 1.4; color: var(--voc-muted); }
 .voc-setup-steps { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
@@ -945,7 +994,7 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-role.is-attention .voc-field-hint { color: var(--voc-warning-ink); }
 
 @container voc-card (max-width: 559px) {
-  .voc-root { padding: 14px; }
+  .voc-root { --voc-pad-top: 14px; --voc-pad-x: 14px; --voc-pad-bottom: 14px; }
   .voc-tabs { gap: 2px; }
   .voc-tab:not([aria-selected="true"]) { min-width: var(--voc-icon-target); justify-content: center; padding: 6px 7px; }
   .voc-tab:not([aria-selected="true"]) .voc-tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -965,7 +1014,7 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 
 @supports not (container-type: inline-size) {
   @media (max-width: 699px) {
-    .voc-root { padding: 14px; }
+    .voc-root { --voc-pad-top: 14px; --voc-pad-x: 14px; --voc-pad-bottom: 14px; }
     .voc-tab:not([aria-selected="true"]) { min-width: var(--voc-icon-target); justify-content: center; padding: 6px 7px; }
     .voc-tab:not([aria-selected="true"]) .voc-tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .voc-primary-action .voc-button-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

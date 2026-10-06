@@ -1,6 +1,7 @@
 // Owns exactly two nodes of the shadow root — the stylesheet and `ha-card` — and inside the
 // card exactly one, `.voc-root`. Everything else in the shadow root or the card belongs to
-// someone else (card-mod) and is never touched. Updates morph `.voc-root` in place.
+// someone else (card-mod) and is never touched. Updates morph `.voc-root` in place. The card
+// carries the frame: `data-frame` and, for "lock", `--voc-frame-height`.
 
 import { morphElement } from "../primitives/morph.js";
 
@@ -9,6 +10,15 @@ export function createShadowMount(root) {
   let surface = null;
   let cardRoot = null;
   let fallbackText = null;
+  let frame = { mode: "auto", heightPx: null };
+
+  function applyFrame() {
+    if (!surface) return;
+    if (frame.mode === "auto") surface.removeAttribute("data-frame");
+    else surface.setAttribute("data-frame", frame.mode);
+    if (frame.mode === "lock") surface.style.setProperty("--voc-frame-height", `${frame.heightPx}px`);
+    else surface.style.removeProperty("--voc-frame-height");
+  }
 
   const mounted = () => Boolean(style && surface && style.parentNode === root && surface.parentNode === root);
 
@@ -31,6 +41,7 @@ export function createShadowMount(root) {
         root.insertBefore(style, root.firstChild);
         root.insertBefore(surface, style.nextSibling);
         cardRoot = null;
+        applyFrame();
       }
       if (style.textContent !== css) style.textContent = css;
       if (!cardRoot || cardRoot.parentNode !== surface) {
@@ -39,6 +50,11 @@ export function createShadowMount(root) {
         return;
       }
       morphElement(cardRoot, next, root.activeElement ?? null);
+    },
+    // mode: "auto" (the content's height), "fill" (the host's height) or "lock" (heightPx).
+    setFrame({ mode = "auto", heightPx = null } = {}) {
+      frame = { mode, heightPx };
+      applyFrame();
     },
     // The last resort when even the failure markup cannot be built.
     showText(text) {

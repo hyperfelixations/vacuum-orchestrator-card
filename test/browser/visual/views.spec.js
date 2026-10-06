@@ -23,6 +23,17 @@ async function open(page, card, view) {
   await act(page, card.locator(`[role=tab][data-view="${view}"]`));
 }
 
+const cardHeight = (card) => card.evaluate((element) => Math.round(element.shadowRoot.querySelector("ha-card").getBoundingClientRect().height));
+
+// Scrolls a region to a share of its overflow and waits for its edges to be marked.
+async function scrollTo(card, selector, share) {
+  await card.evaluate((element, [selector, share]) => {
+    const region = element.shadowRoot.querySelector(selector);
+    region.scrollTop = share * (region.scrollHeight - region.clientHeight);
+  }, [selector, share]);
+  await expect(card.locator(selector)).toHaveAttribute("data-overflow-top", "");
+}
+
 test.describe("the queue", () => {
   test("wide, light", async ({ page }) => {
     const card = await mountCard(page, { config: BASE });
@@ -142,7 +153,9 @@ test.describe("job pages", () => {
 
   test("cancelling a started job", async ({ page }) => {
     const card = await mountCard(page, { config: BASE });
+    const queueHeight = await cardHeight(card);
     await act(page, card.locator('[data-key="job:job-running"] [data-action="cancel-job"]'));
+    expect(await cardHeight(card), "the dialog keeps the queue's height").toBe(queueHeight);
     await expect(card.locator('[data-key="overlay:cancel-job"]')).toHaveAttribute("role", "dialog");
     await expect(card.locator('[data-key="option:return_to_dock"]')).toHaveAttribute("aria-checked", "true");
     await shot(page, "cancel-job-narrow-light.png", NARROW);
@@ -387,6 +400,68 @@ test.describe("onboarding and setup", () => {
     await act(page, card.locator('[data-action="add-candidate"][data-args*="vacuum.rocky"]'));
     await expect(card.locator('[data-key="step:rooms"]')).toHaveAttribute("data-current", "true");
     await shot(page, "setup-rooms-narrow-light.png", NARROW);
+  });
+});
+
+// A sections grid cell of the default ten rows: header, panel and tabs stay, the content scrolls.
+test.describe("in a sections grid cell", () => {
+  const FRAMED = 10 * 64 - 8;
+
+  test("the queue", async ({ page }) => {
+    const card = await mountCard(page, { layout: "grid", config: BASE });
+    expect(await cardHeight(card)).toBe(FRAMED);
+    await expect(card.locator(".voc-body")).not.toHaveAttribute("data-overflow-bottom", "");
+    await shot(page, "frame-queue-medium-light.png", MEDIUM);
+  });
+
+  test("a dialog, narrow, German, dark", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    const card = await mountCard(page, { layout: "grid", config: { ...BASE, language: "de" } });
+    await setCardWidth(page, NARROW);
+    await act(page, card.locator('[data-key="job:job-running"] [data-action="cancel-job"]'));
+    expect(await cardHeight(card)).toBe(FRAMED);
+    const [actions, surface] = [await card.locator(".voc-overlay-actions").boundingBox(), await card.locator("ha-card").boundingBox()];
+    expect(surface.y + surface.height - (actions.y + actions.height), "the actions sit at the bottom").toBeLessThan(20);
+    await shot(page, "frame-cancel-narrow-dark.png");
+  });
+
+  test("the job editor with its actions in place", async ({ page }) => {
+    const card = await mountCard(page, { layout: "grid", config: BASE });
+    await act(page, card.locator(".voc-primary-action"));
+    expect(await cardHeight(card)).toBe(FRAMED);
+    await expect(card.locator(".voc-overlay-scroll")).toHaveAttribute("data-overflow-bottom", "");
+    await expect(card.locator(".voc-overlay-actions")).toBeInViewport({ ratio: 1 });
+    await shot(page, "frame-editor-medium-light.png", MEDIUM);
+  });
+
+  test("the robot editor scrolled to its middle", async ({ page }) => {
+    const card = await mountCard(page, { layout: "grid", config: BASE });
+    await open(page, card, "robots");
+    await act(page, card.locator('[data-key="robot:robot-dusty"] [data-action="edit-robot"]'));
+    await scrollTo(card, ".voc-overlay-scroll", 0.5);
+    await expect(card.locator(".voc-overlay-scroll")).toHaveAttribute("data-overflow-bottom", "");
+    await shot(page, "frame-robot-editor-medium-light.png", MEDIUM);
+  });
+
+  test("not installed, narrow", async ({ page }) => {
+    const card = await mountCard(page, { layout: "grid", installed: false, setUp: false, config: BASE });
+    await setCardWidth(page, NARROW);
+    const [box, body] = [await card.locator(".voc-onboarding").boundingBox(), await card.locator(".voc-body").boundingBox()];
+    expect(Math.abs(box.y - body.y - (body.y + body.height - box.y - box.height)), "the guide is centred").toBeLessThan(24);
+    await shot(page, "frame-onboarding-not-installed-narrow-light.png");
+  });
+
+  test.describe("on a touch screen", () => {
+    test.use({ hasTouch: true, viewport: { width: 1280, height: 1100 } });
+
+    test("the queue scrolled to its end, narrow", async ({ page }) => {
+      const card = await mountCard(page, { layout: "grid", config: BASE });
+      await setCardWidth(page, NARROW);
+      await scrollTo(card, ".voc-body", 1);
+      await expect(card.locator(".voc-body")).not.toHaveAttribute("data-overflow-bottom", "");
+      await expect(card.locator(".voc-tab-row")).toBeInViewport({ ratio: 1 });
+      await shot(page, "frame-queue-end-narrow-touch-light.png");
+    });
   });
 });
 

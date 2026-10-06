@@ -85,3 +85,45 @@ test("role choices in the robot profile are named radio groups", async ({ page }
   await expect(battery).toHaveAccessibleName("Battery");
   await expect(card.locator('[data-key="role:status"] [role=radiogroup]')).toHaveAccessibleDescription(/Several entities fit/);
 });
+
+// In a sections grid cell the content scrolls inside the card.
+test.describe("in a sections grid cell", () => {
+  // The focused control's box against the part of its region that is not faded.
+  const focusInView = (card) => card.evaluate((element) => {
+    const focused = element.shadowRoot.activeElement;
+    const region = focused.closest("[data-scroll]").getBoundingClientRect();
+    const box = focused.getBoundingClientRect();
+    return { top: box.top - region.top, bottom: region.bottom - box.bottom };
+  });
+
+  test("the tab panel is a tab stop and a control reached by Tab stands clear of the faded edges", async ({ page }) => {
+    const card = await mountCard(page, { layout: "grid", rows: 7 });
+    await card.locator(".voc-primary-action").focus();
+    await page.keyboard.press("Tab");
+    await expect(card.locator(".voc-body")).toBeFocused();
+    for (let step = 0; step < 14; step += 1) {
+      await page.keyboard.press("Tab");
+      const { top, bottom } = await focusInView(card);
+      expect(top, `after ${step + 1} Tab presses`).toBeGreaterThanOrEqual(16);
+      expect(bottom, `after ${step + 1} Tab presses`).toBeGreaterThanOrEqual(16);
+    }
+    expect(await card.locator(".voc-body").evaluate((body) => body.scrollTop), "focus moved the content").toBeGreaterThan(0);
+  });
+
+  test("Tab stays inside a dialog, and Escape returns the view where it was", async ({ page }) => {
+    const card = await mountCard(page, { layout: "grid", rows: 7 });
+    const cancel = card.locator('[data-key="job:job-running"] [data-action="cancel-job"]');
+    await card.locator(".voc-body").evaluate((body) => { body.scrollTop = 40; });
+    await cancel.focus();
+    const scrolled = await card.locator(".voc-body").evaluate((body) => body.scrollTop);
+    await page.keyboard.press("Enter");
+    const dialog = card.locator('[data-key="overlay:cancel-job"]');
+    for (let step = 0; step < 6; step += 1) {
+      await page.keyboard.press("Tab");
+      expect(await dialog.evaluate((node) => node.contains(node.getRootNode().activeElement)), `after ${step + 1} Tab presses`).toBe(true);
+    }
+    await page.keyboard.press("Escape");
+    await expect(cancel).toBeFocused();
+    expect(await card.locator(".voc-body").evaluate((body) => body.scrollTop)).toBe(scrolled);
+  });
+});

@@ -159,3 +159,24 @@ test("the shadow mount morphs its own root and never touches foreign nodes", asy
   assert.equal(root.querySelector("card-mod"), foreign);
   assert.match(root.textContent, /broken/);
 });
+
+test("the shadow mount puts the frame on its card, also on one it creates later", async () => {
+  const { createShadowMount } = await import("../../../src/render/composition/shadow-mount.js");
+  const { createRenderContext } = await import("../../../src/render/primitives/render-context.js");
+  const document = documentOf();
+  const root = document.createElement("div");
+  const mount = createShadowMount(root);
+  const context = createRenderContext(document);
+  const html = `<div class="voc-root"></div>`;
+  mount.setFrame({ mode: "fill" });
+  mount.mount(context, { css: "", html });
+  const card = () => root.querySelector("ha-card");
+  assert.deepEqual([card().getAttribute("data-frame"), card().style.getPropertyValue("--voc-frame-height")], ["fill", ""]);
+  mount.setFrame({ mode: "lock", heightPx: 612 });
+  assert.deepEqual([card().getAttribute("data-frame"), card().style.getPropertyValue("--voc-frame-height")], ["lock", "612px"]);
+  mount.showText("broken");
+  mount.mount(context, { css: "", html });
+  assert.deepEqual([card().getAttribute("data-frame"), card().style.getPropertyValue("--voc-frame-height")], ["lock", "612px"], "a new card gets the frame");
+  mount.setFrame({ mode: "auto" });
+  assert.deepEqual([card().hasAttribute("data-frame"), card().style.getPropertyValue("--voc-frame-height")], [false, ""]);
+});

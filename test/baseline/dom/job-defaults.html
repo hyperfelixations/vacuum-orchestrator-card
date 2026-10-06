@@ -12,7 +12,7 @@
 </div>
 <div class="voc-status-pill">Cleaning</div>
 </div>
-<div class="voc-body" id="voc-panel" data-body="overlay:job-defaults">
+<div class="voc-body" id="voc-panel" data-body="overlay:job-defaults" data-scroll="">
 <section class="voc-overlay" data-key="overlay:job-defaults" role="region" aria-labelledby="voc-overlay-title">
 <header class="voc-overlay-head">
 <button type="button" class="voc-button voc-button--icon voc-back" data-action="back" aria-label="Back" title="Back">
@@ -21,6 +21,7 @@
 </button>
 <h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">Defaults for new jobs</h2>
 </header>
+<div class="voc-overlay-scroll" data-scroll="">
 <p class="voc-overlay-lead">Each new job takes these values unless it names its own. A robot that lacks a level gets the nearest one it offers.</p>
 <div class="voc-form">
 <div class="voc-field" data-key="field:overlay:mode" data-field-control="segmented">
@@ -124,6 +125,7 @@
 </button>
 </div>
 <div class="voc-field-hint" id="voc-field-overlay-settingsPolicy-hint">Use the nearest level the robot offers. Rooms, mode and order are never changed.</div>
+</div>
 </div>
 </div>
 <div class="voc-overlay-actions">

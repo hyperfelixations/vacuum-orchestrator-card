@@ -10,15 +10,17 @@
   // An undefined custom element defaults to display:inline, and a non-atomic inline box can
   // neither be a size container nor clip its own overflow. The card declares
   // `container: voc-card / inline-size` on ha-card, so every @container rule would silently
-  // never match and the accent line would bleed past the rounded corner. Real ha-card is a
-  // block element; the rest of its styling (background, border, radius, shadow) the card
-  // re-declares itself.
+  // never match and the accent line would bleed past the rounded corner. Real ha-card lays
+  // itself out from its own shadow root, `:host { display: block; box-sizing: border-box;
+  // position: relative }` around a slot, so the card's own rules win; the rest of its styling
+  // (background, border, radius, shadow) the card re-declares itself.
   if (!customElements.get("ha-card")) {
     customElements.define(
       "ha-card",
       class extends HTMLElement {
-        connectedCallback() {
-          this.style.display = "block";
+        constructor() {
+          super();
+          this.attachShadow({ mode: "open" }).innerHTML = "<style>:host { display: block; box-sizing: border-box; position: relative; }</style><slot></slot>";
         }
       }
     );

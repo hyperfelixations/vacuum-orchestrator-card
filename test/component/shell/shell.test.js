@@ -76,6 +76,15 @@ test("arrow keys move through the tabs and switch the view with focus on the tab
   card.unmount();
 });
 
+test("the body is a region that scrolls; as a tab panel it is a tab stop", async () => {
+  const card = await mountCard({ env });
+  const body = () => card.root.querySelector("#voc-panel");
+  assert.deepEqual([body().hasAttribute("data-scroll"), body().getAttribute("role"), body().getAttribute("tabindex")], [true, "tabpanel", "0"]);
+  await card.click('[data-key="job:job-kitchen"] .voc-job-main');
+  assert.deepEqual([body().hasAttribute("data-scroll"), body().hasAttribute("role"), body().hasAttribute("tabindex")], [true, false, false]);
+  card.unmount();
+});
+
 test("a view the integration does not offer is listed and explained", async () => {
   const card = await mountCard({ env });
   const services = { ...card.hass.services.vacuum_orchestrator };

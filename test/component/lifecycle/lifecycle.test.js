@@ -124,9 +124,38 @@ test("the card offers no form editor and starts from an empty stub; the grid and
   // Objects from the card's realm are compared by value.
   const plain = (value) => JSON.parse(JSON.stringify(value));
   assert.deepEqual([typeof Card.getConfigForm, typeof Card.getConfigElement], ["undefined", "undefined"]);
-  assert.deepEqual(plain(card.card.getGridOptions()), { columns: 12, min_columns: 6, max_columns: 12 });
+  assert.deepEqual(plain(card.card.getGridOptions()), { columns: "full", rows: 10, min_columns: 12, min_rows: 7 });
+  card.card.getGridOptions().rows = 3;
+  assert.equal(card.card.getGridOptions().rows, 10, "every call hands out its own copy");
   assert.ok(card.card.getCardSize() >= 4);
   assert.deepEqual(plain(Card.getStubConfig()), {});
+  card.unmount();
+});
+
+test("in a sections grid with fixed rows and in a panel the card takes the dashboard's height", async () => {
+  const card = await mountCard({ env });
+  const surface = () => card.root.querySelector("ha-card");
+  assert.deepEqual([card.card.hasAttribute("data-voc-frame"), surface().hasAttribute("data-frame")], [false, false]);
+  card.card.layout = "grid";
+  await settle();
+  assert.deepEqual([card.card.hasAttribute("data-voc-frame"), surface().dataset.frame], [true, "fill"]);
+  card.card.setConfig({ type: "custom:vacuum-orchestrator-card", grid_options: { rows: "auto" } });
+  await settle();
+  assert.deepEqual([card.card.hasAttribute("data-voc-frame"), surface().hasAttribute("data-frame")], [false, false]);
+  card.card.layout = "panel";
+  await settle();
+  assert.equal(surface().dataset.frame, "fill");
+  card.unmount();
+});
+
+test("with its own height an open overlay keeps the card's height until the last one closes", async () => {
+  const card = await mountCard({ env });
+  const surface = () => card.root.querySelector("ha-card");
+  await card.click(`.voc-job[data-key="job:job-kitchen"] .voc-job-main`);
+  assert.equal(card.root.querySelector(".voc-root").dataset.state, "overlay");
+  assert.deepEqual([surface().dataset.frame, surface().style.getPropertyValue("--voc-frame-height")], ["lock", "440px"], "jsdom measures 0, so the floor holds");
+  await card.click('[data-action="back"]');
+  assert.deepEqual([surface().hasAttribute("data-frame"), surface().style.getPropertyValue("--voc-frame-height")], [false, ""]);
   card.unmount();
 });
 

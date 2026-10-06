@@ -10,6 +10,7 @@ import { textService } from "../i18n/text-service.js";
 import { DEFAULT_LANGUAGE } from "../i18n/locales.js";
 import { affordanceContext } from "../domain/affordances.js";
 import { acquireSession } from "../backend/session-registry.js";
+import { FRAME_MIN_PX, GRID_OPTIONS, frameMode } from "./card-layout.js";
 import { buildCardDomainModel } from "../application/card-domain-model.js";
 import { readHomeAssistant } from "../backend/home-assistant.js";
 import { buildCardViewModel } from "../presentation/shell/card-view-model.js";
@@ -24,6 +25,7 @@ import { createBrowserPlatform } from "../controllers/runtime/browser-platform.j
 import { createDiagnosticsReporter } from "../controllers/runtime/diagnostics-reporter.js";
 import { createInteractionRuntime } from "../controllers/runtime/interaction-runtime.js";
 import { createKeyboardRuntime } from "../controllers/runtime/keyboard-runtime.js";
+import { createScrollRuntime } from "../controllers/runtime/scroll-runtime.js";
 import { createTabStripRuntime } from "../controllers/runtime/tab-strip-runtime.js";
 import { createUIState } from "../controllers/runtime/ui-state.js";
 import { createActionRouter } from "../controllers/runtime/action-router.js";
@@ -51,6 +53,8 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._configVersion = 0;
     this._lovelaceConfig = null;
     this._hass = null;
+    this._layout = null;
+    this._lockPx = null;
     this._hold = null;
     this._unsubscribe = null;
     this._model = null;
@@ -79,6 +83,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
       onControlKey: handleControlKeydown,
     });
     this._tabStrip = createTabStripRuntime({ root: this.shadowRoot, platform: this._platform });
+    this._scroll = createScrollRuntime({ root: this.shadowRoot, platform: this._platform });
     this._renderer = createRenderController({ computeViewModel: () => this._computeViewModel(), renderView: (viewModel) => this._renderView(viewModel) });
   }
 
@@ -116,10 +121,23 @@ export class VacuumOrchestratorCard extends HTMLElement {
     return this._hass;
   }
 
+  // Set by Home Assistant: "grid" in a sections view, "panel" in a panel view.
+  set layout(value) {
+    if (value === this._layout) return;
+    this._layout = value ?? null;
+    this._renderer.invalidate();
+    this._scheduleRender();
+  }
+
+  get layout() {
+    return this._layout;
+  }
+
   connectedCallback() {
     this._interaction.connect();
     this._keyboard.connect();
     this._tabStrip.connect();
+    this._scroll.connect();
     this._syncSession();
     this._renderSafely();
   }
@@ -128,6 +146,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._interaction.disconnect();
     this._keyboard.disconnect();
     this._tabStrip.disconnect();
+    this._scroll.disconnect();
     this._releaseSession();
   }
 
@@ -142,7 +161,27 @@ export class VacuumOrchestratorCard extends HTMLElement {
   }
 
   getGridOptions() {
-    return { columns: 12, min_columns: 6, max_columns: 12 };
+    return { ...GRID_OPTIONS };
+  }
+
+  // "fill" takes the dashboard's height. Otherwise an overlay keeps the height the card had when
+  // the first one opened ("lock"). See internal dev doc §9 "Rahmen und Höhe".
+  _applyFrame(overlaid) {
+    const mode = frameMode({ layout: this._layout, config: this._lovelaceConfig });
+    if (mode === "fill" || !overlaid) this._lockPx = null;
+    else if (this._lockPx === null) this._lockPx = Math.max(this.shadowRoot.querySelector("ha-card")?.getBoundingClientRect().height ?? 0, FRAME_MIN_PX);
+    this.toggleAttribute("data-voc-frame", mode === "fill");
+    if (mode === "fill") this._mount.setFrame({ mode });
+    else this._mount.setFrame(this._lockPx === null ? { mode: "auto" } : { mode: "lock", heightPx: this._lockPx });
+  }
+
+  // Scroll regions by what they show: the view with its pages, then each open overlay.
+  _scrollStack(viewModel) {
+    const body = viewModel.body;
+    if (body.kind === "onboarding") return [`onboarding:${this._pending.model.phase}`];
+    if (body.kind !== "view" && body.kind !== "overlay") return [`${body.kind}:${body.key ?? ""}`];
+    const ui = this._ui.snapshot;
+    return [`view:${this._pending.tabs.active}:${JSON.stringify(ui.pages)}`, ...ui.overlays.map((overlay, index) => `overlay:${index}:${overlay.kind}`)];
   }
 
   _normalizeConfig(config) {
@@ -274,7 +313,10 @@ export class VacuumOrchestratorCard extends HTMLElement {
     // Opening a page moves focus into it and remembers the control that opened it; closing it
     // gives focus back to that control.
     if (depth > previousDepth) this._focusReturns = [...(this._focusReturns || []), held];
+    this._applyFrame(viewModel.body.kind === "overlay");
+    this._scroll.capture();
     this._mount.mount(context, { css: STYLES, html: renderCard(context, viewModel, renderBody) });
+    this._scroll.sync(this._scrollStack(viewModel));
     const requested = this._ui.consumeFocus();
     if (requested) focusSelector(this.shadowRoot, requested, ring);
     else if (depth > previousDepth && held) focusSelector(this.shadowRoot, "[data-autofocus], #voc-overlay-title", ring);

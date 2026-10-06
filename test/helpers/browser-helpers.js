@@ -26,8 +26,8 @@ async function gotoHarness(page) {
 }
 
 // options: scenario, config, configs, count, width, language, admin, installed, setUp,
-// runtimeLoaded, apiVersion, failNext (see test/fixtures/harness-mount.js). Resolves once every card has
-// left the connecting phase and laid itself out.
+// runtimeLoaded, apiVersion, failNext, layout, rows (see test/fixtures/harness-mount.js). Resolves
+// once every card has left the connecting phase and laid itself out.
 async function mountCard(page, options = {}) {
   const width = options.width ?? MOUNT_WIDTH;
   await gotoHarness(page);

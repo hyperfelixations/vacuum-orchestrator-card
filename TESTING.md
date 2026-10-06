@@ -131,7 +131,14 @@ it was taken in:
 - `ha-card` and `ha-icon` as registered custom elements
   (`test/fixtures/ha-stubs.js`). An undefined `ha-card` would default to
   `display: inline`, which cannot be a size container, and every container
-  query in the card would silently stop matching.
+  query in the card would silently stop matching. Like the real one, the
+  `ha-card` stub declares `display: block` in its own shadow root, so the
+  card's rules win over it.
+- The box Home Assistant puts the card in: `mount({layout: "grid"})` places
+  it in a sections grid cell of `rows · 64 − 8` px (`rows` from the mount
+  option, else the card's default) and sets `card.layout` as `hui-card` does;
+  `layout: "panel"` places it in a block 800 px high. Without `layout` the
+  card takes its own height.
 - `#stage`, a 40 px gutter around the card, so the screenshot contains the
   card's shadow and some page background instead of a tight crop.
 - A fake Vacuum Orchestrator (`test/helpers/fake-orchestrator.js`) behind

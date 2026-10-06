@@ -3,6 +3,7 @@
 
 export const OVERLAY_CSS = `
 .voc-overlay { display: grid; gap: 12px; min-width: 0; }
+.voc-overlay-scroll { display: grid; gap: 12px; min-width: 0; }
 .voc-overlay-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .voc-overlay-title:focus { outline: none; }
 .voc-overlay-title { flex: 1; min-width: 0; margin: 0; font-size: 17px; font-weight: 900; line-height: 1.15; overflow-wrap: anywhere; }

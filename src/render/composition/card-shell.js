@@ -61,8 +61,9 @@ export function renderCard(context, vm, renderBody) {
     attr("data-subtitle", header.subtitleOverflow === "wrap" ? "wrap" : null),
     `style="${e(vm.toneStyle)}"`,
   ].join("");
-  const bodyRole = vm.body.kind === "view" && vm.tabs.visible ? ` role="tabpanel" aria-labelledby="voc-tab-${e(vm.body.key)}"` : "";
-  return `<div class="voc-root" ${rootAttributes} tabindex="-1">${vm.accentLine ? '<div class="voc-top-line"></div>' : ""}${renderHeader(header)}${renderWarning(vm.warning)}${renderNotice(context, vm.notice)}${renderPanel(context, vm.panel)}${renderTabRow(context, vm)}<div class="voc-body" id="voc-panel" data-body="${e(vm.body.kind)}:${e(vm.body.key || "")}"${bodyRole}>${renderBody(context, vm.body)}</div><div class="voc-live-region" aria-live="polite" aria-atomic="true">${e(vm.liveMessage)}</div></div>`;
+  // A tab panel is a tab stop: no view starts with a focusable control, and in a frame it scrolls.
+  const bodyRole = vm.body.kind === "view" && vm.tabs.visible ? ` role="tabpanel" aria-labelledby="voc-tab-${e(vm.body.key)}" tabindex="0"` : "";
+  return `<div class="voc-root" ${rootAttributes} tabindex="-1">${vm.accentLine ? '<div class="voc-top-line"></div>' : ""}${renderHeader(header)}${renderWarning(vm.warning)}${renderNotice(context, vm.notice)}${renderPanel(context, vm.panel)}${renderTabRow(context, vm)}<div class="voc-body" id="voc-panel" data-body="${e(vm.body.kind)}:${e(vm.body.key || "")}" data-scroll${bodyRole}>${renderBody(context, vm.body)}</div><div class="voc-live-region" aria-live="polite" aria-atomic="true">${e(vm.liveMessage)}</div></div>`;
 }
 
 export function renderFailure(message) {

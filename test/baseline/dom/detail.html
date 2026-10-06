@@ -12,7 +12,7 @@
 </div>
 <div class="voc-status-pill">Cleaning</div>
 </div>
-<div class="voc-body" id="voc-panel" data-body="overlay:job-detail">
+<div class="voc-body" id="voc-panel" data-body="overlay:job-detail" data-scroll="">
 <section class="voc-overlay" data-key="overlay:job-detail" role="region" aria-labelledby="voc-overlay-title">
 <header class="voc-overlay-head">
 <button type="button" class="voc-button voc-button--icon voc-back" data-action="back" aria-label="Back" title="Back">
@@ -22,6 +22,7 @@
 <h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">Bathroom</h2>
 <span class="voc-pill voc-pill--neutral">Waiting</span>
 </header>
+<div class="voc-overlay-scroll" data-scroll="">
 <div class="voc-detail-summary" data-key="summary">
 <div class="voc-detail-line">
 <span class="voc-chip">
@@ -133,6 +134,7 @@
 <span>Event log</span>
 </button>
 </section>
+</div>
 <div class="voc-overlay-actions">
 <button type="button" class="voc-button voc-button--danger" data-action="delete-job" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;}">
 <ha-icon icon="mdi:delete-outline" aria-hidden="true">

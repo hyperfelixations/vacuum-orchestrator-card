@@ -14,10 +14,13 @@ ha-card {
 }
 
 .voc-root {
+  --voc-pad-top: 15px;
+  --voc-pad-x: 16px;
+  --voc-pad-bottom: 16px;
   position: relative;
   display: grid;
   gap: 11px;
-  padding: 15px 16px 16px;
+  padding: var(--voc-pad-top) var(--voc-pad-x) var(--voc-pad-bottom);
   color: var(--primary-text-color);
   outline: none;
 }
@@ -39,6 +42,9 @@ ha-card {
 .voc-body {
   min-width: 0;
 }
+
+.voc-body:focus { outline: none; }
+.voc-body:focus-visible { outline: 2px solid var(--voc-focus); outline-offset: -2px; border-radius: 14px; }
 
 .voc-render-failed {
   padding: 6px 0;

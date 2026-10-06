@@ -205,6 +205,18 @@ test("every page renders inside the shared frame with a heading to focus", async
     assert.equal(frame.getAttribute("aria-labelledby"), "voc-overlay-title");
     assert.equal(host.querySelector("#voc-overlay-title").getAttribute("tabindex"), "-1");
     assert.ok(host.querySelector('[data-action="back"]'), `${overlay.key} can be left`);
+    const parts = [...frame.children].map((child) => child.className);
+    assert.deepEqual(parts.filter((name) => name !== "voc-overlay-actions"), ["voc-overlay-head", "voc-overlay-scroll"], `${overlay.key}: heading, then one region that scrolls`);
+    assert.ok(frame.querySelector(".voc-overlay-scroll").hasAttribute("data-scroll"));
     assertMarkupContract(host, overlay.key);
   }
+});
+
+test("a page frame without lead and content has no region to scroll", async () => {
+  const { frame } = await import("../../../src/views/overlays/frame.js");
+  const { document, context } = await renderContext(null);
+  const bare = parse(document, frame(context, { key: "x", title: "X", actions: "<button data-action=\"back\">B</button>" }));
+  assert.equal(bare.querySelector(".voc-overlay-scroll"), null);
+  const lead = parse(document, frame(context, { key: "x", title: "X", lead: "<b>" }));
+  assert.equal(lead.querySelector(".voc-overlay-scroll > .voc-overlay-lead").textContent, "<b>");
 });

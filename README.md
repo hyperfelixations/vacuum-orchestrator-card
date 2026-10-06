@@ -303,6 +303,25 @@ views:
     enabled: auto
 ```
 
+### Size in a sections view
+
+Set the card's size with Home Assistant's `grid_options`:
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `grid_options.columns` | `full` | `full` fills the section. A number sets the width in grid columns, 12 per column the section spans; the smallest value is `12`. |
+| `grid_options.rows` | `10` | Sets the height in rows of 56 px with 8 px between them; the smallest value is `7`. `auto` lets the card take the height of the view it shows. |
+
+Choose enough rows for the view you use most; whatever does not fit scrolls
+inside the card.
+
+```yaml
+grid_options:
+  rows: 12
+```
+
+> **The card's Layout tab sets at most 8 rows.** Set more rows in YAML.
+
 ### Styling with card-mod
 
 With [card-mod](https://github.com/thomasloven/lovelace-card-mod) installed,
@@ -348,8 +367,8 @@ account.
 The installed integration is newer than this card. Update the card.
 
 **“Vacuum Orchestrator could not be checked.”**
-The last line on the card names the error. Hard-reload the dashboard; if the message
-comes back, report it with that line.
+The last line on the card names the error. Hard-reload the dashboard; if the
+message comes back, report it with that line.
 
 **A tab is dimmed.**
 The installed integration does not offer that view. Update the integration, or
