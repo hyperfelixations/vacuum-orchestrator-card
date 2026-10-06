@@ -62,8 +62,10 @@ export const modeLabel = (texts, mode) => (mode ? t(texts, `mode.${camel(mode)}`
 export const modeShortLabel = (texts, mode) => (mode ? t(texts, `mode.short.${camel(mode)}`) : "—");
 export const operationLabel = (texts, operation) => (operation ? t(texts, `operation.${camel(operation)}`) : t(texts, "value.unknown"));
 export const jobStateLabel = (texts, state) => t(texts, `job.state.${camel(state || "unknown")}`);
-export const levelLabel = (texts, level) => (level ? t(texts, `level.${level}`) : t(texts, "value.notSet"));
-export const routeLabel = (texts, route) => (route ? t(texts, `route.${route}`) : t(texts, "value.notSet"));
+// A rung of a setting ladder (`vacuumPower`, `mopIntensity`, `mopRoute`); `off` only names a
+// robot option in its mapping.
+export const settingLabel = (texts, field, value) => (!value ? "—" : value === "off" ? t(texts, "setting.off") : t(texts, `setting.${field}.${value}`));
+export const settingName = (texts, field) => t(texts, `field.${field}`);
 export const policyLabel = (texts, policy) => (policy ? t(texts, `policy.${camel(policy)}`) : "—");
 export const readinessLabel = (texts, state) => t(texts, `readiness.${state || "unknown"}`);
 export const qualityLabel = (texts, quality) => (quality ? t(texts, `quality.${quality}`) : t(texts, "value.unknown"));

@@ -1,10 +1,12 @@
-// Confirmation, robot choice for a direct start, and recovery resolution.
+// Confirmation, cancelling a started job, ending the queue, robot choice for a direct start, and
+// recovery resolution.
 
-import { buildConfirm, buildQueueSettings, buildRecovery, buildStartJob } from "../../presentation/overlays/dialogs.js";
+import { buildCancelJob, buildConfirm, buildQueueEnd, buildQueueSettings, buildRecovery, buildStartJob } from "../../presentation/overlays/dialogs.js";
 import { button, e, icon } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
 import { loadingState } from "../parts.js";
 import { frame } from "./frame.js";
+import { FORMS_CSS } from "../styles/forms.js";
 
 export const DIALOGS_CSS = `
 .voc-choices { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
@@ -21,6 +23,26 @@ export const confirmOverlay = Object.freeze({
     const actions = `${button({ action: "back", label: context.t("action.keep"), variant: "quiet", extra: " data-autofocus" })}${button({ action: "confirm-command", label: vm.confirmLabel, iconName: vm.confirmIcon, variant: vm.tone === "danger" ? "danger" : "primary", decision: vm.pending ? { state: "disabled", reason: "command_pending" } : null })}`;
     return frame(context, { key: "confirm", title: vm.title, lead: vm.text, actions, dialog: true });
   },
+});
+
+// A choice before a command: going back on the left, the confirming action on the right.
+function choiceDialog(context, vm, { action, iconName, variant }) {
+  const actions = `${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${button({ action, label: vm.confirmLabel, iconName, variant, decision: vm.pending ? { state: "disabled", reason: "command_pending" } : null })}`;
+  return frame(context, { key: vm.key, title: vm.title, lead: vm.lead, content: `<div class="voc-form">${renderField(context, vm.field)}</div>`, actions, dialog: true });
+}
+
+export const cancelJobOverlay = Object.freeze({
+  key: "cancel-job",
+  build: ({ model, texts, overlay }) => buildCancelJob({ model, texts, overlay }),
+  render: (context, vm) => choiceDialog(context, vm, { action: "confirm-cancel", iconName: "mdi:stop-circle-outline", variant: "danger" }),
+  css: FORMS_CSS,
+});
+
+export const queueEndOverlay = Object.freeze({
+  key: "queue-end",
+  build: ({ model, texts, overlay }) => buildQueueEnd({ model, texts, overlay }),
+  render: (context, vm) => choiceDialog(context, vm, { action: "confirm-end-queue", iconName: "mdi:stop", variant: "primary" }),
+  css: FORMS_CSS,
 });
 
 export const startJobOverlay = Object.freeze({

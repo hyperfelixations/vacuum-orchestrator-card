@@ -21,6 +21,7 @@ export const ROBOTS_CSS = `
 .voc-robot-note[data-tone="running"] { color: color-mix(in srgb, var(--voc-info) 80%, var(--primary-text-color)); }
 .voc-robot-note[data-tone="attention"] { background: color-mix(in srgb, var(--voc-error) 9%, transparent); color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
 .voc-robot-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.voc-robot-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .voc-robot-line { display: flex; align-items: flex-start; gap: 5px; font-size: 12px; font-weight: 650; color: var(--voc-muted); }
 .voc-robot-levels { display: grid; gap: 2px; font-size: 11.5px; font-weight: 600; color: var(--voc-faint); }
 .voc-robot-map { display: grid; gap: 6px; margin: 0; }

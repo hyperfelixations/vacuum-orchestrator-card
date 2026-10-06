@@ -43,9 +43,10 @@ export function pill(text, tone = "neutral", { iconName = null, className = "" }
   return `<span class="voc-pill voc-pill--${e(tone)}${className ? ` ${e(className)}` : ""}">${icon(iconName)}${e(text)}</span>`;
 }
 
-export function chip(text, { iconName = null, className = "", title = null } = {}) {
+// `label` names what an icon-only chip shows, for the tooltip and for screen readers.
+export function chip(text, { iconName = null, className = "", title = null, label = null } = {}) {
   if (!text) return "";
-  return `<span class="voc-chip${className ? ` ${e(className)}` : ""}"${attr("title", title)}>${icon(iconName)}<span>${e(text)}</span></span>`;
+  return `<span class="voc-chip${className ? ` ${e(className)}` : ""}"${attr("title", title ?? (label ? `${label}: ${text}` : null))}>${icon(iconName)}${label ? `<span class="voc-sr-only">${e(label)}: </span>` : ""}<span>${e(text)}</span></span>`;
 }
 
 export function link({ href, label, iconName = null }) {

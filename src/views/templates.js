@@ -8,7 +8,7 @@ import { TEMPLATES_CSS } from "./styles/templates.js";
 function templateCard(context, template) {
   const edit = button({ action: "edit-template", args: { templateId: template.templateId }, label: context.t("action.editTemplate", { template: template.name }), iconName: "mdi:pencil-outline", variant: "icon", decision: template.actions.edit, reasonText: context.reason(template.actions.edit) });
   const badges = template.badges.map((badge) => pill(badge.text, badge.tone)).join("");
-  const chips = template.settings.map((setting) => chip(setting.text, { iconName: setting.icon })).join("");
+  const chips = template.settings.map((setting) => chip(setting.text, { iconName: setting.icon, label: setting.label })).join("");
   const suppressed = template.suppressed
     ? `<div class="voc-template-note" data-key="suppressed">${icon("mdi:timer-sand-complete")}<span>${e(template.suppressed)}</span>${button({ action: "reset-template-demand", args: { templateId: template.templateId }, label: context.t("action.resetDemand"), variant: "quiet", decision: template.actions.resetDemand, reasonText: context.reason(template.actions.resetDemand) })}</div>`
     : "";

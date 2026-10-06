@@ -22,6 +22,17 @@ async function rooms(options = {}) {
   return card;
 }
 
+test("a robot stopped away from its dock is sent home from its card", async () => {
+  const card = await mountCard({ env, scenario: "ending" });
+  await card.click('[role=tab][data-view="robots"]');
+  assert.equal(card.root.querySelector('[data-key="robot:robot-rocky"] [data-action="return-robot"]'), null, "a robot at work is not sent home");
+  await card.click('[data-key="robot:robot-dusty"] [data-action="return-robot"]');
+  await card.settle(32);
+  assert.deepEqual(card.services("return_robot").map((call) => call.data), [{ robot_id: "robot-dusty" }]);
+  assert.match(card.text(".voc-notice"), /Return to dock requested/);
+  card.unmount();
+});
+
 test("rooms show the integration's due verdicts and release state", async () => {
   const card = await rooms();
   assert.equal(card.all(".voc-room").length, 5);

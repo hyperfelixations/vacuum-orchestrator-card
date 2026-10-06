@@ -13,6 +13,15 @@ export const FORMS_CSS = `
 .voc-field-error { font-size: 11.5px; font-weight: 750; line-height: 1.35; color: color-mix(in srgb, var(--voc-error) 85%, var(--primary-text-color)); }
 
 .voc-segmented, .voc-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.voc-radios { display: grid; gap: 8px; min-width: 0; }
+.voc-radio { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: var(--voc-icon-target); padding: 10px 12px; border: 1px solid var(--divider-color); border-radius: 12px; background: transparent; color: var(--primary-text-color); font: inherit; text-align: start; cursor: pointer; }
+.voc-radio ha-icon { --mdc-icon-size: 20px; width: 20px; height: 20px; flex: none; color: var(--voc-muted); }
+.voc-radio.is-selected { border-color: var(--tone-border); background: var(--tone-soft); }
+.voc-radio.is-selected ha-icon { color: var(--tone-ink); }
+.voc-radio:focus-visible { outline: 2px solid var(--tone-ink); outline-offset: 2px; }
+.voc-radio-text { display: grid; gap: 2px; min-width: 0; }
+.voc-radio-label { font-weight: 650; }
+.voc-radio-note { font-size: 12px; color: var(--voc-muted); }
 .voc-option {
   display: inline-flex;
   align-items: center;

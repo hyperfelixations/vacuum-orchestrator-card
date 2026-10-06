@@ -50,10 +50,13 @@ test("a direct start needs a robot profile and a free robot", async () => {
   assert.equal(await code(typical.call("start_job", { job_id: "job-kitchen", robot_id: "robot-rocky" }, true)), "robot_busy");
 });
 
-test("suction off is refused outside mopping, as the integration's intent does", async () => {
-  const { call } = fakeFor();
-  assert.equal(await code(call("create_job", { areas: ["room-kitchen"], mode: "vacuum", vacuum_power: "off" }, true)), "preference_conflicts_with_cleaning_mode");
-  assert.equal(await code(call("create_job", { areas: ["room-kitchen"], mode: "mop", vacuum_power: "off" }, true)), "ok");
+test("a rung outside its ladder is refused in any mode; a setting the mode does not use is dropped", async () => {
+  const { call, fake } = fakeFor();
+  assert.equal(await code(call("create_job", { areas: ["room-kitchen"], mode: "vacuum", vacuum_power: "off" }, true)), "unsupported_cleaning_preference");
+  assert.equal(await code(call("create_job", { areas: ["room-kitchen"], mode: "mop", vacuum_power: "off" }, true)), "unsupported_cleaning_preference");
+  const created = await call("create_job", { areas: ["room-kitchen"], mode: "mop", vacuum_power: "maximum" }, true);
+  const job = fake.state.jobs.get(created.response.job_id);
+  assert.deepEqual([job.vacuum_power, job.mop_intensity, job.mop_route], [null, "medium", "standard"], "the mode's settings come from the defaults");
 });
 
 test("non-admins are refused in Home Assistant's frames: actions and WebSocket commands", async () => {
@@ -65,7 +68,7 @@ test("non-admins are refused in Home Assistant's frames: actions and WebSocket c
 test("every action can answer with the confirmed commit, and every read names its view", async () => {
   const { fake, call, job, command } = fakeFor();
   const paused = await call("pause_queue", {}, true);
-  assert.deepEqual(paused.response, { api_version: 2, commit_id: fake.state.commitId, mode: "paused" });
+  assert.deepEqual(paused.response, { api_version: 3, commit_id: fake.state.commitId, mode: "paused" });
   assert.equal((await call("move_job", { job_id: "job-bathroom", direction: "up" }, true)).response.job_id, "job-bathroom");
   assert.equal((await command("revoke_room", { room_id: "room-kitchen" })).commit_id, fake.state.commitId);
   const view = (read) => [read.commit_id, read.runtime_id, read.runtime_sequence];
@@ -161,5 +164,5 @@ test("a subscription to an unloaded integration is accepted and hears that it is
   const { hass } = fakeFor("typical", { runtimeLoaded: false });
   const events = [];
   await hass.connection.subscribeMessage((event) => events.push(event), { type: "vacuum_orchestrator/subscribe" });
-  assert.deepEqual(events, [{ api_version: 2, loaded: false }]);
+  assert.deepEqual(events, [{ api_version: 3, loaded: false }]);
 });

@@ -33,6 +33,11 @@
 </div>
 </div>
 <div class="voc-panel-control">
+<button type="button" class="voc-button voc-button--text voc-queue-end" data-action="end-queue" title="Beenden">
+<ha-icon icon="mdi:stop" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Beenden</span>
+</button>
 <button type="button" class="voc-button voc-button--primary voc-queue-control" data-action="queue-control" title="Pausieren">
 <ha-icon icon="mdi:pause" aria-hidden="true">
 </ha-icon>
@@ -95,9 +100,10 @@
 </span>
 <span class="voc-job-meta">
 <span class="voc-job-mode">Saugen</span>
-<span class="voc-chip">
+<span class="voc-chip" title="Saugkraft: Hoch">
 <ha-icon icon="mdi:fan" aria-hidden="true">
 </ha-icon>
+<span class="voc-sr-only">Saugkraft: </span>
 <span>Hoch</span>
 </span>
 </span>
@@ -125,18 +131,9 @@
 <span class="voc-job-mode">
 <ha-icon icon="mdi:transfer-right" aria-hidden="true">
 </ha-icon>Erst saugen, dann wischen</span>
-<span class="voc-chip">
+<span class="voc-chip" title="Durchgänge: 2×">
+<span class="voc-sr-only">Durchgänge: </span>
 <span>2×</span>
-</span>
-<span class="voc-chip">
-<ha-icon icon="mdi:fan" aria-hidden="true">
-</ha-icon>
-<span>Standard</span>
-</span>
-<span class="voc-chip">
-<ha-icon icon="mdi:water" aria-hidden="true">
-</ha-icon>
-<span>Mittel</span>
 </span>
 </span>
 <span class="voc-job-readiness" data-readiness="ready">
@@ -178,15 +175,17 @@
 <span class="voc-job-mode">
 <ha-icon icon="mdi:water-outline" aria-hidden="true">
 </ha-icon>Wischen</span>
-<span class="voc-chip">
+<span class="voc-chip" title="Wasser: Viel">
 <ha-icon icon="mdi:water" aria-hidden="true">
 </ha-icon>
-<span>Hoch</span>
+<span class="voc-sr-only">Wasser: </span>
+<span>Viel</span>
 </span>
-<span class="voc-chip">
+<span class="voc-chip" title="Wischroute: Gründlich">
 <ha-icon icon="mdi:map-marker-path" aria-hidden="true">
 </ha-icon>
-<span>Gründliche Route</span>
+<span class="voc-sr-only">Wischroute: </span>
+<span>Gründlich</span>
 </span>
 <span class="voc-chip">
 <ha-icon icon="mdi:lock-outline" aria-hidden="true">

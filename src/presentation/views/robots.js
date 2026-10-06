@@ -4,12 +4,14 @@
 
 import { candidateAffordance, recoveryAffordance, robotAffordances } from "../../domain/affordances.js";
 import { isConfiguredCandidate } from "../../domain/robots.js";
-import { OPERATIONS } from "../../domain/job-schema.js";
+import { OPERATIONS, SETTING_FIELDS } from "../../domain/job-schema.js";
 import { list, robotsOf, roomIndex, roomName, slotData } from "../common/lookups.js";
-import { levelLabel, number, operationLabel, reasonText, routeLabel, t } from "../common/texts.js";
+import { number, operationLabel, reasonText, settingLabel, settingName, t } from "../common/texts.js";
 import { robotStatus } from "../common/robot-status.js";
 
 const QUIET_ERRORS = new Set(["none", "ok", "no_error", "0"]);
+// Home Assistant's vacuum states of a robot at its dock or on its way there.
+const HOME_STATES = new Set(["docked", "returning"]);
 
 function readingText(reading) {
   if (!reading?.available) return null;
@@ -62,15 +64,13 @@ export function buildRobotsView({ model, texts, context, options = {}, ui = {} }
         levels: capabilities && options.show_capabilities !== false
           ? [
               capabilities.maximumPasses ? t(texts, "robot.maxPasses", { count: capabilities.maximumPasses }) : null,
-              capabilities.vacuumLevels.length ? t(texts, "robot.vacuumLevels", { levels: capabilities.vacuumLevels.map((level) => levelLabel(texts, level)).join(", ") }) : null,
-              capabilities.waterLevels.length ? t(texts, "robot.waterLevels", { levels: capabilities.waterLevels.map((level) => levelLabel(texts, level)).join(", ") }) : null,
-              capabilities.mopRoutes.length ? t(texts, "robot.mopRoutes", { routes: capabilities.mopRoutes.map((route) => routeLabel(texts, route)).join(", ") }) : null,
+              ...SETTING_FIELDS.map((field) => (capabilities.settings[field].length ? t(texts, "robot.settingLevels", { setting: settingName(texts, field), levels: capabilities.settings[field].map((rung) => settingLabel(texts, field, rung)).join(", ") }) : null)),
             ].filter(Boolean)
           : [],
         unresolved: !capabilities,
         map: map ? { entityId: map.entityId, picture: map.picture, label: map.friendlyName || map.entityId } : null,
         mapChoices: maps.length > 1 ? maps.map((entry) => ({ entityId: entry.entityId, label: entry.friendlyName || entry.entityId, selected: entry.entityId === map?.entityId })) : [],
-        actions: robotAffordances(robot, context),
+        actions: robotAffordances(robot, context, { home: HOME_STATES.has(live?.vacuum?.state) }),
       };
     }),
   };

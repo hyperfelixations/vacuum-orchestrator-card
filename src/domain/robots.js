@@ -2,8 +2,9 @@
 // not reachability; capabilities are the integration's resolved profile. The card never infers
 // executability from an entity. See internal dev doc §7 "Robotermodell".
 
-import { ROBOT_OPTION_MAPS, ROBOT_TIMEOUT_FIELDS, isMopRoute, isOperation, isRobotRole, isSemanticLevel } from "./job-schema.js";
+import { ROBOT_OPTION_MAPS, ROBOT_TIMEOUT_FIELDS, SETTING_FIELDS, SETTING_WIRE_NAMES, isOperation, isRobotRole, isSettingValue } from "./job-schema.js";
 import { normalizeRequirement } from "./rooms.js";
+import { settingField } from "./settings.js";
 import { bool, finite, integer, isRecord, records, stringMap, strings, text, unknownFields } from "./wire-values.js";
 
 const ROBOT_FIELDS = new Set(["robot_id", "name", "configuration", "active", "blocked_reason", "capabilities"]);
@@ -20,8 +21,15 @@ function roles(wire) {
   return Object.freeze(result);
 }
 
+// Per setting the rungs the robot offers, lowest first, as the integration orders them.
+function settings(wire) {
+  const value = isRecord(wire) ? wire : {};
+  return Object.freeze(Object.fromEntries(SETTING_FIELDS.map((field) => [field, Object.freeze(strings(value[SETTING_WIRE_NAMES[field]]).filter((rung) => isSettingValue(field, rung)))])));
+}
+
 function capabilities(wire) {
   if (!isRecord(wire)) return null;
+  const supports = isRecord(wire.supports) ? wire.supports : {};
   const targets = {};
   if (isRecord(wire.targets)) {
     for (const [roomId, ids] of Object.entries(wire.targets)) {
@@ -35,9 +43,13 @@ function capabilities(wire) {
     targets: Object.freeze(targets),
     mapContext: text(wire.map_context),
     maximumPasses: integer(wire.maximum_passes),
-    vacuumLevels: Object.freeze(strings(wire.vacuum_levels).filter(isSemanticLevel)),
-    waterLevels: Object.freeze(strings(wire.water_levels).filter(isSemanticLevel)),
-    mopRoutes: Object.freeze(strings(wire.mop_routes).filter(isMopRoute)),
+    settings: settings(wire.settings),
+    unavailableSettings: Object.freeze(strings(wire.unavailable_settings).map(settingField).filter(Boolean)),
+    supports: Object.freeze({
+      stop: supports.stop === true,
+      returnToDock: supports.return_to_dock === true,
+      pause: supports.pause === true,
+    }),
   });
 }
 

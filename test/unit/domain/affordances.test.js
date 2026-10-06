@@ -6,7 +6,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const load = () => import("../../../src/domain/affordances.js");
-const ALL = ["move_job", "update_job", "start_job", "cancel_job", "delete_job", "retry_job", "run_queue", "pause_queue", "resume_queue", "create_job", "configure_queue", "release_room", "revoke_room", "update_room", "disable_room", "enable_room", "configure_robot", "remove_robot", "resolve_recovery", "add_robot", "create_job_from_template", "save_template", "remove_template", "reset_template_demand"];
+const ALL = ["move_job", "update_job", "start_job", "cancel_job", "delete_job", "retry_job", "run_queue", "pause_queue", "resume_queue", "create_job", "configure_queue", "release_room", "revoke_room", "update_room", "disable_room", "enable_room", "configure_robot", "remove_robot", "resolve_recovery", "add_robot", "create_job_from_template", "save_template", "remove_template", "reset_template_demand", "end_queue", "return_robot"];
 
 async function context(overrides = {}) {
   const { affordanceContext } = await load();
@@ -56,6 +56,8 @@ test("the queue control follows the queue mode", async () => {
   assert.equal(queueAffordances("running", ctx).command, "pause_queue");
   assert.equal(queueAffordances("paused", ctx).command, "resume_queue");
   assert.equal(queueAffordances("strange", ctx).command, "run_queue");
+  assert.deepEqual(["idle", "running", "paused"].map((mode) => queueAffordances(mode, ctx).end.state), ["hidden", "enabled", "enabled"]);
+  assert.equal(queueAffordances("paused", ctx, { ending: true }).end.state, "hidden", "an ending queue is resumed, not ended again");
 });
 
 test("a room can be released while usable and revoked while it holds a grant", async () => {
@@ -72,9 +74,20 @@ test("a room can be released while usable and revoked while it holds a grant", a
 test("a robot under a lease cannot be reconfigured or removed", async () => {
   const { robotAffordances } = await load();
   const ctx = await context();
-  assert.deepEqual(states(robotAffordances({ robotId: "r", active: false }, ctx)), { configure: "enabled", remove: "enabled" });
+  assert.deepEqual(states(robotAffordances({ robotId: "r", active: false }, ctx)), { configure: "enabled", remove: "enabled", returnToDock: "hidden" });
   const busy = robotAffordances({ robotId: "r", active: true }, ctx);
   assert.deepEqual([busy.configure.reason, busy.remove.reason], ["robot_busy", "robot_busy"]);
+});
+
+test("a robot is sent home only when it can return, holds no lease and is not home already", async () => {
+  const { robotAffordances } = await load();
+  const ctx = await context();
+  const robot = (active, returnToDock = true) => ({ robotId: "r", active, capabilities: { supports: { returnToDock } } });
+  assert.equal(robotAffordances(robot(false), ctx).returnToDock.state, "enabled");
+  assert.equal(robotAffordances(robot(false), ctx, { home: true }).returnToDock.state, "hidden");
+  assert.equal(robotAffordances(robot(true), ctx).returnToDock.state, "hidden", "a job's own cancel decides where its robot goes");
+  assert.equal(robotAffordances(robot(false, false), ctx).returnToDock.state, "hidden");
+  assert.equal(robotAffordances(robot(false), await context({ operations: ALL.filter((name) => name !== "return_robot") })).returnToDock.state, "disabled");
 });
 
 test("a disabled template creates no job and a reset is offered only when rooms are suppressed", async () => {

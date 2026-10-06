@@ -1,0 +1,143 @@
+<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Living room · Cleaning</div>
+</div>
+<div class="voc-status-pill">Cleaning</div>
+</div>
+<div class="voc-body" id="voc-panel" data-body="overlay:job-defaults">
+<section class="voc-overlay" data-key="overlay:job-defaults" role="region" aria-labelledby="voc-overlay-title">
+<header class="voc-overlay-head">
+<button type="button" class="voc-button voc-button--icon voc-back" data-action="back" aria-label="Back" title="Back">
+<ha-icon icon="mdi:arrow-left" aria-hidden="true">
+</ha-icon>
+</button>
+<h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">Defaults for new jobs</h2>
+</header>
+<p class="voc-overlay-lead">Each new job takes these values unless it names its own. A robot that lacks a level gets the nearest one it offers.</p>
+<div class="voc-form">
+<div class="voc-field" data-key="field:overlay:mode" data-field-control="segmented">
+<div class="voc-field-label" id="voc-field-overlay-mode-label">Cleaning mode</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-overlay-mode-label" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:mode&quot;,&quot;value&quot;:&quot;vacuum&quot;}" data-value="vacuum" data-key="option:vacuum">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+<span>Vacuum</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:mode&quot;,&quot;value&quot;:&quot;mop&quot;}" data-value="mop" data-key="option:mop">
+<ha-icon icon="mdi:water-outline" aria-hidden="true">
+</ha-icon>
+<span>Mop</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:mode&quot;,&quot;value&quot;:&quot;vacuum_and_mop&quot;}" data-value="vacuum_and_mop" data-key="option:vacuum_and_mop">
+<ha-icon icon="mdi:robot-vacuum-variant" aria-hidden="true">
+</ha-icon>
+<span>Vacuum and mop</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:mode&quot;,&quot;value&quot;:&quot;vacuum_then_mop&quot;}" data-value="vacuum_then_mop" data-key="option:vacuum_then_mop">
+<ha-icon icon="mdi:transfer-right" aria-hidden="true">
+</ha-icon>
+<span>Vacuum, then mop</span>
+</button>
+</div>
+</div>
+<div class="voc-field" data-key="field:overlay:vacuumPower" data-field-control="segmented">
+<div class="voc-field-label" id="voc-field-overlay-vacuumPower-label">Suction</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-overlay-vacuumPower-label" data-control="choice">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:vacuumPower&quot;,&quot;value&quot;:&quot;low&quot;}" data-value="low" data-key="option:low">
+<span>Quiet</span>
+</button>
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:vacuumPower&quot;,&quot;value&quot;:&quot;standard&quot;}" data-value="standard" data-key="option:standard">
+<span>Standard</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:vacuumPower&quot;,&quot;value&quot;:&quot;high&quot;}" data-value="high" data-key="option:high">
+<span>High</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:vacuumPower&quot;,&quot;value&quot;:&quot;maximum&quot;}" data-value="maximum" data-key="option:maximum">
+<span>Max</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:vacuumPower&quot;,&quot;value&quot;:&quot;maximum_plus&quot;}" data-value="maximum_plus" data-key="option:maximum_plus">
+<span>Max+</span>
+</button>
+</div>
+</div>
+<div class="voc-field" data-key="field:overlay:mopIntensity" data-field-control="segmented">
+<div class="voc-field-label" id="voc-field-overlay-mopIntensity-label">Water</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-overlay-mopIntensity-label" data-control="choice">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:mopIntensity&quot;,&quot;value&quot;:&quot;low&quot;}" data-value="low" data-key="option:low">
+<span>Low</span>
+</button>
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:mopIntensity&quot;,&quot;value&quot;:&quot;medium&quot;}" data-value="medium" data-key="option:medium">
+<span>Medium</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:mopIntensity&quot;,&quot;value&quot;:&quot;high&quot;}" data-value="high" data-key="option:high">
+<span>High</span>
+</button>
+</div>
+</div>
+<div class="voc-field" data-key="field:overlay:mopRoute" data-field-control="segmented">
+<div class="voc-field-label" id="voc-field-overlay-mopRoute-label">Mop route</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-overlay-mopRoute-label" data-control="choice">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:mopRoute&quot;,&quot;value&quot;:&quot;fast&quot;}" data-value="fast" data-key="option:fast">
+<span>Fast</span>
+</button>
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:mopRoute&quot;,&quot;value&quot;:&quot;standard&quot;}" data-value="standard" data-key="option:standard">
+<span>Standard</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:mopRoute&quot;,&quot;value&quot;:&quot;deep&quot;}" data-value="deep" data-key="option:deep">
+<span>Deep</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:mopRoute&quot;,&quot;value&quot;:&quot;deep_plus&quot;}" data-value="deep_plus" data-key="option:deep_plus">
+<span>Deep+</span>
+</button>
+</div>
+</div>
+<div class="voc-field" data-key="field:overlay:passes" data-field-control="stepper">
+<label class="voc-field-label" id="voc-field-overlay-passes-label" for="voc-field-overlay-passes">Passes</label>
+<div class="voc-stepper" role="group" aria-labelledby="voc-field-overlay-passes-label">
+<button type="button" class="voc-button voc-button--icon" data-action="step-field" data-args="{&quot;field&quot;:&quot;overlay:passes&quot;,&quot;step&quot;:-1,&quot;min&quot;:1,&quot;max&quot;:10}" aria-label="Decrease" disabled="">
+<ha-icon icon="mdi:minus" aria-hidden="true">
+</ha-icon>
+</button>
+<input class="voc-input voc-stepper-input" type="number" inputmode="numeric" id="voc-field-overlay-passes" data-field="overlay:passes" min="1" max="10" step="1" value="1">
+<button type="button" class="voc-button voc-button--icon" data-action="step-field" data-args="{&quot;field&quot;:&quot;overlay:passes&quot;,&quot;step&quot;:1,&quot;min&quot;:1,&quot;max&quot;:10}" aria-label="Increase" title="Increase">
+<ha-icon icon="mdi:plus" aria-hidden="true">
+</ha-icon>
+</button>
+</div>
+</div>
+<div class="voc-field" data-key="field:overlay:settingsPolicy" data-field-control="segmented">
+<div class="voc-field-label" id="voc-field-overlay-settingsPolicy-label">If a robot cannot apply a setting</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-overlay-settingsPolicy-label" aria-describedby="voc-field-overlay-settingsPolicy-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:settingsPolicy&quot;,&quot;value&quot;:&quot;best_effort&quot;}" data-value="best_effort" data-key="option:best_effort">
+<span>Best effort</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:settingsPolicy&quot;,&quot;value&quot;:&quot;strict&quot;}" data-value="strict" data-key="option:strict">
+<span>Strict</span>
+</button>
+</div>
+<div class="voc-field-hint" id="voc-field-overlay-settingsPolicy-hint">Use the nearest level the robot offers. Rooms, mode and order are never changed.</div>
+</div>
+</div>
+<div class="voc-overlay-actions">
+<button type="button" class="voc-button voc-button--quiet" data-action="back">
+<span class="voc-button-label">Back</span>
+</button>
+<button type="button" class="voc-button voc-button--primary" data-action="save-job-defaults">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Save</span>
+</button>
+</div>
+</section>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

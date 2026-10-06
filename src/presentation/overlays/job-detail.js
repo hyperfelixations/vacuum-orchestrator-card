@@ -2,17 +2,34 @@
 // phase (execution explanation), what was tried (attempts) and its trace. Everything is the
 // integration's own statement; see internal dev doc §8 "Auftragsdetail".
 
-import { decide, jobAffordances, roomTarget } from "../../domain/affordances.js";
+import { decide, jobAffordances, jobTarget, roomTarget } from "../../domain/affordances.js";
 import { explanationsByOperation } from "../../domain/execution.js";
 import { findJob, list, robotName, roomIndex, roomName, slotData } from "../common/lookups.js";
-import { attemptStateLabel, jobStateLabel, modeLabel, moment, operationLabel, outcomeText, qualityLabel, reasonText, t } from "../common/texts.js";
+import { attemptStateLabel, jobStateLabel, modeLabel, moment, operationLabel, outcomeText, qualityLabel, reasonText, settingLabel, settingName, t } from "../common/texts.js";
 import { traceRows } from "../common/trace.js";
 import { readinessReasons, settingChips, stateTone } from "../views/job-row.js";
 
 export const TRACE_LIMIT = 12;
 
-function preferencesText(texts, keys) {
-  return keys.length ? keys.map((key) => t(texts, `preference.${key}`)).join(", ") : null;
+// Only what differs from the request is worth a word: a nearer rung, or no such setting.
+export function settingsNote(texts, settings) {
+  const notes = list(settings)
+    .filter((item) => item.requested && item.applied !== item.requested)
+    .map((item) => {
+      const setting = settingName(texts, item.field);
+      return item.applied
+        ? t(texts, "detail.settingFallback", { setting, applied: settingLabel(texts, item.field, item.applied), requested: settingLabel(texts, item.field, item.requested) })
+        : t(texts, "detail.settingMissing", { setting });
+    });
+  return notes.length ? notes.join(", ") : null;
+}
+
+// Why the job exists: how it came into the queue, with its template while that still exists,
+// and its own occasion.
+export function occasionText(texts, job, model) {
+  const template = job.origin?.templateId ? list(slotData(model, "templates")?.items).find((item) => item.templateId === job.origin.templateId) : null;
+  const origin = job.origin ? (template ? t(texts, "origin.withTemplate", { origin: t(texts, `origin.${job.origin.kind}`), template: template.name }) : t(texts, `origin.${job.origin.kind}`)) : null;
+  return [origin, job.reason].filter(Boolean).join(" · ") || null;
 }
 
 export function buildJobDetail({ model, texts, context, overlay, config }) {
@@ -44,6 +61,7 @@ export function buildJobDetail({ model, texts, context, overlay, config }) {
     settings: settingChips(job, texts),
     position,
     outcome: outcomeText(texts, job.failureCode),
+    afterCancel: job.state === "canceling" && job.afterCancel ? t(texts, `detail.afterCancel.${job.afterCancel}`) : null,
     readiness: job.readiness
       ? { state: job.readiness.state, reasons: readinessReasons(job.readiness, { index, model, texts }) }
       : null,
@@ -58,7 +76,7 @@ export function buildJobDetail({ model, texts, context, overlay, config }) {
             name: robotName(item.robotId, model),
             eligible: item.eligible,
             reason: item.eligible ? t(texts, "detail.eligible") : reasonText(texts, item.eligibilityReason) || readinessReasons(item.readiness, { index, model, texts })[0] || t(texts, "readiness.blocked"),
-            omitted: preferencesText(texts, item.omittedPreferences),
+            settings: settingsNote(texts, item.settings),
           })),
         }))
       : null,
@@ -69,20 +87,19 @@ export function buildJobDetail({ model, texts, context, overlay, config }) {
       state: attemptStateLabel(texts, attempt.state),
       quality: attempt.quality ? qualityLabel(texts, attempt.quality) : null,
       outcome: outcomeText(texts, attempt.failureCode),
-      omitted: preferencesText(texts, attempt.omittedPreferences),
+      settings: settingsNote(texts, attempt.settings),
     })),
     trace,
     traceOpen: overlay.traceOpen === true,
     facts: [
       { label: t(texts, "detail.created"), value: moment(texts, job.createdAt, config?.time_format, model.nowMs) },
       { label: t(texts, "detail.updated"), value: moment(texts, job.updatedAt, config?.time_format, model.nowMs) },
-      { label: t(texts, "field.source"), value: job.source },
-      { label: t(texts, "field.reason"), value: job.reason },
+      { label: t(texts, "detail.occasion"), value: occasionText(texts, job, model) },
       { label: t(texts, "field.note"), value: job.note },
-      { label: t(texts, "field.dedupeKey"), value: job.dedupeKey },
       { label: t(texts, "detail.retryOf"), value: job.retriesJobId },
       { label: t(texts, "detail.jobId"), value: job.jobId },
     ],
     actions,
+    saveAsTemplate: decide(context, { operation: "save_job_as_template", target: jobTarget(job.jobId) }),
   };
 }

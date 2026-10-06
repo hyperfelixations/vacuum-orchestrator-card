@@ -1,6 +1,6 @@
-// Small dialogs: confirming a destructive command, choosing a robot for a direct start,
-// resolving a robot's recovery and the queue's quiet period. Each shows the integration's facts
-// and sends one command.
+// Small dialogs: confirming a destructive command, cancelling a started job, ending the queue,
+// choosing a robot for a direct start, resolving a robot's recovery and the queue's quiet period.
+// Each shows the integration's facts and sends one command.
 
 import { QUEUE_TARGET, decide, jobTarget, recoveryAffordance } from "../../domain/affordances.js";
 import { findJob, list, robotName, robotsOf, roomIndex, slotData, jobTitle } from "../common/lookups.js";
@@ -19,6 +19,44 @@ export function buildConfirm({ model, texts, overlay }) {
     confirmIcon: overlay.icon || "mdi:check",
     tone: overlay.tone || "danger",
     pending: list(model.pending).includes(overlay.command?.options?.target),
+  };
+}
+
+// What the robot does once a started job is cancelled: return home (the default), or stay
+// where it is so the queue can go on from there.
+export const AFTER_CANCEL_CHOICES = Object.freeze(["return_to_dock", "stay"]);
+
+function radios(texts, key, labelKey, value, options) {
+  return { key, label: t(texts, labelKey), control: "radios", value, options: options.map((option) => ({ value: option, label: t(texts, `${labelKey}.${option}`), description: t(texts, `${labelKey}.${option}.note`) })) };
+}
+
+export function buildCancelJob({ model, texts, overlay }) {
+  const job = findJob(model, overlay.jobId);
+  return {
+    key: "cancel-job",
+    title: t(texts, "confirm.cancelJob.title"),
+    lead: t(texts, "cancelJob.lead", { job: job ? jobTitle(job, roomIndex(model), model) : "" }),
+    field: radios(texts, "overlay:afterCancel", "cancelJob.after", overlay.afterCancel, AFTER_CANCEL_CHOICES),
+    confirmLabel: t(texts, "confirm.cancelJob.confirm"),
+    pending: list(model.pending).includes(jobTarget(overlay.jobId)),
+  };
+}
+
+// Ending a queue with started jobs: let them finish, or cancel them with either robot choice.
+// Cancelling with a return home is offered only where some robot can return.
+export function queueEndChoices(model) {
+  const returns = robotsOf(model).some((robot) => robot.capabilities?.supports?.returnToDock === true);
+  return ["finish", ...(returns ? ["cancel_return"] : []), "cancel_stay"];
+}
+
+export function buildQueueEnd({ model, texts, overlay }) {
+  return {
+    key: "queue-end",
+    title: t(texts, "queueEnd.title"),
+    lead: t(texts, "queueEnd.lead"),
+    field: radios(texts, "overlay:choice", "queueEnd.running", overlay.choice, queueEndChoices(model)),
+    confirmLabel: t(texts, "queueEnd.confirm"),
+    pending: list(model.pending).includes(QUEUE_TARGET),
   };
 }
 

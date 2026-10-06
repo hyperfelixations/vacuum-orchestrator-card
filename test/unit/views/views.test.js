@@ -34,7 +34,11 @@ function assertMarkupContract(host, label) {
 test("the registry declares every view and page once with build and render", async () => {
   const { VIEWS, OVERLAYS, VIEW_TYPES, viewFor, overlayFor, optionSchemaForView, VIEW_CSS } = await import("../../../src/views/registry.js");
   assert.deepEqual(VIEW_TYPES, ["setup", "queue", "rooms", "robots", "templates", "history", "diagnostics", "settings"]);
-  assert.equal(OVERLAYS.length, 11);
+  assert.equal(OVERLAYS.length, 15);
+  assert.equal(overlayFor("cancel-job").key, "cancel-job");
+  assert.equal(overlayFor("queue-end").key, "queue-end");
+  assert.equal(overlayFor("save-template").key, "save-template");
+  assert.equal(overlayFor("job-defaults").key, "job-defaults");
   for (const view of VIEWS) {
     assert.equal(typeof view.defaultEnabled, "function", view.key);
     assert.ok(Array.isArray(view.requires) && view.requires.length, view.key);
@@ -161,13 +165,13 @@ test("the detail page keeps the run action last and the reordering beside the po
   };
   const footer = (host) => [...host.querySelectorAll(".voc-overlay-actions > button")].map((node) => [node.dataset.action, node.classList.contains("voc-action-start")]);
   const waiting = await pageFor("job-bathroom");
-  assert.deepEqual(footer(waiting), [["delete-job", false], ["cancel-job", true], ["edit-job", false], ["start-job", false]]);
+  assert.deepEqual(footer(waiting), [["delete-job", false], ["cancel-job", true], ["open-save-template", false], ["edit-job", false], ["start-job", false]]);
   assert.deepEqual([...waiting.querySelectorAll('[data-key="position"] [data-action="move-job"]')].map((node) => JSON.parse(node.dataset.args).direction), ["top", "bottom"]);
   const running = await pageFor("job-running");
-  assert.deepEqual(footer(running), [["cancel-job", false]]);
+  assert.deepEqual(footer(running), [["open-save-template", false], ["cancel-job", false]]);
   assert.equal(running.querySelector('[data-key="position"]'), null);
   const failed = await pageFor("job-failed");
-  assert.deepEqual(footer(failed), [["delete-job", true], ["retry-job", false]]);
+  assert.deepEqual(footer(failed), [["delete-job", true], ["open-save-template", false], ["retry-job", false]]);
 });
 
 test("every page renders inside the shared frame with a heading to focus", async () => {

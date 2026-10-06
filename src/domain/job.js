@@ -1,7 +1,7 @@
 // Wire job records in, one frozen camelCase job out. Field set: the integration's
 // `present_job`. See internal dev doc §7 "Job-Lesemodell".
 
-import { PASS_MAX, PASS_MIN, canonicalizeMode, isJobState, isMopRoute, isSemanticLevel, isSettingsPolicy } from "./job-schema.js";
+import { PASS_MAX, PASS_MIN, canonicalizeMode, isAfterCancel, isJobState, isMopRoute, isProvenanceKind, isSettingsPolicy, isVacuumLevel, isWaterLevel } from "./job-schema.js";
 import { normalizeReadiness } from "./readiness.js";
 import { enumerated, instant, integer, isRecord, strings, text, unknownFields } from "./wire-values.js";
 
@@ -18,7 +18,7 @@ const JOB_FIELDS = new Set([
   "mop_intensity",
   "mop_route",
   "passes",
-  "source",
+  "all_rooms",
   "reason",
   "note",
   "dedupe_key",
@@ -28,10 +28,18 @@ const JOB_FIELDS = new Set([
   "created_at",
   "updated_at",
   "active_attempt_id",
+  "origin",
   "retries_job_id",
   "failure_code",
+  "after_cancel",
   "readiness",
 ]);
+
+// How the job came into the queue; a template origin names its template.
+function origin(wire) {
+  if (!isRecord(wire) || !isProvenanceKind(wire.kind)) return null;
+  return Object.freeze({ kind: wire.kind, templateId: text(wire.template_id) });
+}
 
 // Null for a record without identity, mode, targets or timestamps; any other unreadable field
 // degrades to null. A state the card does not know is kept as `unknown` so the job stays
@@ -46,7 +54,7 @@ export function normalizeJob(wire) {
   const createdAt = instant(wire.created_at);
   const updatedAt = instant(wire.updated_at);
   if (!jobId || revision === null || areas.length === 0 || !mode || createdAt === null || updatedAt === null) return null;
-  // `room_ids` is additive in API V2; without it the aliases are the only identities known.
+  // Without `room_ids` the aliases are the only identities known.
   const roomIds = strings(wire.room_ids);
   return Object.freeze({
     jobId,
@@ -57,11 +65,11 @@ export function normalizeJob(wire) {
     areas,
     roomIds: roomIds.length ? roomIds : areas,
     mode,
-    vacuumPower: enumerated(wire.vacuum_power, isSemanticLevel),
-    mopIntensity: enumerated(wire.mop_intensity, isSemanticLevel),
+    vacuumPower: enumerated(wire.vacuum_power, isVacuumLevel),
+    mopIntensity: enumerated(wire.mop_intensity, isWaterLevel),
     mopRoute: enumerated(wire.mop_route, isMopRoute),
     passes: passes !== null && passes >= PASS_MIN && passes <= PASS_MAX ? passes : null,
-    source: text(wire.source),
+    allRooms: wire.all_rooms === true,
     reason: text(wire.reason),
     note: text(wire.note),
     dedupeKey: text(wire.dedupe_key),
@@ -71,8 +79,11 @@ export function normalizeJob(wire) {
     createdAt,
     updatedAt,
     activeAttemptId: text(wire.active_attempt_id),
+    origin: origin(wire.origin),
     retriesJobId: text(wire.retries_job_id),
     failureCode: text(wire.failure_code),
+    // While canceling: whether the robot stays where it stopped or returns to its dock.
+    afterCancel: enumerated(wire.after_cancel, isAfterCancel),
     readiness: normalizeReadiness(wire.readiness),
     unknownFields: unknownFields(wire, JOB_FIELDS),
   });

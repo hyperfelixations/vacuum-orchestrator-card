@@ -50,19 +50,47 @@ test("validation names the field and the integration's code", async () => {
   assert.deepEqual({ ...errors }, { roomIds: "duplicate_area", passes: "invalid_pass_count", requiredOn: "invalid_entity_id", requiredOff: "contradictory_state_requirement" });
 });
 
-test("suction off is valid only while mopping, water off only while vacuuming", async () => {
-  const { createDraft, applyDraftChange, validateDraft, levelOptionsFor } = await load();
-  const base = applyDraftChange(createDraft(), "roomIds", ["room-a"]);
-  const check = (mode, field) => validateDraft(applyDraftChange(applyDraftChange(base, "mode", mode), field, "off")).errors[field] ?? null;
-  assert.equal(check("vacuum", "vacuumPower"), "preference_conflicts_with_cleaning_mode");
-  assert.equal(check("mop", "vacuumPower"), null);
-  assert.equal(check("mop", "mopIntensity"), "preference_conflicts_with_cleaning_mode");
-  assert.equal(check("vacuum", "mopIntensity"), null);
-  assert.equal(check("vacuum_then_mop", "mopIntensity"), "preference_conflicts_with_cleaning_mode");
-  const levels = ["off", "low", "high"];
-  assert.deepEqual(levelOptionsFor("vacuumPower", "vacuum", levels), ["low", "high"]);
-  assert.deepEqual(levelOptionsFor("vacuumPower", "mop", levels), levels);
-  assert.deepEqual(levelOptionsFor("mopIntensity", "vacuum", levels), levels);
+const DEFAULTS = Object.freeze({ mode: "mop", vacuumPower: "high", mopIntensity: "low", mopRoute: "deep", passes: 2, settingsPolicy: "strict", configured: true });
+
+test("a new draft starts from the job defaults with exactly the settings its mode uses", async () => {
+  const { createDraft, validateDraft, settingsForMode } = await load();
+  const draft = createDraft({ jobDefaults: DEFAULTS });
+  assert.deepEqual([draft.mode, draft.vacuumPower, draft.mopIntensity, draft.mopRoute, draft.passes, draft.settingsPolicy], ["mop", null, "low", "deep", 2, "strict"]);
+  assert.equal(validateDraft(draft).dirty, false, "the defaults are the baseline");
+  assert.deepEqual(settingsForMode("vac_and_mop"), ["vacuumPower", "mopIntensity", "mopRoute"]);
+  assert.deepEqual(settingsForMode("polish"), []);
+  const template = createDraft({ kind: "template", jobDefaults: DEFAULTS });
+  assert.equal(template.mopIntensity, "low");
+});
+
+test("a new mode keeps the settings both modes use and takes the defaults for the others", async () => {
+  const { createDraft, applyDraftChange, validateDraft } = await load();
+  let draft = applyDraftChange(createDraft({ jobDefaults: DEFAULTS }), "mopIntensity", "high");
+  draft = applyDraftChange(draft, "mode", "vacuum_and_mop");
+  assert.deepEqual([draft.vacuumPower, draft.mopIntensity, draft.mopRoute], ["high", "high", "deep"]);
+  draft = applyDraftChange(draft, "mode", "vacuum");
+  assert.deepEqual([draft.vacuumPower, draft.mopIntensity, draft.mopRoute], ["high", null, null]);
+  assert.equal(applyDraftChange(createDraft(), "mode", "mop").mopIntensity, null, "without defaults the integration fills them");
+  const wrong = applyDraftChange(applyDraftChange(createDraft({ jobDefaults: DEFAULTS }), "roomIds", ["room-a"]), "mopRoute", "medium");
+  assert.equal(validateDraft(wrong).errors.mopRoute, "unsupported_cleaning_preference");
+  assert.equal(validateDraft(applyDraftChange(wrong, "mopRoute", "deep_plus")).valid, true);
+});
+
+test("an edited job keeps its own settings and a mode change sends only what the new mode uses", async () => {
+  const { createDraft, applyDraftChange, draftToUpdatePatch, normalizeJob } = await load();
+  const job = normalizeJob(W.wireJob({ mode: "vacuum", vacuum_power: "maximum" }));
+  const draft = createDraft({ target: job, jobDefaults: DEFAULTS });
+  assert.equal(draft.vacuumPower, "maximum");
+  assert.deepEqual({ ...draftToUpdatePatch(applyDraftChange(draft, "mode", "mop")) }, { mode: "mop", mop_intensity: "low", mop_route: "deep" });
+});
+
+test("the preview asks with what decides offers and a start, never with texts", async () => {
+  const { createDraft, applyDraftChange, draftToPreview } = await load();
+  let draft = applyDraftChange(createDraft({ jobDefaults: { ...DEFAULTS, settingsPolicy: "best_effort" } }), "note", "Rug up");
+  assert.deepEqual({ ...draftToPreview(draft) }, { mode: "mop", passes: 2, settings_policy: "best_effort", required_on: [], required_off: [] });
+  draft = applyDraftChange(applyDraftChange(draft, "roomIds", ["room-a"]), "settingsPolicy", "strict");
+  assert.deepEqual({ ...draftToPreview(draft) }, { areas: ["room-a"], mode: "mop", mop_intensity: "low", mop_route: "deep", passes: 2, settings_policy: "strict", required_on: [], required_off: [] });
+  assert.equal(draftToPreview(applyDraftChange(draft, "allRooms", true)).areas, "all");
 });
 
 test("the create intent omits unset optional fields and uses wire names", async () => {
@@ -70,7 +98,9 @@ test("the create intent omits unset optional fields and uses wire names", async 
   let draft = applyDraftChange(createDraft(), "roomIds", ["room-kitchen"]);
   draft = applyDraftChange(draft, "name", "  ");
   draft = applyDraftChange(draft, "mopRoute", "deep");
-  assert.deepEqual({ ...draftToIntent(draft) }, { areas: ["room-kitchen"], mode: "vacuum", mop_route: "deep", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort" });
+  assert.deepEqual({ ...draftToIntent(draft) }, { areas: ["room-kitchen"], mode: "vacuum", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort" }, "an unset setting and one the mode does not use stay out");
+  draft = applyDraftChange(draft, "vacuumPower", "maximum_plus");
+  assert.equal(draftToIntent(draft).vacuum_power, "maximum_plus");
 });
 
 test("an update patch carries only changed fields and clears an optional one with null", async () => {
@@ -95,6 +125,8 @@ test("all rooms is a choice of its own: it needs no room, travels as \"all\" and
   assert.equal(draftToIntent(all).areas, "all");
   const job = createDraft({ target: normalizeJob(W.wireJob()) });
   assert.equal(job.allRooms, false, "a job holds the rooms it was created with");
+  const everything = createDraft({ target: normalizeJob(W.wireJob({ all_rooms: true })) });
+  assert.deepEqual([everything.allRooms, { ...draftToUpdatePatch(everything) }], [true, {}], "a job created for all rooms keeps that choice");
   assert.deepEqual({ ...draftToUpdatePatch(applyDraftChange(job, "allRooms", true)) }, { areas: "all" });
   assert.deepEqual({ ...draftToUpdatePatch(applyDraftChange(applyDraftChange(job, "allRooms", true), "allRooms", false)) }, {});
   const template = createDraft({ kind: "template", target: normalizeTemplate(W.wireTemplate({ intent: { areas: "all", mode: "vacuum" } })) });
@@ -113,7 +145,7 @@ test("a template draft wraps the intent and needs a name", async () => {
   draft = applyDraftChange(draft, "enabled", false);
   assert.deepEqual(JSON.parse(JSON.stringify(draftToTemplate(draft))), {
     name: "Daily vacuum",
-    intent: { areas: ["room-kitchen"], mode: "vacuum", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort" },
+    intent: { areas: ["room-kitchen"], mode: "vacuum", vacuum_power: "standard", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort" },
     enabled: false,
     automatic: true,
     template_id: "template-1",

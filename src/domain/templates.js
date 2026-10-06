@@ -1,7 +1,7 @@
 // Stored job templates. A template's intent uses the same field set as a job intent; manual
 // instantiation creates an independent job. See internal dev doc §7 "Vorlagen".
 
-import { PASS_MAX, PASS_MIN, canonicalizeMode, isMopRoute, isSemanticLevel, isSettingsPolicy } from "./job-schema.js";
+import { PASS_MAX, PASS_MIN, canonicalizeMode, isMopRoute, isSettingsPolicy, isVacuumLevel, isWaterLevel } from "./job-schema.js";
 import { enumerated, instant, integer, isRecord, strings, text } from "./wire-values.js";
 
 // The integration's token for "every room a robot can clean when the job is created".
@@ -19,11 +19,10 @@ export function normalizeIntent(wire) {
     allRooms,
     mode,
     name: text(wire.name),
-    vacuumPower: enumerated(wire.vacuum_power, isSemanticLevel),
-    mopIntensity: enumerated(wire.mop_intensity, isSemanticLevel),
+    vacuumPower: enumerated(wire.vacuum_power, isVacuumLevel),
+    mopIntensity: enumerated(wire.mop_intensity, isWaterLevel),
     mopRoute: enumerated(wire.mop_route, isMopRoute),
     passes: passes !== null && passes >= PASS_MIN && passes <= PASS_MAX ? passes : PASS_MIN,
-    source: text(wire.source),
     reason: text(wire.reason),
     note: text(wire.note),
     dedupeKey: text(wire.dedupe_key),

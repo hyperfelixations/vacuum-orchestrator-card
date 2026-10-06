@@ -136,14 +136,87 @@ test("editing sends only the changed field; a refusal keeps the editor open with
   card.unmount();
 });
 
-test("cancelling the running job asks first and sends only after confirming", async () => {
+test("cancelling the running job asks where the robot goes and sends only after confirming", async () => {
   const card = await mountCard({ env });
   await card.click(`${row("job-running")} [data-action="cancel-job"]`);
   assert.equal(card.services("cancel_job").length, 0);
   assert.equal(card.root.querySelector(".voc-overlay").getAttribute("role"), "dialog");
+  const checked = () => card.root.querySelector('.voc-radios [aria-checked="true"]').dataset.value;
+  assert.equal(checked(), "return_to_dock");
+  await card.press('.voc-radios [aria-checked="true"]', "ArrowDown");
+  assert.equal(checked(), "stay", "arrow keys move the choice");
+  const actions = card.all(".voc-overlay-actions > button").map((node) => node.dataset.action);
+  assert.deepEqual(actions, ["back", "confirm-cancel"], "going back on the left, the cancel on the right");
+  await card.click('[data-action="confirm-cancel"]');
+  await card.settle(32);
+  assert.deepEqual(card.services("cancel_job").map((call) => call.data), [{ job_id: "job-running", after_cancel: "stay" }]);
+  card.unmount();
+});
+
+test("ending the queue lets the running job finish by default and then shows the end", async () => {
+  const card = await mountCard({ env });
+  assert.equal(card.text(".voc-queue-end"), "End queue");
+  await card.click(".voc-queue-end");
+  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:queue-end");
+  assert.deepEqual(card.all(".voc-radios [role=radio]").map((node) => [node.dataset.value, node.getAttribute("aria-checked")]), [["finish", "true"], ["cancel_return", "false"], ["cancel_stay", "false"]]);
+  await card.click('[data-action="confirm-end-queue"]');
+  await card.settle(32);
+  assert.deepEqual(card.services("end_queue").map((call) => call.data), [{}]);
+  assert.equal(card.text(".voc-panel-mode"), "Queue ending · started jobs finish");
+  assert.equal(card.root.querySelector(".voc-queue-end"), null);
+  assert.equal(card.text(".voc-queue-control"), "Resume queue");
+  card.unmount();
+});
+
+test("ending a queue without started jobs only confirms", async () => {
+  const card = await mountCard({ env, scenario: "windingDown" });
+  await card.click(".voc-queue-end");
+  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:confirm");
   await card.click('[data-action="confirm-command"]');
   await card.settle(32);
-  assert.deepEqual(card.services("cancel_job").map((call) => call.data), [{ job_id: "job-running" }]);
+  assert.deepEqual(card.services("end_queue").map((call) => call.data), [{}]);
+  assert.equal(card.text(".voc-queue-control"), "Start queue");
+  card.unmount();
+});
+
+test("a new job the integration can start now is started from the editor in one step", async () => {
+  const card = await mountCard({ env, scenario: "ending" });
+  await card.click(".voc-primary-action");
+  assert.equal(card.root.querySelector('[data-action="start-draft"]'), null, "without rooms nothing can start");
+  await card.click('[data-field-control="chips"] [data-value="room-hall"]');
+  await card.settle(32);
+  await card.click('[data-action="start-draft"]');
+  await card.settle(32);
+  const [call] = card.services("create_job");
+  assert.deepEqual([call.data.areas, call.data.start], [["room-hall"], true]);
+  assert.match(card.text(".voc-notice"), /Start requested/);
+  card.unmount();
+});
+
+test("the editor shows the settings the mode uses and offers what the robots can do", async () => {
+  const card = await mountCard({ env });
+  await card.click(".voc-primary-action");
+  const settings = () => card.all('[data-key="group:settings"] .voc-field').map((node) => node.dataset.key);
+  assert.deepEqual(settings(), ["field:vacuumPower", "field:passes"]);
+  await card.click('[data-key="field:mode"] [data-value="mop"]');
+  assert.deepEqual(settings(), ["field:mopIntensity", "field:mopRoute", "field:passes"]);
+  await card.click('[data-field-control="chips"] [data-value="room-kitchen"]');
+  await card.settle(32);
+  assert.ok(card.queries("preview_job").length > 0, "the integration is asked what it offers");
+  assert.equal(card.text('[data-key="field:mopIntensity"] [aria-checked="true"]'), "Medium");
+  card.unmount();
+});
+
+test("a job is saved as a template from its detail page under the name it shows", async () => {
+  const card = await mountCard({ env });
+  await card.click(`${row("job-bathroom")} .voc-job-main`);
+  await card.click('[data-action="open-save-template"]');
+  assert.equal(card.root.querySelector('[data-field="overlay:name"]').value, "Bathroom");
+  await card.type('[data-field="overlay:name"]', "Bathroom weekly");
+  await card.click('[data-action="save-job-template"]');
+  await card.settle(32);
+  assert.deepEqual(card.commands("save_job_as_template").map((message) => message.parameters), [{ job_id: "job-bathroom", name: "Bathroom weekly", automatic: false }]);
+  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:job-detail", "back on the detail page");
   card.unmount();
 });
 

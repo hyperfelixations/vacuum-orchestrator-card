@@ -2,11 +2,12 @@
 // from the affordance table; the readiness explanation is the integration's, ordered.
 
 import { jobAffordances, jobTarget } from "../../domain/affordances.js";
-import { isActiveState, isTerminalState } from "../../domain/job-schema.js";
+import { SETTING_FIELDS, isActiveState, isTerminalState } from "../../domain/job-schema.js";
 import { readinessProblems } from "../../domain/readiness.js";
-import { entityName, jobTitle, list, roomName } from "../common/lookups.js";
-import { jobStateLabel, levelLabel, modeLabel, modeShortLabel, moment, number, outcomeText, readinessLabel, readinessReasonText, routeLabel, t } from "../common/texts.js";
+import { entityName, jobTitle, list, roomName, slotData } from "../common/lookups.js";
+import { jobStateLabel, modeLabel, modeShortLabel, moment, number, outcomeText, readinessLabel, readinessReasonText, settingLabel, settingName, t } from "../common/texts.js";
 
+export const SETTING_ICONS = Object.freeze({ vacuumPower: "mdi:fan", mopIntensity: "mdi:water", mopRoute: "mdi:map-marker-path" });
 export const MODE_ICONS = Object.freeze({ vacuum: "mdi:robot-vacuum", mop: "mdi:water-outline", vacuum_and_mop: "mdi:robot-vacuum-variant", vacuum_then_mop: "mdi:transfer-right" });
 
 export function stateTone(state) {
@@ -39,12 +40,14 @@ export function readinessReasons(readiness, { index, model, texts }) {
   return [...new Set(reasons)];
 }
 
-export function settingChips(job, texts) {
+// Every job carries each setting its mode uses. A row names only those that differ from the
+// integration's defaults (`defaults`); the detail page names all of them.
+export function settingChips(job, texts, { defaults = null } = {}) {
   const chips = [];
-  if (Number.isInteger(job.passes) && job.passes > 1) chips.push({ key: "passes", text: t(texts, "job.passes", { count: number(texts, job.passes) }) });
-  if (job.vacuumPower) chips.push({ key: "vacuumPower", icon: "mdi:fan", text: levelLabel(texts, job.vacuumPower) });
-  if (job.mopIntensity) chips.push({ key: "mopIntensity", icon: "mdi:water", text: levelLabel(texts, job.mopIntensity) });
-  if (job.mopRoute) chips.push({ key: "mopRoute", icon: "mdi:map-marker-path", text: routeLabel(texts, job.mopRoute) });
+  if (Number.isInteger(job.passes) && job.passes > 1) chips.push({ key: "passes", label: t(texts, "field.passes"), text: t(texts, "job.passes", { count: number(texts, job.passes) }) });
+  for (const field of SETTING_FIELDS) {
+    if (job[field] && job[field] !== defaults?.[field]) chips.push({ key: field, icon: SETTING_ICONS[field], label: settingName(texts, field), text: settingLabel(texts, field, job[field]) });
+  }
   if (job.settingsPolicy === "strict") chips.push({ key: "settingsPolicy", icon: "mdi:lock-outline", text: t(texts, "policy.strict") });
   return chips;
 }
@@ -75,8 +78,7 @@ export function buildJobRow(job, { model, texts, index, context, total = 0, time
     stateLabel: jobStateLabel(texts, job.state === "unknown" ? "unknown" : job.state),
     stateTone: stateTone(job.state),
     readiness: readiness ? { state: readiness.state, label: readinessLabel(texts, readiness.state), reasons, summary: reasons[0] || null, more: Math.max(0, reasons.length - 1) } : null,
-    settings: settingChips(job, texts),
-    source: job.source,
+    settings: settingChips(job, texts, { defaults: slotData(model, "queue")?.jobDefaults }),
     time: moment(texts, job.updatedAt, timeFormat, model.nowMs),
     outcome: outcomeText(texts, job.failureCode),
     pending: list(model.pending).includes(jobTarget(job.jobId)),

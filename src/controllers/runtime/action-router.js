@@ -7,7 +7,10 @@ import { CREATE_TARGET, QUEUE_TARGET, jobTarget, robotTarget, roomTarget, templa
 import { applyDraftChange, createDraft, draftToIntent, draftToTemplate, draftToUpdatePatch, toggleRoom, validateDraft } from "../../domain/job-draft.js";
 import { createRoomDraft, newBinding, newRequirement, roomDraftToPatch, updateRoomDraft, validateRoomDraft } from "../../domain/room-draft.js";
 import { createRobotDraft, robotDraftToConfiguration, updateRobotDraft, validateRobotDraft } from "../../domain/robot-draft.js";
-import { GRACE_MAX_MINUTES } from "../../presentation/overlays/dialogs.js";
+import { AFTER_CANCEL_CHOICES, GRACE_MAX_MINUTES, queueEndChoices } from "../../presentation/overlays/dialogs.js";
+import { shownSettings } from "../../presentation/overlays/job-editor.js";
+import { jobTitle, roomIndex } from "../../presentation/common/lookups.js";
+import { PASS_MAX, PASS_MIN, SETTING_FIELDS, SETTING_WIRE_NAMES, canonicalizeMode, isSettingValue, isSettingsPolicy } from "../../domain/job-schema.js";
 
 // Each editor overlay names the reducer and the validator of its draft.
 const DRAFT_REDUCERS = Object.freeze({
@@ -22,6 +25,13 @@ const DRAFT_VALIDATORS = Object.freeze({
 });
 
 const QUEUE_SCOPES = Object.freeze(["queue", "openJobs", "jobLog", "job", "execution", "trace"]);
+const STARTED_STATES = Object.freeze(["dispatching", "running"]);
+// The end of a queue run per choice; finishing is the integration's default.
+const QUEUE_END = Object.freeze({
+  finish: {},
+  cancel_return: { running_jobs: "cancel", after_cancel: "return_to_dock" },
+  cancel_stay: { running_jobs: "cancel", after_cancel: "stay" },
+});
 const ROOM_SCOPES = Object.freeze(["rooms", "queue", "openJobs", "job", "execution"]);
 const ROBOT_SCOPES = Object.freeze(["robots", "candidates", "rooms", "queue", "openJobs", "execution", "registry"]);
 const ALL = "all";
@@ -92,7 +102,10 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     return findIn(getModel(), "rooms", "roomId", roomId);
   }
 
-  async function saveDraft() {
+  const jobDefaults = () => getModel()?.slots?.queue?.data?.jobDefaults ?? null;
+
+  // `start`: create the job and start it at once; nothing is created if it cannot start.
+  async function saveDraft({ start = false } = {}) {
     const overlay = ui.overlay;
     if (!overlay?.draft) return;
     const validation = validateDraft(overlay.draft);
@@ -101,18 +114,38 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       return;
     }
     const { kind, id } = overlay.draft.meta;
+    // A new draft is saved with the rungs the editor shows as chosen.
+    let draft = overlay.draft;
+    if (!id) for (const [field, value] of Object.entries(shownSettings(draft, getModel()?.slots?.preview?.data ?? null))) draft = applyDraftChange(draft, field, value);
     if (kind === "template") {
-      await run("save_template", draftToTemplate(overlay.draft), { target: id ? templateTarget(id) : CREATE_TARGET, invalidates: ["templates"], closeOverlay: true, success: { key: "notice.templateSaved" } });
+      await run("save_template", draftToTemplate(draft), { target: id ? templateTarget(id) : CREATE_TARGET, invalidates: ["templates"], closeOverlay: true, success: { key: "notice.templateSaved" } });
     } else if (id) {
-      const patch = draftToUpdatePatch(overlay.draft);
+      const patch = draftToUpdatePatch(draft);
       if (!Object.keys(patch).length) {
         ui.closeOverlay();
         return;
       }
       await run("update_job", { job_id: id, ...patch }, { target: jobTarget(id), invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobUpdated" } });
+    } else if (start) {
+      await run("create_job", { ...draftToIntent(draft), start: true }, { target: CREATE_TARGET, invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobStarted" } });
     } else {
-      await run("create_job", draftToIntent(overlay.draft), { target: CREATE_TARGET, invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobCreated" } });
+      await run("create_job", draftToIntent(draft), { target: CREATE_TARGET, invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobCreated" } });
     }
+  }
+
+  // The defaults dialog edits a copy of the integration's defaults on the page itself.
+  function saveJobDefaults() {
+    const overlay = ui.overlay;
+    if (overlay?.kind !== "job-defaults") return null;
+    const mode = canonicalizeMode(overlay.mode);
+    const passes = Number(overlay.passes);
+    if (!mode || !Number.isInteger(passes) || passes < PASS_MIN || passes > PASS_MAX || !isSettingsPolicy(overlay.settingsPolicy) || SETTING_FIELDS.some((field) => !isSettingValue(field, overlay[field]))) {
+      ui.updateOverlay({ submitted: true });
+      return null;
+    }
+    const parameters = { mode, passes, settings_policy: overlay.settingsPolicy };
+    for (const field of SETTING_FIELDS) parameters[SETTING_WIRE_NAMES[field]] = overlay[field];
+    return run("configure_job_defaults", parameters, { target: QUEUE_TARGET, invalidates: ["queue"], closeOverlay: true, success: { key: "notice.jobDefaultsSaved" } });
   }
 
   const handlers = {
@@ -145,11 +178,31 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       return run(command, {}, { target: QUEUE_TARGET, invalidates: ["queue", "openJobs"] });
     },
     "open-job": ({ jobId }) => ui.openOverlay({ kind: "job-detail", jobId }),
-    "create-job": ({ roomIds = null } = {}) => ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "job", defaults: roomIds ? { roomIds } : {} }) }),
+    "create-job": ({ roomIds = null } = {}) => ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "job", defaults: roomIds ? { roomIds } : {}, jobDefaults: jobDefaults() }) }),
     "edit-job": ({ jobId }) => {
       const job = findJob(getModel(), jobId);
-      if (job) ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "job", target: job }) });
+      if (job) ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "job", target: job, jobDefaults: jobDefaults() }) });
     },
+    "open-save-template": ({ jobId }) => {
+      const model = getModel();
+      const job = findJob(model, jobId);
+      if (job) ui.openOverlay({ kind: "save-template", jobId, name: jobTitle(job, roomIndex(model), model), automatic: false });
+    },
+    "save-job-template": () => {
+      const overlay = ui.overlay;
+      if (overlay?.kind !== "save-template") return null;
+      const name = String(overlay.name ?? "").trim();
+      if (!name) {
+        ui.updateOverlay({ submitted: true });
+        return null;
+      }
+      return run("save_job_as_template", { job_id: overlay.jobId, name, automatic: overlay.automatic === true }, { target: jobTarget(overlay.jobId), invalidates: ["templates"], closeOverlay: true, success: { key: "notice.templateSavedFromJob" } });
+    },
+    "open-job-defaults": () => {
+      const defaults = jobDefaults();
+      if (defaults) ui.openOverlay({ kind: "job-defaults", mode: defaults.mode, vacuumPower: defaults.vacuumPower, mopIntensity: defaults.mopIntensity, mopRoute: defaults.mopRoute, passes: defaults.passes, settingsPolicy: defaults.settingsPolicy });
+    },
+    "save-job-defaults": () => saveJobDefaults(),
     "set-field": ({ field, value }) => setValue(field, value),
     "toggle-value": ({ field, value }) => {
       const overlay = ui.overlay;
@@ -187,6 +240,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       setValue(field, Math.min(max, Math.max(min, base + step)));
     },
     "save-draft": () => saveDraft(),
+    "start-draft": () => saveDraft({ start: true }),
     "move-job": ({ jobId, direction }) => run("move_job", { job_id: jobId, direction }, { target: jobTarget(jobId), invalidates: ["queue"] }),
     "start-job": ({ jobId, robotId = null, choose = true }) => {
       const robots = getModel()?.slots?.robots?.data?.items || [];
@@ -197,10 +251,41 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       const parameters = robotId ? { job_id: jobId, robot_id: robotId } : { job_id: jobId };
       return run("start_job", parameters, { target: jobTarget(jobId), invalidates: QUEUE_SCOPES, closeOverlay: ui.overlay?.kind === "start-job", success: { key: "notice.jobStarted" } });
     },
-    "cancel-job": ({ jobId }) => confirmOr(
-      { operation: "cancel_job", parameters: { job_id: jobId }, options: { target: jobTarget(jobId), invalidates: QUEUE_SCOPES } },
-      { titleKey: "confirm.cancelJob.title", textKey: "confirm.cancelJob.text", confirmKey: "confirm.cancelJob.confirm", icon: "mdi:stop-circle-outline", jobId }
-    ),
+    // A started job asks what its robot does next; a waiting one is only withdrawn. Without the
+    // question the integration's default applies: the robot stays.
+    "cancel-job": ({ jobId }) => {
+      const command = { operation: "cancel_job", parameters: { job_id: jobId }, options: { target: jobTarget(jobId), invalidates: QUEUE_SCOPES } };
+      const started = STARTED_STATES.includes(findJob(getModel(), jobId)?.state);
+      const returns = (getModel()?.slots?.robots?.data?.items || []).some((robot) => robot.capabilities?.supports?.returnToDock === true);
+      if (!started || !returns || getConfig()?.confirm_destructive === false) {
+        return confirmOr(command, { titleKey: "confirm.cancelJob.title", textKey: "confirm.cancelJob.text", confirmKey: "confirm.cancelJob.confirm", icon: "mdi:stop-circle-outline", jobId });
+      }
+      ui.openOverlay({ kind: "cancel-job", jobId, afterCancel: AFTER_CANCEL_CHOICES[0] });
+      return null;
+    },
+    "confirm-cancel": () => {
+      const overlay = ui.overlay;
+      if (overlay?.kind !== "cancel-job" || !AFTER_CANCEL_CHOICES.includes(overlay.afterCancel)) return null;
+      ui.closeOverlay();
+      return run("cancel_job", { job_id: overlay.jobId, after_cancel: overlay.afterCancel }, { target: jobTarget(overlay.jobId), invalidates: QUEUE_SCOPES });
+    },
+    // Ending asks how started jobs end; without any it only confirms.
+    "end-queue": () => {
+      const command = { operation: "end_queue", parameters: {}, options: { target: QUEUE_TARGET, invalidates: QUEUE_SCOPES } };
+      const started = (getModel()?.slots?.openJobs?.data?.jobs || []).some((job) => STARTED_STATES.includes(job.state));
+      if (!started || getConfig()?.confirm_destructive === false) {
+        return confirmOr(command, { titleKey: "confirm.endQueue.title", textKey: "confirm.endQueue.text", confirmKey: "confirm.endQueue.confirm", icon: "mdi:stop", tone: "primary" });
+      }
+      ui.openOverlay({ kind: "queue-end", choice: "finish" });
+      return null;
+    },
+    "confirm-end-queue": () => {
+      const overlay = ui.overlay;
+      if (overlay?.kind !== "queue-end" || !queueEndChoices(getModel()).includes(overlay.choice)) return null;
+      ui.closeOverlay();
+      return run("end_queue", QUEUE_END[overlay.choice], { target: QUEUE_TARGET, invalidates: QUEUE_SCOPES });
+    },
+    "return-robot": ({ robotId }) => run("return_robot", { robot_id: robotId }, { target: robotTarget(robotId), invalidates: ["robots"], success: { key: "notice.robotReturning" } }),
     // Deleting from the detail page or the editor leaves every page: they all showed that job.
     "delete-job": ({ jobId }) => confirmOr(
       { operation: "delete_job", parameters: { job_id: jobId }, options: { target: jobTarget(jobId), invalidates: QUEUE_SCOPES, closeOverlay: ["job-detail", "job-editor"].includes(ui.overlay?.kind) ? "all" : false } },
@@ -220,10 +305,10 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       return run(command.operation, command.parameters, command.options);
     },
     "create-from-template": ({ templateId }) => run("create_job_from_template", { template_id: templateId }, { target: templateTarget(templateId), invalidates: QUEUE_SCOPES, success: { key: "notice.jobCreated" } }),
-    "create-template": () => ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "template" }) }),
+    "create-template": () => ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "template", jobDefaults: jobDefaults() }) }),
     "edit-template": ({ templateId }) => {
       const template = findIn(getModel(), "templates", "templateId", templateId);
-      if (template) ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "template", target: template }) });
+      if (template) ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "template", target: template, jobDefaults: jobDefaults() }) });
     },
     "remove-template": ({ templateId }) => confirmOr(
       { operation: "remove_template", parameters: { template_id: templateId }, options: { target: templateTarget(templateId), invalidates: ["templates"], closeOverlay: ui.overlay?.kind === "job-editor", success: { key: "notice.templateRemoved" } } },

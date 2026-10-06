@@ -1,11 +1,11 @@
-// Vacuum Orchestrator API V2 records in the exact shapes the integration serializes them.
+// Vacuum Orchestrator API V3 records in the exact shapes the integration serializes them.
 // Provenance and field sources: test/fixtures/voi/README.md. Every layer below the backend
 // port is fed from here, so a contract change shows up in one place. Loads in Node through
 // `require` and in the browser harness as a plain script (`globalThis.VocWire`).
 (function (root) {
 "use strict";
 
-const VOI_API_VERSION = 2;
+const VOI_API_VERSION = 3;
 const DOMAIN = "vacuum_orchestrator";
 const { EXCEPTIONS } = typeof module !== "undefined" && module.exports ? require("./exceptions.js") : root.VocExceptions;
 
@@ -34,8 +34,25 @@ function wireRequirementResult(overrides = {}) {
   };
 }
 
+// A job and a template carry exactly the settings their mode uses (`settings_for_mode`); an
+// unnamed one takes the integration's initial default.
+const SETTING_DEFAULTS = Object.freeze({ vacuum_power: "standard", mop_intensity: "medium", mop_route: "standard" });
+const MODE_SETTINGS = Object.freeze({ vacuum: ["vacuum_power"], mop: ["mop_intensity", "mop_route"], vacuum_and_mop: Object.keys(SETTING_DEFAULTS), vacuum_then_mop: Object.keys(SETTING_DEFAULTS) });
+
+const MODE_ALIASES = Object.freeze({ vac: "vacuum", vac_and_mop: "vacuum_and_mop", vac_then_mop: "vacuum_then_mop" });
+
+function modeSettings(intent, { omitUnused = false } = {}) {
+  const used = MODE_SETTINGS[MODE_ALIASES[intent.mode] ?? intent.mode] || [];
+  const result = {};
+  for (const name of Object.keys(SETTING_DEFAULTS)) {
+    if (used.includes(name)) result[name] = intent[name] ?? SETTING_DEFAULTS[name];
+    else if (!omitUnused) result[name] = null;
+  }
+  return result;
+}
+
 function wireJob(overrides = {}) {
-  return {
+  const job = {
     api_version: VOI_API_VERSION,
     job_id: "job-1",
     revision: 1,
@@ -44,11 +61,11 @@ function wireJob(overrides = {}) {
     areas: ["kitchen"],
     room_ids: ["room-kitchen"],
     mode: "vacuum",
-    vacuum_power: null,
+    vacuum_power: "standard",
     mop_intensity: null,
     mop_route: null,
     passes: 1,
-    source: null,
+    all_rooms: false,
     reason: null,
     note: null,
     dedupe_key: null,
@@ -58,8 +75,49 @@ function wireJob(overrides = {}) {
     created_at: "2026-09-17T00:00:00+00:00",
     updated_at: "2026-09-17T00:00:01+00:00",
     active_attempt_id: null,
+    origin: { kind: "manual", template_id: null },
     retries_job_id: null,
     failure_code: null,
+    after_cancel: null,
+    ...overrides,
+  };
+  return { ...job, ...modeSettings(job) };
+}
+
+function wireJobDefaults(overrides = {}) {
+  return {
+    mode: "vacuum",
+    vacuum_power: "standard",
+    mop_intensity: "medium",
+    mop_route: "standard",
+    passes: 1,
+    settings_policy: "best_effort",
+    configured: false,
+    ...overrides,
+  };
+}
+
+function wireResolvedSetting(overrides = {}) {
+  return { name: "vacuum_power", requested: "standard", applied: "standard", ...overrides };
+}
+
+// `preview_job`: per setting the rungs on offer for the draft; per robot and phase whether it
+// could start now.
+function wirePreview(overrides = {}) {
+  return {
+    api_version: VOI_API_VERSION,
+    mode: "vacuum",
+    passes: 1,
+    settings_policy: "best_effort",
+    settings: {
+      vacuum_power: {
+        initial: "standard",
+        options: ["low", "standard", "high", "maximum"].map((value) => ({ value, supported_by_all: true })),
+      },
+    },
+    robots: [{ robot_id: "robot-rocky", operation: "vacuum", startable_now: true, reason: null, settings: [wireResolvedSetting()] }],
+    startable_now: true,
+    reason: null,
     ...overrides,
   };
 }
@@ -71,6 +129,7 @@ function wireQueueRun(overrides = {}) {
     active: true,
     idle_since: null,
     deadline: null,
+    ending: false,
     completed_at: null,
     ...overrides,
   };
@@ -88,6 +147,7 @@ function wireQueuePage(jobs = [], overrides = {}) {
     attention_count: 0,
     recovery_targets: [],
     queue_grace_seconds: 900,
+    job_defaults: wireJobDefaults(),
     queue_run: null,
     total: jobs.length,
     offset: 0,
@@ -219,6 +279,7 @@ function wireRobotConfiguration(overrides = {}) {
     cancel_timeout_seconds: 120,
     settle_seconds: 30,
     settings_timeout_seconds: 45,
+    return_timeout_seconds: 900,
     ...overrides,
   };
 }
@@ -230,9 +291,13 @@ function wireRobotCapabilities(overrides = {}) {
     targets: { "room-kitchen": ["16"], "room-hall": ["17"] },
     map_context: "map-0",
     maximum_passes: 3,
-    vacuum_levels: ["high", "low", "maximum", "standard"],
-    water_levels: ["high", "low", "medium"],
-    mop_routes: ["deep", "standard"],
+    settings: {
+      vacuum_power: ["low", "standard", "high", "maximum"],
+      mop_intensity: ["low", "medium", "high"],
+      mop_route: ["standard", "deep"],
+    },
+    unavailable_settings: [],
+    supports: { stop: true, return_to_dock: true, pause: false },
     ...overrides,
   };
 }
@@ -264,16 +329,18 @@ function wireCandidate(overrides = {}) {
 }
 
 function wireTemplate(overrides = {}) {
-  return {
+  const template = {
     template_id: "template-1",
     name: "Daily vacuum",
-    intent: { areas: ["room-kitchen"], mode: "vacuum", passes: 1, settings_policy: "best_effort", required_on: [], required_off: [] },
+    intent: { areas: ["room-kitchen"], mode: "vacuum", vacuum_power: "standard", passes: 1, settings_policy: "best_effort", required_on: [], required_off: [] },
     enabled: true,
     automatic: false,
     updated_at: "2026-09-16T08:00:00+00:00",
     suppressed_room_ids: [],
     ...overrides,
   };
+  const intent = Object.fromEntries(Object.entries(template.intent).filter(([key]) => !(key in SETTING_DEFAULTS)));
+  return { ...template, intent: { ...intent, ...modeSettings(template.intent, { omitUnused: true }) } };
 }
 
 function wireRun(overrides = {}) {
@@ -297,8 +364,7 @@ function wireExecutionRobot(overrides = {}) {
     readiness: wireReadiness(),
     eligible: true,
     eligibility_reason: null,
-    applied_preferences: [],
-    omitted_preferences: [],
+    settings: [],
     ...overrides,
   };
 }
@@ -311,8 +377,7 @@ function wireAttempt(overrides = {}) {
     state: "start_confirmed",
     quality: null,
     failure_code: null,
-    applied_preferences: [],
-    omitted_preferences: [],
+    settings: [],
     ...overrides,
   };
 }
@@ -356,7 +421,7 @@ function wireDiagnostics(overrides = {}) {
   return {
     version: "0.1.0",
     api_version: VOI_API_VERSION,
-    store_version: 3,
+    store_version: 4,
     commit_id: 1,
     runtime_sequence: 1,
     runtime_id: "runtime-1",
@@ -434,6 +499,9 @@ const api = {
   wireReadiness,
   wireRequirementResult,
   wireJob,
+  wireJobDefaults,
+  wireResolvedSetting,
+  wirePreview,
   wireQueueRun,
   wireQueuePage,
   wireJobListPage,

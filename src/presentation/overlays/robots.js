@@ -7,7 +7,7 @@ import { OPERATIONS, ROBOT_OPTION_MAPS, ROBOT_ROLES, ROBOT_ROLE_DOMAINS, ROBOT_T
 import { validateRobotDraft } from "../../domain/robot-draft.js";
 import { isConfiguredCandidate } from "../../domain/robots.js";
 import { entityName, list, robotsOf, slotData } from "../common/lookups.js";
-import { adapterLabel, levelLabel, operationLabel, routeLabel, t } from "../common/texts.js";
+import { adapterLabel, operationLabel, settingLabel, t } from "../common/texts.js";
 import { entityField, errorText, field } from "./editor-fields.js";
 
 export function buildRobotAdd({ model, texts, context }) {
@@ -68,7 +68,7 @@ function roleRow(texts, model, draft, overlay, role, errors, live) {
 }
 
 function optionGroups(texts, draft) {
-  const labels = { mode_options: (key) => operationLabel(texts, key), vacuum_levels: (key) => levelLabel(texts, key), water_levels: (key) => levelLabel(texts, key), mop_routes: (key) => routeLabel(texts, key) };
+  const labels = { mode_options: (key) => operationLabel(texts, key), vacuum_levels: (key) => settingLabel(texts, "vacuumPower", key), water_levels: (key) => settingLabel(texts, "mopIntensity", key), mop_routes: (key) => settingLabel(texts, "mopRoute", key) };
   return Object.entries(ROBOT_OPTION_MAPS).map(([name, keys]) => {
     const entries = draft.optionMaps[name] || {};
     const shown = keys || Object.keys(entries);

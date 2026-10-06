@@ -20,6 +20,15 @@ test("a complete record keeps every field in camelCase with instants as epoch mi
   assert.equal(job.createdAt, Date.parse("2026-09-17T00:00:00Z"));
   assert.equal(job.readiness.state, "ready");
   assert.ok(Object.isFrozen(job) && Object.isFrozen(job.readiness));
+  assert.deepEqual([job.allRooms, { ...job.origin }, job.afterCancel], [false, { kind: "manual", templateId: null }, null]);
+});
+
+test("the origin, the all-rooms choice and the cancel choice are the integration's", async () => {
+  const { normalizeJob } = await load();
+  const job = normalizeJob(W.wireJob({ state: "canceling", all_rooms: true, origin: { kind: "automatic", template_id: "t-1" }, after_cancel: "return_to_dock" }));
+  assert.deepEqual([job.allRooms, { ...job.origin }, job.afterCancel], [true, { kind: "automatic", templateId: "t-1" }, "return_to_dock"]);
+  const odd = normalizeJob(W.wireJob({ origin: { kind: "dashboard" }, after_cancel: "fly_home", vacuum_power: "medium" }));
+  assert.deepEqual([odd.origin, odd.afterCancel, odd.vacuumPower], [null, null, null]);
 });
 
 test("room ids are canonical; without them the area aliases stand in", async () => {

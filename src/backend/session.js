@@ -25,6 +25,8 @@ const HOME_ASSISTANT_SCOPES = new Set(["registry", "manifest", "candidates", "er
 // Served by Home Assistant from the integration's files: needed to word why it is not ready.
 const ANY_PHASE_SCOPES = new Set(["errorTexts"]);
 const ENTITY_REGISTRY_SCOPES = Object.freeze(["registry", "candidates"]);
+// Keyed by an editor draft: a key nobody asks for any more is never asked for again.
+const DRAFT_SCOPES = new Set(["preview"]);
 
 const LOAD_FAILED_CODES = new Set(["orchestrator_not_loaded", "orchestrator_not_initialized", "orchestrator_shutting_down", "multiple_orchestrator_entries_loaded"]);
 
@@ -367,6 +369,8 @@ export function createSession({ transport, platform, getHass } = {}) {
     const previous = demands.get(owner);
     if (previous && previous.size === keys.size && [...keys].every((key) => previous.has(key))) return;
     demands.set(owner, keys);
+    const demanded = demandedKeys();
+    for (const [key, scope] of scopes) if (DRAFT_SCOPES.has(scope.name) && !demanded.has(key) && scope.status !== "loading") scopes.delete(key);
     refreshDemanded();
   }
 

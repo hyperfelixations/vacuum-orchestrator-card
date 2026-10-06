@@ -31,6 +31,22 @@ test("the wait time is changed in minutes, sent in seconds, and the page returns
   card.unmount();
 });
 
+test("the job defaults are changed on their own page and shown again from the integration's answer", async () => {
+  const card = await mountCard({ env, config: { start_view: "settings" } });
+  assert.equal(card.text('[data-key="built-in"]'), "Built-in defaults");
+  await card.click('[data-action="open-job-defaults"]');
+  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:job-defaults");
+  await card.click('[data-key="field:overlay:mode"] [data-value="mop"]');
+  await card.click('[data-key="field:overlay:mopRoute"] [data-value="deep_plus"]');
+  await card.click('[data-action="save-job-defaults"]');
+  await card.settle(32);
+  assert.deepEqual(card.commands("configure_job_defaults").map((message) => message.parameters), [{ mode: "mop", passes: 1, settings_policy: "best_effort", vacuum_power: "standard", mop_intensity: "medium", mop_route: "deep_plus" }]);
+  assert.equal(card.root.querySelector(".voc-overlay"), null);
+  assert.equal(card.root.querySelector('[data-key="built-in"]'), null);
+  assert.match(card.text('[data-key="defaults"]'), /Deep\+/);
+  card.unmount();
+});
+
 test("the integration block names the version and opens the integration in Home Assistant", async () => {
   const card = await mountCard({ env, config: { start_view: "settings" } });
   const integration = card.text('[data-key="integration"]');

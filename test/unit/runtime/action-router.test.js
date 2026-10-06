@@ -6,7 +6,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const W = require("../../fixtures/voi/wire.js");
 
-async function setup({ config = {}, answer = () => ({ ok: true, data: null }), model: extra = {} } = {}) {
+async function setup({ config = {}, answer = () => ({ ok: true, data: null }), model: extra = {}, slots = {} } = {}) {
   const { createActionRouter } = await import("../../../src/controllers/runtime/action-router.js");
   const { createUIState } = await import("../../../src/controllers/runtime/ui-state.js");
   const { normalizeJob } = await import("../../../src/domain/job.js");
@@ -31,6 +31,7 @@ async function setup({ config = {}, answer = () => ({ ok: true, data: null }), m
       robots: { data: { items: [normalizeRobot(W.wireRobot()), normalizeRobot(W.wireRobot({ robot_id: "robot-dusty", name: "Dusty" }))] } },
       templates: { data: { items: [normalizeTemplate(W.wireTemplate())] } },
       openJobs: { data: { jobs: [normalizeJob(W.wireJob({ job_id: "job-run", state: "running" }))] } },
+      ...slots,
     },
     robotsLive: { "robot-rocky": { roles: { battery: { entityId: "sensor.rocky_battery" } } } },
     ...extra,
@@ -92,6 +93,57 @@ test("cancelling asks first, and only the confirmation sends", async () => {
   assert.equal(ui.overlay, null);
 });
 
+test("cancelling a started job asks where its robot goes; returning home is the default", async () => {
+  const { router, ui, commands } = await setup({ slots: { openJobs: { data: { jobs: [] } } } });
+  const { normalizeJob } = await import("../../../src/domain/job.js");
+  const { normalizeRobot } = await import("../../../src/domain/robots.js");
+  const running = { data: { jobs: [normalizeJob(W.wireJob({ job_id: "job-run", state: "running" }))] } };
+  const started = await setup({ slots: { openJobs: running } });
+  started.router.handle("cancel-job", { jobId: "job-run" });
+  assert.deepEqual({ ...started.ui.overlay }, { kind: "cancel-job", jobId: "job-run", afterCancel: "return_to_dock" });
+  started.router.handle("set-field", { field: "overlay:afterCancel", value: "stay" });
+  await started.router.handle("confirm-cancel");
+  assert.deepEqual(started.commands[0], { operation: "cancel_job", parameters: { job_id: "job-run", after_cancel: "stay" }, target: "job:job-run", invalidates: ["queue", "openJobs", "jobLog", "job", "execution", "trace"] });
+  assert.equal(started.ui.overlay, null);
+  await started.router.handle("confirm-cancel");
+  assert.equal(started.commands.length, 1, "outside its page nothing is sent");
+  router.handle("cancel-job", { jobId: "job-1" });
+  assert.equal(ui.overlay.kind, "confirm", "a waiting job is only withdrawn");
+  assert.equal(commands.length, 0);
+  const staying = normalizeRobot(W.wireRobot({ capabilities: { ...W.wireRobot().capabilities, supports: { stop: true, return_to_dock: false, pause: false } } }));
+  const plain = await setup({ slots: { openJobs: running, robots: { data: { items: [staying] } } } });
+  plain.router.handle("cancel-job", { jobId: "job-run" });
+  assert.equal(plain.ui.overlay.kind, "confirm", "without a robot that can return there is nothing to choose");
+});
+
+test("ending the queue asks how started jobs end, and only confirms without any", async () => {
+  const { normalizeJob } = await import("../../../src/domain/job.js");
+  const idle = await setup({ slots: { openJobs: { data: { jobs: [] } } } });
+  idle.router.handle("end-queue");
+  assert.deepEqual([idle.ui.overlay.kind, idle.ui.overlay.command.operation, idle.ui.overlay.tone], ["confirm", "end_queue", "primary"]);
+  await idle.router.handle("confirm-command");
+  assert.deepEqual([idle.commands[0].operation, idle.commands[0].parameters, idle.commands[0].target], ["end_queue", {}, "queue"]);
+  const running = await setup({ slots: { openJobs: { data: { jobs: [normalizeJob(W.wireJob({ job_id: "job-run", state: "dispatching" }))] } } } });
+  running.router.handle("end-queue");
+  assert.deepEqual({ ...running.ui.overlay }, { kind: "queue-end", choice: "finish" });
+  running.router.handle("set-field", { field: "overlay:choice", value: "cancel_later" });
+  await running.router.handle("confirm-end-queue");
+  assert.equal(running.commands.length, 0, "an unknown choice sends nothing");
+  running.router.handle("set-field", { field: "overlay:choice", value: "cancel_return" });
+  await running.router.handle("confirm-end-queue");
+  assert.deepEqual(running.commands[0].parameters, { running_jobs: "cancel", after_cancel: "return_to_dock" });
+  const quick = await setup({ config: { confirm_destructive: false }, slots: { openJobs: { data: { jobs: [normalizeJob(W.wireJob({ job_id: "job-run", state: "running" }))] } } } });
+  await quick.router.handle("end-queue");
+  assert.deepEqual([quick.commands[0].operation, quick.commands[0].parameters, quick.ui.overlay], ["end_queue", {}, null], "without confirmations the integration's default applies");
+});
+
+test("a robot is sent home through its own command", async () => {
+  const { router, ui, commands } = await setup();
+  await router.handle("return-robot", { robotId: "robot-rocky" });
+  assert.deepEqual(commands[0], { operation: "return_robot", parameters: { robot_id: "robot-rocky" }, target: "robot:robot-rocky", invalidates: ["robots"] });
+  assert.equal(ui.snapshot.notice.messageKey, "notice.robotReturning");
+});
+
 test("confirm_destructive: false sends destructive commands at once", async () => {
   const { router, ui, commands } = await setup({ config: { confirm_destructive: false } });
   await router.handle("delete-job", { jobId: "job-1" });
@@ -131,7 +183,7 @@ test("a new job is created with the full intent; an edited one sends only the ch
   const { router, ui, commands } = await setup();
   router.handle("create-job", { roomIds: ["room-kitchen"] });
   await router.handle("save-draft");
-  assert.deepEqual(commands[0], { operation: "create_job", parameters: { areas: ["room-kitchen"], mode: "vacuum", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort" }, target: "create", invalidates: ["queue", "openJobs", "jobLog", "job", "execution", "trace"] });
+  assert.deepEqual(commands[0], { operation: "create_job", parameters: { areas: ["room-kitchen"], mode: "vacuum", vacuum_power: "standard", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort" }, target: "create", invalidates: ["queue", "openJobs", "jobLog", "job", "execution", "trace"] });
   assert.equal(ui.snapshot.notice.messageKey, "notice.jobCreated");
   router.handle("edit-job", { jobId: "job-1" });
   router.handle("set-field", { field: "passes", value: 3 });
@@ -141,6 +193,60 @@ test("a new job is created with the full intent; an edited one sends only the ch
   await router.handle("save-draft");
   assert.equal(commands.length, 2, "an unchanged edit sends nothing");
   assert.equal(ui.overlay, null);
+});
+
+test("starting a new job at once creates and starts it in one command", async () => {
+  const { router, ui, commands } = await setup();
+  router.handle("create-job", { roomIds: ["room-kitchen"] });
+  router.handle("set-field", { field: "vacuumPower", value: "maximum" });
+  await router.handle("start-draft");
+  assert.deepEqual(commands[0].parameters, { areas: ["room-kitchen"], mode: "vacuum", vacuum_power: "maximum", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort", start: true });
+  assert.equal(ui.snapshot.notice.messageKey, "notice.jobStarted");
+  assert.equal(ui.overlay, null);
+});
+
+test("a new draft starts from the integration's defaults and is saved with the rung the preview preselects", async () => {
+  const { normalizePreview } = await import("../../../src/domain/preview.js");
+  const settings = { vacuum_power: { initial: "high", options: [{ value: "low", supported_by_all: true }, { value: "high", supported_by_all: true }] } };
+  const { router, ui, commands } = await setup({ slots: { preview: { data: normalizePreview(W.wirePreview({ settings })) } } });
+  router.handle("create-job", { roomIds: ["room-kitchen"] });
+  assert.equal(ui.overlay.draft.vacuumPower, "standard");
+  await router.handle("save-draft");
+  assert.equal(commands[0].parameters.vacuum_power, "high", "the integration's default is not offered for these rooms");
+});
+
+test("a job is saved as a template under a name the user may change", async () => {
+  const { router, ui, commands } = await setup();
+  router.handle("open-save-template", { jobId: "missing" });
+  assert.equal(ui.overlay, null);
+  router.handle("open-save-template", { jobId: "job-1" });
+  assert.deepEqual([ui.overlay.kind, ui.overlay.name, ui.overlay.automatic], ["save-template", "Kitchen", false]);
+  router.handle("set-field", { field: "overlay:name", value: "  " });
+  await router.handle("save-job-template");
+  assert.deepEqual([commands.length, ui.overlay.submitted], [0, true]);
+  router.handle("set-field", { field: "overlay:name", value: " Weekly kitchen " });
+  router.handle("set-field", { field: "overlay:automatic", value: true });
+  await router.handle("save-job-template");
+  assert.deepEqual(commands[0], { operation: "save_job_as_template", parameters: { job_id: "job-1", name: "Weekly kitchen", automatic: true }, target: "job:job-1", invalidates: ["templates"] });
+  assert.deepEqual([ui.overlay, ui.snapshot.notice.messageKey], [null, "notice.templateSavedFromJob"]);
+  await router.handle("save-job-template");
+  assert.equal(commands.length, 1, "outside its page the save does nothing");
+});
+
+test("the job defaults open with the integration's values and are saved as a whole", async () => {
+  const { router, ui, commands } = await setup();
+  router.handle("open-job-defaults");
+  assert.deepEqual({ ...ui.overlay }, { kind: "job-defaults", mode: "vacuum", vacuumPower: "standard", mopIntensity: "medium", mopRoute: "standard", passes: 1, settingsPolicy: "best_effort" });
+  router.handle("set-field", { field: "overlay:passes", value: 11 });
+  await router.handle("save-job-defaults");
+  assert.deepEqual([commands.length, ui.overlay.submitted], [0, true]);
+  router.handle("set-field", { field: "overlay:passes", value: 2 });
+  router.handle("set-field", { field: "overlay:mopRoute", value: "deep_plus" });
+  await router.handle("save-job-defaults");
+  assert.deepEqual(commands[0], { operation: "configure_job_defaults", parameters: { mode: "vacuum", passes: 2, settings_policy: "best_effort", vacuum_power: "standard", mop_intensity: "medium", mop_route: "deep_plus" }, target: "queue", invalidates: ["queue"] });
+  assert.equal(ui.snapshot.notice.messageKey, "notice.jobDefaultsSaved");
+  await router.handle("save-job-defaults");
+  assert.equal(commands.length, 1);
 });
 
 test("an invalid draft stays open and marks itself submitted", async () => {

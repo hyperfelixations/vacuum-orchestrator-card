@@ -8,12 +8,15 @@ const W = require("../../fixtures/voi/wire.js");
 
 const load = () => import("../../../src/backend/protocol.js");
 
-test("the catalog names the 10 actions, 15 commands, 9 queries and both read actions", async () => {
+test("the catalog names the 12 actions, 17 commands, 10 queries and both read actions", async () => {
   const { ACTIONS, CONFIGURATION_COMMANDS, CONFIGURATION_QUERIES, OPERATIONS } = await load();
-  assert.equal(ACTIONS.length, 10);
+  assert.equal(ACTIONS.length, 12);
   assert.ok(Object.isFrozen(ACTIONS));
-  assert.equal(CONFIGURATION_COMMANDS.length, 15);
-  assert.equal(CONFIGURATION_QUERIES.length, 9);
+  assert.ok(ACTIONS.includes("end_queue") && ACTIONS.includes("return_robot"));
+  assert.equal(CONFIGURATION_COMMANDS.length, 17);
+  assert.ok(CONFIGURATION_COMMANDS.includes("configure_job_defaults") && CONFIGURATION_COMMANDS.includes("save_job_as_template"));
+  assert.equal(CONFIGURATION_QUERIES.length, 10);
+  assert.ok(CONFIGURATION_QUERIES.includes("preview_job"));
   assert.equal(new Set(OPERATIONS).size, OPERATIONS.length);
   assert.ok(OPERATIONS.includes("get_queue") && OPERATIONS.includes("get_job"));
 });
@@ -42,13 +45,13 @@ test("builders refuse what the integration's schema refuses", async () => {
   assert.throws(() => messages.command("delete_job"), TypeError);
 });
 
-test("the supported API version is 2 and is read from any envelope", async () => {
+test("the supported API version is 3 and is read from any envelope", async () => {
   const { apiVersionOf, isSupportedApiVersion } = await load();
-  assert.equal(apiVersionOf(W.wireQueuePage()), 2);
+  assert.equal(apiVersionOf(W.wireQueuePage()), 3);
   assert.equal(apiVersionOf({}), null);
   assert.equal(apiVersionOf(null), null);
-  assert.equal(isSupportedApiVersion(2), true);
-  assert.equal(isSupportedApiVersion(3), false);
+  assert.equal(isSupportedApiVersion(3), true);
+  assert.equal(isSupportedApiVersion(2), false);
 });
 
 test("every guard accepts its fixture record, with or without additional fields", async () => {

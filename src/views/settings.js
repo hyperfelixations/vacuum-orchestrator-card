@@ -12,6 +12,14 @@ function graceSetting(context, grace) {
   return `<div class="voc-setting" data-key="setting:grace"><div class="voc-setting-text"><strong id="voc-setting-grace">${e(context.t("settings.grace"))}</strong><span>${e(context.t("settings.graceHint"))}</span></div><span class="voc-setting-value">${e(grace.value)}</span>${change}</div>`;
 }
 
+function defaultsBlock(context, vm) {
+  if (!vm.defaults) return "";
+  const change = button({ action: "open-job-defaults", label: context.t("action.change"), iconName: "mdi:pencil-outline", decision: vm.defaults.decision, reasonText: context.reason(vm.defaults.decision), extra: ' aria-describedby="voc-setting-defaults"' });
+  const builtIn = vm.defaults.builtIn ? `<span class="voc-setting-value" data-key="built-in">${e(vm.defaults.builtIn)}</span>` : "";
+  const head = `<div class="voc-setting" data-key="setting:defaults"><div class="voc-setting-text"><strong id="voc-setting-defaults">${e(context.t("settings.defaults"))}</strong><span>${e(context.t("settings.defaultsHint"))}</span></div>${builtIn}${change}</div>`;
+  return block(context.t("settings.defaults"), `${head}${facts(vm.defaults.facts)}`, { iconName: "mdi:tune-variant", key: "defaults" });
+}
+
 function queueBlock(context, vm) {
   let content = "";
   if (vm.error) content = errorState(context, vm.error);
@@ -32,7 +40,7 @@ function cardBlock(context, vm) {
 }
 
 export function renderSettings(context, vm) {
-  return `<div class="voc-view voc-settings" data-key="view:settings">${queueBlock(context, vm)}${integrationBlock(context, vm)}${cardBlock(context, vm)}</div>`;
+  return `<div class="voc-view voc-settings" data-key="view:settings">${defaultsBlock(context, vm)}${queueBlock(context, vm)}${integrationBlock(context, vm)}${cardBlock(context, vm)}</div>`;
 }
 
 export const settingsView = Object.freeze({

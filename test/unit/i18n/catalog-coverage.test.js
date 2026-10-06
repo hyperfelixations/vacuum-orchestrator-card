@@ -55,15 +55,17 @@ test("every outcome, readiness reason and due reason is worded", async () => {
   assert.deepEqual(missing(TRANSLATIONS, errors.DUE_REASONS.map((code) => `due.reason.${code}`)), []);
 });
 
-test("every job state, attempt state, mode, level, route and role is worded", async () => {
+test("every job state, attempt state, mode, setting rung, origin and role is worded", async () => {
   const { TRANSLATIONS, schema } = await catalogs();
   const keys = [
     ...schema.JOB_STATES.map((state) => `job.state.${camel(state)}`),
     ...schema.ATTEMPT_STATES.map((state) => `attempt.state.${camel(state)}`),
     ...schema.CLEANING_MODES.map((mode) => `mode.${camel(mode)}`),
     ...schema.OPERATIONS.map((operation) => `operation.${camel(operation)}`),
-    ...schema.SEMANTIC_LEVELS.map((level) => `level.${level}`),
-    ...schema.MOP_ROUTES.map((route) => `route.${route}`),
+    "setting.off",
+    ...schema.SETTING_FIELDS.flatMap((field) => [`field.${field}`, ...schema.SETTING_LADDERS[field].map((value) => `setting.${field}.${value}`)]),
+    ...schema.PROVENANCE_KINDS.map((kind) => `origin.${kind}`),
+    ...schema.AFTER_CANCEL.map((choice) => `detail.afterCancel.${choice}`),
     ...schema.ROBOT_ROLES.map((role) => `role.${role}`),
     ...Object.keys(schema.ROBOT_OPTION_MAPS).map((map) => `robotEditor.optionMap.${map}`),
     ...Object.keys(schema.ROBOT_TIMEOUT_FIELDS).map((field) => `robotEditor.timeout.${field}`),

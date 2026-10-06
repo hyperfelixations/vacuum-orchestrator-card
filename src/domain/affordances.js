@@ -61,11 +61,13 @@ export function jobAffordances(job, context, { position = null, total = 0 } = {}
 
 const QUEUE_COMMAND_BY_MODE = Object.freeze({ idle: "run_queue", running: "pause_queue", paused: "resume_queue" });
 
-export function queueAffordances(mode, context) {
+// Ending is offered while the queue runs or pauses and is not already ending.
+export function queueAffordances(mode, context, { ending = false } = {}) {
   const command = QUEUE_COMMAND_BY_MODE[mode] || "run_queue";
   return Object.freeze({
     command,
     control: decide(context, { operation: command, target: QUEUE_TARGET }),
+    end: decide(context, { visible: mode !== "idle" && !ending, operation: "end_queue", target: QUEUE_TARGET }),
     create: decide(context, { operation: "create_job", target: CREATE_TARGET }),
     configure: decide(context, { operation: "configure_queue", target: QUEUE_TARGET }),
   });
@@ -84,13 +86,15 @@ export function roomAffordances(room, context) {
   });
 }
 
-// An active lease blocks reconfiguration and removal (`require_idle_robot`).
-export function robotAffordances(robot, context) {
+// An active lease blocks reconfiguration and removal (`require_idle_robot`). Sending a robot
+// home is offered when it can return, holds no lease and is not already home or on its way.
+export function robotAffordances(robot, context, { home = false } = {}) {
   const target = robotTarget(robot?.robotId);
   const busy = robot?.active ? "robot_busy" : null;
   return Object.freeze({
     configure: decide(context, { operation: "configure_robot", target, blockedBy: busy }),
     remove: decide(context, { operation: "remove_robot", target, blockedBy: busy }),
+    returnToDock: decide(context, { visible: robot?.capabilities?.supports?.returnToDock === true && !robot.active && !home, operation: "return_robot", target }),
   });
 }
 

@@ -31,7 +31,7 @@ export function buildTemplatesView({ model, texts, context }) {
           template.enabled ? null : { key: "disabled", text: t(texts, "templates.disabled"), tone: "muted" },
           template.enabled && template.automatic ? { key: "automatic", text: t(texts, "templates.automatic"), tone: "running" } : null,
         ].filter(Boolean),
-        settings: settingChips(intent, texts),
+        settings: settingChips(intent, texts, { defaults: slotData(model, "queue")?.jobDefaults }),
         suppressed: template.automatic && template.suppressedRoomIds.length ? t(texts, "templates.suppressed", { rooms: rooms(template.suppressedRoomIds) }) : null,
         actions: templateAffordances(template, context),
       };

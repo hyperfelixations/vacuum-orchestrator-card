@@ -114,7 +114,7 @@ test.describe("with touch", () => {
       }
       if (actions.length > 1) expect(Math.min(...gaps(actions)), jobId).toBeGreaterThanOrEqual(8);
     }
-    const shell = await card.evaluate((element) => [...element.shadowRoot.querySelectorAll(".voc-tab, .voc-primary-action, .voc-queue-control")].map((node) => {
+    const shell = await card.evaluate((element) => [...element.shadowRoot.querySelectorAll(".voc-tab, .voc-primary-action, .voc-queue-control, .voc-queue-end")].map((node) => {
       const rect = node.getBoundingClientRect();
       return { name: node.getAttribute("aria-label") || node.getAttribute("title") || node.textContent.trim(), width: rect.width, height: rect.height };
     }));

@@ -76,9 +76,11 @@ test("a robot without resolved capabilities reaches no room", async () => {
 
 test("capability lists keep only known values", async () => {
   const { normalizeRobot } = await robots();
-  const robot = normalizeRobot(W.wireRobot({ capabilities: { operations: ["vacuum", "polish"], vacuum_levels: ["turbo", "high"], targets: { "room-a": [], "room-b": ["1"] } } }));
+  const robot = normalizeRobot(W.wireRobot({ capabilities: { operations: ["vacuum", "polish"], settings: { vacuum_power: ["turbo", "high", "maximum_plus"], mop_route: "deep" }, unavailable_settings: ["mop_intensity", "suction"], supports: { return_to_dock: true }, targets: { "room-a": [], "room-b": ["1"] } } }));
   assert.deepEqual(robot.capabilities.operations, ["vacuum"]);
-  assert.deepEqual(robot.capabilities.vacuumLevels, ["high"]);
+  assert.deepEqual({ ...robot.capabilities.settings }, { vacuumPower: ["high", "maximum_plus"], mopIntensity: [], mopRoute: [] });
+  assert.deepEqual(robot.capabilities.unavailableSettings, ["mopIntensity"]);
+  assert.deepEqual({ ...robot.capabilities.supports }, { stop: false, returnToDock: true, pause: false });
   assert.deepEqual(Object.keys(robot.capabilities.targets), ["room-b"]);
 });
 

@@ -16,12 +16,21 @@ follows your dashboard's light or dark theme.
 
 ## Features
 
-- The cleaning queue at a glance: start, pause and resume it, reorder waiting
-  jobs, start one right away, cancel, retry, edit or delete jobs
+- The cleaning queue at a glance: start, pause, resume or end it, reorder
+  waiting jobs, start one right away, retry, edit or delete jobs, or save one as
+  a template
+- Cancelling a running job asks whether the robot returns to its dock or stays
+  where it is
+- A job editor that shows only the settings the cleaning mode uses and the
+  levels your robots offer for the chosen rooms, and starts a new job at once
+  when a robot is free
+- Defaults for new jobs: mode, suction, water, mop route, passes and what
+  happens when a robot lacks a level
 - For every waiting job, whether it can start and what it is waiting for
 - Room cards with vacuum and mop due bars, the last cleaning and one-tap release
   or lock
-- Robot cards with live state, battery, capabilities, reachable rooms and map
+- Robot cards with live state, battery, capabilities, reachable rooms and map,
+  and a button that sends an idle robot back to its dock
 - Templates for recurring jobs, a history of jobs and cleaning runs, and a
   diagnostics view
 - A guided start, from installing the integration to your first job
@@ -115,7 +124,7 @@ it.
 | `start_view` | first available view | Sets the view the card opens on. If that one is not available, the first available view is used. |
 | `page_size` | `25` | Sets how many jobs or history entries one page shows, from `5` to `100`. |
 | `time_format` | `auto` | Shows times as `relative` (“3 hours ago”), `absolute` (date and time), or `auto`: relative within a day, absolute beyond. |
-| `confirm_destructive` | `true` | Asks before cancelling or deleting a job, deleting a template or robot, and excluding a room. |
+| `confirm_destructive` | `true` | Asks before cancelling or deleting a job, ending the queue, deleting a template or robot, and excluding a room. With `false`, a cancelled job leaves its robot where it is and ending the queue lets started jobs finish. |
 
 ```yaml
 title: Downstairs
@@ -144,7 +153,7 @@ show:
 | `pill` | `true` | The status label in the top right — “Cleaning”, “Not installed”, and so on. |
 | `warnings` | `true` | The block under the header that names a problem with the configuration or the integration. |
 | `panel` | `true` | The block with the number of waiting jobs, the queue run and the robots. |
-| `queue_controls` | `true` | The start, pause or resume button in that block. |
+| `queue_controls` | `true` | The start, pause or resume button and the end button in that block. |
 | `tabs` | `auto` | The tab row. `auto` shows it when there are at least two views; `true` always shows it; `false` never does. |
 | `unavailable_views` | `true` | Shows views the installed integration does not offer as dimmed tabs. |
 
@@ -159,7 +168,7 @@ show:
 | `templates` | Templates for recurring jobs. | Always |
 | `history` | Finished jobs and recorded cleaning runs. | Always |
 | `diagnostics` | Connection, versions, the setup checklist and the integration's event trace. | When something needs a look |
-| `settings` | How long a queue run waits for new work before it ends, and the versions of the integration and the card. | For administrators |
+| `settings` | The defaults for new jobs, how long a queue run waits for new work before it ends, and the versions of the integration and the card. | For administrators |
 
 A string and an object without `enabled` both switch a view on:
 
@@ -202,7 +211,7 @@ Options belong inside the corresponding `views:` entry.
 | `rooms` | `sort` | `configured` / `name` / `due` | `configured` | Orders the rooms as configured in the integration, by name, or most due first. |
 | `rooms` | `show_disabled` | `true` / `false` | `false` | Shows the rooms excluded from cleaning. |
 | `robots` | `show_map` | `true` / `false` | `true` | Shows the robot's map, when it has one. |
-| `robots` | `show_capabilities` | `true` / `false` | `true` | Shows the suction, water and route levels the robot offers. |
+| `robots` | `show_capabilities` | `true` / `false` | `true` | Shows the suction, water and mop route levels the robot offers. |
 | `history` | `source` | `jobs` / `runs` / `both` | `both` | Shows finished jobs, recorded cleaning runs, or both with a switch between them. |
 | `diagnostics` | `show_trace` | `true` / `false` | `true` | Shows the integration's event trace. |
 

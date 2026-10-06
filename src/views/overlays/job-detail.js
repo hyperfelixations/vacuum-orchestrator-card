@@ -12,27 +12,33 @@ const ACTION = Object.freeze({
   edit: { action: "edit-job", iconName: "mdi:pencil-outline", labelKey: "action.edit" },
   start: { action: "start-job", iconName: "mdi:play", labelKey: "action.startNow", variant: "primary" },
   retry: { action: "retry-job", iconName: "mdi:restore", labelKey: "action.retry", variant: "primary" },
+  saveAsTemplate: { action: "open-save-template", iconName: "mdi:content-save-outline", labelKey: "action.saveAsTemplate" },
   moveTop: { action: "move-job", args: { direction: "top" }, iconName: "mdi:arrow-collapse-up", labelKey: "action.moveTop", variant: "icon" },
   moveBottom: { action: "move-job", args: { direction: "bottom" }, iconName: "mdi:arrow-collapse-down", labelKey: "action.moveBottom", variant: "icon" },
 });
 
-function actionButton(context, vm, key, className = "") {
-  const spec = ACTION[key];
-  return button({ action: spec.action, args: { jobId: vm.jobId, ...(spec.args || {}) }, label: context.t(spec.labelKey), iconName: spec.iconName, variant: spec.variant || "text", className, decision: vm.actions[key], reasonText: context.reason(vm.actions[key]) });
+function decisionOf(vm, key) {
+  return key === "saveAsTemplate" ? vm.saveAsTemplate : vm.actions[key];
 }
 
-const visible = (vm, key) => vm.actions[key] && vm.actions[key].state !== "hidden";
+function actionButton(context, vm, key, className = "") {
+  const spec = ACTION[key];
+  const decision = decisionOf(vm, key);
+  return button({ action: spec.action, args: { jobId: vm.jobId, ...(spec.args || {}) }, label: context.t(spec.labelKey), iconName: spec.iconName, variant: spec.variant || "text", className, decision, reasonText: context.reason(decision) });
+}
+
+const visible = (vm, key) => decisionOf(vm, key) && decisionOf(vm, key).state !== "hidden";
 
 // The footer follows the job row: destructive actions first and set apart (withdrawing a waiting
-// job is one of them), editing next, and last the action that drives the run — start, cancel of a
-// started job, or retry — where the row keeps it too.
+// job is one of them), editing and saving as a template next, and last the action that drives the
+// run — start, cancel of a started job, or retry — where the row keeps it too.
 function footer(context, vm) {
   const queued = vm.state === "queued";
   const lead = ["delete", ...(queued ? ["cancel"] : [])].filter((key) => visible(vm, key));
   const run = (queued ? ["start"] : ["cancel", "retry"]).filter((key) => visible(vm, key));
   return [
     ...lead.map((key, index) => actionButton(context, vm, key, index === lead.length - 1 ? "voc-action-start" : "")),
-    ...["edit"].filter((key) => visible(vm, key)).map((key) => actionButton(context, vm, key)),
+    ...["saveAsTemplate", "edit"].filter((key) => visible(vm, key)).map((key) => actionButton(context, vm, key)),
     ...run.map((key) => actionButton(context, vm, key)),
   ].join("");
 }
@@ -59,7 +65,7 @@ function execution(context, vm) {
   if (!vm.execution?.length) return "";
   const groups = vm.execution
     .map((group) => `<div class="voc-phase" data-key="phase:${e(group.key)}"><div class="voc-phase-title">${e(group.title)}</div><ul class="voc-phase-robots">${group.robots
-      .map((robot) => `<li data-key="${e(robot.key)}" data-eligible="${robot.eligible}">${icon(robot.eligible ? "mdi:check-circle" : "mdi:close-circle-outline")}<span class="voc-phase-robot">${e(robot.name)}</span><span class="voc-phase-reason">${e(robot.reason)}${robot.omitted ? ` · ${e(context.t("detail.omitted", { settings: robot.omitted }))}` : ""}</span></li>`)
+      .map((robot) => `<li data-key="${e(robot.key)}" data-eligible="${robot.eligible}">${icon(robot.eligible ? "mdi:check-circle" : "mdi:close-circle-outline")}<span class="voc-phase-robot">${e(robot.name)}</span><span class="voc-phase-reason">${e(robot.reason)}${robot.settings ? ` · ${e(robot.settings)}` : ""}</span></li>`)
       .join("")}</ul></div>`)
     .join("");
   return block(context.t("detail.robots"), `<p class="voc-overlay-lead">${e(context.t("detail.robotsLead"))}</p>${groups}`, { iconName: "mdi:robot-vacuum", key: "execution" });
@@ -67,7 +73,7 @@ function execution(context, vm) {
 
 function attempts(context, vm) {
   if (!vm.attempts.length) return "";
-  const rows = vm.attempts.map((attempt) => `<li data-key="attempt:${e(attempt.key)}"><strong>${e(attempt.robot)}</strong><span>${e([attempt.state, attempt.quality, attempt.outcome, attempt.omitted && context.t("detail.omitted", { settings: attempt.omitted })].filter(Boolean).join(" · "))}</span></li>`).join("");
+  const rows = vm.attempts.map((attempt) => `<li data-key="attempt:${e(attempt.key)}"><strong>${e(attempt.robot)}</strong><span>${e([attempt.state, attempt.quality, attempt.outcome, attempt.settings].filter(Boolean).join(" · "))}</span></li>`).join("");
   return block(context.t("detail.attempts"), `<ul class="voc-attempts">${rows}</ul>`, { iconName: "mdi:history", key: "attempts" });
 }
 
@@ -83,7 +89,7 @@ export function renderJobDetail(context, vm) {
     const content = vm.loading ? loadingState(context) : `<div class="voc-unavailable" data-key="missing">${icon("mdi:file-question-outline")}<div>${e(context.t("detail.missing"))}</div></div>`;
     return frame(context, { key: "job-detail", title: vm.title, content });
   }
-  const summary = `<div class="voc-detail-summary" data-key="summary"><div class="voc-detail-line">${chip(vm.mode, { iconName: "mdi:broom" })}${vm.rooms.map((room) => chip(room, { iconName: "mdi:floor-plan" })).join("")}${vm.settings.map((setting) => chip(setting.text, { iconName: setting.icon })).join("")}</div>${position(context, vm)}${vm.outcome ? `<div class="voc-job-outcome">${icon("mdi:alert-outline")}<span>${e(vm.outcome)}</span></div>` : ""}</div>`;
+  const summary = `<div class="voc-detail-summary" data-key="summary"><div class="voc-detail-line">${chip(vm.mode, { iconName: "mdi:broom" })}${vm.rooms.map((room) => chip(room, { iconName: "mdi:floor-plan" })).join("")}${vm.settings.map((setting) => chip(setting.text, { iconName: setting.icon, label: setting.label })).join("")}</div>${position(context, vm)}${vm.outcome ? `<div class="voc-job-outcome">${icon("mdi:alert-outline")}<span>${e(vm.outcome)}</span></div>` : ""}${vm.afterCancel ? `<div class="voc-job-outcome" data-key="after-cancel">${icon("mdi:home-import-outline")}<span>${e(vm.afterCancel)}</span></div>` : ""}</div>`;
   const actions = footer(context, vm);
   const content = `${summary}${readiness(context, vm)}${execution(context, vm)}${attempts(context, vm)}${block(context.t("detail.details"), facts(vm.facts), { iconName: "mdi:information-outline", key: "facts" })}${trace(context, vm)}`;
   return frame(context, { key: "job-detail", title: vm.title, status: pill(vm.stateLabel, vm.stateTone), content, actions });
@@ -95,6 +101,7 @@ export const jobDetailOverlay = Object.freeze({
     { name: "job", params: { jobId: overlay.jobId } },
     { name: "execution", params: { jobId: overlay.jobId } },
     { name: "trace", params: { jobId: overlay.jobId } },
+    { name: "templates", params: {} },
   ],
   build: ({ model, texts, context, overlay, config }) => buildJobDetail({ model, texts, context, overlay, config }),
   render: renderJobDetail,

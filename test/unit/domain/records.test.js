@@ -7,10 +7,10 @@ const W = require("../../fixtures/voi/wire.js");
 
 test("a template keeps its intent, switches and the rooms its current due period used", async () => {
   const { normalizeTemplate } = await import("../../../src/domain/templates.js");
-  const template = normalizeTemplate(W.wireTemplate({ automatic: true, suppressed_room_ids: ["room-kitchen"], intent: { areas: ["room-kitchen"], mode: "vac", passes: 12, settings_policy: "odd", mop_route: "deep" } }));
+  const template = normalizeTemplate(W.wireTemplate({ automatic: true, suppressed_room_ids: ["room-kitchen"], intent: { areas: ["room-kitchen"], mode: "vac_and_mop", passes: 12, settings_policy: "odd", mop_route: "deep" } }));
   assert.equal(template.automatic, true);
   assert.deepEqual(template.suppressedRoomIds, ["room-kitchen"]);
-  assert.equal(template.intent.mode, "vacuum");
+  assert.equal(template.intent.mode, "vacuum_and_mop");
   assert.equal(template.intent.passes, 1, "an out-of-range pass count reads as one pass");
   assert.equal(template.intent.settingsPolicy, "best_effort");
   assert.equal(template.intent.mopRoute, "deep");
@@ -38,7 +38,7 @@ test("the execution explanation groups robots by planned operation in plan order
   const execution = normalizeExecution(W.wireExecution({
     robots: [
       W.wireExecutionRobot({ robot_id: "rocky", operation: "vacuum", eligible: false, eligibility_reason: "robot_busy" }),
-      W.wireExecutionRobot({ robot_id: "rocky", operation: "mop", eligible: true, omitted_preferences: ["mop_route"] }),
+      W.wireExecutionRobot({ robot_id: "rocky", operation: "mop", eligible: true, settings: [{ name: "mop_route", requested: "deep_plus", applied: "deep" }, { name: "mop_intensity", requested: "high", applied: null }, { name: "suction", requested: "x", applied: "y" }] }),
       W.wireExecutionRobot({ robot_id: "dusty", operation: "vacuum", eligible: true }),
       { operation: "vacuum" },
     ],
@@ -47,7 +47,7 @@ test("the execution explanation groups robots by planned operation in plan order
   const groups = explanationsByOperation(execution);
   assert.deepEqual(groups.map((group) => [group.operation, group.robots.map((robot) => robot.robotId), group.eligible]), [["vacuum", ["rocky", "dusty"], true], ["mop", ["rocky"], true]]);
   assert.equal(groups[0].robots[0].eligibilityReason, "robot_busy");
-  assert.deepEqual(groups[1].robots[0].omittedPreferences, ["mop_route"]);
+  assert.deepEqual(groups[1].robots[0].settings.map((item) => ({ ...item })), [{ field: "mopRoute", requested: "deep_plus", applied: "deep" }, { field: "mopIntensity", requested: "high", applied: null }]);
   assert.equal(execution.attempts.length, 1);
   assert.equal(execution.attempts[0].state, "unknown");
   assert.deepEqual(explanationsByOperation(null), []);
@@ -65,7 +65,7 @@ test("trace records keep their event and known details; unknown events stay", as
 test("the diagnostics summary reads versions, runtime and the trace window", async () => {
   const { normalizeDiagnosticsSummary } = await import("../../../src/domain/trace.js");
   const summary = normalizeDiagnosticsSummary(W.wireDiagnostics());
-  assert.equal(summary.apiVersion, 2);
+  assert.equal(summary.apiVersion, 3);
   assert.equal(typeof summary.runtimeId, "string");
   assert.ok(Number.isFinite(summary.traceWindow.retained));
   const empty = normalizeDiagnosticsSummary({});

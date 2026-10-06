@@ -1,8 +1,8 @@
-// The Vacuum Orchestrator API V2 surface the card uses: WebSocket message builders, the
+// The Vacuum Orchestrator API V3 surface the card uses: WebSocket message builders, the
 // operation catalog and structural response guards. Guards check the envelope a normalizer
 // relies on; additional fields always pass. See internal dev doc §6 "Protokoll".
 
-export const SUPPORTED_API_VERSIONS = Object.freeze([2]);
+export const SUPPORTED_API_VERSIONS = Object.freeze([3]);
 
 export const WS = Object.freeze({
   QUEUE_GET: "vacuum_orchestrator/queue/get",
@@ -18,12 +18,13 @@ export const WS = Object.freeze({
 
 // Job and queue commands travel as Home Assistant actions; `response` marks the ones that
 // return a payload (`SupportsResponse.OPTIONAL`). Asking any other action for a response fails.
-export const ACTIONS = Object.freeze(["create_job", "update_job", "delete_job", "move_job", "start_job", "cancel_job", "retry_job", "run_queue", "pause_queue", "resume_queue"]);
+export const ACTIONS = Object.freeze(["create_job", "update_job", "delete_job", "move_job", "start_job", "cancel_job", "retry_job", "run_queue", "pause_queue", "resume_queue", "end_queue", "return_robot"]);
 
 // Configuration commands and queries share the action schemas and travel over the integration's
 // own WebSocket types, which report stable error codes.
 export const CONFIGURATION_COMMANDS = Object.freeze([
   "configure_queue",
+  "configure_job_defaults",
   "create_room",
   "update_room",
   "disable_room",
@@ -35,6 +36,7 @@ export const CONFIGURATION_COMMANDS = Object.freeze([
   "remove_robot",
   "resolve_recovery",
   "save_template",
+  "save_job_as_template",
   "remove_template",
   "create_job_from_template",
   "reset_template_demand",
@@ -50,6 +52,7 @@ export const CONFIGURATION_QUERIES = Object.freeze([
   "get_trace",
   "get_diagnostics",
   "get_job_execution",
+  "preview_job",
 ]);
 
 // Every operation name the card may use. Their presence as registered actions under
@@ -123,6 +126,7 @@ export const guards = Object.freeze({
   tracePage: (value) => isPage(value, "records"),
   execution: (value) => isObject(value) && typeof value.job_id === "string" && Array.isArray(value.robots) && Array.isArray(value.attempts),
   diagnostics: (value) => isObject(value) && isObject(value.trace_window),
+  preview: (value) => isObject(value) && isObject(value.settings) && Array.isArray(value.robots) && typeof value.startable_now === "boolean",
   event: (value) => isObject(value) && value.loaded === true && typeof value.runtime_id === "string" && isCount(value.runtime_sequence) && isCount(value.commit_id),
   unloadedEvent: (value) => isObject(value) && value.loaded === false,
   manifest: (value) => isObject(value) && value.domain === "vacuum_orchestrator",

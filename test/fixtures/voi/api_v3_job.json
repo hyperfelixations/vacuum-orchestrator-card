@@ -1,16 +1,16 @@
 {
-  "api_version": 2,
+  "api_version": 3,
   "job_id": "job",
   "revision": 1,
   "state": "queued",
   "name": null,
   "areas": ["kitchen"],
   "mode": "vacuum",
-  "vacuum_power": null,
+  "vacuum_power": "standard",
   "mop_intensity": null,
   "mop_route": null,
   "passes": 1,
-  "source": null,
+  "all_rooms": false,
   "reason": null,
   "note": null,
   "dedupe_key": null,
@@ -20,6 +20,7 @@
   "created_at": "2026-09-07T12:00:00+00:00",
   "updated_at": "2026-09-07T12:00:00+00:00",
   "active_attempt_id": null,
+  "origin": {"kind": "manual", "template_id": null},
   "retries_job_id": null,
   "failure_code": null
 }

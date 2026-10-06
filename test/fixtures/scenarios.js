@@ -70,21 +70,21 @@
       {
         robot_id: "robot-dusty", name: "Dusty",
         configuration: { robot_registry_id: "reg-vacuum-dusty", robot_entity_id: "vacuum.dusty", adapter: "home_assistant", source_robot_id: "device_registry:dusty", roles: { battery: "reg-dusty-battery" }, protocol: null, target_areas: ["kitchen", "hall"], allowed_operations: ["vacuum"], fixed_mode: "vacuum" },
-        capabilities: { operations: ["vacuum"], targets: { "room-kitchen": ["kitchen"], "room-hall": ["hall"] }, map_context: null, maximum_passes: 1, vacuum_levels: [], water_levels: [], mop_routes: [] },
+        capabilities: { operations: ["vacuum"], targets: { "room-kitchen": ["kitchen"], "room-hall": ["hall"] }, map_context: null, maximum_passes: 1, settings: { vacuum_power: [], mop_intensity: [], mop_route: [] }, unavailable_settings: ["vacuum_power"], supports: { stop: true, return_to_dock: true, pause: false } },
       },
     ];
   }
 
   function jobs() {
     return [
-      { job_id: "job-running", state: "running", name: null, areas: ["living_room"], room_ids: ["room-living"], mode: "vacuum", vacuum_power: "high", created_at: at(-40), updated_at: at(-12), active_attempt_id: "attempt-7", source: "Dashboard" },
-      { job_id: "job-kitchen", state: "queued", name: "Kitchen and hall", areas: ["kitchen", "hall"], room_ids: ["room-kitchen", "room-hall"], mode: "vacuum_then_mop", vacuum_power: "standard", mop_intensity: "medium", passes: 2, created_at: at(-30), updated_at: at(-30), source: "Dashboard", readiness: { state: "ready" } },
+      { job_id: "job-running", state: "running", name: null, areas: ["living_room"], room_ids: ["room-living"], mode: "vacuum", vacuum_power: "high", created_at: at(-40), updated_at: at(-12), active_attempt_id: "attempt-7", origin: { kind: "manual", template_id: null } },
+      { job_id: "job-kitchen", state: "queued", name: "Kitchen and hall", areas: ["kitchen", "hall"], room_ids: ["room-kitchen", "room-hall"], mode: "vacuum_then_mop", vacuum_power: "standard", mop_intensity: "medium", passes: 2, created_at: at(-30), updated_at: at(-30), origin: { kind: "manual", template_id: null }, readiness: { state: "ready" } },
       {
-        job_id: "job-bathroom", state: "queued", name: "Bathroom", areas: ["bathroom"], room_ids: ["room-bathroom"], mode: "mop", mop_intensity: "high", mop_route: "deep", settings_policy: "strict", created_at: at(-25), updated_at: at(-25), source: "Routine",
+        job_id: "job-bathroom", state: "queued", name: "Bathroom", areas: ["bathroom"], room_ids: ["room-bathroom"], mode: "mop", mop_intensity: "high", mop_route: "deep", settings_policy: "strict", created_at: at(-25), updated_at: at(-25), origin: { kind: "template", template_id: "template-weekly" },
         readiness: { state: "blocked", reason_codes: ["room_not_released", "requirement_not_satisfied"], blocked_room_ids: ["room-bathroom"], requirements: [{ entity_id: "binary_sensor.bathroom_door", state: "blocked", reason: "requirement_not_satisfied", room_id: "room-bathroom", robot_id: null, operation: null }] },
       },
       { job_id: "job-bedroom", state: "queued", name: null, areas: ["bedroom"], room_ids: ["room-bedroom"], mode: "vacuum", created_at: at(-20), updated_at: at(-20), readiness: { state: "unknown", unknown: ["binary_sensor.bedroom_window"], reason_codes: ["requirement_unknown"], requirements: [{ entity_id: "binary_sensor.bedroom_window", state: "unknown", reason: "requirement_unknown", room_id: "room-bedroom", robot_id: null, operation: null }] } },
-      { job_id: "job-done", state: "completed", name: "Hall", areas: ["hall"], room_ids: ["room-hall"], mode: "vacuum", created_at: at(-6 * HOUR), updated_at: at(-5 * HOUR), source: "Routine" },
+      { job_id: "job-done", state: "completed", name: "Hall", areas: ["hall"], room_ids: ["room-hall"], mode: "vacuum", created_at: at(-6 * HOUR), updated_at: at(-5 * HOUR), origin: { kind: "template", template_id: "template-daily" } },
       { job_id: "job-failed", state: "failed", name: "Kitchen", areas: ["kitchen"], room_ids: ["room-kitchen"], mode: "mop", created_at: at(-DAY), updated_at: at(-DAY + 20), failure_code: "start_timeout" },
       { job_id: "job-cancelled", state: "cancelled", name: null, areas: ["bedroom"], room_ids: ["room-bedroom"], mode: "vacuum", created_at: at(-2 * DAY), updated_at: at(-2 * DAY + 5) },
     ];
@@ -97,9 +97,9 @@
     const reached = (robot) => (robot.robot_id === "robot-rocky" ? { ...robot, capabilities: { ...robot.capabilities, targets: { ...robot.capabilities.targets, "room-bedroom": ["20"] } } } : robot);
     const ready = { state: "ready" };
     const waiting = [
-      { job_id: "job-kitchen", state: "queued", name: "Kitchen and hall", areas: ["kitchen", "hall"], room_ids: ["room-kitchen", "room-hall"], mode: "vacuum_then_mop", vacuum_power: "standard", mop_intensity: "medium", created_at: at(-30), updated_at: at(-30), source: "Dashboard", readiness: ready },
-      { job_id: "job-bathroom", state: "queued", name: "Bathroom", areas: ["bathroom"], room_ids: ["room-bathroom"], mode: "mop", mop_intensity: "high", created_at: at(-25), updated_at: at(-25), source: "Routine", readiness: ready },
-      { job_id: "job-bedroom", state: "queued", name: "Bedroom", areas: ["bedroom"], room_ids: ["room-bedroom"], mode: "vacuum", vacuum_power: "standard", created_at: at(-20), updated_at: at(-20), source: "Dashboard", readiness: ready },
+      { job_id: "job-kitchen", state: "queued", name: "Kitchen and hall", areas: ["kitchen", "hall"], room_ids: ["room-kitchen", "room-hall"], mode: "vacuum_then_mop", vacuum_power: "standard", mop_intensity: "medium", created_at: at(-30), updated_at: at(-30), origin: { kind: "manual", template_id: null }, readiness: ready },
+      { job_id: "job-bathroom", state: "queued", name: "Bathroom", areas: ["bathroom"], room_ids: ["room-bathroom"], mode: "mop", mop_intensity: "high", created_at: at(-25), updated_at: at(-25), origin: { kind: "template", template_id: "template-weekly" }, readiness: ready },
+      { job_id: "job-bedroom", state: "queued", name: "Bedroom", areas: ["bedroom"], room_ids: ["room-bedroom"], mode: "vacuum", vacuum_power: "standard", created_at: at(-20), updated_at: at(-20), origin: { kind: "manual", template_id: null }, readiness: ready },
     ];
     const rest = jobs().filter((job) => job.state !== "queued");
     return household({ mode: "running", run: { run_id: "run-1", started_at: at(-HOUR) }, rooms: rooms().map(released), robots: robots().map(reached), candidates: candidates(), jobs: [rest[0], ...waiting, ...rest.slice(1)], templates: templates().filter((template) => template.enabled !== false), runs: runs() });
@@ -141,14 +141,14 @@
     return {
       "job-bathroom": {
         robots: [
-          { robot_id: "robot-rocky", operation: "mop", eligible: false, eligibility_reason: "robot_busy", readiness: { state: "blocked", blocked_room_ids: ["room-bathroom"], reason_codes: ["room_not_released"] } },
+          { robot_id: "robot-rocky", operation: "mop", eligible: false, eligibility_reason: "robot_busy", readiness: { state: "blocked", blocked_room_ids: ["room-bathroom"], reason_codes: ["room_not_released"] }, settings: [{ name: "mop_intensity", requested: "high", applied: "high" }, { name: "mop_route", requested: "deep", applied: "standard" }] },
           { robot_id: "robot-dusty", operation: "mop", eligible: false, eligibility_reason: "unsupported_operation", readiness: { state: "blocked", blocked_room_ids: ["room-bathroom"], reason_codes: ["room_not_released"] } },
         ],
         attempts: [],
       },
       "job-running": {
-        robots: [{ robot_id: "robot-rocky", operation: "vacuum", eligible: false, eligibility_reason: "robot_busy", applied_preferences: ["vacuum_power"] }],
-        attempts: [{ attempt_id: "attempt-7", work_unit_id: "unit-7", robot_id: "robot-rocky", state: "start_confirmed", applied_preferences: ["vacuum_power"] }],
+        robots: [{ robot_id: "robot-rocky", operation: "vacuum", eligible: false, eligibility_reason: "robot_busy", settings: [{ name: "vacuum_power", requested: "high", applied: "high" }] }],
+        attempts: [{ attempt_id: "attempt-7", work_unit_id: "unit-7", robot_id: "robot-rocky", state: "start_confirmed", settings: [{ name: "vacuum_power", requested: "high", applied: "high" }] }],
       },
     };
   }
@@ -201,8 +201,9 @@
     ];
   }
 
-  function household(seed) {
-    return { areas: AREAS, states: states(), registry: registry(), seed: { registry: registry(), ...seed } };
+  // `live`: Home Assistant states that differ from the reference household.
+  function household(seed, live = {}) {
+    return { areas: AREAS, states: { ...states(), ...live }, registry: registry(), seed: { registry: registry(), ...seed } };
   }
 
   const SCENARIOS = {
@@ -219,6 +220,11 @@
       runs: runs(),
     }),
     empty: () => household({ rooms: rooms(), robots: robots({ rockyActive: false }), candidates: candidates(), jobs: [], templates: templates(), runs: [] }),
+    // The run ends once Rocky's job is done; Dusty stopped away from its dock after a cancel.
+    ending: () => household(
+      { mode: "paused", run: { run_id: "run-1", started_at: at(-HOUR), ending: true }, rooms: rooms(), robots: robots(), candidates: candidates(), jobs: jobs(), templates: templates(), runs: runs(), trace: trace(), execution: execution() },
+      { "vacuum.dusty": haState("vacuum.dusty", "idle", { friendly_name: "Dusty" }) }
+    ),
     showcase,
     fresh: () => household({ rooms: Object.values(AREAS).map((area) => ({ room_id: `room-${area.area_id}`, name: area.name, area_id: area.area_id })), robots: [], candidates: candidates(), jobs: [], templates: [], runs: [] }),
   };

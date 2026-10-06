@@ -58,7 +58,7 @@ test("a working integration reaches ready with a live subscription and its versi
   await env.start();
   const snapshot = env.snapshot();
   assert.equal(snapshot.phase, "ready");
-  assert.equal(snapshot.apiVersion, 2);
+  assert.equal(snapshot.apiVersion, 3);
   assert.equal(snapshot.subscription, "live");
   assert.equal(env.fake.subscriberCount(), 1);
   assert.equal(env.fake.calls.ws.some((message) => message.type === "manifest/get"), false, "the queue names the version");
@@ -79,7 +79,7 @@ test("each way the integration can be unusable is its own phase", async () => {
     [{ installed: false, setUp: false }, "not_installed"],
     [{ setUp: false }, "not_set_up"],
     [{ runtimeLoaded: false }, "load_failed"],
-    [{ apiVersion: 3 }, "api_incompatible"],
+    [{ apiVersion: 4 }, "api_incompatible"],
   ];
   for (const [fake, phase] of cases) {
     const env = await setup({ fake });
@@ -277,7 +277,7 @@ test("an integration that loads after the card is followed without a retry", asy
 });
 
 test("an incompatible integration is not probed again on each of its events", async () => {
-  const env = await setup({ fake: { apiVersion: 3 } });
+  const env = await setup({ fake: { apiVersion: 4 } });
   await env.start();
   assert.equal(env.snapshot().phase, "api_incompatible");
   const reads = () => env.fake.calls.ws.filter((message) => message.type === "vacuum_orchestrator/queue/get").length;
@@ -347,7 +347,7 @@ test("every action asks for the integration's response with the confirmed commit
   assert.equal(created.ok, true);
   assert.equal(typeof created.data.job_id, "string");
   const paused = await env.session.command("pause_queue", {}, { target: "queue" });
-  assert.deepEqual({ ...paused.data }, { api_version: 2, commit_id: env.fake.state.commitId, mode: "paused" });
+  assert.deepEqual({ ...paused.data }, { api_version: 3, commit_id: env.fake.state.commitId, mode: "paused" });
   const calls = env.fake.calls.services.map((call) => [call.service, call.returnResponse]);
   assert.deepEqual(calls, [["create_job", true], ["pause_queue", true]]);
   env.session.dispose();

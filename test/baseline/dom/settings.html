@@ -33,6 +33,11 @@
 </div>
 </div>
 <div class="voc-panel-control">
+<button type="button" class="voc-button voc-button--text voc-queue-end" data-action="end-queue" title="End queue">
+<ha-icon icon="mdi:stop" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">End queue</span>
+</button>
 <button type="button" class="voc-button voc-button--primary voc-queue-control" data-action="queue-control" title="Pause queue">
 <ha-icon icon="mdi:pause" aria-hidden="true">
 </ha-icon>
@@ -78,6 +83,37 @@
 </div>
 <div class="voc-body" id="voc-panel" data-body="view:settings" role="tabpanel" aria-labelledby="voc-tab-settings">
 <div class="voc-view voc-settings" data-key="view:settings">
+<section class="voc-block" data-key="defaults">
+<h3 class="voc-block-title">
+<ha-icon icon="mdi:tune-variant" aria-hidden="true">
+</ha-icon>Defaults for new jobs</h3>
+<div class="voc-setting" data-key="setting:defaults">
+<div class="voc-setting-text">
+<strong id="voc-setting-defaults">Defaults for new jobs</strong>
+<span>New jobs, also from automations and templates, start with these values. Changing them does not change existing jobs.</span>
+</div>
+<span class="voc-setting-value" data-key="built-in">Built-in defaults</span>
+<button type="button" class="voc-button voc-button--text" data-action="open-job-defaults" aria-describedby="voc-setting-defaults">
+<ha-icon icon="mdi:pencil-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Change</span>
+</button>
+</div>
+<dl class="voc-facts">
+<dt>Cleaning mode</dt>
+<dd>Vacuum</dd>
+<dt>Suction</dt>
+<dd>Standard</dd>
+<dt>Water</dt>
+<dd>Medium</dd>
+<dt>Mop route</dt>
+<dd>Standard</dd>
+<dt>Passes</dt>
+<dd>1</dd>
+<dt>If a robot cannot apply a setting</dt>
+<dd>Best effort</dd>
+</dl>
+</section>
 <section class="voc-block" data-key="queue">
 <h3 class="voc-block-title">
 <ha-icon icon="mdi:format-list-numbered" aria-hidden="true">
@@ -104,7 +140,7 @@
 <dt>Version</dt>
 <dd>0.1.0</dd>
 <dt>API version</dt>
-<dd>2</dd>
+<dd>3</dd>
 </dl>
 <div class="voc-inline-actions">
 <button type="button" class="voc-button voc-button--text" data-action="navigate" data-args="{&quot;path&quot;:&quot;/_my_redirect/integration?domain=vacuum_orchestrator&quot;}">

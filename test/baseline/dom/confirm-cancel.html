@@ -12,8 +12,8 @@
 </div>
 <div class="voc-status-pill">Cleaning</div>
 </div>
-<div class="voc-body" id="voc-panel" data-body="overlay:confirm">
-<section class="voc-overlay" data-key="overlay:confirm" role="dialog" aria-modal="true" aria-labelledby="voc-overlay-title">
+<div class="voc-body" id="voc-panel" data-body="overlay:cancel-job">
+<section class="voc-overlay" data-key="overlay:cancel-job" role="dialog" aria-modal="true" aria-labelledby="voc-overlay-title">
 <header class="voc-overlay-head">
 <button type="button" class="voc-button voc-button--icon voc-back" data-action="back" aria-label="Back" title="Back">
 <ha-icon icon="mdi:arrow-left" aria-hidden="true">
@@ -21,12 +21,35 @@
 </button>
 <h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">Cancel job?</h2>
 </header>
-<p class="voc-overlay-lead">“Living room” is cancelled. A robot already cleaning is stopped.</p>
-<div class="voc-overlay-actions">
-<button type="button" class="voc-button voc-button--quiet" data-action="back" data-autofocus="">
-<span class="voc-button-label">Keep</span>
+<p class="voc-overlay-lead">“Living room” is running. The robot is stopped.</p>
+<div class="voc-form">
+<div class="voc-field" data-key="field:overlay:afterCancel" data-field-control="radios">
+<div class="voc-field-label" id="voc-field-overlay-afterCancel-label">Then</div>
+<div class="voc-radios" role="radiogroup" aria-labelledby="voc-field-overlay-afterCancel-label" data-control="choice">
+<button type="button" class="voc-radio is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:afterCancel&quot;,&quot;value&quot;:&quot;return_to_dock&quot;}" data-value="return_to_dock" data-key="option:return_to_dock">
+<ha-icon icon="mdi:radiobox-marked" aria-hidden="true">
+</ha-icon>
+<span class="voc-radio-text">
+<span class="voc-radio-label">Robot returns to its dock</span>
+<span class="voc-radio-note">The cancel completes once it is docked.</span>
+</span>
 </button>
-<button type="button" class="voc-button voc-button--danger" data-action="confirm-command">
+<button type="button" class="voc-radio" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:afterCancel&quot;,&quot;value&quot;:&quot;stay&quot;}" data-value="stay" data-key="option:stay">
+<ha-icon icon="mdi:radiobox-blank" aria-hidden="true">
+</ha-icon>
+<span class="voc-radio-text">
+<span class="voc-radio-label">Robot stays where it is</span>
+<span class="voc-radio-note">The queue goes on from there.</span>
+</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-overlay-actions">
+<button type="button" class="voc-button voc-button--quiet" data-action="back">
+<span class="voc-button-label">Back</span>
+</button>
+<button type="button" class="voc-button voc-button--danger" data-action="confirm-cancel">
 <ha-icon icon="mdi:stop-circle-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Cancel job</span>

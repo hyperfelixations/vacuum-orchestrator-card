@@ -10,7 +10,7 @@ const { propertyRun } = require("./run-config.js");
 
 const MODES = ["vacuum", "vac", "mop", "vacuum_and_mop", "vac_and_mop", "vacuum_then_mop", "vac_then_mop"];
 const STATES = ["queued", "dispatching", "running", "canceling", "completed", "failed", "cancelled", "needs_attention", "hibernating"];
-const LEVELS = [null, "off", "low", "standard", "medium", "high", "maximum", "auto"];
+const LEVELS = [null, "off", "low", "standard", "medium", "high", "maximum", "maximum_plus", "auto"];
 
 function generateJob(random, index) {
   const rooms = Array.from({ length: 1 + random.integer(4) }, () => `room-${random.integer(6)}`);
@@ -68,12 +68,12 @@ test("queue positions continue from any page offset without gaps", async () => {
 
 test("an update patch carries exactly the fields that changed", async () => {
   const { normalizeJob } = await import("../../src/domain/job.js");
-  const { createDraft, applyDraftChange, draftToUpdatePatch } = await import("../../src/domain/job-draft.js");
+  const { createDraft, applyDraftChange, draftToUpdatePatch, settingsForMode } = await import("../../src/domain/job-draft.js");
   const { cases, seed } = propertyRun("INVARIANTS", 300, "voc-invariants-v2");
   const CHANGES = {
     passes: (random) => 1 + random.integer(10),
     name: (random) => (random.boolean() ? "" : `Name ${random.integer(9)}`),
-    mopRoute: (random) => random.pick([null, "standard", "deep", "fast", "auto"]),
+    mopRoute: (random) => random.pick([null, "fast", "standard", "deep", "deep_plus"]),
     settingsPolicy: (random) => random.pick(["best_effort", "strict"]),
   };
   const WIRE = { passes: "passes", name: "name", mopRoute: "mop_route", settingsPolicy: "settings_policy" };
@@ -82,7 +82,7 @@ test("an update patch carries exactly the fields that changed", async () => {
     cases,
     seed: seed ^ 0x2545f491,
     generate(random, index) {
-      const wire = W.wireJob({ job_id: `job-${index}`, passes: 1 + random.integer(10), mop_route: random.pick([null, "deep"]) });
+      const wire = W.wireJob({ job_id: `job-${index}`, mode: random.pick(MODES), passes: 1 + random.integer(10), mop_route: random.pick([null, "deep"]) });
       const fields = Object.keys(CHANGES).filter(() => random.boolean());
       return { wire, changes: Object.fromEntries(fields.map((field) => [field, CHANGES[field](random)])) };
     },
@@ -91,7 +91,9 @@ test("an update patch carries exactly the fields that changed", async () => {
       let draft = createDraft({ target: job });
       for (const [field, value] of Object.entries(changes)) draft = applyDraftChange(draft, field, value);
       const patch = draftToUpdatePatch(draft);
+      // A setting the mode does not use, or cleared, is never sent: the job keeps its own.
       const changed = Object.entries(changes).filter(([field, value]) => {
+        if (field === "mopRoute" && (value === null || !settingsForMode(job.mode).includes(field))) return false;
         const before = job[field] ?? null;
         const after = field === "name" ? (String(value ?? "").trim() || null) : value;
         return before !== after;

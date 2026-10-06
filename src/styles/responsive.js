@@ -18,8 +18,8 @@ export const RESPONSIVE_CSS = `
   .voc-header { gap: 9px; }
   .voc-panel { grid-template-columns: minmax(0, 1fr) auto; }
   .voc-panel-status { grid-column: 1 / -1; grid-row: 2; }
-  .voc-queue-control .voc-button-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .voc-queue-control { width: var(--voc-icon-target); min-height: var(--voc-icon-target); padding: 0; }
+  .voc-queue-control .voc-button-label, .voc-queue-end .voc-button-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .voc-queue-control, .voc-queue-end { width: var(--voc-icon-target); min-height: var(--voc-icon-target); padding: 0; }
 }
 
 @supports not (container-type: inline-size) {

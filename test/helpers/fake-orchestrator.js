@@ -1,4 +1,4 @@
-// A deterministic stand-in for Vacuum Orchestrator API V2 behind Home Assistant's frontend
+// A deterministic stand-in for Vacuum Orchestrator API V3 behind Home Assistant's frontend
 // connection. Shapes come from test/fixtures/voi/wire.js; preconditions and error codes follow
 // the integration's command handlers, and errors travel in Home Assistant's own frames
 // (`service_validation_error` for actions, the VOI code for its WebSocket types). It holds no
@@ -10,14 +10,18 @@
   const W = typeof module !== "undefined" && module.exports ? require("../fixtures/voi/wire.js") : root.VocWire;
   const { EXCEPTIONS } = typeof module !== "undefined" && module.exports ? require("../fixtures/voi/exceptions.js") : root.VocExceptions;
   const DOMAIN = "vacuum_orchestrator";
-  const ACTIONS = ["create_job", "update_job", "delete_job", "move_job", "start_job", "cancel_job", "retry_job", "run_queue", "pause_queue", "resume_queue"];
+  const ACTIONS = ["create_job", "update_job", "delete_job", "move_job", "start_job", "cancel_job", "retry_job", "run_queue", "pause_queue", "resume_queue", "end_queue", "return_robot"];
   const QUERY_ACTIONS = ["get_queue", "get_job"];
-  const COMMANDS = ["configure_queue", "create_room", "update_room", "disable_room", "enable_room", "release_room", "revoke_room", "add_robot", "configure_robot", "remove_robot", "resolve_recovery", "save_template", "remove_template", "create_job_from_template", "reset_template_demand"];
-  const QUERIES = ["get_rooms", "get_room", "get_robots", "get_robot_candidates", "get_templates", "get_history", "get_trace", "get_diagnostics", "get_job_execution"];
+  const COMMANDS = ["configure_queue", "configure_job_defaults", "create_room", "update_room", "disable_room", "enable_room", "release_room", "revoke_room", "add_robot", "configure_robot", "remove_robot", "resolve_recovery", "save_template", "save_job_as_template", "remove_template", "create_job_from_template", "reset_template_demand"];
+  const QUERIES = ["get_rooms", "get_room", "get_robots", "get_robot_candidates", "get_templates", "get_history", "get_trace", "get_diagnostics", "get_job_execution", "preview_job"];
   const TERMINAL = new Set(["completed", "failed", "cancelled"]);
   const MODES = { vacuum: "vacuum", vac: "vacuum", mop: "mop", vacuum_and_mop: "vacuum_and_mop", vac_and_mop: "vacuum_and_mop", vacuum_then_mop: "vacuum_then_mop", vac_then_mop: "vacuum_then_mop" };
-  const LEVELS = new Set(["off", "low", "standard", "medium", "high", "maximum", "auto"]);
-  const ROUTES = new Set(["standard", "deep", "fast", "auto"]);
+  // The setting ladders and the settings each mode uses (`settings_for_mode`).
+  const LADDERS = { vacuum_power: ["low", "standard", "high", "maximum", "maximum_plus"], mop_intensity: ["low", "medium", "high"], mop_route: ["fast", "standard", "deep", "deep_plus"] };
+  const MODE_SETTINGS = { vacuum: ["vacuum_power"], mop: ["mop_intensity", "mop_route"], vacuum_and_mop: Object.keys(LADDERS), vacuum_then_mop: Object.keys(LADDERS) };
+  const ACTIVE_STATES = new Set(["dispatching", "running"]);
+  const PHASES = { vacuum: ["vacuum"], mop: ["mop"], vacuum_and_mop: ["vacuum_and_mop"], vacuum_then_mop: ["vacuum", "mop"] };
+  const OPERATION_SETTINGS = { vacuum: ["vacuum_power"], mop: ["mop_intensity", "mop_route"], vacuum_and_mop: Object.keys(LADDERS) };
   const RELEASE_KINDS = new Set(["permanent", "once", "timed", "queue_run"]);
 
   const copy = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
@@ -68,7 +72,7 @@
       installed: options.installed !== false,
       setUp: options.setUp !== false,
       runtimeLoaded: options.runtimeLoaded !== false,
-      apiVersion: options.apiVersion ?? 2,
+      apiVersion: options.apiVersion ?? W.VOI_API_VERSION,
       admin: options.admin !== false,
       commitId: seed.commitId ?? 1,
       queueRevision: 1,
@@ -77,6 +81,7 @@
       mode: seed.mode || "idle",
       run: seed.run ? W.wireQueueRun(seed.run) : null,
       graceSeconds: seed.graceSeconds ?? 900,
+      jobDefaults: W.wireJobDefaults(seed.jobDefaults || {}),
       recoveryTargets: copy(seed.recoveryTargets || []),
       jobs: new Map(),
       readiness: new Map(),
@@ -120,7 +125,7 @@
       const jobs = [[...state.jobs.values()], [...state.readiness]];
       return {
         jobs: JSON.stringify(jobs),
-        queue: JSON.stringify([state.queue, state.queueRevision, state.mode, state.run, state.graceSeconds, state.recoveryTargets, jobs]),
+        queue: JSON.stringify([state.queue, state.queueRevision, state.mode, state.run, state.graceSeconds, state.jobDefaults, state.recoveryTargets, jobs]),
         rooms: JSON.stringify(state.rooms),
         robots: JSON.stringify([state.robots, state.recoveryTargets]),
         templates: JSON.stringify(state.templates),
@@ -135,8 +140,8 @@
 
     // The integration's view event; while no runtime is loaded it only says so.
     function event() {
-      if (!state.runtimeLoaded) return { api_version: 2, loaded: false };
-      return { api_version: 2, loaded: true, commit_id: state.commitId, runtime_id: state.runtimeId, runtime_sequence: state.runtimeSequence, queue_revision: state.queueRevision, mode: state.mode, pending_jobs: state.queue.length, needs_attention: needsAttention(), ...counts(), changed: lastChanged };
+      if (!state.runtimeLoaded) return { api_version: W.VOI_API_VERSION, loaded: false };
+      return { api_version: W.VOI_API_VERSION, loaded: true, commit_id: state.commitId, runtime_id: state.runtimeId, runtime_sequence: state.runtimeSequence, queue_revision: state.queueRevision, mode: state.mode, pending_jobs: state.queue.length, needs_attention: needsAttention(), ...counts(), changed: lastChanged };
     }
 
     function viewMetadata() {
@@ -217,6 +222,7 @@
         needs_attention: needsAttention(),
         recovery_targets: copy(state.recoveryTargets),
         queue_grace_seconds: state.graceSeconds,
+        job_defaults: copy(state.jobDefaults),
         queue_run: copy(state.run),
         ...counts(),
         total,
@@ -247,7 +253,7 @@
         case "get_room": {
           const room = roomFor(parameters.room_id);
           if (!room) throw voi("unknown_room");
-          return { api_version: 2, ...copy(room) };
+          return { api_version: W.VOI_API_VERSION, ...copy(room) };
         }
         case "get_robots":
           return collection("robots", state.robots);
@@ -263,6 +269,8 @@
         }
         case "get_diagnostics":
           return W.wireDiagnostics({ commit_id: state.commitId, runtime_id: state.runtimeId, runtime_sequence: state.runtimeSequence, mode: state.mode, needs_attention: needsAttention(), totals: { jobs: state.jobs.size, rooms: state.rooms.length }, trace_window: { recorded: state.trace.length, retained: state.trace.length, dropped: 0 } });
+        case "preview_job":
+          return preview(parameters);
         case "get_job_execution": {
           const job = jobOrError(parameters.job_id);
           if (!job) throw voi("unknown_job");
@@ -279,8 +287,25 @@
 
     function command(name, parameters) {
       requireAdmin();
-      const result = { api_version: 2 };
+      const result = { api_version: W.VOI_API_VERSION };
       switch (name) {
+        case "configure_job_defaults": {
+          const next = { ...state.jobDefaults };
+          if (parameters.mode !== undefined) {
+            if (!MODES[parameters.mode]) throw voi("invalid_parameters");
+            next.mode = MODES[parameters.mode];
+          }
+          for (const name of Object.keys(LADDERS)) {
+            if (parameters[name] === undefined) continue;
+            if (!LADDERS[name].includes(parameters[name])) throw voi("invalid_parameters");
+            next[name] = parameters[name];
+          }
+          if (parameters.passes !== undefined) next.passes = parameters.passes;
+          if (parameters.settings_policy !== undefined) next.settings_policy = parameters.settings_policy;
+          state.jobDefaults = { ...next, configured: true };
+          result.job_defaults = copy(state.jobDefaults);
+          break;
+        }
         case "configure_queue": {
           const value = parameters.grace_seconds;
           if (typeof value !== "number" || value < 0 || value > 86400) throw voi("invalid_parameters");
@@ -399,6 +424,18 @@
           result.template_id = template.template_id;
           break;
         }
+        // Rooms, the all-rooms choice, settings, title and note; never the occasion or the key.
+        case "save_job_as_template": {
+          const job = jobOrError(parameters.job_id);
+          if (!job) throw voi("unknown_job");
+          if (!parameters.name) throw voi("invalid_parameters");
+          const intent = { areas: job.all_rooms ? "all" : [...job.room_ids], mode: job.mode, passes: job.passes, settings_policy: job.settings_policy, required_on: [...job.required_on], required_off: [...job.required_off] };
+          for (const key of ["name", "note", ...MODE_SETTINGS[job.mode]]) if (job[key] !== null && job[key] !== undefined) intent[key] = job[key];
+          const template = W.wireTemplate({ template_id: nextId("template"), name: parameters.name, intent, enabled: true, automatic: parameters.automatic === true, updated_at: iso() });
+          state.templates.push(template);
+          result.template_id = template.template_id;
+          break;
+        }
         case "remove_template": {
           const index = state.templates.findIndex((template) => template.template_id === parameters.template_id);
           if (index < 0) throw voi("unknown_template");
@@ -410,7 +447,7 @@
           const template = state.templates.find((item) => item.template_id === parameters.template_id);
           if (!template) throw voi("unknown_template");
           if (!template.enabled) throw voi("template_disabled");
-          result.job_id = createJob(copy(template.intent));
+          result.job_id = createJob(copy(template.intent), { kind: "template", template_id: template.template_id });
           break;
         }
         case "reset_template_demand": {
@@ -441,15 +478,31 @@
       return ids;
     }
 
-    function createJob(input) {
-      const data = isAllRooms(input.areas) ? { ...input, areas: eligibleRoomIds() } : input;
-      const mode = MODES[data.mode];
+    // The settings a mode uses: the given rung or the default; the others none.
+    function settingsFor(mode, data) {
+      const result = {};
+      for (const name of Object.keys(LADDERS)) {
+        const given = data[name] ?? null;
+        if (given !== null && !LADDERS[name].includes(given)) throw validation("unsupported_cleaning_preference");
+        result[name] = !MODE_SETTINGS[mode].includes(name) ? null : given ?? state.jobDefaults[name];
+      }
+      return result;
+    }
+
+    function prepareJob(input) {
+      const allRooms = isAllRooms(input.areas);
+      const data = allRooms ? { ...input, areas: eligibleRoomIds() } : input;
+      const mode = data.mode === undefined ? state.jobDefaults.mode : MODES[data.mode];
       if (!Array.isArray(data.areas) || data.areas.length === 0) throw validation("job_requires_area");
       if (!mode) throw validation("invalid_cleaning_mode");
       const rooms = data.areas.map((reference) => roomFor(reference));
       if (rooms.some((room) => !room)) throw validation("unknown_room");
-      if ((data.vacuum_power === "off" && mode !== "mop") || (data.mop_intensity === "off" && mode !== "vacuum")) throw validation("preference_conflicts_with_cleaning_mode");
       if (data.dedupe_key && state.queue.some((jobId) => state.jobs.get(jobId).dedupe_key === data.dedupe_key)) throw validation("dedupe_key_already_queued");
+      return { data, mode, rooms, allRooms };
+    }
+
+    function createJob(input, origin = { kind: "manual", template_id: null }) {
+      const { data, mode, rooms, allRooms } = prepareJob(input);
       const job = W.wireJob({
         job_id: nextId("job"),
         state: "queued",
@@ -457,23 +510,84 @@
         areas: rooms.map((room) => room.area_id || room.room_id),
         room_ids: rooms.map((room) => room.room_id),
         mode,
-        vacuum_power: data.vacuum_power ?? null,
-        mop_intensity: data.mop_intensity ?? null,
-        mop_route: data.mop_route ?? null,
-        passes: data.passes ?? 1,
-        source: data.source ?? null,
+        ...settingsFor(mode, data),
+        passes: data.passes ?? state.jobDefaults.passes,
+        all_rooms: allRooms,
+        origin,
         reason: data.reason ?? null,
         note: data.note ?? null,
         dedupe_key: data.dedupe_key ?? null,
         required_on: data.required_on ?? [],
         required_off: data.required_off ?? [],
-        settings_policy: data.settings_policy ?? "best_effort",
+        settings_policy: data.settings_policy ?? state.jobDefaults.settings_policy,
         created_at: iso(),
         updated_at: iso(),
       });
       state.jobs.set(job.job_id, job);
       state.queue.push(job.job_id);
       return job.job_id;
+    }
+
+    function startingRobot(robotId) {
+      if (!state.robots.length) throw validation("no_robot_configured");
+      const robot = robotId ? state.robots.find((item) => item.robot_id === robotId) : state.robots.find((item) => !item.active);
+      if (!robot) throw validation(robotId ? "unknown_robot" : "robot_busy");
+      if (robot.active) throw validation("robot_busy");
+      return robot;
+    }
+
+    function begin(job, robot) {
+      Object.assign(job, { state: "dispatching", revision: job.revision + 1, updated_at: iso(), active_attempt_id: nextId("attempt") });
+      state.queue = state.queue.filter((jobId) => jobId !== job.job_id);
+      robot.active = true;
+    }
+
+    function cancel(job, afterCancel) {
+      if (job.state === "queued") {
+        Object.assign(job, { state: "cancelled", revision: job.revision + 1, updated_at: iso() });
+        state.queue = state.queue.filter((jobId) => jobId !== job.job_id);
+      } else if (ACTIVE_STATES.has(job.state)) {
+        Object.assign(job, { state: "canceling", after_cancel: afterCancel, revision: job.revision + 1, updated_at: iso() });
+      } else {
+        throw validation("job_not_cancellable");
+      }
+    }
+
+    // Per setting the rungs some robot offers, all rungs while none does; startable while a
+    // free robot reaches every room and the rooms are released.
+    // Best effort takes the nearest offered rung, the lower one on a tie.
+    function nearest(name, requested, options) {
+      const rank = (value) => LADDERS[name].indexOf(value);
+      return options.reduce((best, value) => (Math.abs(rank(value) - rank(requested)) < Math.abs(rank(best) - rank(requested)) ? value : best));
+    }
+
+    function preview(parameters) {
+      const mode = parameters.mode === undefined ? state.jobDefaults.mode : MODES[parameters.mode];
+      if (!mode) throw voi("invalid_parameters");
+      // Rungs come from robots that can run a phase using the setting on every chosen room.
+      const roomIds = Array.isArray(parameters.areas) ? parameters.areas.map((reference) => roomFor(reference)?.room_id ?? reference) : [];
+      const settings = {};
+      for (const name of MODE_SETTINGS[mode]) {
+        const operations = PHASES[mode].filter((operation) => OPERATION_SETTINGS[operation].includes(name));
+        const suitable = state.robots.filter((robot) => (robot.capabilities?.operations || []).some((operation) => operations.includes(operation)) && roomIds.every((roomId) => roomId in (robot.capabilities?.targets || {})));
+        const offered = suitable.map((robot) => robot.capabilities?.settings?.[name] || []);
+        const values = LADDERS[name].filter((rung) => offered.some((list) => list.includes(rung)));
+        const options = values.length ? values : LADDERS[name];
+        const requested = parameters[name] ?? state.jobDefaults[name];
+        settings[name] = { initial: nearest(name, requested, options), options: options.map((value) => ({ value, supported_by_all: offered.length > 0 && offered.every((list) => list.includes(value)) })) };
+      }
+      let reason = null;
+      if (parameters.areas === undefined) reason = "job_requires_area";
+      else {
+        try {
+          const { rooms } = prepareJob({ ...parameters, mode });
+          if (rooms.some((room) => !room.released)) reason = "job_blocked";
+          else if (!state.robots.some((robot) => !robot.active)) reason = state.robots.length ? "robot_busy" : "no_robot_configured";
+        } catch (error) {
+          reason = error.translation_key || "invalid_parameters";
+        }
+      }
+      return W.wirePreview({ mode, passes: parameters.passes ?? state.jobDefaults.passes, settings_policy: parameters.settings_policy ?? state.jobDefaults.settings_policy, settings, robots: [], startable_now: reason === null, reason });
     }
 
     function queued(jobId, code) {
@@ -487,9 +601,13 @@
       if (!state.admin) throw W.haError.homeAssistant("Unauthorized");
       switch (service) {
         case "create_job": {
-          const jobId = createJob(data);
+          const { start, robot_id: robotId, ...intent } = data;
+          // Starting at once creates nothing when no robot can take the job now.
+          const robot = start ? startingRobot(robotId) : null;
+          const jobId = createJob(intent);
+          if (robot) begin(state.jobs.get(jobId), robot);
           commit({ queueChanged: true });
-          return { job_id: jobId };
+          return robot ? { job_id: jobId, robot_id: robot.robot_id, settings: [] } : { job_id: jobId };
         }
         case "update_job": {
           const job = queued(data.job_id, "job_not_editable");
@@ -500,8 +618,10 @@
             if (!MODES[patch.mode]) throw validation("invalid_cleaning_mode");
             patch.mode = MODES[patch.mode];
           }
+          Object.assign(patch, settingsFor(patch.mode ?? job.mode, { ...job, ...patch }));
           if (patch.areas) {
-            if (isAllRooms(patch.areas)) patch.areas = eligibleRoomIds();
+            patch.all_rooms = isAllRooms(patch.areas);
+            if (patch.all_rooms) patch.areas = eligibleRoomIds();
             const rooms = patch.areas.map((reference) => roomFor(reference));
             if (rooms.some((room) => !room)) throw validation("unknown_room");
             job.room_ids = rooms.map((room) => room.room_id);
@@ -535,35 +655,47 @@
         }
         case "start_job": {
           const job = queued(data.job_id, "job_not_startable");
-          if (!state.robots.length) throw validation("no_robot_configured");
-          const robot = data.robot_id ? state.robots.find((item) => item.robot_id === data.robot_id) : state.robots.find((item) => !item.active);
-          if (!robot) throw validation(data.robot_id ? "unknown_robot" : "robot_busy");
-          if (robot.active) throw validation("robot_busy");
-          Object.assign(job, { state: "dispatching", revision: job.revision + 1, updated_at: iso(), active_attempt_id: nextId("attempt") });
-          state.queue = state.queue.filter((jobId) => jobId !== job.job_id);
-          robot.active = true;
+          const robot = startingRobot(data.robot_id);
+          begin(job, robot);
           commit({ queueChanged: true });
-          return { job_id: job.job_id, robot_id: robot.robot_id, omitted_preferences: [] };
+          return { job_id: job.job_id, robot_id: robot.robot_id, settings: [] };
         }
         case "cancel_job": {
           const job = jobOrError(data.job_id);
           if (!job) throw validation("unknown_job");
-          if (job.state === "queued") {
-            Object.assign(job, { state: "cancelled", revision: job.revision + 1, updated_at: iso() });
-            state.queue = state.queue.filter((jobId) => jobId !== job.job_id);
-          } else if (job.state === "dispatching" || job.state === "running") {
-            Object.assign(job, { state: "canceling", revision: job.revision + 1, updated_at: iso() });
-          } else {
-            throw validation("job_not_cancellable");
-          }
+          cancel(job, data.after_cancel ?? "stay");
           commit({ queueChanged: true });
           return { job_id: job.job_id };
+        }
+        // Finishing lets started jobs run and pauses until they are done; cancelling stops them
+        // and closes the run at once. Waiting jobs stay queued either way.
+        case "end_queue": {
+          const started = [...state.jobs.values()].filter((job) => ACTIVE_STATES.has(job.state));
+          const cancelling = data.running_jobs === "cancel";
+          if (cancelling) for (const job of started) cancel(job, data.after_cancel ?? "stay");
+          if (state.run?.active && !cancelling && started.length) {
+            state.mode = "paused";
+            state.run = { ...state.run, ending: true };
+          } else {
+            state.mode = "idle";
+            if (state.run?.active) state.run = { ...state.run, active: false, ending: false, completed_at: iso() };
+          }
+          commit({ queueChanged: cancelling });
+          return {};
+        }
+        case "return_robot": {
+          const robot = state.robots.find((item) => item.robot_id === data.robot_id);
+          if (!robot) throw validation("unknown_robot");
+          if (robot.active) throw validation("robot_already_executing");
+          if (!robot.capabilities?.supports?.return_to_dock) throw validation("return_to_dock_unsupported");
+          state.returned = [...(state.returned || []), robot.robot_id];
+          return { robot_id: robot.robot_id };
         }
         case "retry_job": {
           const job = jobOrError(data.job_id);
           if (!job) throw validation("unknown_job");
           if (!TERMINAL.has(job.state)) throw validation("job_not_retryable");
-          const jobId = createJob({ ...copy(job), areas: job.room_ids });
+          const jobId = createJob({ ...copy(job), areas: job.room_ids }, { kind: "retry", template_id: null });
           state.jobs.get(jobId).retries_job_id = job.job_id;
           commit({ queueChanged: true });
           return { job_id: jobId };
@@ -572,6 +704,7 @@
         case "resume_queue": {
           state.mode = "running";
           if (!state.run?.active) state.run = W.wireQueueRun({ run_id: nextId("run"), started_at: iso() });
+          else state.run = { ...state.run, ending: false };
           commit();
           return { dispatched: 0, robot_ids: [] };
         }
@@ -644,7 +777,7 @@
       try {
         const ids = action(service, data);
         // Every action answers optionally: reads with their page, changes with the confirmed commit.
-        const response = QUERY_ACTIONS.includes(service) ? ids : { api_version: 2, commit_id: state.commitId, ...ids };
+        const response = QUERY_ACTIONS.includes(service) ? ids : { api_version: W.VOI_API_VERSION, commit_id: state.commitId, ...ids };
         return respond(returnResponse ? { context: { id: "context" }, response } : { context: { id: "context" } });
       } catch (error) {
         return reject(error);

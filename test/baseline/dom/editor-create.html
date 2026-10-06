@@ -24,6 +24,11 @@
 <form class="voc-form" novalidate="">
 <section class="voc-block voc-form-group" data-key="group:basics">
 <h3 class="voc-block-title">What to clean</h3>
+<div class="voc-field" data-key="field:name" data-field-control="text">
+<label class="voc-field-label" id="voc-field-name-label" for="voc-field-name">Title <span class="voc-field-optional">optional</span>
+</label>
+<input class="voc-input" id="voc-field-name" data-field="name" placeholder="Named after its rooms" type="text" value="" autocomplete="off">
+</div>
 <div class="voc-field" data-key="field:roomIds" data-field-control="chips">
 <div class="voc-field-label" id="voc-field-roomIds-label">Rooms</div>
 <div class="voc-chips" role="listbox" aria-multiselectable="true" aria-labelledby="voc-field-roomIds-label" data-control="choice">
@@ -89,6 +94,39 @@
 </section>
 <section class="voc-block voc-form-group" data-key="group:settings">
 <h3 class="voc-block-title">Settings</h3>
+<div class="voc-field" data-key="field:vacuumPower" data-field-control="segmented">
+<div class="voc-field-label" id="voc-field-vacuumPower-label">Suction</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-vacuumPower-label" data-control="choice">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;low&quot;}" data-value="low" data-key="option:low" title="Not every robot for these rooms offers this level.">
+<span>Quiet</span>
+<span class="voc-option-badge">
+<ha-icon icon="mdi:information-outline" aria-hidden="true">
+</ha-icon>
+</span>
+</button>
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;standard&quot;}" data-value="standard" data-key="option:standard" title="Not every robot for these rooms offers this level.">
+<span>Standard</span>
+<span class="voc-option-badge">
+<ha-icon icon="mdi:information-outline" aria-hidden="true">
+</ha-icon>
+</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;high&quot;}" data-value="high" data-key="option:high" title="Not every robot for these rooms offers this level.">
+<span>High</span>
+<span class="voc-option-badge">
+<ha-icon icon="mdi:information-outline" aria-hidden="true">
+</ha-icon>
+</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;maximum&quot;}" data-value="maximum" data-key="option:maximum" title="Not every robot for these rooms offers this level.">
+<span>Max</span>
+<span class="voc-option-badge">
+<ha-icon icon="mdi:information-outline" aria-hidden="true">
+</ha-icon>
+</span>
+</button>
+</div>
+</div>
 <div class="voc-field" data-key="field:passes" data-field-control="stepper">
 <label class="voc-field-label" id="voc-field-passes-label" for="voc-field-passes">Passes</label>
 <div class="voc-stepper" role="group" aria-labelledby="voc-field-passes-label">
@@ -104,96 +142,6 @@
 </div>
 <div class="voc-field-hint" id="voc-field-passes-hint">The robot may support fewer passes; Vacuum Orchestrator checks at the start.</div>
 </div>
-<div class="voc-field" data-key="field:vacuumPower" data-field-control="segmented">
-<div class="voc-field-label" id="voc-field-vacuumPower-label">Suction <span class="voc-field-optional">optional</span>
-</div>
-<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-vacuumPower-label" data-control="choice">
-<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:null}" data-value="" data-key="option:">
-<span>Not set</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;low&quot;}" data-value="low" data-key="option:low">
-<span>Low</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;standard&quot;}" data-value="standard" data-key="option:standard">
-<span>Standard</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;medium&quot;}" data-value="medium" data-key="option:medium">
-<span>Medium</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;high&quot;}" data-value="high" data-key="option:high">
-<span>High</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;maximum&quot;}" data-value="maximum" data-key="option:maximum">
-<span>Maximum</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
-<span>Automatic</span>
-</button>
-</div>
-</div>
-<div class="voc-field" data-key="field:mopIntensity" data-field-control="segmented">
-<div class="voc-field-label" id="voc-field-mopIntensity-label">Water <span class="voc-field-optional">optional</span>
-</div>
-<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-mopIntensity-label" data-control="choice">
-<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopIntensity&quot;,&quot;value&quot;:null}" data-value="" data-key="option:">
-<span>Not set</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopIntensity&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
-<span>Off</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopIntensity&quot;,&quot;value&quot;:&quot;low&quot;}" data-value="low" data-key="option:low">
-<span>Low</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopIntensity&quot;,&quot;value&quot;:&quot;standard&quot;}" data-value="standard" data-key="option:standard">
-<span>Standard</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopIntensity&quot;,&quot;value&quot;:&quot;medium&quot;}" data-value="medium" data-key="option:medium">
-<span>Medium</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopIntensity&quot;,&quot;value&quot;:&quot;high&quot;}" data-value="high" data-key="option:high">
-<span>High</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopIntensity&quot;,&quot;value&quot;:&quot;maximum&quot;}" data-value="maximum" data-key="option:maximum">
-<span>Maximum</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopIntensity&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
-<span>Automatic</span>
-</button>
-</div>
-</div>
-<div class="voc-field" data-key="field:mopRoute" data-field-control="segmented">
-<div class="voc-field-label" id="voc-field-mopRoute-label">Mop route <span class="voc-field-optional">optional</span>
-</div>
-<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-mopRoute-label" data-control="choice">
-<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopRoute&quot;,&quot;value&quot;:null}" data-value="" data-key="option:">
-<span>Not set</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopRoute&quot;,&quot;value&quot;:&quot;standard&quot;}" data-value="standard" data-key="option:standard">
-<span>Standard route</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopRoute&quot;,&quot;value&quot;:&quot;deep&quot;}" data-value="deep" data-key="option:deep">
-<span>Deep route</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopRoute&quot;,&quot;value&quot;:&quot;fast&quot;}" data-value="fast" data-key="option:fast">
-<span>Fast route</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;mopRoute&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
-<span>Automatic route</span>
-</button>
-</div>
-</div>
-<div class="voc-field" data-key="field:settingsPolicy" data-field-control="segmented">
-<div class="voc-field-label" id="voc-field-settingsPolicy-label">If a robot cannot apply a setting</div>
-<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-settingsPolicy-label" aria-describedby="voc-field-settingsPolicy-hint" data-control="choice">
-<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;settingsPolicy&quot;,&quot;value&quot;:&quot;best_effort&quot;}" data-value="best_effort" data-key="option:best_effort">
-<span>Best effort</span>
-</button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;settingsPolicy&quot;,&quot;value&quot;:&quot;strict&quot;}" data-value="strict" data-key="option:strict">
-<span>Strict</span>
-</button>
-</div>
-<div class="voc-field-hint" id="voc-field-settingsPolicy-hint">Clean anyway and leave the setting out. Rooms, mode and order are never changed.</div>
-</div>
 </section>
 <section class="voc-block voc-form-group" data-key="group:more">
 <button type="button" class="voc-disclosure" data-action="set-overlay" data-args="{&quot;moreOpen&quot;:true}" aria-expanded="false">
@@ -205,7 +153,7 @@
 </form>
 <div class="voc-overlay-actions">
 <button type="button" class="voc-button voc-button--quiet" data-action="back">
-<span class="voc-button-label">Cancel</span>
+<span class="voc-button-label">Back</span>
 </button>
 <button type="button" class="voc-button voc-button--primary" data-action="save-draft">
 <ha-icon icon="mdi:check" aria-hidden="true">

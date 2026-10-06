@@ -3,6 +3,7 @@
 
 import { isQueueMode } from "./job-schema.js";
 import { normalizeJob } from "./job.js";
+import { normalizeJobDefaults } from "./settings.js";
 import { bool, finite, instant, integer, isRecord, records, text } from "./wire-values.js";
 
 function queueRun(wire) {
@@ -15,6 +16,8 @@ function queueRun(wire) {
     active: wire.active === true,
     idleSince: instant(wire.idle_since),
     deadline: instant(wire.deadline),
+    // `end_queue` asked the run to close once nothing started is left running.
+    ending: wire.ending === true,
     completedAt: instant(wire.completed_at),
   });
 }
@@ -45,6 +48,7 @@ export function normalizeQueuePage(wire) {
     needsAttention: bool(wire.needs_attention) === true,
     recoveryTargets: Object.freeze(records(wire.recovery_targets).map(recoveryTarget).filter(Boolean)),
     graceSeconds: finite(wire.queue_grace_seconds),
+    jobDefaults: normalizeJobDefaults(wire.job_defaults),
     run: queueRun(wire.queue_run),
     total: Math.max(0, integer(wire.total) ?? jobs.length),
     offset,
@@ -53,10 +57,11 @@ export function normalizeQueuePage(wire) {
   });
 }
 
-// A run is live while the integration says so; its deadline only exists during the quiet
-// period. The phase is read, never computed.
+// A run is live while the integration says so; an ending run closes once its started jobs are
+// done, and a deadline only exists during the quiet period. The phase is read, never computed.
 export function queueRunPhase(run) {
   if (!run) return "none";
   if (!run.active) return "finished";
+  if (run.ending) return "ending";
   return run.deadline !== null ? "winding_down" : "active";
 }

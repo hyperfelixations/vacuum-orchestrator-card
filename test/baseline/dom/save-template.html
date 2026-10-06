@@ -1,0 +1,57 @@
+<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Living room · Cleaning</div>
+</div>
+<div class="voc-status-pill">Cleaning</div>
+</div>
+<div class="voc-body" id="voc-panel" data-body="overlay:save-template">
+<section class="voc-overlay" data-key="overlay:save-template" role="dialog" aria-modal="true" aria-labelledby="voc-overlay-title">
+<header class="voc-overlay-head">
+<button type="button" class="voc-button voc-button--icon voc-back" data-action="back" aria-label="Back" title="Back">
+<ha-icon icon="mdi:arrow-left" aria-hidden="true">
+</ha-icon>
+</button>
+<h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">Save as template</h2>
+</header>
+<p class="voc-overlay-lead">Rooms, settings, title and note become a reusable template. The job itself stays as it is.</p>
+<div class="voc-form">
+<div class="voc-field" data-key="field:overlay:name" data-field-control="text">
+<label class="voc-field-label" id="voc-field-overlay-name-label" for="voc-field-overlay-name">Template name</label>
+<input class="voc-input" id="voc-field-overlay-name" data-field="overlay:name" required="" type="text" value="Bathroom" autocomplete="off">
+</div>
+<div class="voc-field" data-key="field:overlay:automatic" data-field-control="switch">
+<label class="voc-field-label" id="voc-field-overlay-automatic-label" for="voc-field-overlay-automatic">Automatic</label>
+<label class="voc-switch">
+<input type="checkbox" role="switch" id="voc-field-overlay-automatic" data-field="overlay:automatic" aria-describedby="voc-field-overlay-automatic-hint">
+<span class="voc-switch-track" aria-hidden="true">
+<span class="voc-switch-thumb">
+</span>
+</span>
+<span class="voc-switch-label">Create a job when a room is due</span>
+</label>
+<div class="voc-field-hint" id="voc-field-overlay-automatic-hint">One job per due room; rooms still need a release and the queue still needs to run.</div>
+</div>
+</div>
+<div class="voc-overlay-actions">
+<button type="button" class="voc-button voc-button--quiet" data-action="back">
+<span class="voc-button-label">Back</span>
+</button>
+<button type="button" class="voc-button voc-button--primary" data-action="save-job-template">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Save</span>
+</button>
+</div>
+</section>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

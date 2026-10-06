@@ -1,18 +1,16 @@
-// The job and template editor: rooms, mode, settings, then the optional texts and conditions.
-// Choices are the integration's vocabularies; a room no robot reaches and an unreleased room
-// are marked, not hidden — the integration decides at dispatch. See internal dev doc §8 "Editor".
+// The job and template editor: title, rooms and mode, the settings the mode uses, then the
+// optional policy, note and conditions. Settings offer the rungs the integration's preview
+// reports for the chosen rooms; a room no robot reaches and an unreleased room are marked, not
+// hidden — the integration decides at dispatch. See internal dev doc §8 "Editor".
 
 import { CREATE_TARGET, decide, jobAffordances, jobTarget, templateAffordances, templateTarget } from "../../domain/affordances.js";
-import { findJob } from "../common/lookups.js";
-import { ALL_ROOMS, levelOptionsFor, validateDraft } from "../../domain/job-draft.js";
-import { CLEANING_MODES, MOP_ROUTES, PASS_MAX, PASS_MIN, SEMANTIC_LEVELS, SETTINGS_POLICIES } from "../../domain/job-schema.js";
+import { ALL_ROOMS, settingsForMode, validateDraft } from "../../domain/job-draft.js";
+import { CLEANING_MODES, PASS_MAX, PASS_MIN, SETTING_LADDERS, SETTINGS_POLICIES } from "../../domain/job-schema.js";
 import { coveredRoomIds } from "../../application/setup-status.js";
-import { list, robotsOf, roomsOf } from "../common/lookups.js";
-import { levelLabel, modeLabel, policyLabel, routeLabel, t } from "../common/texts.js";
+import { findJob, list, robotsOf, roomsOf, slotData } from "../common/lookups.js";
+import { modeLabel, policyLabel, settingLabel, t } from "../common/texts.js";
 import { MODE_ICONS } from "../views/job-row.js";
 import { entityField, errorText, field } from "./editor-fields.js";
-
-const notSet = (texts) => ({ value: null, label: t(texts, "value.notSet") });
 
 // All rooms first; while it is chosen the single rooms stay offered but muted.
 function roomField(model, texts, draft, error) {
@@ -39,6 +37,49 @@ function roomOptions(model, texts, selected) {
     });
 }
 
+// Per setting the mode uses: the rungs on offer and the one shown as chosen. Without a preview
+// every rung is offered. A new draft shows the rung the integration preselects when its own is
+// not on offer for these rooms; an existing job keeps its rung, marked.
+export function settingChoices(draft, preview) {
+  return settingsForMode(draft.mode).map((name) => {
+    const choice = preview?.settings?.[name] ?? null;
+    const offered = new Map(list(choice?.options).map((option) => [option.value, option]));
+    const known = offered.size > 0;
+    let value = draft[name];
+    if (known && !draft.meta.id && !offered.has(value)) value = choice.initial ?? value;
+    const options = SETTING_LADDERS[name]
+      .filter((rung) => !known || offered.has(rung) || rung === value)
+      .map((rung) => ({ value: rung, note: !known ? null : !offered.has(rung) ? "notOffered" : offered.get(rung).supportedByAll ? null : "notEveryRobot" }));
+    return { name, value, options };
+  });
+}
+
+// The values a new draft is saved with: what the editor shows as chosen.
+export function shownSettings(draft, preview) {
+  return Object.fromEntries(settingChoices(draft, preview).map((choice) => [choice.name, choice.value]));
+}
+
+// The preview needs no room choice, but a draft with any other mistake asks nothing.
+export function previewable(draft) {
+  return Object.keys(validateDraft(draft).errors).every((key) => key === "roomIds");
+}
+
+function settingField(texts, choice, error) {
+  return field(texts, {
+    key: choice.name,
+    labelKey: `field.${choice.name}`,
+    control: "segmented",
+    value: choice.value,
+    options: choice.options.map((option) => ({
+      value: option.value,
+      label: settingLabel(texts, choice.name, option.value),
+      badge: option.note ? "mdi:information-outline" : null,
+      title: option.note ? t(texts, `editor.${option.note}`) : null,
+    })),
+    error,
+  });
+}
+
 export function buildJobEditor({ model, texts, context, overlay }) {
   const draft = overlay.draft;
   const kind = draft.meta.kind;
@@ -46,7 +87,7 @@ export function buildJobEditor({ model, texts, context, overlay }) {
   const showErrors = overlay.submitted === true;
   const error = (key) => (showErrors ? errorText(texts, validation.errors[key]) : null);
   const queries = overlay.queries || {};
-  const levels = (key) => [notSet(texts), ...levelOptionsFor(key, draft.mode, SEMANTIC_LEVELS).map((level) => ({ value: level, label: levelLabel(texts, level) }))];
+  const preview = previewable(draft) ? slotData(model, "preview") : null;
 
   const template = kind === "template"
     ? [
@@ -57,32 +98,29 @@ export function buildJobEditor({ model, texts, context, overlay }) {
     : [];
 
   const basics = [
+    ...(kind === "job" ? [field(texts, { key: "name", labelKey: "field.jobName", control: "text", value: draft.name, optional: true, placeholder: t(texts, "field.jobNamePlaceholder") })] : []),
     roomField(model, texts, draft, error("roomIds")),
     field(texts, { key: "mode", labelKey: "field.mode", control: "segmented", value: draft.mode, options: CLEANING_MODES.map((mode) => ({ value: mode, label: modeLabel(texts, mode), icon: MODE_ICONS[mode] })), error: error("mode") }),
   ];
 
   const settings = [
+    ...settingChoices(draft, preview).map((choice) => settingField(texts, choice, error(choice.name))),
     field(texts, { key: "passes", labelKey: "field.passes", control: "stepper", value: draft.passes, min: PASS_MIN, max: PASS_MAX, error: error("passes"), hintKey: "field.passesHint" }),
-    field(texts, { key: "vacuumPower", labelKey: "field.vacuumPower", control: "segmented", value: draft.vacuumPower, options: levels("vacuumPower"), error: error("vacuumPower"), optional: true }),
-    field(texts, { key: "mopIntensity", labelKey: "field.mopIntensity", control: "segmented", value: draft.mopIntensity, options: levels("mopIntensity"), error: error("mopIntensity"), optional: true }),
-    field(texts, { key: "mopRoute", labelKey: "field.mopRoute", control: "segmented", value: draft.mopRoute, options: [notSet(texts), ...MOP_ROUTES.map((route) => ({ value: route, label: routeLabel(texts, route) }))], optional: true }),
-    field(texts, { key: "settingsPolicy", labelKey: "field.settingsPolicy", control: "segmented", value: draft.settingsPolicy, options: SETTINGS_POLICIES.map((policy) => ({ value: policy, label: policyLabel(texts, policy) })), hintKey: `field.settingsPolicyHint.${draft.settingsPolicy === "strict" ? "strict" : "bestEffort"}` }),
   ];
 
   const more = [
-    ...(kind === "job" ? [field(texts, { key: "name", labelKey: "field.jobName", control: "text", value: draft.name, optional: true, placeholder: t(texts, "field.jobNamePlaceholder") })] : []),
+    field(texts, { key: "settingsPolicy", labelKey: "field.settingsPolicy", control: "segmented", value: draft.settingsPolicy, options: SETTINGS_POLICIES.map((policy) => ({ value: policy, label: policyLabel(texts, policy) })), hintKey: `field.settingsPolicyHint.${draft.settingsPolicy === "strict" ? "strict" : "bestEffort"}` }),
+    field(texts, { key: "note", labelKey: "field.note", control: "textarea", value: draft.note, optional: true }),
     entityField(texts, model, { key: "requiredOn", labelKey: "field.requiredOn", value: draft.requiredOn, query: queries.requiredOn, error: error("requiredOn"), hintKey: "field.requiredOnHint" }),
     entityField(texts, model, { key: "requiredOff", labelKey: "field.requiredOff", value: draft.requiredOff, query: queries.requiredOff, error: error("requiredOff"), hintKey: "field.requiredOffHint" }),
-    field(texts, { key: "source", labelKey: "field.source", control: "text", value: draft.source, optional: true }),
-    field(texts, { key: "reason", labelKey: "field.reason", control: "text", value: draft.reason, optional: true }),
-    field(texts, { key: "note", labelKey: "field.note", control: "textarea", value: draft.note, optional: true }),
-    field(texts, { key: "dedupeKey", labelKey: "field.dedupeKey", control: "text", value: draft.dedupeKey, optional: true, hintKey: "field.dedupeKeyHint" }),
   ];
-  const moreOpen = overlay.moreOpen === true || more.some((entry) => entry.error) || ["source", "reason", "note", "dedupeKey"].some((key) => draft[key]) || list(draft.requiredOn).length > 0 || list(draft.requiredOff).length > 0;
+  const moreOpen = overlay.moreOpen === true || more.some((entry) => entry.error) || Boolean(draft.note) || draft.settingsPolicy === "strict" || list(draft.requiredOn).length > 0 || list(draft.requiredOff).length > 0;
 
   const target = kind === "template" ? (draft.meta.id ? templateTarget(draft.meta.id) : CREATE_TARGET) : draft.meta.id ? jobTarget(draft.meta.id) : CREATE_TARGET;
   const operation = kind === "template" ? "save_template" : draft.meta.id ? "update_job" : "create_job";
   const titleKey = kind === "template" ? (draft.meta.id ? "editor.editTemplate" : "editor.newTemplate") : draft.meta.id ? "editor.editJob" : "editor.newJob";
+  // Starting at once is offered only for a new job the integration says could start now.
+  const newJob = kind === "job" && !draft.meta.id;
   return {
     key: "job-editor",
     title: t(texts, titleKey),
@@ -95,8 +133,10 @@ export function buildJobEditor({ model, texts, context, overlay }) {
     dirty: validation.dirty,
     invalid: showErrors && !validation.valid,
     save: { label: t(texts, kind === "template" || draft.meta.id ? "action.save" : "action.addToQueue"), decision: decide(context, { operation, target }) },
+    startNow: newJob && validation.valid && preview?.startableNow === true ? { label: t(texts, "action.startNow"), decision: decide(context, { operation: "create_job", target }) } : null,
     pending: list(model.pending).includes(target),
     remove: removeControl({ model, texts, context, draft }),
+    saveAsTemplate: kind === "job" && draft.meta.id ? { action: "open-save-template", args: { jobId: draft.meta.id }, label: t(texts, "action.saveAsTemplate"), decision: decide(context, { operation: "save_job_as_template", target }) } : null,
   };
 }
 

@@ -1,4 +1,4 @@
-// The wire contract with Vacuum Orchestrator API V2: the integration's own consumer fixture and
+// The wire contract with Vacuum Orchestrator API V3: the integration's own consumer fixture and
 // every builder derived from its serializers pass the card's guards and normalizers, and the
 // fake answers every message the card can build. See test/fixtures/voi/README.md.
 
@@ -10,7 +10,7 @@ const W = require("../fixtures/voi/wire.js");
 const { createFakeOrchestrator, VirtualClock } = require("../helpers/fake-orchestrator.js");
 const { SCENARIOS, hassFor } = require("../fixtures/scenarios.js");
 
-const consumerFixture = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "fixtures", "voi", "api_v2_job.json"), "utf8"));
+const consumerFixture = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "fixtures", "voi", "api_v3_job.json"), "utf8"));
 
 test("the integration's consumer fixture is a job the card reads completely", async () => {
   const { guards } = await import("../../src/backend/protocol.js");
@@ -26,7 +26,7 @@ test("the job builder is the consumer fixture plus additive fields", async () =>
   const built = W.wireJob();
   const missing = Object.keys(consumerFixture).filter((key) => !(key in built));
   assert.deepEqual(missing, []);
-  assert.deepEqual(Object.keys(built).filter((key) => !(key in consumerFixture)), ["room_ids"]);
+  assert.deepEqual(Object.keys(built).filter((key) => !(key in consumerFixture)), ["room_ids", "after_cancel"]);
   assert.equal(built.api_version, W.VOI_API_VERSION);
 });
 
@@ -39,6 +39,7 @@ test("every builder passes its guard and its normalizer", async () => {
   const { normalizeRun } = await import("../../src/domain/runs.js");
   const { normalizeExecution } = await import("../../src/domain/execution.js");
   const { normalizeTracePage, normalizeDiagnosticsSummary } = await import("../../src/domain/trace.js");
+  const { normalizePreview } = await import("../../src/domain/preview.js");
   const cases = [
     [guards.queuePage, normalizeQueuePage, W.wireQueuePage([W.wireJob({ readiness: W.wireReadiness({ requirements: [W.wireRequirementResult()] }) })], { queue_run: W.wireQueueRun() })],
     [guards.room, normalizeRoom, W.wireRoom({ release: W.wireRelease(), requirements: [W.wireRoomRequirement()], last_cleaning: { vacuum: W.wireStamp() } })],
@@ -49,6 +50,7 @@ test("every builder passes its guard and its normalizer", async () => {
     [guards.execution, normalizeExecution, W.wireExecution({ attempts: [W.wireAttempt()] })],
     [guards.tracePage, normalizeTracePage, W.wireTracePage([W.wireTraceRecord()])],
     [guards.diagnostics, normalizeDiagnosticsSummary, W.wireDiagnostics()],
+    [guards.preview, normalizePreview, W.wirePreview()],
   ];
   for (const [guard, normalize, wire] of cases) {
     assert.equal(guard(wire), true);
@@ -78,6 +80,7 @@ test("the fake answers every query the card can build in a shape the guards acce
   assert.equal(guards.room(await ws(messages.query("get_room", { room_id: "room-kitchen" }))), true);
   assert.equal(guards.execution(await ws(messages.query("get_job_execution", { job_id: "job-bathroom" }))), true);
   assert.equal(guards.diagnostics(await ws(messages.query("get_diagnostics"))), true);
+  assert.equal(guards.preview(await ws(messages.query("preview_job", { areas: ["room-kitchen"], mode: "mop" }))), true);
   assert.equal(guards.manifest(await ws(messages.manifest())), true);
   assert.equal(guards.entityRegistry(await ws(messages.entityRegistry())), true);
 });

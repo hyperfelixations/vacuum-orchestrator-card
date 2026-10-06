@@ -81,6 +81,14 @@ test.describe("the queue", () => {
     await shot(page, "queue-winding-down-medium-light.png", MEDIUM);
   });
 
+  test("a run ending after the started job", async ({ page }) => {
+    const card = await mountCard(page, { scenario: "ending", config: BASE });
+    await expect(card.locator(".voc-panel-mode")).toHaveText("Queue ending · started jobs finish");
+    await expect(card.locator(".voc-queue-end")).toHaveCount(0);
+    await expect(card.locator(".voc-queue-control")).toHaveText("Resume queue");
+    await shot(page, "queue-ending-medium-light.png", MEDIUM);
+  });
+
   test("read-only", async ({ page }) => {
     const card = await mountCard(page, { admin: false, config: BASE });
     await expect(card.locator('[data-key="job:job-kitchen"] [data-action="edit-job"]')).toHaveAttribute("aria-disabled", "true");
@@ -122,11 +130,52 @@ test.describe("job pages", () => {
     await shot(page, "template-editor-narrow-light.png", NARROW);
   });
 
-  test("confirmation", async ({ page }) => {
+  test("new job editor for mopping, narrow, German", async ({ page }) => {
+    const card = await mountCard(page, { config: { ...BASE, language: "de" } });
+    await act(page, card.locator(".voc-primary-action"));
+    await act(page, card.locator('[data-key="field:mode"] [data-value="mop"]'));
+    await act(page, card.locator('[data-key="field:roomIds"] [data-value="room-hall"]'));
+    await expect(card.locator('[data-key="field:vacuumPower"]')).toHaveCount(0);
+    await expect(card.locator('[data-action="start-draft"]')).toHaveText("Jetzt starten");
+    await shot(page, "editor-mop-german-narrow-light.png", NARROW);
+  });
+
+  test("cancelling a started job", async ({ page }) => {
     const card = await mountCard(page, { config: BASE });
     await act(page, card.locator('[data-key="job:job-running"] [data-action="cancel-job"]'));
-    await expect(card.locator('[data-key="overlay:confirm"]')).toHaveAttribute("role", "dialog");
-    await shot(page, "confirm-narrow-light.png", NARROW);
+    await expect(card.locator('[data-key="overlay:cancel-job"]')).toHaveAttribute("role", "dialog");
+    await expect(card.locator('[data-key="option:return_to_dock"]')).toHaveAttribute("aria-checked", "true");
+    await shot(page, "cancel-job-narrow-light.png", NARROW);
+  });
+
+  test("cancelling a started job, German, dark", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    const card = await mountCard(page, { config: { ...BASE, language: "de" } });
+    await act(page, card.locator('[data-key="job:job-running"] [data-action="cancel-job"]'));
+    await expect(card.locator('[data-action="confirm-cancel"]')).toHaveText("Auftrag abbrechen");
+    await shot(page, "cancel-job-german-medium-dark.png", MEDIUM);
+  });
+
+  test("ending the queue with a started job", async ({ page }) => {
+    const card = await mountCard(page, { config: BASE });
+    await act(page, card.locator(".voc-queue-end"));
+    await expect(card.locator('[data-key="overlay:queue-end"] [role=radio]')).toHaveCount(3);
+    await shot(page, "queue-end-narrow-light.png", NARROW);
+  });
+
+  test("ending the queue with a started job, German", async ({ page }) => {
+    const card = await mountCard(page, { config: { ...BASE, language: "de" } });
+    await act(page, card.locator(".voc-queue-end"));
+    await expect(card.locator('[data-action="confirm-end-queue"]')).toHaveText("Warteschlange beenden");
+    await shot(page, "queue-end-german-medium-light.png", MEDIUM);
+  });
+
+  test("saving a job as a template", async ({ page }) => {
+    const card = await mountCard(page, { config: BASE });
+    await act(page, card.locator('[data-key="job:job-bathroom"] .voc-job-main'));
+    await act(page, card.locator('[data-action="open-save-template"]'));
+    await expect(card.locator('[data-field="overlay:name"]')).toHaveValue("Bathroom");
+    await shot(page, "save-template-narrow-light.png", NARROW);
   });
 
   test("robot choice for a direct start", async ({ page }) => {
@@ -134,6 +183,13 @@ test.describe("job pages", () => {
     await act(page, card.locator('[data-key="job:job-kitchen"] [data-action="start-job"]'));
     await expect(card.locator('[data-key="overlay:start-job"]')).toContainText("Dusty");
     await shot(page, "start-robot-medium-light.png", MEDIUM);
+  });
+
+  test("defaults for new jobs", async ({ page }) => {
+    const card = await mountCard(page, { config: { ...BASE, start_view: "settings" } });
+    await act(page, card.locator('[data-action="open-job-defaults"]'));
+    await expect(card.locator('[data-key="field:overlay:vacuumPower"] [role=radio]')).toHaveCount(5);
+    await shot(page, "job-defaults-medium-light.png", MEDIUM);
   });
 
   test("queue run settings", async ({ page }) => {
@@ -185,6 +241,13 @@ test.describe("robots", () => {
     await open(page, card, "robots");
     await expect(card.locator('[data-key="robot:robot-rocky"] .voc-robot-map img')).toBeVisible();
     await shot(page, "robots-medium-light.png", MEDIUM);
+  });
+
+  test("a robot stopped away from its dock", async ({ page }) => {
+    const card = await mountCard(page, { scenario: "ending", config: BASE });
+    await open(page, card, "robots");
+    await expect(card.locator('[data-key="robot:robot-dusty"] [data-action="return-robot"]')).toHaveText("Return to dock");
+    await shot(page, "robots-return-medium-light.png", MEDIUM);
   });
 
   test("profile editor with roles", async ({ page }) => {

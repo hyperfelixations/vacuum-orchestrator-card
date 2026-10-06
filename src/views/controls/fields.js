@@ -30,6 +30,17 @@ function segmented(field) {
   return roving(`<div class="voc-segmented" role="radiogroup" aria-labelledby="${fieldId(field.key)}-label"${attr("aria-describedby", describedBy(field))}${field.error ? ' aria-invalid="true"' : ""} data-control="choice">${items}</div>`);
 }
 
+// A vertical single choice whose options explain themselves: a radio mark, a label and a note.
+function radios(field) {
+  const items = field.options
+    .map((option) => {
+      const selected = option.value === field.value;
+      return `<button type="button" class="voc-radio${selected ? " is-selected" : ""}" role="radio" aria-checked="${selected}" tabindex="${selected ? 0 : -1}" data-action="set-field"${argsAttr({ field: field.key, value: option.value })} data-value="${e(option.value)}" data-key="option:${e(option.value)}">${icon(selected ? "mdi:radiobox-marked" : "mdi:radiobox-blank")}<span class="voc-radio-text"><span class="voc-radio-label">${e(option.label)}</span>${option.description ? `<span class="voc-radio-note">${e(option.description)}</span>` : ""}</span></button>`;
+    })
+    .join("");
+  return roving(`<div class="voc-radios" role="radiogroup" aria-labelledby="${fieldId(field.key)}-label"${attr("aria-describedby", describedBy(field))} data-control="choice">${items}</div>`);
+}
+
 function chips(field) {
   const selected = new Set(field.value || []);
   const items = field.options.map((option) => choice(field, option, { role: "option", selected: selected.has(option.value), multiple: true })).join("");
@@ -68,6 +79,7 @@ function entities(context, field) {
 
 const RENDERERS = Object.freeze({
   segmented: (_context, field) => segmented(field),
+  radios: (_context, field) => radios(field),
   chips: (_context, field) => chips(field),
   stepper: (context, field) => stepper(context, field),
   text: (_context, field) => text(field),

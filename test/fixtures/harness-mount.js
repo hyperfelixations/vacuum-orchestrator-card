@@ -11,7 +11,7 @@
   // "dark" per card, each card on its own themed panel).
   async function mount(options = {}) {
     const household = (SCENARIOS[options.scenario || "typical"] || SCENARIOS.typical)();
-    const fake = createFakeOrchestrator({ seed: household.seed, admin: options.admin !== false, installed: options.installed !== false, setUp: options.setUp !== false, runtimeLoaded: options.runtimeLoaded !== false, apiVersion: options.apiVersion ?? 2 });
+    const fake = createFakeOrchestrator({ seed: household.seed, admin: options.admin !== false, installed: options.installed !== false, setUp: options.setUp !== false, runtimeLoaded: options.runtimeLoaded !== false, apiVersion: options.apiVersion });
     const hass = fake.attachTo(hassFor(household, { language: options.language || "en", admin: options.admin !== false }));
     const stage = document.getElementById("stage");
     stage.innerHTML = "";

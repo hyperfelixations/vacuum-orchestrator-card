@@ -6,6 +6,7 @@
 import { backendFailure } from "../domain/backend-errors.js";
 import { normalizeExecution } from "../domain/execution.js";
 import { normalizeJob } from "../domain/job.js";
+import { normalizePreview } from "../domain/preview.js";
 import { normalizeQueuePage } from "../domain/queue.js";
 import { normalizeCandidate, normalizeRobot } from "../domain/robots.js";
 import { normalizeRoom } from "../domain/rooms.js";
@@ -21,7 +22,6 @@ export const MAX_COLLECTION_PAGES = 20;
 export const OPEN_JOB_STATES = Object.freeze(["dispatching", "running", "canceling", "needs_attention"]);
 
 // The integration's read models as its events name them, and the scopes that read each one.
-// Trace, execution and diagnostics change without a commit and follow every event.
 export const VIEW_SCOPES = Object.freeze({
   queue: Object.freeze(["queue", "job"]),
   jobs: Object.freeze(["openJobs", "jobLog", "job", "runs"]),
@@ -29,7 +29,9 @@ export const VIEW_SCOPES = Object.freeze({
   robots: Object.freeze(["robots"]),
   templates: Object.freeze(["templates"]),
 });
-export const VOLATILE_SCOPES = Object.freeze(["trace", "execution", "diagnostics"]);
+// Trace, execution, diagnostics and a draft's preview change without a commit of their own and
+// follow every event.
+export const VOLATILE_SCOPES = Object.freeze(["trace", "execution", "diagnostics", "preview"]);
 
 // The scopes an event's `changed` list concerns; anything the card does not know means "all".
 export function scopesForChanges(changed) {
@@ -143,6 +145,13 @@ export async function loadExecution(transport, { jobId }) {
   return done(normalizeExecution(result.data), viewOf(result.data));
 }
 
+// A draft's preview; the parameters are the draft's `preview_job` fields.
+export async function loadPreview(transport, parameters = {}) {
+  const result = await guarded(transport.ws(messages.query("preview_job", parameters)), guards.preview, "preview_job");
+  if (!result.ok) return result;
+  return done(normalizePreview(result.data), viewOf(result.data));
+}
+
 export async function loadDiagnostics(transport) {
   const result = await guarded(transport.ws(messages.query("get_diagnostics")), guards.diagnostics, "get_diagnostics");
   if (!result.ok) return result;
@@ -199,6 +208,7 @@ export const SCOPE_LOADERS = Object.freeze({
   execution: loadExecution,
   job: loadJob,
   diagnostics: loadDiagnostics,
+  preview: loadPreview,
   manifest: loadManifest,
   registry: loadEntityRegistry,
   errorTexts: loadErrorTexts,

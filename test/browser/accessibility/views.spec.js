@@ -40,7 +40,7 @@ test("a confirmation is a modal dialog; Escape leaves it and focus returns to th
   const cancel = card.locator('[data-key="job:job-running"] [data-action="cancel-job"]');
   await cancel.focus();
   await page.keyboard.press("Enter");
-  const dialog = card.locator('[data-key="overlay:confirm"]');
+  const dialog = card.locator('[data-key="overlay:cancel-job"]');
   await expect(dialog).toHaveAttribute("role", "dialog");
   await expect(dialog).toHaveAttribute("aria-modal", "true");
   await page.keyboard.press("Escape");
@@ -52,12 +52,28 @@ test("a confirmation is a modal dialog; Escape leaves it and focus returns to th
 test("Tab stays inside a dialog", async ({ page }) => {
   const card = await mountCard(page);
   await card.locator('[data-key="job:job-running"] [data-action="cancel-job"]').click();
-  const dialog = card.locator('[data-key="overlay:confirm"]');
+  const dialog = card.locator('[data-key="overlay:cancel-job"]');
   for (let step = 0; step < 6; step += 1) {
     await page.keyboard.press("Tab");
     const inside = await dialog.evaluate((node) => node.contains(node.getRootNode().activeElement));
     expect(inside, `after ${step + 1} Tab presses`).toBe(true);
   }
+});
+
+test("the choice after a cancel is a named radio group operated with arrow keys", async ({ page }) => {
+  const card = await mountCard(page);
+  await card.locator('[data-key="job:job-running"] [data-action="cancel-job"]').click();
+  const group = card.locator('[data-key="overlay:cancel-job"] [role=radiogroup]');
+  await expect(group).toHaveAccessibleName("Then");
+  const home = group.locator('[data-value="return_to_dock"]');
+  await expect(home).toHaveAttribute("aria-checked", "true");
+  await expect(group.locator('[tabindex="0"]')).toHaveCount(1);
+  await home.focus();
+  await page.keyboard.press("ArrowDown");
+  const stay = card.locator('[data-key="overlay:cancel-job"] [data-value="stay"]');
+  await expect(stay).toHaveAttribute("aria-checked", "true");
+  await expect(stay).toBeFocused();
+  await expect(stay).toHaveAccessibleName(/Robot stays where it is/);
 });
 
 test("role choices in the robot profile are named radio groups", async ({ page }) => {

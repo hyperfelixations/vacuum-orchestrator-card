@@ -74,7 +74,14 @@ test("the panel shows the waiting count, the run line, up to three robots and th
   assert.deepEqual([panel.value, panel.mode, panel.runLine], ["3", "running", texts.t("panel.running")]);
   assert.equal(panel.robots.length, 2);
   assert.deepEqual([panel.control.command, panel.control.label, panel.control.decision.state], ["pause_queue", texts.t("panel.control.pause"), "enabled"]);
-  assert.equal(buildPanel({ model, config: config({ show: { queue_controls: false } }), texts, context }).control, null);
+  assert.deepEqual([panel.end.action, panel.end.label, panel.end.decision.state], ["end-queue", texts.t("panel.control.end"), "enabled"]);
+  const hidden = buildPanel({ model, config: config({ show: { queue_controls: false } }), texts, context });
+  assert.deepEqual([hidden.control, hidden.end], [null, null]);
+  const ending = await modelFor("ending");
+  const ended = buildPanel({ model: ending.model, config: config(), texts: ending.texts, context: ending.context });
+  assert.deepEqual([ended.runLine, ended.control.command, ended.end], [ending.texts.t("panel.ending"), "resume_queue", null], "an ending queue offers resuming, which takes the end back");
+  const empty = await modelFor("empty");
+  assert.equal(buildPanel({ model: empty.model, config: config(), texts: empty.texts, context: empty.context }).end, null);
   assert.equal(buildPanel({ model, config: config({ show: { panel: false } }), texts, context }).visible, false);
   const winding = await modelFor("windingDown");
   assert.match(buildPanel({ model: winding.model, config: config(), texts: winding.texts, context: winding.context }).runLine, /12/);
@@ -158,8 +165,8 @@ test("onboarding explains each unusable phase and offers Home Assistant's own pa
   assert.equal(asUser.note, nonAdmin.texts.t("onboarding.adminRequired"));
   const failed = await modelFor("typical", { fake: { runtimeLoaded: false } });
   assert.deepEqual(buildOnboarding({ model: failed.model, texts: failed.texts }).actions.map((action) => action.path), [INTEGRATION_PAGE_PATH]);
-  const newer = await modelFor("typical", { fake: { apiVersion: 3 } });
-  assert.match(buildOnboarding({ model: newer.model, texts: newer.texts }).text, /3/);
+  const newer = await modelFor("typical", { fake: { apiVersion: 4 } });
+  assert.match(buildOnboarding({ model: newer.model, texts: newer.texts }).text, /4/);
   assert.equal(buildOnboarding({ model: (await modelFor("typical")).model, texts: failed.texts }), null);
 });
 

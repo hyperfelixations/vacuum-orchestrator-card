@@ -4,6 +4,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { modelFor } = require("../../../helpers/model.js");
+const W = require("../../../fixtures/voi/wire.js");
 
 const LOADERS = {
   queue: () => import("../../../../src/presentation/views/queue.js"),
@@ -45,6 +46,17 @@ test("a row repeats a job's rooms only when its own name does not already name t
   assert.deepEqual([row("Kitchen and hall").showRooms, row("KITCHEN + HALL").showRooms, row(null).showRooms], [false, false, false]);
   assert.deepEqual([row("Before guests").showRooms, row("Kitchen").showRooms], [true, true]);
   assert.equal(row("Before guests").rooms, "Kitchen, Hall");
+});
+
+test("a row names only the settings that differ from the defaults; the detail names all", async () => {
+  const { buildJobRow, settingChips } = await import("../../../../src/presentation/views/job-row.js");
+  const { roomIndex } = await import("../../../../src/presentation/common/lookups.js");
+  const typical = await modelFor("typical");
+  const shared = { model: typical.model, texts: typical.texts, context: typical.context, index: roomIndex(typical.model) };
+  const job = (jobId) => typical.model.slots.queue.data.jobs.find((entry) => entry.jobId === jobId);
+  assert.deepEqual(buildJobRow(job("job-kitchen"), shared).settings.map((chip) => [chip.label, chip.text]), [[typical.texts.t("field.passes"), "2×"]]);
+  assert.deepEqual(buildJobRow(job("job-bathroom"), shared).settings.map((chip) => [chip.label ?? null, chip.text]), [["Water", "High"], ["Mop route", "Deep"], [null, "Strict"]]);
+  assert.deepEqual(settingChips(job("job-kitchen"), typical.texts).map((chip) => chip.key), ["passes", "vacuumPower", "mopIntensity", "mopRoute"]);
 });
 
 test("a waiting row explains its readiness in the integration's order", async () => {
@@ -105,6 +117,10 @@ test("robots show Home Assistant's live state beside the integration's profile f
   assert.ok(rocky.map.picture.endsWith("map.svg"));
   assert.deepEqual(rocky.rooms, ["Kitchen", "Hall", "Living room", "Bathroom"]);
   assert.equal(robots.newCandidates, 0);
+  assert.deepEqual(robots.robots.map((robot) => robot.actions.returnToDock.state), ["hidden", "hidden"], "Rocky holds a lease and Dusty is docked");
+  const stopped = await modelFor("ending");
+  const dusty = buildRobotsView({ ...stopped, options: {}, ui: {} }).robots.find((robot) => robot.robotId === "robot-dusty");
+  assert.equal(dusty.actions.returnToDock.state, "enabled");
   const bare = buildRobotsView({ model, texts, context, options: { show_map: false, show_capabilities: false }, ui: {} });
   assert.equal(bare.robots[0].map, null);
   assert.deepEqual(bare.robots[0].levels, []);
@@ -151,7 +167,7 @@ test("diagnostics show versions, runtime, setup and the trace; the tab turns on 
   const diagnostics = buildDiagnosticsView({ ...built, options: {} });
   const facts = Object.fromEntries(diagnostics.facts.map((fact) => [fact.label, fact.value]));
   assert.equal(facts[built.texts.t("diagnostics.integrationVersion")], "0.1.0");
-  assert.equal(facts[built.texts.t("diagnostics.apiVersion")], "2");
+  assert.equal(facts[built.texts.t("diagnostics.apiVersion")], "3");
   assert.equal(diagnostics.connection.tone, "ready");
   assert.equal(diagnostics.setup.length, 4);
   assert.ok(diagnostics.trace.length > 0);
@@ -191,6 +207,12 @@ test("settings show the queue run's wait time and who may change it", async () =
   assert.ok(settings.integration.facts.every((fact) => fact.value), "version and API version are known");
   assert.equal(settings.integration.open.path, "/_my_redirect/integration?domain=vacuum_orchestrator");
   assert.deepEqual(settings.card.facts, [{ label: typical.texts.t("settings.version"), value: CARD_VERSION }]);
+  assert.deepEqual(settings.defaults.facts.map((fact) => fact.value), ["Vacuum", "Standard", "Medium", "Standard", "1", "Best effort"]);
+  assert.deepEqual([settings.defaults.builtIn, settings.defaults.decision.state], [typical.texts.t("settings.defaultsBuiltIn"), "enabled"]);
+  const configured = await modelFor("typical", { setup: (fake) => {
+    fake.state.jobDefaults = W.wireJobDefaults({ mode: "mop", configured: true });
+  } });
+  assert.deepEqual([buildSettingsView(configured).defaults.facts[0].value, buildSettingsView(configured).defaults.builtIn], ["Mop", null]);
   const queue = typical.model.slots.queue;
   const immediate = buildSettingsView({ ...typical, model: { ...typical.model, slots: { ...typical.model.slots, queue: { ...queue, data: { ...queue.data, graceSeconds: 0 } } } } });
   assert.equal(immediate.grace.value, typical.texts.t("settings.graceOff"));

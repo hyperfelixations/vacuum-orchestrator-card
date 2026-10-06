@@ -30,7 +30,7 @@ function renderNotice(context, notice) {
 function renderPanel(context, panel) {
   if (!panel.visible) return "";
   const control = panel.control
-    ? button({ action: panel.control.action, label: panel.control.label, iconName: panel.control.icon, variant: "primary", decision: panel.control.decision, reasonText: context.reason(panel.control.decision), className: "voc-queue-control", tooltip: true })
+    ? `${panel.end ? button({ action: panel.end.action, label: panel.end.label, iconName: panel.end.icon, variant: "text", decision: panel.end.decision, reasonText: context.reason(panel.end.decision), className: "voc-queue-end", tooltip: true }) : ""}${button({ action: panel.control.action, label: panel.control.label, iconName: panel.control.icon, variant: "primary", decision: panel.control.decision, reasonText: context.reason(panel.control.decision), className: "voc-queue-control", tooltip: true })}`
     : "";
   return `<div class="voc-panel" data-queue-mode="${e(panel.mode)}"><div class="voc-panel-headline"><span class="voc-panel-label">${e(panel.label)}</span><span class="voc-panel-value">${e(panel.value)}</span></div><div class="voc-panel-status"><div class="voc-panel-mode"><span class="voc-dot" aria-hidden="true"></span><span>${e(panel.runLine)}</span></div>${panel.robots?.length ? `<div class="voc-panel-robots">${panel.robots.map((robot) => `<span class="voc-panel-robot" data-key="robot:${e(robot.key)}" data-tone="${e(robot.tone)}"><span class="voc-dot" aria-hidden="true"></span>${e(robot.text)}</span>`).join("")}</div>` : ""}</div>${control ? `<div class="voc-panel-control">${control}</div>` : ""}</div>`;
 }

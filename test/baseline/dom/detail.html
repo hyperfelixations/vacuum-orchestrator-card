@@ -34,15 +34,17 @@
 </ha-icon>
 <span>Bathroom</span>
 </span>
-<span class="voc-chip">
+<span class="voc-chip" title="Water: High">
 <ha-icon icon="mdi:water" aria-hidden="true">
 </ha-icon>
+<span class="voc-sr-only">Water: </span>
 <span>High</span>
 </span>
-<span class="voc-chip">
+<span class="voc-chip" title="Mop route: Deep">
 <ha-icon icon="mdi:map-marker-path" aria-hidden="true">
 </ha-icon>
-<span>Deep route</span>
+<span class="voc-sr-only">Mop route: </span>
+<span>Deep</span>
 </span>
 <span class="voc-chip">
 <ha-icon icon="mdi:lock-outline" aria-hidden="true">
@@ -98,7 +100,7 @@
 <ha-icon icon="mdi:close-circle-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-phase-robot">Rocky</span>
-<span class="voc-phase-reason">The robot is busy</span>
+<span class="voc-phase-reason">The robot is busy · Mop route: Standard instead of Deep</span>
 </li>
 <li data-key="mop:robot-dusty" data-eligible="false">
 <ha-icon icon="mdi:close-circle-outline" aria-hidden="true">
@@ -118,8 +120,8 @@
 <dd>Sep 17, 2026, 11:35 AM</dd>
 <dt>Changed</dt>
 <dd>Sep 17, 2026, 11:35 AM</dd>
-<dt>Source</dt>
-<dd>Routine</dd>
+<dt>Occasion</dt>
+<dd>From a template “Weekly mop”</dd>
 <dt>Job ID</dt>
 <dd>job-bathroom</dd>
 </dl>
@@ -141,6 +143,11 @@
 <ha-icon icon="mdi:stop-circle-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Cancel job</span>
+</button>
+<button type="button" class="voc-button voc-button--text" data-action="open-save-template" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;}">
+<ha-icon icon="mdi:content-save-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Save as template</span>
 </button>
 <button type="button" class="voc-button voc-button--text" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;}">
 <ha-icon icon="mdi:pencil-outline" aria-hidden="true">

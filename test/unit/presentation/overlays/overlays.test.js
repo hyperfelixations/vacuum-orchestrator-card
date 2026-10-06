@@ -4,6 +4,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { modelFor } = require("../../../helpers/model.js");
+const W = require("../../../fixtures/voi/wire.js");
 
 const LOADERS = {
   "job-editor": () => import("../../../../src/presentation/overlays/job-editor.js"),
@@ -31,19 +32,50 @@ test("a new job editor offers rooms by name with a mark for unreachable rooms", 
   assert.equal(rooms.find((room) => room.value === "room-kitchen").badge, null);
 });
 
-test("level choices follow the mode, and errors show only after a save attempt", async () => {
+test("the editor shows only the settings the mode uses, and errors only after a save attempt", async () => {
   const { buildJobEditor } = await overlays("job-editor");
   const { createDraft, applyDraftChange } = await draftModule();
   const built = await modelFor("typical");
   const draft = createDraft();
   const vacuum = buildJobEditor({ ...built, overlay: { draft } });
-  assert.equal(fieldsOf(vacuum, "settings").vacuumPower.options.some((option) => option.value === "off"), false);
+  assert.deepEqual(Object.keys(fieldsOf(vacuum, "settings")), ["vacuumPower", "passes"]);
+  assert.deepEqual(fieldsOf(vacuum, "settings").vacuumPower.options.map((option) => [option.value, option.badge]), ["low", "standard", "high", "maximum", "maximum_plus"].map((value) => [value, null]), "without a preview every rung is offered");
   const mop = buildJobEditor({ ...built, overlay: { draft: applyDraftChange(draft, "mode", "mop") } });
-  assert.equal(fieldsOf(mop, "settings").vacuumPower.options.some((option) => option.value === "off"), true);
+  assert.deepEqual(Object.keys(fieldsOf(mop, "settings")), ["mopIntensity", "mopRoute", "passes"]);
+  assert.deepEqual(Object.keys(fieldsOf(mop, "basics")), ["name", "roomIds", "mode"]);
+  assert.deepEqual(Object.keys(fieldsOf(mop, "more")), ["settingsPolicy", "note", "requiredOn", "requiredOff"]);
   assert.equal(fieldsOf(vacuum, "basics").roomIds.error, null);
   const submitted = buildJobEditor({ ...built, overlay: { draft, submitted: true } });
   assert.equal(submitted.invalid, true);
   assert.equal(fieldsOf(submitted, "basics").roomIds.error, built.texts.t("validation.job_requires_area"));
+});
+
+test("the preview limits the rungs, marks those not every robot offers and allows starting at once", async () => {
+  const { buildJobEditor, settingChoices, shownSettings, previewable } = await overlays("job-editor");
+  const { createDraft, applyDraftChange, draftToPreview } = await draftModule();
+  const { normalizeJob } = await import("../../../../src/domain/job.js");
+  const draft = applyDraftChange(createDraft({ jobDefaults: { mode: "vacuum", vacuumPower: "maximum_plus", passes: 1, settingsPolicy: "best_effort" } }), "roomIds", ["room-kitchen"]);
+  const setup = (fake) => {
+    fake.state.jobDefaults = W.wireJobDefaults({ vacuum_power: "maximum_plus", configured: true });
+  };
+  const built = await modelFor("typical", { setup, requests: { preview: { name: "preview", params: draftToPreview(draft) } } });
+  const vm = buildJobEditor({ ...built, overlay: { draft } });
+  const power = fieldsOf(vm, "settings").vacuumPower;
+  assert.deepEqual(power.options.map((option) => option.value), ["low", "standard", "high", "maximum"]);
+  assert.equal(power.value, "maximum", "a new draft shows the rung the integration preselects");
+  assert.deepEqual([power.options[0].badge, power.options[0].title], ["mdi:information-outline", built.texts.t("editor.notEveryRobot")]);
+  assert.deepEqual(shownSettings(draft, built.model.slots.preview.data), { vacuumPower: "maximum" });
+  assert.equal(vm.startNow.label, built.texts.t("action.startNow"));
+  const job = normalizeJob(W.wireJob({ vacuum_power: "maximum_plus" }));
+  const kept = settingChoices(createDraft({ target: job }), built.model.slots.preview.data)[0];
+  assert.equal(kept.value, "maximum_plus", "an existing job keeps its rung, marked");
+  assert.deepEqual(kept.options.at(-1), { value: "maximum_plus", note: "notOffered" });
+  assert.equal(previewable(createDraft()), true, "a missing room does not hold the preview back");
+  assert.equal(previewable(applyDraftChange(createDraft(), "passes", 11)), false);
+  const blocked = applyDraftChange(draft, "roomIds", ["room-bathroom"]);
+  const waiting = await modelFor("typical", { requests: { preview: { name: "preview", params: draftToPreview(blocked) } } });
+  assert.equal(buildJobEditor({ ...waiting, overlay: { draft: blocked } }).startNow, null);
+  assert.equal(buildJobEditor({ ...built, overlay: { draft: createDraft({ target: job }) } }).startNow, null, "an existing job is started from the queue");
 });
 
 test("the room choice starts with all rooms; chosen, it mutes the single rooms and says what it means", async () => {
@@ -86,6 +118,39 @@ test("the detail page shows readiness, unreleased rooms to release and the execu
   assert.deepEqual(vm.execution.map((group) => [group.key, group.eligible]), [["mop", false]]);
   assert.deepEqual(vm.execution[0].robots.map((robot) => robot.reason), [built.texts.backend("robot_busy"), built.texts.backend("unsupported_operation")]);
   assert.deepEqual([vm.actions.delete.state, vm.actions.retry.state], ["enabled", "hidden"]);
+  assert.equal(vm.execution[0].robots[0].settings, "Mop route: Standard instead of Deep");
+  assert.equal(vm.saveAsTemplate.state, "enabled");
+  const facts = Object.fromEntries(vm.facts.map((fact) => [fact.label, fact.value]));
+  assert.equal(facts[built.texts.t("detail.occasion")], built.texts.t("origin.template"), "without the templates read the origin stands alone");
+});
+
+test("the occasion names the origin with its template and the job's own reason; settings notes name each deviation", async () => {
+  const { occasionText, settingsNote } = await overlays("job-detail");
+  const { normalizeJob } = await import("../../../../src/domain/job.js");
+  const built = await modelFor("typical", { requests: { templates: { name: "templates", params: {} } } });
+  const template = built.model.slots.templates.data.items[0];
+  const fromTemplate = normalizeJob(W.wireJob({ origin: { kind: "automatic", template_id: template.templateId }, reason: "Guests tonight" }));
+  assert.equal(occasionText(built.texts, fromTemplate, built.model), `Created when due “${template.name}” · Guests tonight`);
+  assert.equal(occasionText(built.texts, normalizeJob(W.wireJob({ origin: { kind: "template", template_id: "template-gone" } })), built.model), "From a template", "a removed template is not named");
+  assert.equal(occasionText(built.texts, normalizeJob(W.wireJob({ origin: null })), built.model), null);
+  const note = settingsNote(built.texts, [{ field: "vacuumPower", requested: "maximum_plus", applied: "maximum" }, { field: "mopIntensity", requested: "high", applied: null }, { field: "mopRoute", requested: "deep", applied: "deep" }]);
+  assert.equal(note, `${built.texts.t("detail.settingFallback", { setting: "Suction", applied: "Max", requested: "Max+" })}, ${built.texts.t("detail.settingMissing", { setting: "Water" })}`);
+  assert.equal(settingsNote(built.texts, []), null);
+});
+
+test("a job is saved as a template under a required name; the defaults page offers every rung", async () => {
+  const { buildSaveTemplate, buildJobDefaults } = await import("../../../../src/presentation/overlays/job-defaults.js");
+  const built = await modelFor("typical");
+  const save = buildSaveTemplate({ ...built, overlay: { jobId: "job-kitchen", name: "Kitchen and hall", automatic: false } });
+  assert.deepEqual([save.job, save.fields.map((entry) => entry.key), save.fields[0].error, save.save.state], ["Kitchen and hall", ["overlay:name", "overlay:automatic"], null, "enabled"]);
+  assert.equal(buildSaveTemplate({ ...built, overlay: { jobId: "job-kitchen", name: " ", submitted: true } }).fields[0].error, built.texts.t("validation.template_name_required"));
+  assert.equal(buildSaveTemplate({ ...built, overlay: { jobId: "job-gone" } }).job, null);
+  const defaults = buildJobDefaults({ ...built, overlay: { mode: "mop", vacuumPower: "standard", mopIntensity: "medium", mopRoute: "deep", passes: 1, settingsPolicy: "strict" } });
+  const fields = Object.fromEntries(defaults.fields.map((entry) => [entry.key, entry]));
+  assert.deepEqual(Object.keys(fields), ["overlay:mode", "overlay:vacuumPower", "overlay:mopIntensity", "overlay:mopRoute", "overlay:passes", "overlay:settingsPolicy"]);
+  assert.deepEqual(fields["overlay:vacuumPower"].options.map((option) => option.label), ["Quiet", "Standard", "High", "Max", "Max+"]);
+  assert.equal(fields["overlay:mopRoute"].value, "deep");
+  assert.deepEqual([defaults.invalid, defaults.save.state, defaults.pending], [false, "enabled", false]);
 });
 
 test("a job waiting between phases explains why and offers the release the integration names", async () => {
@@ -128,6 +193,20 @@ test("the small dialogs word their command and validate their input", async () =
   const settings = dialogs.buildQueueSettings({ ...built, overlay: { minutes: 2000, submitted: true } });
   assert.equal(settings.field.error, built.texts.t("validation.queue_grace_out_of_range"));
   assert.equal(dialogs.buildQueueSettings({ ...built, overlay: { minutes: 15 } }).field.error, null);
+});
+
+test("cancelling a started job and ending the queue offer their choices as radios", async () => {
+  const dialogs = await overlays("dialogs");
+  const built = await modelFor("typical");
+  const cancel = dialogs.buildCancelJob({ ...built, overlay: { jobId: "job-running", afterCancel: "return_to_dock" } });
+  assert.deepEqual([cancel.field.control, cancel.field.key, cancel.field.value], ["radios", "overlay:afterCancel", "return_to_dock"]);
+  assert.deepEqual(cancel.field.options.map((option) => option.value), ["return_to_dock", "stay"]);
+  assert.ok(cancel.field.options.every((option) => option.label && option.description));
+  assert.deepEqual([cancel.confirmLabel, cancel.pending], [built.texts.t("confirm.cancelJob.confirm"), false]);
+  assert.match(cancel.lead, /Living room/);
+  const end = dialogs.buildQueueEnd({ ...built, overlay: { choice: "finish" } });
+  assert.deepEqual(end.field.options.map((option) => option.value), ["finish", "cancel_return", "cancel_stay"]);
+  assert.deepEqual(dialogs.queueEndChoices({ slots: {} }), ["finish", "cancel_stay"]);
 });
 
 test("a release offers the four kinds; a timed one asks for its duration", async () => {

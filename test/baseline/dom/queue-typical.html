@@ -33,6 +33,11 @@
 </div>
 </div>
 <div class="voc-panel-control">
+<button type="button" class="voc-button voc-button--text voc-queue-end" data-action="end-queue" title="End queue">
+<ha-icon icon="mdi:stop" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">End queue</span>
+</button>
 <button type="button" class="voc-button voc-button--primary voc-queue-control" data-action="queue-control" title="Pause queue">
 <ha-icon icon="mdi:pause" aria-hidden="true">
 </ha-icon>
@@ -95,9 +100,10 @@
 </span>
 <span class="voc-job-meta">
 <span class="voc-job-mode">Vacuum</span>
-<span class="voc-chip">
+<span class="voc-chip" title="Suction: High">
 <ha-icon icon="mdi:fan" aria-hidden="true">
 </ha-icon>
+<span class="voc-sr-only">Suction: </span>
 <span>High</span>
 </span>
 </span>
@@ -125,18 +131,9 @@
 <span class="voc-job-mode">
 <ha-icon icon="mdi:transfer-right" aria-hidden="true">
 </ha-icon>Vacuum, then mop</span>
-<span class="voc-chip">
+<span class="voc-chip" title="Passes: 2×">
+<span class="voc-sr-only">Passes: </span>
 <span>2×</span>
-</span>
-<span class="voc-chip">
-<ha-icon icon="mdi:fan" aria-hidden="true">
-</ha-icon>
-<span>Standard</span>
-</span>
-<span class="voc-chip">
-<ha-icon icon="mdi:water" aria-hidden="true">
-</ha-icon>
-<span>Medium</span>
 </span>
 </span>
 <span class="voc-job-readiness" data-readiness="ready">
@@ -178,15 +175,17 @@
 <span class="voc-job-mode">
 <ha-icon icon="mdi:water-outline" aria-hidden="true">
 </ha-icon>Mop</span>
-<span class="voc-chip">
+<span class="voc-chip" title="Water: High">
 <ha-icon icon="mdi:water" aria-hidden="true">
 </ha-icon>
+<span class="voc-sr-only">Water: </span>
 <span>High</span>
 </span>
-<span class="voc-chip">
+<span class="voc-chip" title="Mop route: Deep">
 <ha-icon icon="mdi:map-marker-path" aria-hidden="true">
 </ha-icon>
-<span>Deep route</span>
+<span class="voc-sr-only">Mop route: </span>
+<span>Deep</span>
 </span>
 <span class="voc-chip">
 <ha-icon icon="mdi:lock-outline" aria-hidden="true">

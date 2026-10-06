@@ -27,7 +27,7 @@ test("the queue loader normalizes the page and records the API version", async (
   const transport = scripted(() => W.wireQueuePage([W.wireJob({ position: 1 })], { mode: "running", total: 1, integration_version: "0.1.0", active_count: 2, attention_count: 1 }));
   const result = await loadQueue(transport, { offset: 0, limit: 25 });
   assert.equal(result.ok, true);
-  assert.equal(result.data.apiVersion, 2);
+  assert.equal(result.data.apiVersion, 3);
   assert.equal(result.data.mode, "running");
   assert.deepEqual([result.data.integrationVersion, result.data.activeCount, result.data.attentionCount], ["0.1.0", 2, 1]);
   assert.equal(result.data.jobs[0].jobId, "job-1");
@@ -37,9 +37,9 @@ test("the queue loader normalizes the page and records the API version", async (
 
 test("a queue in another API version or with a broken envelope is refused", async () => {
   const { loadQueue } = await load();
-  const newer = await loadQueue(scripted(() => W.wireQueuePage([], { api_version: 3 })));
+  const newer = await loadQueue(scripted(() => W.wireQueuePage([], { api_version: 4 })));
   assert.equal(newer.code, "api_incompatible");
-  assert.equal(newer.detail, "3");
+  assert.equal(newer.detail, "4");
   const broken = await loadQueue(scripted(() => ({ jobs: [] })));
   assert.equal(broken.code, "invalid_response");
   assert.equal(broken.detail, "queue/get");
@@ -139,7 +139,7 @@ test("history, trace, execution and diagnostics use their configuration queries"
   assert.equal((await loadRuns(transport, { offset: 0, limit: 10 })).data.runs.length, 1);
   assert.equal((await loadTrace(transport, { jobId: "job-1" })).data.records.length, 1);
   assert.equal((await loadExecution(transport, { jobId: "job-1" })).ok, true);
-  assert.equal((await loadDiagnostics(transport)).data.apiVersion, 2);
+  assert.equal((await loadDiagnostics(transport)).data.apiVersion, 3);
   assert.deepEqual(transport.sent.map((message) => [message.query, message.parameters]), [
     ["get_history", { offset: 0, limit: 10 }],
     ["get_trace", { offset: 0, limit: 100, job_id: "job-1" }],
@@ -197,8 +197,8 @@ test("each integration view names the scopes that read it; volatile scopes follo
   const { SCOPES, VIEW_SCOPES, VOLATILE_SCOPES, scopesForChanges } = await load();
   assert.deepEqual(Object.keys(VIEW_SCOPES).sort(), ["jobs", "queue", "robots", "rooms", "templates"]);
   for (const names of [...Object.values(VIEW_SCOPES), VOLATILE_SCOPES]) for (const name of names) assert.ok(SCOPES.includes(name), name);
-  assert.deepEqual([...scopesForChanges(["rooms"])].sort(), ["diagnostics", "execution", "rooms", "trace"]);
-  assert.deepEqual([...scopesForChanges(["queue"])].sort(), ["diagnostics", "execution", "job", "queue", "trace"]);
+  assert.deepEqual([...scopesForChanges(["rooms"])].sort(), ["diagnostics", "execution", "preview", "rooms", "trace"]);
+  assert.deepEqual([...scopesForChanges(["queue"])].sort(), ["diagnostics", "execution", "job", "preview", "queue", "trace"]);
   assert.equal(scopesForChanges(["rooms", "future_view"]), "all");
   assert.equal(scopesForChanges(undefined), "all");
   assert.equal(scopesForChanges("rooms"), "all");
@@ -206,5 +206,5 @@ test("each integration view names the scopes that read it; volatile scopes follo
 
 test("every scope the session can demand has a loader", async () => {
   const { SCOPES } = await load();
-  assert.deepEqual([...SCOPES].sort(), ["candidates", "diagnostics", "errorTexts", "execution", "job", "jobLog", "manifest", "openJobs", "queue", "registry", "robots", "rooms", "runs", "templates", "trace"]);
+  assert.deepEqual([...SCOPES].sort(), ["candidates", "diagnostics", "errorTexts", "execution", "job", "jobLog", "manifest", "openJobs", "preview", "queue", "registry", "robots", "rooms", "runs", "templates", "trace"]);
 });

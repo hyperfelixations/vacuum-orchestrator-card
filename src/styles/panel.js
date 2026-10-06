@@ -64,5 +64,5 @@ export const PANEL_CSS = `
 .voc-panel-robot[data-tone="running"] .voc-dot { background: var(--voc-info); }
 .voc-panel-robot[data-tone="ready"] .voc-dot { background: var(--voc-success); }
 .voc-panel-robot[data-tone="attention"] .voc-dot { background: var(--voc-error); }
-.voc-panel-control { justify-self: end; }
+.voc-panel-control { justify-self: end; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 `;

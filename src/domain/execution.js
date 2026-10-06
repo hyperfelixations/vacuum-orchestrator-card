@@ -4,7 +4,8 @@
 
 import { isAttemptState, isCompletionQuality, isOperation } from "./job-schema.js";
 import { normalizeReadiness } from "./readiness.js";
-import { enumerated, isRecord, records, strings, text } from "./wire-values.js";
+import { normalizeResolvedSettings } from "./settings.js";
+import { enumerated, isRecord, records, text } from "./wire-values.js";
 
 function robotExplanation(wire) {
   const robotId = text(wire.robot_id);
@@ -15,8 +16,7 @@ function robotExplanation(wire) {
     readiness: normalizeReadiness(wire.readiness),
     eligible: wire.eligible === true,
     eligibilityReason: text(wire.eligibility_reason),
-    appliedPreferences: strings(wire.applied_preferences),
-    omittedPreferences: strings(wire.omitted_preferences),
+    settings: normalizeResolvedSettings(wire.settings),
   });
 }
 
@@ -30,8 +30,7 @@ function attempt(wire) {
     state: enumerated(wire.state, isAttemptState) ?? "unknown",
     quality: enumerated(wire.quality, isCompletionQuality),
     failureCode: text(wire.failure_code),
-    appliedPreferences: strings(wire.applied_preferences),
-    omittedPreferences: strings(wire.omitted_preferences),
+    settings: normalizeResolvedSettings(wire.settings),
   });
 }
 

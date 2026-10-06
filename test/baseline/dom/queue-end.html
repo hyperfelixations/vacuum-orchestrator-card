@@ -1,0 +1,70 @@
+<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Living room · Cleaning</div>
+</div>
+<div class="voc-status-pill">Cleaning</div>
+</div>
+<div class="voc-body" id="voc-panel" data-body="overlay:queue-end">
+<section class="voc-overlay" data-key="overlay:queue-end" role="dialog" aria-modal="true" aria-labelledby="voc-overlay-title">
+<header class="voc-overlay-head">
+<button type="button" class="voc-button voc-button--icon voc-back" data-action="back" aria-label="Back" title="Back">
+<ha-icon icon="mdi:arrow-left" aria-hidden="true">
+</ha-icon>
+</button>
+<h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">End the queue</h2>
+</header>
+<p class="voc-overlay-lead">No further job starts. Waiting jobs stay in the queue.</p>
+<div class="voc-form">
+<div class="voc-field" data-key="field:overlay:choice" data-field-control="radios">
+<div class="voc-field-label" id="voc-field-overlay-choice-label">Started jobs</div>
+<div class="voc-radios" role="radiogroup" aria-labelledby="voc-field-overlay-choice-label" data-control="choice">
+<button type="button" class="voc-radio is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:choice&quot;,&quot;value&quot;:&quot;finish&quot;}" data-value="finish" data-key="option:finish">
+<ha-icon icon="mdi:radiobox-marked" aria-hidden="true">
+</ha-icon>
+<span class="voc-radio-text">
+<span class="voc-radio-label">Let them finish</span>
+<span class="voc-radio-note">The queue ends once they are done.</span>
+</span>
+</button>
+<button type="button" class="voc-radio" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:choice&quot;,&quot;value&quot;:&quot;cancel_return&quot;}" data-value="cancel_return" data-key="option:cancel_return">
+<ha-icon icon="mdi:radiobox-blank" aria-hidden="true">
+</ha-icon>
+<span class="voc-radio-text">
+<span class="voc-radio-label">Cancel – robot returns to its dock</span>
+<span class="voc-radio-note">The queue ends now.</span>
+</span>
+</button>
+<button type="button" class="voc-radio" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:choice&quot;,&quot;value&quot;:&quot;cancel_stay&quot;}" data-value="cancel_stay" data-key="option:cancel_stay">
+<ha-icon icon="mdi:radiobox-blank" aria-hidden="true">
+</ha-icon>
+<span class="voc-radio-text">
+<span class="voc-radio-label">Cancel – robot stays where it is</span>
+<span class="voc-radio-note">The queue ends now.</span>
+</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-overlay-actions">
+<button type="button" class="voc-button voc-button--quiet" data-action="back">
+<span class="voc-button-label">Back</span>
+</button>
+<button type="button" class="voc-button voc-button--primary" data-action="confirm-end-queue">
+<ha-icon icon="mdi:stop" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">End queue</span>
+</button>
+</div>
+</section>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>
