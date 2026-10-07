@@ -5,7 +5,8 @@
   "use strict";
 
   const FIXED_NOW = Date.UTC(2026, 8, 17, 12, 0, 0);
-  const at = (minutes) => new Date(FIXED_NOW + minutes * 60000).toISOString().replace(".000Z", "+00:00");
+  // As VOI writes them: `isoformat()` of a UTC instant with microseconds.
+  const at = (minutes) => `${new Date(FIXED_NOW + minutes * 60000).toISOString().slice(0, 23)}417+00:00`;
   const HOUR = 60;
   const DAY = 24 * HOUR;
 

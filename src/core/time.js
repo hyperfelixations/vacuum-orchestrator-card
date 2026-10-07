@@ -3,7 +3,8 @@
 // Wall-clock access belongs to the platform adapter, never here.
 
 const DAYS_BEFORE_MONTH = Object.freeze([0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]);
-const ISO = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(Z|[+-]\d{2}:?\d{2})?)?$/;
+// Up to nine fractional digits: Python's isoformat writes six. Comma and lower case are RFC 3339.
+const ISO = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:[.,](\d{1,9}))?)?(Z|[+-]\d{2}:?\d{2})?)?$/i;
 
 function leapYear(year) {
   return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
@@ -32,12 +33,13 @@ export function parseInstant(value) {
   const hour = Number(match[4] || 0);
   const minute = Number(match[5] || 0);
   const second = Number(match[6] || 0);
-  const millisecond = Number((match[7] || "").padEnd(3, "0") || 0);
+  // Cut to milliseconds, never rounded: rounding up could carry into the next second.
+  const millisecond = Number((match[7] || "").slice(0, 3).padEnd(3, "0"));
   if (month < 1 || month > 12 || day < 1 || hour > 23 || minute > 59 || second > 59) return null;
   if (day > daysInMonth(year, month)) return null;
   let offsetMinutes = 0;
   const zone = match[8];
-  if (zone && zone !== "Z") {
+  if (zone && zone.toUpperCase() !== "Z") {
     const compact = zone.slice(1).replace(":", "");
     const offsetHours = Number(compact.slice(0, 2));
     const offsetPart = Number(compact.slice(2, 4));

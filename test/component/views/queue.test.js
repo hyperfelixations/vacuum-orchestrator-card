@@ -6,6 +6,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createTestEnvironment } = require("../../helpers/load-card.jsdom.js");
 const { mountCard, FIXED_NOW } = require("../../helpers/mount-card.js");
+const { SCENARIOS } = require("../../fixtures/scenarios.js");
 
 let env;
 test.before(() => {
@@ -24,6 +25,17 @@ test("moving a job sends one move and the queue shows the integration's new orde
   const waiting = card.all('[data-key="waiting"] .voc-job').map((element) => element.dataset.key);
   assert.deepEqual(waiting, ["job:job-bathroom", "job:job-kitchen", "job:job-bedroom"]);
   assert.equal(card.root.querySelector(row("job-bathroom")), node, "the moved row is the same node");
+  card.unmount();
+});
+
+// VOI stamps jobs with microseconds; a job the card cannot read would vanish from the list while
+// the panel still counts it.
+test("jobs stamped with microseconds appear in the queue as the panel counts them", async () => {
+  const queued = SCENARIOS.typical().seed.jobs.filter((job) => job.state === "queued");
+  assert.ok(queued.every((job) => /\.\d{6}\+00:00$/.test(job.created_at)), "the household is stamped as VOI stamps it");
+  const card = await mountCard({ env });
+  const waiting = card.all('[data-key="waiting"] .voc-job').map((element) => element.dataset.key).sort();
+  assert.deepEqual(waiting, queued.map((job) => `job:${job.job_id}`).sort());
   card.unmount();
 });
 

@@ -65,6 +65,29 @@ test("the timestamp parser reads offsets and refuses impossible fields", async (
   assert.equal(elapsed(Number.NaN, noon), null);
 });
 
+// VOI serializes with Python's `datetime.isoformat()`: six fractional digits whenever the
+// microsecond is not zero, none otherwise. A sub-millisecond part is cut, never rounded up.
+test("the timestamp parser reads every fraction Python's isoformat writes", async () => {
+  const { parseInstant } = await import("../../../src/core/time.js");
+  const instant = Date.parse("2026-10-07T17:14:54.493Z");
+  const cases = [
+    ["2026-10-07T17:14:54.493180+00:00", instant],
+    ["2026-10-07T17:14:54.493999+00:00", instant],
+    ["2026-10-07T17:14:54.493000+00:00", instant],
+    ["2026-10-07T17:14:54.4931804Z", instant],
+    ["2026-10-07T17:14:54.493180123Z", instant],
+    ["2026-10-07T19:14:54.493180+02:00", instant],
+    ["2026-10-07T22:44:54.493180+0530", instant],
+    ["2026-10-07T17:14:54,493180Z", instant],
+    ["2026-10-07t17:14:54.493180z", instant],
+    ["2026-10-07T17:14:59.999999+00:00", Date.parse("2026-10-07T17:14:59.999Z")],
+    ["2026-10-07T17:14:54+00:00", Date.parse("2026-10-07T17:14:54Z")],
+  ];
+  for (const [text, expected] of cases) assert.equal(parseInstant(text), expected, text);
+  assert.equal(parseInstant("2026-10-07T17:14:54.+00:00"), null, "a dot needs digits");
+  assert.equal(parseInstant("2026-10-07T17:14:54.1234567890Z"), null, "more than nanoseconds is not a timestamp");
+});
+
 test("time helpers cover date-only values and every relative unit boundary", async () => {
   const { parseInstant, elapsed, relativeParts, durationParts } = await import("../../../src/core/time.js");
 

@@ -64,7 +64,8 @@
   function createFakeOrchestrator(options = {}) {
     const clock = options.clock || { now: () => Date.now() };
     const seed = options.seed || {};
-    const iso = (offsetMs = 0) => new Date(clock.now() + offsetMs).toISOString().replace("Z", "+00:00");
+    // As VOI writes them: `dt_util.utcnow().isoformat()` carries six fractional digits.
+    const iso = (offsetMs = 0) => `${new Date(clock.now() + offsetMs).toISOString().slice(0, 23)}417+00:00`;
     let sequence = 0;
     const nextId = (prefix) => `${prefix}-${++sequence}`;
 

@@ -12,9 +12,24 @@ const MODES = ["vacuum", "vac", "mop", "vacuum_and_mop", "vac_and_mop", "vacuum_
 const STATES = ["queued", "dispatching", "running", "canceling", "completed", "failed", "cancelled", "needs_attention", "hibernating"];
 const LEVELS = [null, "off", "low", "standard", "medium", "high", "maximum", "maximum_plus", "auto"];
 
+// Python's `datetime.isoformat()`: six fractional digits unless the microsecond is zero.
+function pythonIsoformat(epochMs, microsecond) {
+  const seconds = new Date(epochMs).toISOString().slice(0, 19);
+  return `${seconds}${microsecond ? `.${String(microsecond).padStart(6, "0")}` : ""}+00:00`;
+}
+
+function generateInstant(random) {
+  const second = Date.UTC(2026, 0, 1) + random.integer(366 * 24 * 3600) * 1000;
+  const microsecond = random.boolean() ? 0 : random.integer(1_000_000);
+  return { text: pythonIsoformat(second, microsecond), epochMs: second + Math.floor(microsecond / 1000) };
+}
+
 function generateJob(random, index) {
   const rooms = Array.from({ length: 1 + random.integer(4) }, () => `room-${random.integer(6)}`);
+  const created = generateInstant(random);
   return W.wireJob({
+    created_at: created.text,
+    updated_at: created.text,
     job_id: `job-${index}`,
     revision: 1 + random.integer(50),
     state: random.pick(STATES),
@@ -46,6 +61,21 @@ test("normalization is total, stable and frozen over generated jobs", async () =
       assert.equal(new Set(job.roomIds).size, job.roomIds.length);
       assert.equal(Object.keys(job).some((key) => key.includes("_")), false, "no wire spelling survives");
       assert.ok(["vacuum", "mop", "vacuum_and_mop", "vacuum_then_mop"].includes(job.mode));
+    },
+  });
+});
+
+test("every instant Python's isoformat writes parses to its millisecond", async () => {
+  const { parseInstant } = await import("../../src/core/time.js");
+  const { cases, seed } = propertyRun("INVARIANTS", 300, "voc-instants-v1");
+  checkGenerated({
+    name: "instant parsing",
+    cases,
+    seed,
+    generate: generateInstant,
+    classify: (instant) => (instant.text.includes(".") ? "fraction" : "whole second"),
+    verify(instant) {
+      assert.equal(parseInstant(instant.text), instant.epochMs);
     },
   });
 });
