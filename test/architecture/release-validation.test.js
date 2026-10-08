@@ -19,6 +19,10 @@ test("the declared package version passes the local release preflight", () => {
   assert.equal(result.status, 0, result.stderr);
 });
 
+test("the card requires the same Home Assistant release as the integration", () => {
+  assert.equal(require("../../hacs.json").homeassistant, "2026.10.0");
+});
+
 test("version aliases, leading zeros and other prerelease kinds are rejected", () => {
   for (const version of ["v0.0.1", "00.0.1", "0.00.1", "0.0.1-beta.1", "0.0.1-dev.0", "0.0.1+build"]) {
     const result = validate(version);

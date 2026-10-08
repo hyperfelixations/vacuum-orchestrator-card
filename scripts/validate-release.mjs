@@ -32,4 +32,12 @@ if (hacs.filename !== asset) {
 if (typeof hacs.name !== "string" || hacs.name.trim() === "") {
   throw new Error("hacs.json must carry a non-empty name");
 }
+// HACS refuses older Home Assistant releases; the README states the same minimum.
+if (!/^[0-9]{4}\.[0-9]{1,2}\.[0-9]+$/u.test(String(hacs.homeassistant))) {
+  throw new Error(`hacs.json must name the minimum Home Assistant release, received ${JSON.stringify(hacs.homeassistant)}`);
+}
+const readme = fs.readFileSync(path.join(ROOT, "README.md"), "utf8");
+if (!readme.includes(`**Home Assistant ${hacs.homeassistant} or newer.**`)) {
+  throw new Error(`README.md must state Home Assistant ${hacs.homeassistant} or newer, as hacs.json does`);
+}
 console.log(`Release version validated: ${desired} (HACS asset ${asset})`);

@@ -41,7 +41,7 @@ follows your dashboard's light or dark theme.
 
 ## What you need
 
-- **Home Assistant 2026.9 or newer.**
+- **Home Assistant 2026.10.0 or newer.**
 - **The [Vacuum Orchestrator](https://github.com/hyperfelixations/vacuum-orchestrator)
   integration**, installed through HACS and set up. Without it the card shows how
   to get it.
