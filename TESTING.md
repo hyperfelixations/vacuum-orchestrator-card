@@ -118,6 +118,25 @@ The development bundle has a separate filename and global version identity:
 `vacuumOrchestratorCardDevVersion`. It must never overwrite the production
 bundle or its production version global.
 
+## Recordings
+
+`test/fixtures/voi/recordings/` holds what the Vacuum Orchestrator integration
+recorded in its own repository (`tests/contract/recordings`): every message a
+card exchanges with the real integration over Home Assistant's WebSocket, and
+what Home Assistant's frontend gives a card as `hass`. Copy them after the
+integration changed and committed its recordings:
+
+```sh
+npm run sync:voi
+npm run sync:voi -- --from <checkout of the integration>
+```
+
+Without `--from` the script reads the sibling checkout `../vacuum-orchestrator`.
+It writes `provenance.json` with the integration commit and the SHA-256 of
+every file. `test/contract/voi-recordings.test.js` checks the files against it
+and, when the sibling checkout is at that commit, against the integration's own
+files.
+
 ## The browser harness
 
 `test/fixtures/harness.html` reproduces the page the card is rendered on in
