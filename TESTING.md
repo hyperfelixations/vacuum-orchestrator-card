@@ -137,6 +137,26 @@ every file. `test/contract/voi-recordings.test.js` checks the files against it
 and, when the sibling checkout is at that commit, against the integration's own
 files.
 
+`test/helpers/recorded-backend.js` plays a recording behind the frontend's
+objects and holds no rule of the integration
+(`createRecordedBackend(recording, { language, admin, formatEntityState, clock })`):
+
+- `hass` is built as the frontend builds it from the recorded messages (states,
+  entities, areas, actions, user, components) and is a new object after every
+  recorded change.
+- A read is answered with the integration's latest answer to the same request
+  (keys sorted, transport `id` ignored) before the next change in the
+  recording; a request the recording lacks fails the test and names the
+  scenario to record it in.
+- Commands (`call_service`, `configuration/command`) must follow the recorded
+  order. Events recorded before a command's result reach the card first,
+  frames after it arrive in a later task. An answer recorded after a change in
+  the home arrives once that change is played.
+- `until(<home change>)` plays a change in the home and what followed it,
+  `play()` plays what follows without a cause, recorded `advance` steps move
+  `clock`. `hold()` delays answers until its release, `disconnect()` rejects
+  outstanding ones as a lost connection does.
+
 ## The browser harness
 
 `test/fixtures/harness.html` reproduces the page the card is rendered on in
