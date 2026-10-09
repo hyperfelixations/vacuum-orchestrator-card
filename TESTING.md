@@ -156,6 +156,14 @@ objects and holds no rule of the integration
   `play()` plays what follows without a cause, recorded `advance` steps move
   `clock`. `hold()` delays answers until its release, `disconnect()` rejects
   outstanding ones as a lost connection does.
+- `from: <mark>` opens the card at a named point of the recording (such as
+  `The card opens`): the home and the time of that point, the commands
+  recorded after it. `nowMs` is the recording's time.
+
+`mountCard({ recording, from })` (jsdom) and `mountCard(page, { recording,
+from })` (browser harness) mount the card against a recording; the card's
+clock reads the recording's time and every recorded change hands the card a
+new `hass`.
 
 ## The browser harness
 

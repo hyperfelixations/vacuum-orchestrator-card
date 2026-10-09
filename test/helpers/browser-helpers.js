@@ -9,15 +9,17 @@ const { FIXED_NOW } = require("../fixtures/scenarios.js");
 const MOUNT_WIDTH = 640;
 
 // The card reads the clock through its platform adapter, so the page keeps a fixed one: the
-// households are dated against it and a golden must not change with the day it is recorded.
+// households are dated against it and a golden must not change with the day it is recorded. A
+// recording sets `window.__vocNow` to its own time and moves it as it plays.
 async function gotoHarness(page) {
   await page.addInitScript((fixed) => {
     const RealDate = Date;
+    const now = () => window.__vocNow ?? fixed;
     function FixedDate(...args) {
-      return args.length ? new RealDate(...args) : new RealDate(fixed);
+      return args.length ? new RealDate(...args) : new RealDate(now());
     }
     FixedDate.prototype = RealDate.prototype;
-    FixedDate.now = () => fixed;
+    FixedDate.now = now;
     FixedDate.parse = RealDate.parse;
     FixedDate.UTC = RealDate.UTC;
     window.Date = FixedDate;
@@ -25,7 +27,7 @@ async function gotoHarness(page) {
   await page.goto("/test/fixtures/harness.html");
 }
 
-// options: scenario, config, configs, count, width, language, admin, installed, setUp,
+// options: recording, from, scenario, config, configs, count, width, language, admin, installed, setUp,
 // runtimeLoaded, apiVersion, failNext, layout, rows (see test/fixtures/harness-mount.js). Resolves
 // once every card has left the connecting phase and laid itself out.
 async function mountCard(page, options = {}) {
@@ -81,11 +83,15 @@ async function act(page, locator) {
 }
 
 function serviceCalls(page, service) {
-  return page.evaluate((name) => window.vocHarness.fake.calls.services.filter((call) => call.service === name).map((call) => call.data), service);
+  return page.evaluate((name) => {
+    const { backend, fake } = window.vocHarness;
+    if (backend) return backend.calls.filter((message) => message.type === "call_service" && message.service === name).map((message) => message.service_data);
+    return fake.calls.services.filter((call) => call.service === name).map((call) => call.data);
+  }, service);
 }
 
 function commands(page, command) {
-  return page.evaluate((name) => window.vocHarness.fake.calls.ws.filter((message) => message.command === name).map((message) => message.parameters), command);
+  return page.evaluate((name) => (window.vocHarness.backend?.calls ?? window.vocHarness.fake.calls.ws).filter((message) => message.command === name).map((message) => message.parameters), command);
 }
 
 module.exports = { mountCard, gotoHarness, waitForStableLayout, setCardWidth, act, serviceCalls, commands, FIXED_NOW, MOUNT_WIDTH };

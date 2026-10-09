@@ -49,6 +49,13 @@ test("a missing integration shows how to install it", async ({ page }) => {
   for (const link of await links.all()) await expect(link).toHaveAttribute("rel", "noopener noreferrer");
 });
 
+test("against the integration's own recordings the card reports an API version it cannot read", async ({ page }) => {
+  const card = await mountCard(page, { recording: "showcase", from: "A busy afternoon" });
+  await expect(card.locator(".voc-onboarding")).toHaveAttribute("data-phase", "api_incompatible");
+  // The page clock reads the recording's time at the mark.
+  expect(await page.evaluate(() => Date.now() === window.vocHarness.backend.nowMs && new Date().getTime() === Date.now())).toBe(true);
+});
+
 test("configured header text stays text", async ({ page }) => {
   const value = '<img src=x onerror="window.__vocXss = true">';
   const card = await mountCard(page, { config: { title: value } });

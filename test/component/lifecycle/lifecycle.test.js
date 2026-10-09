@@ -59,6 +59,13 @@ test("an installed but unconfigured integration offers Home Assistant's setup di
   card.unmount();
 });
 
+test("against the integration's own recordings the card reports an API version it cannot read", async () => {
+  const card = await mountCard({ recording: "showcase", from: "A busy afternoon" });
+  assert.equal(card.root.querySelector(".voc-onboarding").dataset.phase, "api_incompatible");
+  assert.ok(card.backend.calls.some((message) => message.type === "vacuum_orchestrator/queue/get" && message.limit === 1));
+  card.unmount();
+});
+
 test("removing and re-adding the card renders one card and keeps the subscription", async () => {
   const card = await mountCard({ env });
   const parent = card.card.parentNode;

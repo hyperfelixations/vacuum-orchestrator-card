@@ -24,7 +24,7 @@ async function releaseKitchen(backend) {
 
 test("hass holds states, entities, areas, actions and user as the frontend builds them", () => {
   const formatted = [];
-  const backend = createRecordedBackend(recording("device_fault"), { language: "de", formatEntityState: (state, language) => (formatted.push(language), `${state.state}!`) });
+  const backend = createRecordedBackend(recording("device_fault"), { from: "The card opens", language: "de", formatEntityState: (state, language) => (formatted.push(language), `${state.state}!`) });
   const { hass } = backend;
   const saugi = hass.states["vacuum.saugi"];
   assert.equal(saugi.state, "docked");
@@ -41,7 +41,7 @@ test("hass holds states, entities, areas, actions and user as the frontend build
   assert.equal(hass.language, "de");
   assert.equal(hass.formatEntityState(saugi), "docked!");
   assert.deepEqual(formatted, ["de"]);
-  assert.equal(createRecordedBackend(recording("device_fault"), { admin: false }).hass.user.is_admin, false);
+  assert.equal(createRecordedBackend(recording("device_fault"), { from: "The card opens", admin: false }).hass.user.is_admin, false);
 });
 
 test("a read gets the integration's answer of its stretch of the recording", async () => {
@@ -114,6 +114,32 @@ test("a lost connection rejects an answer the recording has not reached", async 
   const pending = backend.hass.callService(message.domain, message.service, message.service_data, undefined, false, true);
   backend.disconnect();
   await assert.rejects(pending, (error) => error === 3);
+});
+
+test("a card opened at a mark sees the home, the time and the answers of that point", async () => {
+  const advanced = [];
+  const backend = createRecordedBackend(recording("queue_end"), { from: "The queue ends after the started job", clock: { advance: (ms) => advanced.push(ms) } });
+  assert.equal(backend.hass.states["vacuum.saugi"].state, "cleaning");
+  assert.ok(backend.hass.config.components.includes("vacuum_orchestrator"));
+  // 60 s of waiting and 5 s of start delay passed before the mark.
+  assert.equal(backend.nowMs, Date.parse("2026-03-14T09:26:53.589Z") + 65_000);
+  assert.equal((await backend.hass.callWS(QUEUE)).queue_run.phase, "ending");
+  assert.equal(backend.finished, true);
+  // Up to the next cause: the dock, then the minute after it.
+  backend.until("Saugi charges at its dock");
+  assert.equal(backend.hass.states["vacuum.saugi"].state, "docked");
+  assert.equal(backend.nowMs, Date.parse("2026-03-14T09:26:53.589Z") + 485_000);
+  assert.deepEqual(advanced, [300_000, 60_000, 60_000]);
+  assert.equal((await backend.hass.callWS(QUEUE)).queue_run.phase, "off");
+  assert.throws(() => createRecordedBackend(recording("queue_end"), { from: "Nowhere" }), /queue_end: no mark "Nowhere"/);
+});
+
+test("a card opened at a mark sends the commands recorded after it", async () => {
+  const backend = createRecordedBackend(recording("queue_end"), { from: "The queue waits for work" });
+  const rooms = (await backend.hass.callWS(ROOMS)).rooms;
+  const kitchen = rooms.find((room) => room.name === "Küche");
+  const response = await backend.hass.callService("vacuum_orchestrator", "create_job", { areas: [kitchen.area_id] }, undefined, false, true);
+  assert.equal(response.response.api_version, 4);
 });
 
 // Sends the recorded commands in order, as the card would, until `stop` names a step.

@@ -80,9 +80,12 @@
     return { sends, byId };
   }
 
-  // options: language ("en"), admin (the recorded user's flag), formatEntityState (Home
-  // Assistant's state formatter; the frontend owns it), clock (moved by recorded `advance`
-  // steps), hassUrl.
+  // An instant with up to six fractional digits, as the integration writes it, in ms.
+  const instantMs = (value) => Date.parse(value.replace(/(\.\d{3})\d+/, "$1"));
+
+  // options: from (a mark: the card opens there), language ("en"), admin (the recorded user's
+  // flag), formatEntityState (Home Assistant's state formatter; the frontend owns it), clock
+  // (moved by recorded `advance` steps), hassUrl.
   function createRecordedBackend(recording, options = {}) {
     const name = recording.scenario;
     const { sends, byId } = index(recording);
@@ -98,6 +101,8 @@
     let holding = false;
     let connected = true;
     let cursor = 0;
+    // Recorded time passed since `frozen_now`.
+    let elapsedMs = 0;
     // The recorded id of the subscription the card holds.
     let subscription = null;
 
@@ -183,6 +188,7 @@
         } else if (step.advance !== undefined) {
           if (hassChanged) changed();
           hassChanged = false;
+          elapsedMs += step.advance * 1000;
           options.clock?.advance?.(step.advance * 1000);
         } else if (pending.has(cursor)) {
           pending.get(cursor).settle();
@@ -280,6 +286,16 @@
       },
     };
 
+    // A card opened at a mark finds the home and the time of that point and nothing to answer.
+    if (options.from !== undefined) {
+      const at = recording.steps.findIndex((step) => step.mark === options.from);
+      if (at === -1) fail(`no mark "${options.from}"`);
+      for (const step of recording.steps.slice(0, at)) {
+        if (step.hass) applyHass(step.hass);
+        else if (step.advance !== undefined) elapsedMs += step.advance * 1000;
+      }
+      cursor = at + 1;
+    }
     buildHass();
 
     return {
@@ -290,6 +306,10 @@
       // The step index the recording has been played to.
       get position() {
         return cursor;
+      },
+      // The recording's time at that point.
+      get nowMs() {
+        return instantMs(recording.provenance.frozen_now) + elapsedMs;
       },
       onChange(listener) {
         changeListeners.add(listener);
