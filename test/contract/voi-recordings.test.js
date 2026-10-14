@@ -1,5 +1,5 @@
 // The integration's recordings as `npm run voi:record` wrote them: unchanged since, of API
-// version 4, and named with their integration commit. See TESTING.md "Recordings".
+// version 4, and named with their integration commit. See internal dev doc §10.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");

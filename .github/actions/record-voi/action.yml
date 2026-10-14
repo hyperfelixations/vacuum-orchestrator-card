@@ -1,5 +1,5 @@
 # The card's tests play what the real integration answers: check out Vacuum Orchestrator at the
-# commit test/voi-ref names and record its scenarios (TESTING.md "Recordings").
+# commit test/voi-ref names and record its scenarios (internal dev doc §10).
 
 name: Record the integration
 description: Records the Vacuum Orchestrator scenarios at test/voi-ref into test/fixtures/voi/recordings.

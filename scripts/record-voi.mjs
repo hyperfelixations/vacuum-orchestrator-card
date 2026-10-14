@@ -1,6 +1,6 @@
 // Records the Vacuum Orchestrator integration's scenarios into test/fixtures/voi/recordings: the
 // integration's own code runs (`python -m tests.contract --record-to`), so the card's tests play
-// what the real integration answers. Nothing of it is committed; see TESTING.md "Recordings".
+// what the real integration answers. Nothing of it is committed; see internal dev doc §10.
 //
 //   npm run voi:record                       from ../vacuum-orchestrator and its .venv-ha
 //   npm run voi:record -- --from <checkout> --python <interpreter>

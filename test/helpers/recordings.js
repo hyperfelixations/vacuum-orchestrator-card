@@ -1,6 +1,6 @@
 "use strict";
 // The integration's recordings, as `npm run voi:record` wrote them into
-// test/fixtures/voi/recordings (TESTING.md "Recordings"), by scenario name.
+// test/fixtures/voi/recordings (internal dev doc §10), by scenario name.
 
 const fs = require("node:fs");
 const path = require("node:path");

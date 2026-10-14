@@ -169,7 +169,7 @@ jobs:
       - name: Audit dependencies and registry signatures
         run: npm run check:security
 
-      # The card's tests play the real integration's answers; see TESTING.md "Recordings".
+      # The card's tests play the real integration's answers; see internal dev doc §10.
       - name: Record the integration at test/voi-ref
         uses: ./.github/actions/record-voi
 
@@ -346,7 +346,7 @@ jobs:
       - name: Install exactly from the lockfile
         run: npm ci
 
-      # The card's tests play the real integration's answers; see TESTING.md "Recordings".
+      # The card's tests play the real integration's answers; see internal dev doc §10.
       - name: Record the integration at test/voi-ref
         uses: ./.github/actions/record-voi
 

@@ -1,7 +1,7 @@
 "use strict";
 // Mounts the built card in jsdom, in Home Assistant's call order, and gives a test the
 // interactions it needs. With `recording` the card runs against a recording of the integration
-// (see TESTING.md "Recordings"), opened at the mark `from`, on the recording's clock; otherwise
+// (see internal dev doc §10), opened at the mark `from`, on the recording's clock; otherwise
 // against the fake integration for a named household on FIXED_NOW.
 
 const { createTestEnvironment, settle } = require("./load-card.jsdom.js");

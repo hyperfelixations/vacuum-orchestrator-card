@@ -1,6 +1,6 @@
 // Builds a Home Assistant `hass` object for a named scenario, attaches the fake integration and
 // mounts cards on the harness stage; with `recording`, plays a recording of the integration
-// instead (TESTING.md "Recordings"). Browser tests call `window.vocHarness.mount(...)`.
+// instead (internal dev doc §10). Browser tests call `window.vocHarness.mount(...)`.
 (function () {
   "use strict";
 

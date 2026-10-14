@@ -1,6 +1,6 @@
 // The wire contract with Vacuum Orchestrator API V3: the integration's own consumer fixture and
 // every builder derived from its serializers pass the card's guards and normalizers, and the
-// fake answers every message the card can build. See test/fixtures/voi/README.md.
+// fake answers every message the card can build. See internal dev doc §10.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");

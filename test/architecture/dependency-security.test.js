@@ -2,7 +2,7 @@
 // Supply-chain gates: no dependency is pinned past its fixes, every advisory against a runtime
 // dependency and every package without a registry signature stops CI and the release, and every
 // action runs from a reviewed commit that Dependabot keeps current. Advisories against build and
-// test tooling do not gate: none of that code ships. See TESTING.md "Dependency security".
+// test tooling do not gate: none of that code ships. See internal dev doc §4 "Abhängigkeits-Sicherheit".
 // Boundary: the files are read as text; whether an advisory exists is npm audit's verdict in CI.
 
 const test = require("node:test");

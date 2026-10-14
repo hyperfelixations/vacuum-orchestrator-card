@@ -1,5 +1,5 @@
 // Vacuum Orchestrator API V3 records in the exact shapes the integration serializes them.
-// Provenance and field sources: test/fixtures/voi/README.md. Every layer below the backend
+// Provenance and field sources: internal dev doc §10. Every layer below the backend
 // port is fed from here, so a contract change shows up in one place. Loads in Node through
 // `require` and in the browser harness as a plain script (`globalThis.VocWire`).
 (function (root) {

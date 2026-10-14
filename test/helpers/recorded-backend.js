@@ -2,7 +2,7 @@
 // Home Assistant's frontend objects. It holds no rule of the integration: it answers each read
 // with what the integration answered to the same request, plays changes in the recorded order
 // and builds `hass` as the frontend does from the recorded messages. A request the recording
-// does not contain fails the test. See TESTING.md "Recordings". Loads in Node through `require`
+// does not contain fails the test. See internal dev doc §10. Loads in Node through `require`
 // and in the browser harness as a plain script (`globalThis.VocRecorded`).
 (function (root) {
   "use strict";

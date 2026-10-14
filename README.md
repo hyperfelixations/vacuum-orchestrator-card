@@ -393,10 +393,16 @@ and include:
 - the exact warning shown by the card, if any;
 - any error message from the browser console.
 
+## Development
+
+Run `npm ci`, then `npm test`: it builds the card and runs every test. The tests play
+what the real integration answers and record it first from a checkout of
+[Vacuum Orchestrator](https://github.com/hyperfelixations/vacuum-orchestrator) next to
+this one (`../vacuum-orchestrator` with its test environment in `.venv-ha`).
+
 ## Links
 
 - [Vacuum Orchestrator](https://github.com/hyperfelixations/vacuum-orchestrator)
   — the integration this card controls
 - [Issues](https://github.com/hyperfelixations/vacuum-orchestrator-card/issues)
 - [License](LICENSE) (MIT)
-- [Testing](TESTING.md) — how the card is tested, and how to run any part of it

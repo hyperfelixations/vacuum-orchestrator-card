@@ -1,12 +1,13 @@
 "use strict";
 // The rules the test suite itself obeys: where a test lives says what it may touch, every test
 // file states what it covers, and no helper or fixture exists without a user.
-// See TESTING.md "The layers".
+// See internal dev doc §10.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 
 const TEST_DIR = path.join(__dirname, "..");
 const ROOT = path.join(TEST_DIR, "..");
@@ -73,7 +74,7 @@ test("every test belongs to a registered owner directory", () => {
   }
 });
 
-// Public commands record the integration and build first (TESTING.md "Recordings").
+// Public commands record the integration and build first (internal dev doc §10).
 test("every browser owner has a public command and a no-build pipeline command", () => {
   assert.equal(scripts["build:test"], "npm run voi:record && npm run build");
   for (const directory of BROWSER_DIRECTORIES) {
@@ -129,4 +130,10 @@ test("every helper and fixture module is used", () => {
   });
   const config = fs.readFileSync(path.join(TEST_DIR, "..", "playwright.config.js"), "utf8");
   assert.deepEqual(unused.filter((file) => !config.includes(path.basename(file))).map(rel), []);
+});
+
+// Contracts and code are documented in the internal developer documentation.
+test("the README is the repository's only document", () => {
+  const tracked = execFileSync("git", ["ls-files", "*.md"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean);
+  assert.deepEqual(tracked, ["README.md"]);
 });

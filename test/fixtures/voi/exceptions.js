@@ -1,5 +1,5 @@
 // The integration's exception texts, copied verbatim from its translations/en.json and
-// translations/de.json (provenance: test/fixtures/voi/README.md). The fake answers
+// translations/de.json (provenance: internal dev doc §10). The fake answers
 // `frontend/get_translations` from here exactly as Home Assistant flattens them. Loads in Node
 // through `require` and in the browser harness as a plain script (`globalThis.VocExceptions`).
 (function (root) {

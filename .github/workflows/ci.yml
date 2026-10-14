@@ -31,7 +31,7 @@ jobs:
 
       - run: npm ci
 
-      # The card's tests play the real integration's answers; see TESTING.md "Recordings".
+      # The card's tests play the real integration's answers; see internal dev doc §10.
       - name: Record the integration at test/voi-ref
         uses: ./.github/actions/record-voi
 
@@ -60,7 +60,7 @@ jobs:
 
       - run: npm ci
 
-      # The card's tests play the real integration's answers; see TESTING.md "Recordings".
+      # The card's tests play the real integration's answers; see internal dev doc §10.
       - name: Record the integration at test/voi-ref
         uses: ./.github/actions/record-voi
 
