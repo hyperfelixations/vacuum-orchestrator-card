@@ -86,6 +86,22 @@ test("every browser owner has a public command and a no-build pipeline command",
   }
 });
 
+// CI records the integration at test/voi-ref first (.github/actions/record-voi); a workflow step
+// that records again would look for a checkout next to the card.
+test("no workflow step runs a script that records the integration", () => {
+  const records = (name, seen = new Set()) => {
+    if (seen.has(name) || !scripts[name]) return false;
+    seen.add(name);
+    return [...scripts[name].matchAll(/npm run (?:--silent )?([\w:-]+)/g)].some(([, inner]) => inner === "voi:record" || records(inner, seen));
+  };
+  const workflows = path.join(ROOT, ".github", "workflows");
+  const offenders = fs.readdirSync(workflows).flatMap((file) =>
+    [...fs.readFileSync(path.join(workflows, file), "utf8").matchAll(/npm run (?:--silent )?([\w:-]+)/g)]
+      .filter(([, name]) => name === "voi:record" || records(name))
+      .map(([, name]) => `${file}: ${name}`));
+  assert.deepEqual(offenders, []);
+});
+
 test("every browser spec uses the coverage-aware Playwright fixture", () => {
   const browserSpecs = testFiles.filter((file) => rel(file).startsWith("browser/"));
   const bypasses = browserSpecs.filter((file) => {
