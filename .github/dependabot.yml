@@ -12,8 +12,11 @@ updates:
         dependency-type: development
         applies-to: version-updates
 
+  # The workflows and the composite actions they use.
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: weekly
     groups:

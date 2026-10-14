@@ -169,6 +169,10 @@ jobs:
       - name: Audit dependencies and registry signatures
         run: npm run check:security
 
+      # The card's tests play the real integration's answers; see TESTING.md "Recordings".
+      - name: Record the integration at test/voi-ref
+        uses: ./.github/actions/record-voi
+
       - name: Validate version files and HACS manifest
         shell: pwsh
         env:
@@ -341,6 +345,10 @@ jobs:
 
       - name: Install exactly from the lockfile
         run: npm ci
+
+      # The card's tests play the real integration's answers; see TESTING.md "Recordings".
+      - name: Record the integration at test/voi-ref
+        uses: ./.github/actions/record-voi
 
       - name: Download the exact candidate bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8

@@ -105,6 +105,8 @@ fix ships. Every workflow action is pinned to a full commit SHA with its
 version as a comment, and Dependabot moves both together. The one exception is
 `hacs/action@main`: it publishes no releases to follow and runs only in jobs
 without permissions, where it reaches neither the repository nor its secrets.
+Composite actions of this repository (`.github/actions/`) pin their actions the
+same way, and Dependabot watches them too.
 `test/architecture/dependency-security.test.js` enforces all of this.
 
 ## Development bundle
@@ -120,22 +122,33 @@ bundle or its production version global.
 
 ## Recordings
 
-`test/fixtures/voi/recordings/` holds what the Vacuum Orchestrator integration
-recorded in its own repository (`tests/contract/recordings`): every message a
-card exchanges with the real integration over Home Assistant's WebSocket, and
-what Home Assistant's frontend gives a card as `hass`. Copy them after the
-integration changed and committed its recordings:
+The card's tests play what the real Vacuum Orchestrator integration answers.
+Its scenarios (`tests/contract/scenarios.py` in the integration) record every
+message a card exchanges with the integration over Home Assistant's WebSocket,
+and what Home Assistant's frontend gives a card as `hass`. The recordings are
+made from the integration's code whenever the tests need them and are never
+committed:
 
 ```sh
-npm run sync:voi
-npm run sync:voi -- --from <checkout of the integration>
+npm run voi:record
+npm run voi:record -- --from <checkout> --python <interpreter>
+npm run voi:record -- --force
 ```
 
-Without `--from` the script reads the sibling checkout `../vacuum-orchestrator`.
-It writes `provenance.json` with the integration commit and the SHA-256 of
-every file. `test/contract/voi-recordings.test.js` checks the files against it
-and, when the sibling checkout is at that commit, against the integration's own
-files.
+Without `--from` the script uses the sibling checkout `../vacuum-orchestrator`
+and its `.venv-ha` environment, and runs `python -m tests.contract
+--record-to <directory>` there. It writes the recordings into
+`test/fixtures/voi/recordings/` (ignored by Git) with `provenance.json`: the
+integration commit, whether its working tree had changes, the pinned commit
+and the SHA-256 of every file. It records again only when that commit or a
+file changed, or with `--force`. Every `npm` script that runs tests records
+first.
+
+`test/voi-ref` pins the integration commit CI and release candidates record
+from (`.github/actions/record-voi`); a local checkout at another commit is
+used as it is, with a note. Move the pin with the card change that adopts the
+integration's change. `test/contract/voi-recordings.test.js` checks the
+recordings against their provenance.
 
 `test/helpers/recorded-backend.js` plays a recording behind the frontend's
 objects and holds no rule of the integration

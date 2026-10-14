@@ -1,0 +1,42 @@
+# The card's tests play what the real integration answers: check out Vacuum Orchestrator at the
+# commit test/voi-ref names and record its scenarios (TESTING.md "Recordings").
+
+name: Record the integration
+description: Records the Vacuum Orchestrator scenarios at test/voi-ref into test/fixtures/voi/recordings.
+
+runs:
+  using: composite
+  steps:
+    - name: Read the pinned integration commit
+      id: pin
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = "Stop"
+        $sha = (Get-Content -LiteralPath test/voi-ref -Raw).Trim()
+        if ($sha -cnotmatch '^[0-9a-f]{40}$') {
+          throw "test/voi-ref must hold one full commit SHA."
+        }
+        "sha=$sha" | Add-Content -LiteralPath $env:GITHUB_OUTPUT
+
+    - name: Check out the integration
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: hyperfelixations/vacuum-orchestrator
+        ref: ${{ steps.pin.outputs.sha }}
+        path: .voi-checkout
+        persist-credentials: false
+
+    - name: Set up Python for the integration's tests
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: "3.14.2"
+        cache: pip
+        cache-dependency-path: .voi-checkout/requirements-test.txt
+
+    - name: Install the integration's test dependencies
+      shell: pwsh
+      run: python -m pip install -r .voi-checkout/requirements-test.txt
+
+    - name: Record the scenarios
+      shell: pwsh
+      run: npm run voi:record -- --from .voi-checkout --python python

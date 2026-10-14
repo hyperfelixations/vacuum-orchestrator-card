@@ -8,6 +8,11 @@ playwright-report/
 reports/
 *.log
 
+# Recordings of the integration, written by npm run voi:record; CI checks it out into .voi-checkout
+test/fixtures/voi/recordings/
+test/fixtures/voi/recordings.partial/
+/.voi-checkout/
+
 # Operating systems and editors
 Thumbs.db
 .DS_Store

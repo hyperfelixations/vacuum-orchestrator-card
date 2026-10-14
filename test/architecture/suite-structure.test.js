@@ -73,9 +73,11 @@ test("every test belongs to a registered owner directory", () => {
   }
 });
 
+// Public commands record the integration and build first (TESTING.md "Recordings").
 test("every browser owner has a public command and a no-build pipeline command", () => {
+  assert.equal(scripts["build:test"], "npm run voi:record && npm run build");
   for (const directory of BROWSER_DIRECTORIES) {
-    assert.ok(scripts[`test:browser:${directory}`]?.startsWith("npm run build && "), directory);
+    assert.ok(scripts[`test:browser:${directory}`]?.startsWith("npm run build:test && "), directory);
     assert.match(scripts[`test:browser:${directory}:run`] || "", new RegExp(`test/browser/${directory}\\b`));
   }
   for (const engine of ["firefox-core", "webkit-core"]) {

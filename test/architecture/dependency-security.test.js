@@ -14,6 +14,8 @@ const ROOT = path.join(__dirname, "..", "..");
 const read = (...parts) => fs.readFileSync(path.join(ROOT, ...parts), "utf8").replace(/\r\n/g, "\n");
 const pkg = JSON.parse(read("package.json"));
 const WORKFLOWS = fs.readdirSync(path.join(ROOT, ".github", "workflows")).filter((name) => name.endsWith(".yml"));
+// Composite actions of this repository, used as `./.github/actions/<name>`.
+const ACTIONS = fs.readdirSync(path.join(ROOT, ".github", "actions"));
 
 // An override may only raise an installed transitive package to a minimum within its major;
 // an exact pin would hold it on a vulnerable version after the fix ships.
@@ -53,26 +55,37 @@ test("a release candidate is audited before it is built", () => {
 });
 
 // hacs/action publishes no releases Dependabot could follow; it tracks main and is confined to
-// jobs without permissions, where it reaches neither the repository nor its secrets.
+// jobs without permissions, where it reaches neither the repository nor its secrets. A composite
+// action of this repository is reviewed with it and pins its own actions the same way.
+const PINNED = /uses: [\w.-]+\/[\w.\/-]+@[0-9a-f]{40} # [\w.-]+$/;
+const usesLines = (text) => text.split("\n").filter((entry) => /^\s*(?:- )?uses:/.test(entry));
+
 test("every action is pinned to a full commit SHA, except hacs/action@main without permissions", () => {
   for (const name of WORKFLOWS) {
     const workflow = read(".github", "workflows", name);
     const unprivileged = /^permissions: \{\}$/m.test(workflow);
     for (const [, job, body] of workflow.matchAll(/^  ([\w-]+):\n((?:    .*\n|\n)*)/gm)) {
-      for (const line of body.split("\n").filter((entry) => /^\s*(?:- )?uses:/.test(entry))) {
-        if (/uses: hacs\/action@main$/.test(line)) {
+      for (const line of usesLines(body)) {
+        const local = line.match(/uses: \.\/\.github\/actions\/([\w-]+)$/);
+        if (local) {
+          assert.ok(ACTIONS.includes(local[1]), `${name} ${job}: ${line.trim()}`);
+        } else if (/uses: hacs\/action@main$/.test(line)) {
           assert.ok(unprivileged || /^    permissions: \{\}$/m.test(body), `${name} ${job}: hacs/action needs permissions: {}`);
         } else {
-          assert.match(line, /uses: [\w.-]+\/[\w.\/-]+@[0-9a-f]{40} # [\w.-]+$/, `${name} ${job}: ${line.trim()}`);
+          assert.match(line, PINNED, `${name} ${job}: ${line.trim()}`);
         }
       }
     }
+  }
+  for (const action of ACTIONS) {
+    const lines = usesLines(read(".github", "actions", action, "action.yml"));
+    assert.ok(lines.length, action);
+    for (const line of lines) assert.match(line, PINNED, `${action}: ${line.trim()}`);
   }
 });
 
 test("Dependabot watches npm and the workflow actions", () => {
   const config = read(".github", "dependabot.yml");
-  for (const ecosystem of ["npm", "github-actions"]) {
-    assert.match(config, new RegExp(`- package-ecosystem: ${ecosystem}\\n    directory: /\\n    schedule:\\n      interval: weekly`), ecosystem);
-  }
+  assert.match(config, /- package-ecosystem: npm\n    directory: \/\n    schedule:\n      interval: weekly/);
+  assert.match(config, /- package-ecosystem: github-actions\n    directories:\n      - \/\n      - \/\.github\/actions\/\*\n    schedule:\n      interval: weekly/);
 });
