@@ -1,12 +1,56 @@
 // Accessibility of the views and pages in a real engine: no interactive element inside another,
 // pages as named regions, fields with label, error and description, focus that moves into a page
-// or card dialog and back to the control that opened it, and a dialog that keeps focus while the
-// card below it is inert.
+// or card dialog and back to the control that opened it, a dialog that keeps focus while the
+// card below it is inert, an off switch at 3:1 against the card, and controls that never take the
+// error colour.
 
 const { test, expect } = require("../../helpers/playwright.js");
 const { BUSY, mountCard, named } = require("../../helpers/browser-helpers.js");
 
 const INTERACTIVE = "button, a[href], input, textarea, select, [role=button], [role=tab], [role=option], [role=radio], [role=switch]";
+
+// Colours of the elements under `selector` (`part` "color", "border" or "background"), each laid
+// over the backgrounds below it up to the page, and the backdrop they stand on, as sRGB triples.
+function painted(card, selector, part) {
+  return card.evaluate((element, [query, which]) => {
+    const pixel = (layers) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      const context = canvas.getContext("2d");
+      for (const layer of layers) {
+        context.fillStyle = layer;
+        context.fillRect(0, 0, 1, 1);
+      }
+      return [...context.getImageData(0, 0, 1, 1).data].slice(0, 3);
+    };
+    const backdrop = (node) => {
+      const layers = [];
+      for (let at = node; at; at = at.parentElement || at.getRootNode().host) layers.unshift(getComputedStyle(at).backgroundColor);
+      return ["#fff", getComputedStyle(document.body).backgroundColor, ...layers];
+    };
+    return [...element.shadowRoot.querySelectorAll(query)].map((node) => {
+      const style = getComputedStyle(node);
+      const border = Number.parseFloat(style.borderTopWidth) > 0 && style.borderTopStyle !== "none" ? style.borderTopColor : "transparent";
+      const own = { color: style.color, border, background: style.backgroundColor }[which];
+      const below = backdrop(node.parentElement);
+      return { own: pixel([...below, own]), backdrop: pixel(below) };
+    });
+  }, [selector, part]);
+}
+
+const luminance = (rgb) => {
+  const [r, g, b] = rgb.map((value) => {
+    const channel = value / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const contrast = (a, b) => {
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+};
+// Red leads clearly over green and blue: the error colour or a mix of it.
+const reddish = ([r, g, b]) => r - Math.max(g, b) > 60;
 
 test("no interactive element sits inside another in any view", async ({ page }) => {
   const card = await mountCard(page, { ...BUSY, config: { views: ["queue", "rooms", "robots", "templates", "history", "diagnostics", "setup", "settings"] } });
@@ -105,6 +149,38 @@ test("role choices in the robot profile are named radio groups", async ({ page }
 });
 
 // In a sections grid cell the content scrolls inside the card.
+// A11Y-05 (WCAG 1.4.11): an off switch shows its place with an outline and a thumb of at least 3:1
+// against the card, light and dark.
+for (const scheme of ["light", "dark"]) {
+  test(`an off switch stands out at least 3:1 against the card (${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    const card = await mountCard(page, BUSY);
+    await named(card, ".voc-job", "Conservatory", ".voc-job-main").click();
+    await card.locator('[data-action="open-save-template"]').click();
+    await expect(card.locator(".voc-dialog .voc-switch input")).not.toBeChecked();
+    for (const [selector, part] of [[".voc-dialog .voc-switch-track", "border"], [".voc-dialog .voc-switch-thumb", "background"]]) {
+      const [{ own, backdrop }] = await painted(card, selector, part);
+      expect(contrast(own, backdrop), `${selector} ${part}`).toBeGreaterThanOrEqual(3);
+    }
+  });
+}
+
+// UI-20: the error colour marks errors and destructive actions; the active tab, the queue control
+// and the recovery action keep their own accent while the card is in its attention tone.
+test("controls never take the error colour of an attention tone", async ({ page }) => {
+  const card = await mountCard(page, { recording: "recovery", from: "The job needs clarification" });
+  await expect(card.locator(".voc-root")).toHaveAttribute("data-tone", "attention");
+  const [pill] = await painted(card, ".voc-status-pill", "color");
+  expect(reddish(pill.own), "the pill speaks the attention tone").toBe(true);
+  for (const selector of ['[role=tab][aria-selected="true"]', ".voc-panel-control .voc-button--primary", '[data-action="open-recovery"]']) {
+    await expect(card.locator(selector)).toHaveCount(1);
+    for (const part of ["color", "border", "background"]) {
+      const [{ own }] = await painted(card, selector, part);
+      expect(reddish(own), `${selector} ${part}`).toBe(false);
+    }
+  }
+});
+
 test.describe("in a sections grid cell", () => {
   // The focused control's distance to each edge of its region that is faded; an edge without a
   // fade (the region's first or last content shown) reads as clear.

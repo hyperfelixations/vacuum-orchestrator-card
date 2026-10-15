@@ -32,8 +32,11 @@ export function cardStatus(model = {}) {
   return "idle";
 }
 
+// [tone, control accent]: the accent is the tone, except that an error tone leaves the controls
+// in the primary colour; the error colour marks only errors and destructive actions (UI-20).
+const PRIMARY = "var(--primary-color, #03a9f4)";
 const TONES = Object.freeze({
-  attention: ["var(--error-color, #db4437)"],
+  attention: ["var(--error-color, #db4437)", PRIMARY],
   cleaning: ["var(--info-color, #039be5)"],
   running: ["var(--info-color, #039be5)"],
   paused: ["var(--warning-color, #ffa600)"],
@@ -43,16 +46,21 @@ const TONES = Object.freeze({
   offline: ["var(--secondary-text-color)"],
   notInstalled: ["var(--secondary-text-color)"],
   notSetUp: ["var(--primary-color, #03a9f4)"],
-  loadFailed: ["var(--error-color, #db4437)"],
-  checkFailed: ["var(--error-color, #db4437)"],
+  loadFailed: ["var(--error-color, #db4437)", PRIMARY],
+  checkFailed: ["var(--error-color, #db4437)", PRIMARY],
   incompatible: ["var(--warning-color, #ffa600)"],
 });
 
+const TONE_TOKENS = Object.freeze({ color: "--tone-color", ink: "--tone-ink", soft: "--tone-soft", border: "--tone-border" });
+const ACCENT_TOKENS = Object.freeze({ color: "--voc-accent", ink: "--voc-accent-ink", soft: "--voc-accent-soft", border: "--voc-accent-border" });
+
+// The RCC tone token derivation: soft fill 20 % of the colour, border 38 % of the ink.
+function derive({ color, ink, soft, border }, value) {
+  return `${color}:${value};${ink}:color-mix(in srgb, ${value} 82%, var(--primary-text-color));${soft}:color-mix(in srgb, ${value} 20%, transparent);${border}:color-mix(in srgb, var(${ink}) 38%, transparent);`;
+}
+
+// The tone colours pill, badge and accent line; the accent (`--voc-accent*`) colours the controls.
 export function toneFor(status) {
-  const [color] = TONES[status] || TONES.connecting;
-  // The RCC tone token derivation: soft fill 20 % of the colour, border 38 % of the ink.
-  return {
-    key: status,
-    style: `--tone-color:${color};--tone-ink:color-mix(in srgb, ${color} 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, ${color} 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);`,
-  };
+  const [color, accent = color] = TONES[status] || TONES.connecting;
+  return { key: status, style: `${derive(TONE_TOKENS, color)}${derive(ACCENT_TOKENS, accent)}` };
 }

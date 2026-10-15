@@ -37,7 +37,7 @@ export const QUEUE_CSS = `
   bottom: 0;
   height: 2px;
   border-radius: 2px;
-  background: linear-gradient(90deg, transparent, var(--tone-color), transparent);
+  background: linear-gradient(90deg, transparent, var(--voc-accent), transparent);
   background-size: 200% 100%;
   animation: voc-progress 1.2s linear infinite;
 }

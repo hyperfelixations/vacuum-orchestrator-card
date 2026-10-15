@@ -82,6 +82,10 @@ test("a field ties its label, hint and error to the control", async () => {
   const muted = parse(document, renderField(context, { key: "rooms", label: "Rooms", control: "chips", value: ["all"], options: [{ value: "all", label: "All" }, { value: "b", label: "B", muted: true }] }));
   assert.deepEqual([...muted.querySelectorAll("[role=option]")].map((option) => [option.classList.contains("is-muted"), option.getAttribute("aria-selected")]), [[false, "true"], [true, "false"]]);
   assert.equal(renderField(context, { key: "x", control: "text", hidden: true }), "");
+  // A11Y-05: a chosen option shows a check in place of its icon, not only a colour.
+  const icons = (fragment) => [...fragment.querySelectorAll(".voc-option")].map((option) => option.querySelector("ha-icon")?.getAttribute("icon") ?? null);
+  assert.deepEqual(icons(parse(document, renderField(context, { key: "mode", label: "Mode", control: "segmented", value: "mop", options: [{ value: "vacuum", label: "Vacuum", icon: "mdi:robot-vacuum" }, { value: "mop", label: "Mop", icon: "mdi:water" }] }))), ["mdi:robot-vacuum", "mdi:check"]);
+  assert.deepEqual(icons(parse(document, renderField(context, { key: "rooms", label: "Rooms", control: "chips", value: ["b"], options: [{ value: "a", label: "A" }, { value: "b", label: "B" }] }))), [null, "mdi:check"]);
 });
 
 test("an inline field puts label and hint beside the control; a single entity hides its search once chosen", async () => {
@@ -173,6 +177,26 @@ test("a room card ends with the control that switches its release", async () => 
   const actionsOf = (roomId) => [...host.querySelectorAll(`[data-key="room:${roomId}"] .voc-room-actions > button`)].map((node) => [node.dataset.action, node.classList.contains("voc-room-toggle")]);
   assert.deepEqual(actionsOf(roomId(built.model, "Dining Room")), [["create-job", false], ["revoke-room", true]]);
   assert.deepEqual(actionsOf(roomId(built.model, "Conservatory")), [["create-job", false], ["open-release", true]]);
+});
+
+// UI-20: locking a released room and excluding a room are undone in one step, so neither is a
+// destructive action in the error colour.
+test("locking and excluding a room are not destructive actions", async () => {
+  const { overlayFor } = await import("../../../src/views/registry.js");
+  const { createRoomDraft } = await import("../../../src/domain/room-draft.js");
+  const built = await busy({ needsEntityCatalog: true });
+  const { document, context } = await renderContext(built.texts);
+  const studio = roomId(built.model, "Studio");
+  const release = overlayFor("release");
+  const releaseHost = parse(document, release.render(context, release.build({ ...built, overlay: { kind: "release", roomId: studio } })));
+  const lock = releaseHost.querySelector('[data-action="revoke-room"]');
+  assert.ok(lock, "a released room can be locked from its release dialog");
+  assert.ok(!lock.classList.contains("voc-button--danger"));
+  const editor = overlayFor("room-editor");
+  const editorHost = parse(document, editor.render(context, editor.build({ ...built, overlay: { kind: "room-editor", roomId: studio, draft: createRoomDraft(built.model.slots.rooms.data.items.find((room) => room.roomId === studio)) }, config: {}, ui: {} })));
+  const exclude = editorHost.querySelector('[data-action="disable-room"]');
+  assert.ok(exclude);
+  assert.ok(!exclude.classList.contains("voc-button--danger"));
 });
 
 // The detail footer follows the job row: destructive actions first and set apart, editing in the

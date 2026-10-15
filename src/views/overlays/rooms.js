@@ -14,7 +14,7 @@ export const releaseOverlay = Object.freeze({
   render(context, vm) {
     if (vm.missing) return dialog({ key: "release", title: vm.title, lead: context.t("release.missingRoom"), actions: button({ action: "back", label: context.t("action.back"), variant: "quiet" }) });
     const current = vm.current ? `<p class="voc-overlay-lead">${e(context.t("release.current", { kind: vm.current }))}</p>` : "";
-    const revoke = vm.revoke ? button({ action: "revoke-room", args: { roomId: vm.roomId, close: true }, label: context.t("rooms.lock"), iconName: "mdi:lock-outline", variant: "danger", decision: vm.revoke, reasonText: context.reason(vm.revoke), className: "voc-action-start" }) : "";
+    const revoke = vm.revoke ? button({ action: "revoke-room", args: { roomId: vm.roomId, close: true }, label: context.t("rooms.lock"), iconName: "mdi:lock-outline", variant: "quiet", decision: vm.revoke, reasonText: context.reason(vm.revoke), className: "voc-action-start" }) : "";
     const actions = `${revoke}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "release-room", args: { roomId: vm.roomId }, label: context.t("rooms.release"), iconName: "mdi:lock-open-variant-outline", variant: "primary", decision: vm.submit, reasonText: context.reason(vm.submit) })}`;
     return dialog({ key: "release", title: vm.title, invalid: vm.invalid, content: `${current}<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions });
   },
@@ -43,7 +43,7 @@ export const roomEditorOverlay = Object.freeze({
     const detected = vm.detected.length ? `<ul class="voc-reasons">${vm.detected.map((item) => `<li data-key="detected:${e(item.key)}">${icon("mdi:information-outline")}<span>${e(item.text)}</span></li>`).join("")}</ul>` : "";
     const addBinding = vm.robots.map((robot) => button({ action: "add-binding", args: { robotId: robot.robotId }, label: context.t("room.addBinding", { robot: robot.name }), iconName: "mdi:plus", variant: "quiet", key: `add-binding:${robot.robotId}` })).join("");
     const targets = `<section class="voc-block" data-key="group:targets">${toggle}${vm.bindingsOpen ? `<p class="voc-overlay-lead">${e(context.t("room.targetsLead"))}</p>${detected}${vm.bindings.map((row) => bindingRow(context, row)).join("")}<div class="voc-inline-actions">${addBinding}</div>` : ""}</section>`;
-    const disable = vm.disable ? button({ action: "disable-room", args: { roomId: vm.roomId }, label: context.t("room.disable"), iconName: "mdi:eye-off-outline", variant: "danger", decision: vm.disable, reasonText: context.reason(vm.disable), className: "voc-action-start" }) : "";
+    const disable = vm.disable ? button({ action: "disable-room", args: { roomId: vm.roomId }, label: context.t("room.disable"), iconName: "mdi:eye-off-outline", variant: "quiet", decision: vm.disable, reasonText: context.reason(vm.disable), className: "voc-action-start" }) : "";
     const actions = `${disable}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-room", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
     return frame(context, { key: "room-editor", title: vm.title, invalid: vm.invalid, content: `<div class="voc-form">${groups}${conditions}${targets}</div>`, actions });
   },

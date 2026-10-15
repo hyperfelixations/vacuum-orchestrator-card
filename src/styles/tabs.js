@@ -38,6 +38,6 @@ export const TABS_CSS = `
 
 .voc-tab ha-icon { --mdc-icon-size: 17px; }
 .voc-tab:hover { background: var(--voc-chip-bg); color: var(--primary-text-color); }
-.voc-tab[aria-selected="true"] { border-color: var(--tone-border); background: var(--tone-soft); color: var(--tone-ink); }
+.voc-tab[aria-selected="true"] { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
 .voc-tab[data-unavailable="true"] { opacity: .6; }
 `;

@@ -54,8 +54,11 @@ test("a room is excluded after a confirmation and included again from the room l
   const card = await rooms("The library is released for 75 minutes");
   const studio = roomId(card, "Studio");
   await card.click(room(card, "Studio").querySelector('[data-action="edit-room"]'));
+  // UI-20: excluding is undone by including again, so it is no destructive action and not red.
+  assert.ok(!card.root.querySelector('[data-action="disable-room"]').classList.contains("voc-button--danger"));
   await card.click('[data-action="disable-room"]');
   assert.equal(card.text("#voc-dialog-title"), "Exclude room?");
+  assert.ok(card.root.querySelector('[data-action="confirm-command"]').classList.contains("voc-button--primary"));
   await card.click('[data-action="confirm-command"]');
   await card.settle(32);
   assert.deepEqual(card.commands("disable_room").map((message) => message.parameters), [{ room_id: studio }]);

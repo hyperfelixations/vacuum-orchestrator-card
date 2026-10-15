@@ -60,6 +60,21 @@ test("each status has a tone in the RCC token derivation", async () => {
   assert.equal(toneFor("nonsense").key, "nonsense");
 });
 
+// UI-20: controls take the card's tone, but never the error colour; an error tone gives them the
+// primary colour while pill, badge and accent line keep the tone.
+test("controls take an accent from the tone that is never the error colour", async () => {
+  const { toneFor } = await import("../../../../src/presentation/shell/status.js");
+  const accent = (status) => toneFor(status).style.match(/--voc-accent:([^;]+);/)?.[1];
+  assert.equal(accent("paused"), "var(--warning-color, #ffa600)");
+  assert.equal(accent("idle"), "var(--success-color, #43a047)");
+  for (const status of ["attention", "loadFailed", "checkFailed"]) {
+    assert.match(toneFor(status).style, /--tone-color:var\(--error-color, #db4437\);/, status);
+    assert.equal(accent(status), "var(--primary-color, #03a9f4)", status);
+  }
+  assert.match(toneFor("idle").style, /--voc-accent-soft:color-mix\(in srgb, var\(--success-color, #43a047\) 20%, transparent\);/);
+  assert.match(toneFor("idle").style, /--voc-accent-border:color-mix\(in srgb, var\(--voc-accent-ink\) 38%, transparent\);/);
+});
+
 test("the automatic subtitle names what the card is doing", async () => {
   const { automaticSubtitle } = await import("../../../../src/presentation/shell/header.js");
   const busy = await at(BUSY);

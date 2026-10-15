@@ -22,6 +22,7 @@ export const TOKENS_CSS = `
   --voc-success: var(--success-color, #43a047);
   --voc-info: var(--info-color, #039be5);
   --voc-focus: var(--focus-color, var(--primary-color, #03a9f4));
+  --voc-control-outline: color-mix(in srgb, var(--primary-text-color) 55%, var(--card-background-color, #fff));
   --voc-control: 34px;
   --voc-icon-target: 34px;
   --voc-row-target: 36px;

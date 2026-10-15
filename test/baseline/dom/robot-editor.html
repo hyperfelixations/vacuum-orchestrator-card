@@ -1,4 +1,4 @@
-<div class="voc-root" data-state="overlay" data-tone="idle" style="--tone-color:var(--success-color, #43a047);--tone-ink:color-mix(in srgb, var(--success-color, #43a047) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--success-color, #43a047) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-root" data-state="overlay" data-tone="idle" style="--tone-color:var(--success-color, #43a047);--tone-ink:color-mix(in srgb, var(--success-color, #43a047) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--success-color, #43a047) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);--voc-accent:var(--success-color, #43a047);--voc-accent-ink:color-mix(in srgb, var(--success-color, #43a047) 82%, var(--primary-text-color));--voc-accent-soft:color-mix(in srgb, var(--success-color, #43a047) 20%, transparent);--voc-accent-border:color-mix(in srgb, var(--voc-accent-ink) 38%, transparent);" tabindex="-1">
 <div class="voc-top-line">
 </div>
 <div class="voc-header">
@@ -41,12 +41,18 @@
 <div class="voc-field-label" id="voc-field-allowedOperations-label">Allowed cleaning</div>
 <div class="voc-chips" role="listbox" aria-multiselectable="true" aria-labelledby="voc-field-allowedOperations-label" data-control="choice">
 <button type="button" class="voc-option is-selected" role="option" aria-selected="true" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;allowedOperations&quot;,&quot;value&quot;:&quot;vacuum&quot;}" data-value="vacuum" data-key="option:vacuum">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Vacuuming</span>
 </button>
 <button type="button" class="voc-option is-selected" role="option" aria-selected="true" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;allowedOperations&quot;,&quot;value&quot;:&quot;mop&quot;}" data-value="mop" data-key="option:mop">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Mopping</span>
 </button>
 <button type="button" class="voc-option is-selected" role="option" aria-selected="true" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;allowedOperations&quot;,&quot;value&quot;:&quot;vacuum_and_mop&quot;}" data-value="vacuum_and_mop" data-key="option:vacuum_and_mop">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Vacuuming and mopping</span>
 </button>
 </div>
@@ -55,6 +61,8 @@
 <div class="voc-field-label" id="voc-field-fixedMode-label">Fixed mode</div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-fixedMode-label" aria-describedby="voc-field-fixedMode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;fixedMode&quot;,&quot;value&quot;:null}" data-value="" data-key="option:">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Not fixed</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;fixedMode&quot;,&quot;value&quot;:&quot;vacuum&quot;}" data-value="vacuum" data-key="option:vacuum">
@@ -118,6 +126,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-battery-mode-label" aria-describedby="voc-field-roles-battery-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.battery.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.battery.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -137,6 +147,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-status-mode-label" aria-describedby="voc-field-roles-status-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.status.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.status.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -156,6 +168,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-error-mode-label" aria-describedby="voc-field-roles-error-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.error.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.error.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -175,6 +189,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-dock_error-mode-label" aria-describedby="voc-field-roles-dock_error-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.dock_error.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.dock_error.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -194,6 +210,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-last_clean_start-mode-label" aria-describedby="voc-field-roles-last_clean_start-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.last_clean_start.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.last_clean_start.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -213,6 +231,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-last_clean_end-mode-label" aria-describedby="voc-field-roles-last_clean_end-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.last_clean_end.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.last_clean_end.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -232,6 +252,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-current_room-mode-label" aria-describedby="voc-field-roles-current_room-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.current_room.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.current_room.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -251,6 +273,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-clean_percent-mode-label" aria-describedby="voc-field-roles-clean_percent-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_percent.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_percent.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -270,6 +294,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-cleaning_mode-mode-label" aria-describedby="voc-field-roles-cleaning_mode-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.cleaning_mode.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.cleaning_mode.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -289,6 +315,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-mop_intensity-mode-label" aria-describedby="voc-field-roles-mop_intensity-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_intensity.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_intensity.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -308,6 +336,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-mop_route-mode-label" aria-describedby="voc-field-roles-mop_route-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_route.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_route.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -327,6 +357,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-selected_map-mode-label" aria-describedby="voc-field-roles-selected_map-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.selected_map.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.selected_map.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -346,6 +378,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-in_cleaning-mode-label" aria-describedby="voc-field-roles-in_cleaning-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.in_cleaning.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.in_cleaning.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -365,6 +399,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-water_shortage-mode-label" aria-describedby="voc-field-roles-water_shortage-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.water_shortage.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.water_shortage.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -384,6 +420,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-mop_attached-mode-label" aria-describedby="voc-field-roles-mop_attached-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_attached.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.mop_attached.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -403,6 +441,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-water_box_attached-mode-label" aria-describedby="voc-field-roles-water_box_attached-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.water_box_attached.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.water_box_attached.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -422,6 +462,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-dirty_box_full-mode-label" aria-describedby="voc-field-roles-dirty_box_full-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.dirty_box_full.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.dirty_box_full.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -441,6 +483,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-clean_box_empty-mode-label" aria-describedby="voc-field-roles-clean_box_empty-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_box_empty.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_box_empty.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
@@ -460,6 +504,8 @@
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-clean_fluid_empty-mode-label" aria-describedby="voc-field-roles-clean_fluid_empty-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_fluid_empty.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.clean_fluid_empty.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">

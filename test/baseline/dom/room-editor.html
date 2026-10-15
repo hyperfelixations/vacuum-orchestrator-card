@@ -1,4 +1,4 @@
-<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);--voc-accent:var(--info-color, #039be5);--voc-accent-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--voc-accent-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--voc-accent-border:color-mix(in srgb, var(--voc-accent-ink) 38%, transparent);" tabindex="-1">
 <div class="voc-top-line">
 </div>
 <div class="voc-header">
@@ -59,6 +59,8 @@
 <div class="voc-field-label" id="voc-field-basis-label">Count time as</div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-basis-label" aria-describedby="voc-field-basis-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;basis&quot;,&quot;value&quot;:&quot;calendar&quot;}" data-value="calendar" data-key="option:calendar">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
 <span>Calendar time</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;basis&quot;,&quot;value&quot;:&quot;occupied&quot;}" data-value="occupied" data-key="option:occupied">
@@ -100,7 +102,7 @@
 </div>
 </div>
 <div class="voc-overlay-actions">
-<button type="button" class="voc-button voc-button--danger voc-action-start" data-action="disable-room" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000002&quot;}">
+<button type="button" class="voc-button voc-button--quiet voc-action-start" data-action="disable-room" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000002&quot;}">
 <ha-icon icon="mdi:eye-off-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Exclude room</span>

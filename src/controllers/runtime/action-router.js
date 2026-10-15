@@ -371,7 +371,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     "remove-binding": ({ index }) => editDraft("bindings", ui.overlay.draft.bindings.filter((_item, position) => position !== index)),
     "disable-room": ({ roomId }) => confirmOr(
       { operation: "disable_room", parameters: { room_id: roomId }, options: { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: ui.overlay?.kind === "room-editor", success: { key: "notice.roomDisabled" } } },
-      { titleKey: "confirm.disableRoom.title", textKey: "confirm.disableRoom.text", confirmKey: "confirm.disableRoom.confirm", icon: "mdi:eye-off-outline", vars: { room: findRoom(roomId)?.name ?? "" } }
+      { titleKey: "confirm.disableRoom.title", textKey: "confirm.disableRoom.text", confirmKey: "confirm.disableRoom.confirm", icon: "mdi:eye-off-outline", tone: "primary", vars: { room: findRoom(roomId)?.name ?? "" } }
     ),
     "enable-room": ({ roomId }) => run("enable_room", { room_id: roomId }, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, success: { key: "notice.roomEnabled" } }),
     "create-room": () => ui.openOverlay({ kind: "room-create", name: "", areaId: null }),

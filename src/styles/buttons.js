@@ -27,15 +27,15 @@ button { font: inherit; color: inherit; }
 
 .voc-button ha-icon { --mdc-icon-size: 17px; }
 .voc-button:hover { background: color-mix(in srgb, var(--primary-text-color) 7%, transparent); }
-.voc-button--primary { border-color: var(--tone-border); background: var(--tone-soft); color: var(--tone-ink); }
-.voc-button--primary:hover { background: color-mix(in srgb, var(--tone-color) 28%, transparent); }
+.voc-button--primary { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
+.voc-button--primary:hover { background: color-mix(in srgb, var(--voc-accent) 28%, transparent); }
 .voc-button--quiet { background: transparent; }
 .voc-button--danger { border-color: color-mix(in srgb, var(--voc-error) 45%, transparent); color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
 .voc-button--icon { width: var(--voc-icon-target); min-width: var(--voc-icon-target); min-height: var(--voc-icon-target); padding: 0; border-color: transparent; background: transparent; color: var(--voc-muted); }
 .voc-button--icon:hover { background: var(--voc-chip-bg); color: var(--primary-text-color); }
 .voc-button[disabled] { cursor: default; opacity: .4; }
 .voc-button[aria-disabled="true"] { cursor: not-allowed; opacity: .55; }
-.voc-button[aria-pressed="true"] { border-color: var(--tone-border); background: var(--tone-soft); color: var(--tone-ink); }
+.voc-button[aria-pressed="true"] { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
 
 .voc-tab:focus-visible, .voc-button:focus-visible, .voc-root :is(input, textarea, [role="radio"], [role="option"], [role="switch"], [role="checkbox"]):focus-visible {
   outline: 2px solid var(--voc-focus);
