@@ -1,20 +1,22 @@
-// Room dialogs: release, settings, new room.
+// Room overlays: the release dialog, the settings page and the new room page.
 
 import { buildRelease, buildRoomCreate, buildRoomEditor } from "../../presentation/overlays/rooms.js";
 import { button, e, icon } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
 import { FORMS_CSS } from "../styles/forms.js";
+import { dialog } from "./dialog.js";
 import { block, frame } from "./frame.js";
 
 export const releaseOverlay = Object.freeze({
   key: "release",
+  dialog: true,
   build: ({ model, texts, context, overlay }) => buildRelease({ model, texts, context, overlay }),
   render(context, vm) {
-    if (vm.missing) return frame(context, { key: "release", title: vm.title, lead: context.t("release.missingRoom"), dialog: true });
+    if (vm.missing) return dialog({ key: "release", title: vm.title, lead: context.t("release.missingRoom"), actions: button({ action: "back", label: context.t("action.back"), variant: "quiet" }) });
     const current = vm.current ? `<p class="voc-overlay-lead">${e(context.t("release.current", { kind: vm.current }))}</p>` : "";
     const revoke = vm.revoke ? button({ action: "revoke-room", args: { roomId: vm.roomId, close: true }, label: context.t("rooms.lock"), iconName: "mdi:lock-outline", variant: "danger", decision: vm.revoke, reasonText: context.reason(vm.revoke), className: "voc-action-start" }) : "";
     const actions = `${revoke}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "release-room", args: { roomId: vm.roomId }, label: context.t("rooms.release"), iconName: "mdi:lock-open-variant-outline", variant: "primary", decision: vm.submit, reasonText: context.reason(vm.submit) })}`;
-    return frame(context, { key: "release", title: vm.title, invalid: vm.invalid, content: `${current}<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions, dialog: true });
+    return dialog({ key: "release", title: vm.title, invalid: vm.invalid, content: `${current}<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions });
   },
   css: FORMS_CSS,
 });
@@ -53,6 +55,6 @@ export const roomCreateOverlay = Object.freeze({
   build: ({ model, texts, context, overlay }) => buildRoomCreate({ model, texts, context, overlay }),
   render(context, vm) {
     const actions = `${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-new-room", label: context.t("action.createRoom"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
-    return frame(context, { key: "room-create", title: vm.title, lead: context.t("room.createLead"), invalid: vm.invalid, content: `<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions, dialog: true });
+    return frame(context, { key: "room-create", title: vm.title, lead: context.t("room.createLead"), invalid: vm.invalid, content: `<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions });
   },
 });

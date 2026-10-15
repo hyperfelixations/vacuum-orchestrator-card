@@ -18,15 +18,19 @@ async function view(page, card, key) {
   await expect(card.locator(`[data-key="view:${key}"]`)).toBeVisible();
 }
 
-// Opens an overlay from a view, checks the height and goes back to the view. A target is a
+// Leaves the dialog or page on top: a dialog through its own back action, a page through its
+// back control.
+const leave = async (page, card) => act(page, (await card.locator(".voc-dialog").count()) ? card.locator('.voc-dialog-actions [data-action="back"]') : card.locator(".voc-back"));
+
+// Opens a page or dialog from a view, checks the height and goes back to the view. A target is a
 // selector or a function of the card that finds it.
 async function overlay(page, card, { from, open, key }) {
   await view(page, card, from);
   for (const target of [].concat(open)) await act(page, typeof target === "function" ? target(card) : card.locator(target));
-  await expect(card.locator(".voc-root")).toHaveAttribute("data-state", "overlay");
+  await expect(card.locator(`[data-key="overlay:${key === "template" ? "job-editor" : key}"]`)).toBeVisible();
   await expectHeight(card, TEN_ROWS_PX, `${key} keeps the cell's height`);
-  await expect(card.locator(".voc-overlay-actions, .voc-overlay-head").first()).toBeInViewport();
-  while ((await card.locator(".voc-root").getAttribute("data-state")) === "overlay") await act(page, card.locator(".voc-back"));
+  await expect(card.locator(".voc-dialog-actions, .voc-overlay-actions").last()).toBeInViewport({ ratio: 1 });
+  while (await card.locator(".voc-dialog, .voc-overlay").count()) await leave(page, card);
 }
 
 test("in a sections grid cell the card keeps the cell's height in every view and overlay", async ({ page }) => {
@@ -76,9 +80,10 @@ test("with its own height the card keeps it while an overlay is open and lets it
   const natural = await cardHeight(card);
   expect(natural, "the queue is taller than the frame's floor").toBeGreaterThan(440);
   await act(page, named(card, ".voc-job", "Studio", '[data-action="cancel-job"]'));
-  await expect(card.locator(".voc-root")).toHaveAttribute("data-state", "overlay");
-  await expectHeight(card, natural, "the short dialog keeps the queue's height");
-  await act(page, card.locator(".voc-back"));
+  await expect(card.locator(".voc-root")).toHaveAttribute("data-dialog", "cancel-job");
+  await expect(card.locator("ha-card")).not.toHaveAttribute("data-frame", /.*/);
+  await expectHeight(card, natural, "a dialog lies over the queue at its height");
+  await leave(page, card);
   await act(page, card.locator(".voc-primary-action"));
   await expectHeight(card, natural, "the long editor keeps the queue's height");
   await act(page, card.locator(".voc-back"));

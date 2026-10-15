@@ -1,8 +1,9 @@
-// Saving a job as a template, and the defaults for new jobs.
+// Saving a job as a template (a dialog), and the defaults for new jobs (a page).
 
 import { buildJobDefaults, buildSaveTemplate } from "../../presentation/overlays/job-defaults.js";
 import { button } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
+import { dialog } from "./dialog.js";
 import { frame } from "./frame.js";
 import { FORMS_CSS } from "../styles/forms.js";
 
@@ -13,10 +14,11 @@ function actions(context, vm, action) {
 
 export const saveTemplateOverlay = Object.freeze({
   key: "save-template",
+  dialog: true,
   build: ({ model, texts, context, overlay }) => buildSaveTemplate({ model, texts, context, overlay }),
   render(context, vm) {
     const content = `<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`;
-    return frame(context, { key: "save-template", title: vm.title, lead: vm.lead, invalid: vm.invalid, content, actions: actions(context, vm, "save-job-template"), dialog: true });
+    return dialog({ key: "save-template", title: vm.title, lead: vm.lead, invalid: vm.invalid, content, actions: actions(context, vm, "save-job-template") });
   },
   css: FORMS_CSS,
 });

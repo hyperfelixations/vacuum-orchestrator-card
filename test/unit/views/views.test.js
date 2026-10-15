@@ -202,8 +202,8 @@ test("the detail page keeps the run action last and the reordering beside the po
   assert.deepEqual(footer(corrected), [["delete-job", true], ["open-save-template", false], ["retry-job", false]]);
 });
 
-test("every page renders inside the shared frame with a heading to focus", async () => {
-  const { OVERLAYS } = await import("../../../src/views/registry.js");
+test("every page renders inside the shared frame, every dialog in the dialog frame, each with a heading to focus", async () => {
+  const { OVERLAYS, isDialog } = await import("../../../src/views/registry.js");
   const { createDraft } = await import("../../../src/domain/job-draft.js");
   const { createRoomDraft } = await import("../../../src/domain/room-draft.js");
   const { createRobotDraft } = await import("../../../src/domain/robot-draft.js");
@@ -225,26 +225,42 @@ test("every page renders inside the shared frame with a heading to focus", async
     "robot-editor": { draft: createRobotDraft(robot), open: ["roles", "requirements", "optionMaps", "timeouts", "identity"] },
   };
   const { document, context } = await renderContext(built.texts);
+  const dialogs = OVERLAYS.filter((overlay) => isDialog(overlay.key)).map((overlay) => overlay.key);
+  assert.deepEqual(dialogs.sort(), ["cancel-job", "confirm", "queue-end", "queue-settings", "recovery", "release", "save-template", "start-job"]);
   for (const overlay of OVERLAYS) {
     const vm = overlay.build({ ...built, overlay: { kind: overlay.key, ...pages[overlay.key] }, config: {}, ui: {} });
     const host = parse(document, overlay.render(context, vm));
+    if (isDialog(overlay.key)) {
+      const dialog = host.querySelector(".voc-dialog");
+      assert.equal(dialog.getAttribute("data-key"), `overlay:${overlay.key}`, overlay.key);
+      assert.deepEqual([dialog.getAttribute("role"), dialog.getAttribute("aria-labelledby"), dialog.getAttribute("aria-modal")], ["dialog", "voc-dialog-title", null], overlay.key);
+      assert.equal(host.querySelector("#voc-dialog-title").getAttribute("tabindex"), "-1");
+      assert.equal(host.querySelector(".voc-back"), null, `${overlay.key} has no back control of its own`);
+      assert.ok(host.querySelector('.voc-dialog-actions [data-action="back"]'), `${overlay.key} can be left from its actions`);
+      const parts = [...dialog.children].map((child) => child.className);
+      assert.deepEqual(parts, ["voc-dialog-title", "voc-dialog-scroll", "voc-dialog-actions"], `${overlay.key}: heading, content, actions`);
+      assert.ok(dialog.querySelector(".voc-dialog-scroll").hasAttribute("data-scroll"));
+      assertMarkupContract(host, overlay.key);
+      continue;
+    }
     const frame = host.querySelector(".voc-overlay");
     assert.equal(frame.getAttribute("data-key"), `overlay:${overlay.key}`, overlay.key);
-    assert.equal(frame.getAttribute("aria-labelledby"), "voc-overlay-title");
+    assert.deepEqual([frame.getAttribute("role"), frame.getAttribute("aria-labelledby")], ["region", "voc-overlay-title"], overlay.key);
     assert.equal(host.querySelector("#voc-overlay-title").getAttribute("tabindex"), "-1");
     assert.ok(host.querySelector('[data-action="back"]'), `${overlay.key} can be left`);
     const parts = [...frame.children].map((child) => child.className);
-    assert.deepEqual(parts.filter((name) => name !== "voc-overlay-actions"), ["voc-overlay-head", "voc-overlay-scroll"], `${overlay.key}: heading, then one region that scrolls`);
+    assert.deepEqual(parts, ["voc-overlay-head", "voc-overlay-scroll", "voc-overlay-actions"], `${overlay.key}: heading, one region that scrolls, the footer`);
     assert.ok(frame.querySelector(".voc-overlay-scroll").hasAttribute("data-scroll"));
     assertMarkupContract(host, overlay.key);
   }
 });
 
-test("a page frame without lead and content has no region to scroll", async () => {
+test("a page frame without lead and content has no region to scroll; without actions its footer leads back", async () => {
   const { frame } = await import("../../../src/views/overlays/frame.js");
   const { document, context } = await renderContext(null);
   const bare = parse(document, frame(context, { key: "x", title: "X", actions: "<button data-action=\"back\">B</button>" }));
   assert.equal(bare.querySelector(".voc-overlay-scroll"), null);
+  assert.deepEqual([...parse(document, frame(context, { key: "x", title: "X" })).querySelectorAll(".voc-overlay-actions > button")].map((node) => node.dataset.action), ["back"]);
   const lead = parse(document, frame(context, { key: "x", title: "X", lead: "<b>" }));
   assert.equal(lead.querySelector(".voc-overlay-scroll > .voc-overlay-lead").textContent, "<b>");
 });

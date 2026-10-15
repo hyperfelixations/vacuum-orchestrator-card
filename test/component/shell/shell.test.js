@@ -1,6 +1,6 @@
 // The card shell through the built card: language, header options, the warning block and
-// subtitle hints, the show switches, the tab strip and its keyboard, unavailable views and the
-// command notice.
+// subtitle hints, the show switches, the tab strip and its keyboard, unavailable views, the
+// command notice and the card dialog above a live view.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -48,6 +48,36 @@ test("a lost connection is a hint behind the subtitle, not a warning", async () 
   card.backend.reconnect();
   await card.settle(24);
   assert.doesNotMatch(card.text(".voc-subtitle"), /reconnect/i);
+  card.unmount();
+});
+
+// LAY-05, A11Y-02: a card dialog lies over the view, which stays on screen, follows Home Assistant
+// and is inert; the dialog keeps what the user typed.
+test("a dialog covers the view, which stays live and inert below it; Escape closes it", async () => {
+  const card = await mountCard({ recording: "room_controls", from: "The dining room is released" });
+  await card.click('[role="tab"][data-view="rooms"]');
+  await card.settle(24);
+  await card.click(card.named(".voc-room", "Library").querySelector('[data-action="open-release"]'));
+  const dialog = card.root.querySelector(".voc-dialog");
+  assert.equal(dialog.dataset.key, "overlay:release");
+  assert.deepEqual([dialog.getAttribute("role"), dialog.getAttribute("aria-labelledby"), dialog.getAttribute("aria-modal")], ["dialog", "voc-dialog-title", null]);
+  assert.equal(card.root.querySelector(".voc-root").dataset.dialog, "release");
+  assert.ok(card.root.querySelector('[data-key="view:rooms"]'), "the view stays below");
+  for (const part of [".voc-header", ".voc-panel", ".voc-tab-row", ".voc-body"]) assert.ok(card.root.querySelector(part).hasAttribute("inert"), `${part} is inert`);
+  assert.equal(card.root.querySelector(".voc-live-region").hasAttribute("inert"), false, "answers are still announced");
+  await card.click('[data-key="field:overlay:releaseKind"] [data-value="timed"]');
+  await card.type('[data-field="overlay:hours"]', "1");
+  assert.equal(card.text(".voc-panel-robot"), "Rocky · Docked · 100 %");
+  const states = card.hass.states;
+  await card.updateHass({ states: { ...states, "sensor.rocky_battery": { ...states["sensor.rocky_battery"], state: "80" } } });
+  assert.equal(card.text(".voc-panel-robot"), "Rocky · Docked · 80 %", "the card below follows Home Assistant");
+  assert.equal(card.root.querySelector(".voc-dialog"), dialog, "the dialog stays in place");
+  assert.equal(card.root.querySelector('[data-field="overlay:hours"]').value, "1", "and keeps what was typed");
+  await card.press('[data-field="overlay:hours"]', "Escape");
+  assert.equal(card.root.querySelector(".voc-dialog"), null);
+  assert.equal(card.root.querySelector(".voc-body").hasAttribute("inert"), false);
+  assert.equal(card.root.querySelector(".voc-root").dataset.dialog, undefined);
+  assert.deepEqual(card.commands("release_rooms"), []);
   card.unmount();
 });
 

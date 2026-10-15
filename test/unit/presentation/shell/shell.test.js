@@ -203,7 +203,7 @@ test("a failed check names its failure and is not shown as a lost connection", a
   assert.equal(buildOnboarding({ model: { ...model, phase: "offline" }, texts }).note, null);
 });
 
-test("the card view model puts onboarding, an overlay or the active view into the body", async () => {
+test("the card view model puts onboarding, a page or the active view into the body, a dialog above it", async () => {
   const { model, texts, context, VIEWS, config } = await shell();
   const { buildCardViewModel } = await import("../../../../src/presentation/shell/card-view-model.js");
   const { buildTabs } = await import("../../../../src/presentation/shell/tabs.js");
@@ -212,9 +212,16 @@ test("the card view model puts onboarding, an overlay or the active view into th
   const view = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: { key: "queue" } });
   assert.equal(view.body.kind, "view");
   assert.equal(view.primary.action, "create-job");
-  const overlay = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: {}, overlay: { key: "job-editor", content: {} } });
-  assert.equal(overlay.body.kind, "overlay");
-  assert.equal(overlay.primary, null, "a page has its own actions");
+  const page = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: {}, page: { key: "job-editor", content: {} } });
+  assert.equal(page.body.kind, "overlay");
+  assert.equal(page.primary, null, "a page has its own actions");
+  assert.deepEqual([page.panel.visible, page.tabs.visible, page.dialog], [false, false, null]);
+  const dialog = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: { key: "queue" }, dialog: { key: "confirm", content: {} }, scheme: "dark" });
+  assert.deepEqual([dialog.body.kind, dialog.panel.visible, dialog.tabs.visible, dialog.primary.action], ["view", true, true, "create-job"], "the view stays below a dialog");
+  assert.deepEqual(dialog.dialog, { kind: "overlay", key: "confirm", content: {} });
+  assert.equal(dialog.scheme, "dark");
+  const onPage = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: {}, page: { key: "job-editor", content: {} }, dialog: { key: "confirm", content: {} } });
+  assert.deepEqual([onPage.body.key, onPage.dialog.key, onPage.panel.visible], ["job-editor", "confirm", false]);
   const notice = buildCardViewModel({ model, config: cfg, texts, ui: { notice: { kind: "error", operation: "run_queue", failure: { code: "unauthorized" } } }, tabs, definitions: VIEWS, context, viewContent: {} });
   assert.equal(notice.notice.text, texts.t("error.code.unauthorized"));
 });

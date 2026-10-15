@@ -122,9 +122,10 @@ test("leaving a changed editor asks; Escape asks the same", async () => {
   await card.click(".voc-primary-action");
   await card.click(chip(card, "Dining Room"));
   await card.press("#voc-overlay-title", "Escape");
-  assert.equal(card.text("#voc-overlay-title"), "Discard changes?");
+  assert.equal(card.text("#voc-dialog-title"), "Discard changes?");
+  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:job-editor", "the editor stays below the question");
   await card.click('[data-action="confirm-command"]');
-  assert.equal(card.root.querySelector(".voc-overlay"), null);
+  assert.equal(card.root.querySelector(".voc-overlay, .voc-dialog"), null);
   card.unmount();
 });
 
@@ -152,12 +153,12 @@ test("cancelling the running job asks where the robot goes and sends only after 
   const studio = jobIdOf(card, "Studio");
   await card.click(inRow(card, "Studio", '[data-action="cancel-job"]'));
   assert.equal(card.services("cancel_job").length, 0);
-  assert.equal(card.root.querySelector(".voc-overlay").getAttribute("role"), "dialog");
+  assert.equal(card.root.querySelector(".voc-dialog").getAttribute("role"), "dialog");
   const checked = () => card.root.querySelector('.voc-radios [aria-checked="true"]').dataset.value;
   assert.equal(checked(), "return_to_dock");
   await card.press('.voc-radios [aria-checked="true"]', "ArrowDown");
   assert.equal(checked(), "stay", "arrow keys move the choice");
-  const actions = card.all(".voc-overlay-actions > button").map((node) => node.dataset.action);
+  const actions = card.all(".voc-dialog-actions > button").map((node) => node.dataset.action);
   assert.deepEqual(actions, ["back", "confirm-cancel"], "going back on the left, the cancel on the right");
   await card.click('[data-action="confirm-cancel"]');
   await card.settle(32);
@@ -169,7 +170,7 @@ test("ending the queue lets the running job finish by default and then shows the
   const card = await at("The studio template made a job");
   assert.equal(card.text(".voc-queue-end"), "End queue");
   await card.click(".voc-queue-end");
-  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:queue-end");
+  assert.equal(card.root.querySelector(".voc-dialog").dataset.key, "overlay:queue-end");
   assert.deepEqual(card.all(".voc-radios [role=radio]").map((node) => [node.dataset.value, node.getAttribute("aria-checked")]), [["finish", "true"], ["cancel_return", "false"], ["cancel_stay", "false"]]);
   await card.click('[data-action="confirm-end-queue"]');
   await card.settle(32);
@@ -183,7 +184,7 @@ test("ending the queue lets the running job finish by default and then shows the
 test("ending a queue without started jobs only confirms", async () => {
   const card = await mountCard({ recording: "queue_end", from: "The queue waits for work" });
   await card.click(".voc-queue-end");
-  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:confirm");
+  assert.equal(card.root.querySelector(".voc-dialog").dataset.key, "overlay:confirm");
   await card.click('[data-action="confirm-command"]');
   await card.settle(32);
   assert.deepEqual(card.services("end_queue").map((call) => call.data), [{}]);
@@ -231,6 +232,7 @@ test("a job is saved as a template from its detail page under the name it shows"
   await card.click('[data-action="save-job-template"]');
   await card.settle(32);
   assert.deepEqual(card.commands("save_job_as_template").map((message) => message.parameters), [{ job_id: library, name: "Library twice", automatic: false }]);
+  assert.equal(card.root.querySelector(".voc-dialog"), null);
   assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:job-detail", "back on the detail page");
   card.unmount();
 });
@@ -256,8 +258,9 @@ test("starting directly asks which robot, or lets the integration choose", async
   const card = await mountCard({ recording: "robot_choice", from: "Either robot can start the dining room" });
   const dining = jobIdOf(card, "Dining Room");
   await card.click(inRow(card, "Dining Room", '[data-action="start-job"]'));
-  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:start-job");
-  const dusty = card.all('.voc-overlay [data-action="start-job"]').find((node) => /Dusty/.test(node.textContent));
+  assert.equal(card.root.querySelector(".voc-dialog").dataset.key, "overlay:start-job");
+  assert.deepEqual(card.all(".voc-dialog-actions > button").map((node) => node.dataset.action), ["back"], "the choice can be left from its footer");
+  const dusty = card.all('.voc-dialog [data-action="start-job"]').find((node) => /Dusty/.test(node.textContent));
   await card.click(dusty);
   await card.settle(32);
   assert.deepEqual(card.services("start_job").map((call) => call.data.job_id), [dining]);

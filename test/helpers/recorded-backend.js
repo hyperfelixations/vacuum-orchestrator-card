@@ -87,7 +87,8 @@
 
   // options: from (a mark: the card opens there), language ("en"), admin (the recorded user's
   // flag), formatEntityState (Home Assistant's state formatter; the frontend owns it), clock
-  // (moved by recorded `advance` steps), hassUrl.
+  // (moved by recorded `advance` steps), hassUrl. The frontend's theme follows the page's colour
+  // scheme, as Home Assistant's default theme does, and `themes.darkMode` says which it chose.
   function createRecordedBackend(recording, options = {}) {
     const name = recording.scenario;
     const { sends, byId } = index(recording);
@@ -155,6 +156,7 @@
         user: { ...view.user, ...(options.admin === undefined ? {} : { is_admin: options.admin }) },
         language,
         locale: { language },
+        themes: { darkMode: globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches === true },
         hassUrl: (path = "") => `${options.hassUrl || "http://homeassistant.local:8123"}${path}`,
         connection,
         callWS: (message) => connection.sendMessagePromise(message),

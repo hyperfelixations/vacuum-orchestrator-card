@@ -30,7 +30,7 @@ import { createTabStripRuntime } from "../controllers/runtime/tab-strip-runtime.
 import { createUIState } from "../controllers/runtime/ui-state.js";
 import { createActionRouter } from "../controllers/runtime/action-router.js";
 import { createRenderController } from "../controllers/render/render-controller.js";
-import { VIEWS, VIEW_CSS, VIEW_TYPES, handleControlKeydown, optionSchemaForView, overlayFor, renderBody, viewFor } from "../views/index.js";
+import { VIEWS, VIEW_CSS, VIEW_TYPES, handleControlKeydown, isDialog, optionSchemaForView, overlayFor, renderBody, viewFor } from "../views/index.js";
 
 const CARD_SIZE_ROW_PX = 50;
 const CARD_SIZE_MAX_ROWS = 14;
@@ -175,13 +175,24 @@ export class VacuumOrchestratorCard extends HTMLElement {
     else this._mount.setFrame(this._lockPx === null ? { mode: "auto" } : { mode: "lock", heightPx: this._lockPx });
   }
 
-  // Scroll regions by what they show: the view with its pages, then each open overlay.
+  // Scroll regions by what they show: the view with its pages, then each open page. A dialog
+  // covers the region below it without replacing it, so it is not on this stack.
   _scrollStack(viewModel) {
     const body = viewModel.body;
     if (body.kind === "onboarding") return [`onboarding:${this._pending.model.phase}`];
     if (body.kind !== "view" && body.kind !== "overlay") return [`${body.kind}:${body.key ?? ""}`];
     const ui = this._ui.snapshot;
-    return [`view:${this._pending.tabs.active}:${JSON.stringify(ui.pages)}`, ...ui.overlays.map((overlay, index) => `overlay:${index}:${overlay.kind}`)];
+    const pages = ui.overlays.map((overlay, index) => (isDialog(overlay.kind) ? null : `overlay:${index}:${overlay.kind}`)).filter(Boolean);
+    return [`view:${this._pending.tabs.active}:${JSON.stringify(ui.pages)}`, ...pages];
+  }
+
+  // The overlays on screen: the topmost page, and the dialog when the top overlay is one. The
+  // view or page below a dialog stays on screen and live.
+  _layers() {
+    const overlays = this._ui.snapshot.overlays;
+    const top = overlays[overlays.length - 1] ?? null;
+    const page = [...overlays].reverse().find((overlay) => !isDialog(overlay.kind)) ?? null;
+    return { page, dialog: top && isDialog(top.kind) ? top : null };
   }
 
   _normalizeConfig(config) {
@@ -219,8 +230,8 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._lastRequests = null;
   }
 
-  // The scopes this card reads, by slot. The base set serves the shell; the active view and the
-  // top overlay add their own.
+  // The scopes this card reads, by slot. The base set serves the shell; the active view, the page
+  // on screen and a dialog above it add their own.
   _requests(tabs) {
     const ui = this._ui.snapshot;
     const pageSize = this._config.page_size;
@@ -239,9 +250,10 @@ export class VacuumOrchestratorCard extends HTMLElement {
     };
     const definition = viewFor(tabs?.active);
     if (definition?.scopes) add(definition.scopes({ ui, options: resolvedOptions(definition, tabs.activeTab?.options), config: this._config }));
-    const overlay = this._ui.overlay;
-    const overlayDefinition = overlay ? overlayFor(overlay.kind) : null;
-    if (overlayDefinition?.scopes) add(overlayDefinition.scopes({ ui, overlay, config: this._config }));
+    for (const overlay of Object.values(this._layers())) {
+      const overlayDefinition = overlay ? overlayFor(overlay.kind) : null;
+      if (overlayDefinition?.scopes) add(overlayDefinition.scopes({ ui, overlay, config: this._config }));
+    }
     return requests;
   }
 
@@ -263,8 +275,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
   // demand decides what the model holds.
   _computeModel() {
     const snapshot = this._hold?.session.getSnapshot() ?? null;
-    const overlay = this._ui.overlay;
-    const needsEntityCatalog = Boolean(overlay && overlayFor(overlay.kind)?.needsEntityCatalog);
+    const needsEntityCatalog = Object.values(this._layers()).some((overlay) => Boolean(overlay && overlayFor(overlay.kind)?.needsEntityCatalog));
     let model = buildCardDomainModel({ snapshot, requests: this._lastRequests || {}, home: readHomeAssistant(this._hass), nowMs: this._now(), needsEntityCatalog });
     let texts = this._texts(model);
     const tabs = buildTabs({ definitions: VIEWS, model, config: this._config, ui: this._ui.snapshot, texts });
@@ -285,6 +296,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
       session: this._hold?.session.getSnapshot().version ?? null,
       config: this._configVersion,
       language: texts.language,
+      scheme: this._scheme(),
       minute: Math.floor(model.nowMs / 60000),
       ui: this._ui.snapshot,
       hass: [model.robotsLive, model.entityReadings, model.areas, model.operations, model.permissions, model.entityCatalog.length],
@@ -300,14 +312,19 @@ export class VacuumOrchestratorCard extends HTMLElement {
     if (definition && tabs.activeTab?.available && model.phase === "ready") {
       viewContent = definition.build({ model, texts, context, options: resolvedOptions(definition, tabs.activeTab.options), config, ui: this._ui.snapshot });
     }
-    let overlay = null;
-    const top = this._ui.overlay;
-    const overlayDefinition = top ? overlayFor(top.kind) : null;
-    if (overlayDefinition && model.phase === "ready") {
-      overlay = { key: overlayDefinition.key, content: overlayDefinition.build({ model, texts, context, overlay: top, config, ui: this._ui.snapshot }) };
-    }
-    const viewModel = buildCardViewModel({ model, config, texts, ui: this._ui.snapshot, tabs, definitions: VIEWS, context, viewContent, overlay });
+    const build = (entry) => {
+      const overlayDefinition = entry ? overlayFor(entry.kind) : null;
+      if (!overlayDefinition || model.phase !== "ready") return null;
+      return { key: overlayDefinition.key, content: overlayDefinition.build({ model, texts, context, overlay: entry, config, ui: this._ui.snapshot }) };
+    };
+    const { page, dialog } = this._layers();
+    const viewModel = buildCardViewModel({ model, config, texts, ui: this._ui.snapshot, tabs, definitions: VIEWS, context, viewContent, page: build(page), dialog: build(dialog), scheme: this._scheme() });
     return { viewModel, texts };
+  }
+
+  // Home Assistant's own light or dark decision for its theme; the scrim below a dialog follows it.
+  _scheme() {
+    return this._hass?.themes?.darkMode === true ? "dark" : "light";
   }
 
   _renderView({ viewModel, texts }) {
@@ -316,8 +333,9 @@ export class VacuumOrchestratorCard extends HTMLElement {
     const ring = { visible: focusRingShown(this.shadowRoot) };
     const depth = this._ui.snapshot.overlays.length;
     const previousDepth = this._overlayDepth ?? 0;
-    // Opening a page moves focus into it and remembers the control that opened it; closing it
-    // gives focus back to that control.
+    // Opening a page or dialog moves focus into it and remembers the control that opened it;
+    // closing it gives focus back to that control. A dialog's focus goes to its safe answer when
+    // it names one, else to its heading.
     if (depth > previousDepth) this._focusReturns = [...(this._focusReturns || []), held];
     this._applyFrame(viewModel.body.kind === "overlay");
     this._scroll.capture();
@@ -325,7 +343,8 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._scroll.sync(this._scrollStack(viewModel));
     const requested = this._ui.consumeFocus();
     if (requested) focusSelector(this.shadowRoot, requested, ring);
-    else if (depth > previousDepth && held) focusSelector(this.shadowRoot, "[data-autofocus], #voc-overlay-title", ring);
+    else if (depth > previousDepth && held && viewModel.dialog) focusSelector(this.shadowRoot, ".voc-dialog [data-autofocus]", ring) || focusSelector(this.shadowRoot, "#voc-dialog-title", ring);
+    else if (depth > previousDepth && held) focusSelector(this.shadowRoot, "#voc-overlay-title", ring);
     else if (depth < previousDepth && held) {
       const returns = this._focusReturns || [];
       const target = returns.slice(depth).find(Boolean) || null;

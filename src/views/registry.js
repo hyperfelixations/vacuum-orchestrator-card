@@ -46,6 +46,11 @@ export function overlayFor(key) {
   return OVERLAYS.find((overlay) => overlay.key === key) || null;
 }
 
+// A card dialog lies over the view or page below it; every other overlay is a page.
+export function isDialog(key) {
+  return overlayFor(key)?.dialog === true;
+}
+
 export function optionSchemaForView(key) {
   return viewFor(key)?.optionsSchema || null;
 }

@@ -1,6 +1,7 @@
 // The view-agnostic card shell in RCC structure: accent line, header, warning block, main
-// panel, tab row, body, live region. The body renderer is injected; the composition layer does
-// not know the view registry. See internal dev doc §9 "Shell-Markup".
+// panel, tab row, body, live region, and a card dialog on a scrim above them all. The body
+// renderer is injected; the composition layer does not know the view registry. See internal dev
+// doc §9 "Shell-Markup".
 
 import { attr, button, e, icon } from "../primitives/markup.js";
 
@@ -50,6 +51,12 @@ function renderTabRow(context, vm) {
   return `<div class="voc-tab-row">${tabs}${slot}</div>`;
 }
 
+// Below a dialog the card is inert: no focus, no pointer, hidden from assistive technology. The
+// live region stays outside, so an answer that arrives meanwhile is still announced.
+function beneath(html, covered) {
+  return covered && html ? html.replace(/^<(\w+)/u, "<$1 inert") : html;
+}
+
 export function renderCard(context, vm, renderBody) {
   const header = vm.header;
   const rootAttributes = [
@@ -59,11 +66,16 @@ export function renderCard(context, vm, renderBody) {
     attr("data-accent-line", vm.accentLinePosition === "bottom" ? "bottom" : null),
     attr("data-title", header.titleOverflow === "clip" ? "clip" : null),
     attr("data-subtitle", header.subtitleOverflow === "wrap" ? "wrap" : null),
+    attr("data-scheme", vm.scheme === "dark" ? "dark" : null),
+    attr("data-dialog", vm.dialog?.key ?? null),
     `style="${e(vm.toneStyle)}"`,
   ].join("");
   // A tab panel is a tab stop: no view starts with a focusable control, and in a frame it scrolls.
   const bodyRole = vm.body.kind === "view" && vm.tabs.visible ? ` role="tabpanel" aria-labelledby="voc-tab-${e(vm.body.key)}" tabindex="0"` : "";
-  return `<div class="voc-root" ${rootAttributes} tabindex="-1">${vm.accentLine ? '<div class="voc-top-line"></div>' : ""}${renderHeader(header)}${renderWarning(vm.warning)}${renderNotice(context, vm.notice)}${renderPanel(context, vm.panel)}${renderTabRow(context, vm)}<div class="voc-body" id="voc-panel" data-body="${e(vm.body.kind)}:${e(vm.body.key || "")}" data-scroll${bodyRole}>${renderBody(context, vm.body)}</div><div class="voc-live-region" aria-live="polite" aria-atomic="true">${e(vm.liveMessage)}</div></div>`;
+  const covered = Boolean(vm.dialog);
+  const background = [renderHeader(header), renderWarning(vm.warning), renderNotice(context, vm.notice), renderPanel(context, vm.panel), renderTabRow(context, vm), `<div class="voc-body" id="voc-panel" data-body="${e(vm.body.kind)}:${e(vm.body.key || "")}" data-scroll${bodyRole}>${renderBody(context, vm.body)}</div>`];
+  const dialog = covered ? `<div class="voc-scrim" data-key="dialog">${renderBody(context, vm.dialog)}</div>` : "";
+  return `<div class="voc-root" ${rootAttributes} tabindex="-1">${vm.accentLine ? '<div class="voc-top-line"></div>' : ""}${background.map((part) => beneath(part, covered)).join("")}<div class="voc-live-region" aria-live="polite" aria-atomic="true">${e(vm.liveMessage)}</div>${dialog}</div>`;
 }
 
 export function renderFailure(message) {

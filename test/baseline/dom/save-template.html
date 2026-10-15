@@ -1,7 +1,7 @@
-<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1" data-dialog="save-template">
 <div class="voc-top-line">
 </div>
-<div class="voc-header">
+<div class="voc-header" inert="">
 <div class="voc-icon-badge" aria-hidden="true">
 <ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
 </ha-icon>
@@ -12,16 +12,143 @@
 </div>
 <div class="voc-status-pill">Cleaning</div>
 </div>
-<div class="voc-body" id="voc-panel" data-body="overlay:save-template" data-scroll="">
-<section class="voc-overlay" data-key="overlay:save-template" role="dialog" aria-modal="true" aria-labelledby="voc-overlay-title">
+<div class="voc-body" id="voc-panel" data-body="overlay:job-detail" data-scroll="" inert="">
+<section class="voc-overlay" data-key="overlay:job-detail" role="region" aria-labelledby="voc-overlay-title">
 <header class="voc-overlay-head">
 <button type="button" class="voc-button voc-button--icon voc-back" data-action="back" aria-label="Back" title="Back">
 <ha-icon icon="mdi:arrow-left" aria-hidden="true">
 </ha-icon>
 </button>
-<h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">Save as template</h2>
+<h2 class="voc-overlay-title" id="voc-overlay-title" tabindex="-1">Conservatory</h2>
+<span class="voc-pill voc-pill--neutral">Waiting</span>
 </header>
 <div class="voc-overlay-scroll" data-scroll="">
+<div class="voc-detail-summary" data-key="summary">
+<div class="voc-detail-line">
+<span class="voc-chip">
+<ha-icon icon="mdi:broom" aria-hidden="true">
+</ha-icon>
+<span>Mop</span>
+</span>
+<span class="voc-chip">
+<ha-icon icon="mdi:floor-plan" aria-hidden="true">
+</ha-icon>
+<span>Conservatory</span>
+</span>
+<span class="voc-chip" title="Water: Medium">
+<ha-icon icon="mdi:water" aria-hidden="true">
+</ha-icon>
+<span class="voc-sr-only">Water: </span>
+<span>Medium</span>
+</span>
+<span class="voc-chip" title="Mop route: Standard">
+<ha-icon icon="mdi:map-marker-path" aria-hidden="true">
+</ha-icon>
+<span class="voc-sr-only">Mop route: </span>
+<span>Standard</span>
+</span>
+</div>
+<div class="voc-detail-position" data-key="position">
+<span>Position 1 in the queue</span>
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;,&quot;direction&quot;:&quot;top&quot;}" aria-label="Move to top" disabled="" title="The job is already first in the queue">
+<ha-icon icon="mdi:arrow-collapse-up" aria-hidden="true">
+</ha-icon>
+</button>
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;,&quot;direction&quot;:&quot;bottom&quot;}" aria-label="Move to bottom" title="Move to bottom">
+<ha-icon icon="mdi:arrow-collapse-down" aria-hidden="true">
+</ha-icon>
+</button>
+</div>
+</div>
+<section class="voc-block" data-key="readiness">
+<h3 class="voc-block-title">
+<ha-icon icon="mdi:lock-outline" aria-hidden="true">
+</ha-icon>Can it start?</h3>
+<ul class="voc-reasons">
+<li>
+<ha-icon icon="mdi:alert-circle-outline" aria-hidden="true">
+</ha-icon>
+<span>Not released: Conservatory</span>
+</li>
+<li>
+<ha-icon icon="mdi:alert-circle-outline" aria-hidden="true">
+</ha-icon>
+<span>Conservatory Door is not in an allowed state</span>
+</li>
+</ul>
+<div class="voc-inline-actions">
+<button type="button" class="voc-button voc-button--text" data-action="open-release" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000005&quot;}" data-key="release:00000000-0000-4000-8000-000000000005">
+<ha-icon icon="mdi:lock-open-variant-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Release Conservatory…</span>
+</button>
+</div>
+</section>
+<section class="voc-block" data-key="execution">
+<h3 class="voc-block-title">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>Robots</h3>
+<p class="voc-overlay-lead">Per cleaning phase: which robot could take it right now.</p>
+<div class="voc-phase" data-key="phase:mop">
+<div class="voc-phase-title">Mopping</div>
+<ul class="voc-phase-robots">
+<li data-key="mop:01J00000000000000000000003" data-eligible="false">
+<ha-icon icon="mdi:close-circle-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-phase-robot">Rocky</span>
+<span class="voc-phase-reason">The robot is busy</span>
+</li>
+</ul>
+</div>
+</section>
+<section class="voc-block" data-key="facts">
+<h3 class="voc-block-title">
+<ha-icon icon="mdi:information-outline" aria-hidden="true">
+</ha-icon>Details</h3>
+<dl class="voc-facts">
+<dt>Created</dt>
+<dd>Mar 14, 2026, 11:14 AM</dd>
+<dt>Changed</dt>
+<dd>Mar 14, 2026, 11:14 AM</dd>
+<dt>Occasion</dt>
+<dd>Added by hand · Guests are coming</dd>
+<dt>Job ID</dt>
+<dd>00000000-0000-4000-8000-000000000062</dd>
+</dl>
+</section>
+<section class="voc-block" data-key="trace">
+<button type="button" class="voc-disclosure" data-action="set-overlay" data-args="{&quot;traceOpen&quot;:true}" aria-expanded="false">
+<ha-icon icon="mdi:chevron-down" aria-hidden="true">
+</ha-icon>
+<span>Event log</span>
+</button>
+</section>
+</div>
+<div class="voc-overlay-actions">
+<button type="button" class="voc-button voc-button--danger voc-action-start" data-action="delete-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;}">
+<ha-icon icon="mdi:delete-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Delete</span>
+</button>
+<button type="button" class="voc-button voc-button--text" data-action="open-save-template" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;}">
+<ha-icon icon="mdi:content-save-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Save as template</span>
+</button>
+<button type="button" class="voc-button voc-button--text" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;}">
+<ha-icon icon="mdi:pencil-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Edit</span>
+</button>
+</div>
+</section>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+<div class="voc-scrim" data-key="dialog">
+<section class="voc-dialog" data-key="overlay:save-template" role="dialog" aria-labelledby="voc-dialog-title">
+<h2 class="voc-dialog-title" id="voc-dialog-title" tabindex="-1">Save as template</h2>
+<div class="voc-dialog-scroll" data-scroll="">
 <p class="voc-overlay-lead">Rooms, settings, title and note become a reusable template. The job itself stays as it is.</p>
 <div class="voc-form">
 <div class="voc-field" data-key="field:overlay:name" data-field-control="text">
@@ -42,7 +169,7 @@
 </div>
 </div>
 </div>
-<div class="voc-overlay-actions">
+<div class="voc-dialog-actions">
 <button type="button" class="voc-button voc-button--quiet" data-action="back">
 <span class="voc-button-label">Back</span>
 </button>
@@ -53,7 +180,5 @@
 </button>
 </div>
 </section>
-</div>
-<div class="voc-live-region" aria-live="polite" aria-atomic="true">
 </div>
 </div>

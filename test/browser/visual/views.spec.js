@@ -444,8 +444,9 @@ test.describe("in a sections grid cell", () => {
     await setCardWidth(page, NARROW);
     await act(page, named(card, ".voc-job", "Studio", '[data-action="cancel-job"]'));
     expect(await cardHeight(card)).toBe(FRAMED);
-    const [actions, surface] = [await card.locator(".voc-overlay-actions").boundingBox(), await card.locator("ha-card").boundingBox()];
-    expect(surface.y + surface.height - (actions.y + actions.height), "the actions sit at the bottom").toBeLessThan(20);
+    await expect(card.locator(".voc-root"), "the scrim follows Home Assistant's dark theme").toHaveAttribute("data-scheme", "dark");
+    const [content, actions] = [await card.locator(".voc-dialog-scroll").boundingBox(), await card.locator(".voc-dialog-actions").boundingBox()];
+    expect(actions.y - (content.y + content.height), "a compact dialog: the actions right below the content").toBeLessThanOrEqual(24);
     await shot(page, "frame-cancel-narrow-dark.png");
   });
 

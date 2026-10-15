@@ -1,6 +1,7 @@
 // Accessibility of the views and pages in a real engine: no interactive element inside another,
-// pages as named regions or modal dialogs, fields with label, error and description, focus that
-// moves into a page and back to the control that opened it, and a dialog that keeps focus.
+// pages as named regions, fields with label, error and description, focus that moves into a page
+// or card dialog and back to the control that opened it, and a dialog that keeps focus while the
+// card below it is inert.
 
 const { test, expect } = require("../../helpers/playwright.js");
 const { BUSY, mountCard, named } = require("../../helpers/browser-helpers.js");
@@ -35,18 +36,35 @@ test("the editor is a named region whose fields carry label, error and descripti
   await expect(editor.locator('[data-key="field:roomIds"] .voc-field-error')).toHaveAttribute("role", "alert");
 });
 
-test("a confirmation is a modal dialog; Escape leaves it and focus returns to the opener", async ({ page }) => {
+// A11Y-02: the dashboard stays usable, so the dialog is not aria-modal; the card below is inert.
+test("a card dialog takes focus over an inert card; Escape leaves it and focus returns to the opener", async ({ page }) => {
   const card = await mountCard(page, BUSY);
   const cancel = named(card, ".voc-job", "Studio", '[data-action="cancel-job"]');
   await cancel.focus();
   await page.keyboard.press("Enter");
   const dialog = card.locator('[data-key="overlay:cancel-job"]');
   await expect(dialog).toHaveAttribute("role", "dialog");
-  await expect(dialog).toHaveAttribute("aria-modal", "true");
+  await expect(dialog).not.toHaveAttribute("aria-modal", /.*/);
+  await expect(dialog).toHaveAccessibleName("Cancel job?");
+  await expect(card.locator("#voc-dialog-title")).toBeFocused();
+  for (const part of [".voc-header", ".voc-panel", ".voc-tab-row", ".voc-body"]) await expect(card.locator(part)).toHaveAttribute("inert", "");
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(cancel).toBeFocused();
   expect(await page.evaluate(() => window.vocHarness.backend.calls.filter((message) => message.type === "call_service").length)).toBe(0);
+});
+
+test("a confirmation puts focus on its safe answer", async ({ page }) => {
+  const card = await mountCard(page, BUSY);
+  await named(card, ".voc-job", "Conservatory", ".voc-job-main").click();
+  const remove = card.locator('[data-key="overlay:job-detail"] [data-action="delete-job"]');
+  await remove.focus();
+  await page.keyboard.press("Enter");
+  await expect(card.locator('[data-key="overlay:confirm"]')).toHaveAccessibleName("Delete job?");
+  await expect(card.locator('.voc-dialog [data-action="back"]')).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(card.locator('[data-key="overlay:confirm"]')).toHaveCount(0);
+  await expect(remove).toBeFocused();
 });
 
 test("Tab stays inside a dialog", async ({ page }) => {

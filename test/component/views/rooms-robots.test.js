@@ -35,14 +35,14 @@ test("a timed release sends its duration; locking sends a revoke", async () => {
   const card = await rooms("The dining room is released");
   const [library, dining] = [roomId(card, "Library"), roomId(card, "Dining Room")];
   await card.click(room(card, "Library").querySelector('[data-action="open-release"]'));
-  assert.equal(card.root.querySelector(".voc-overlay").getAttribute("role"), "dialog");
+  assert.equal(card.root.querySelector(".voc-dialog").getAttribute("role"), "dialog");
   await card.click('[data-key="field:overlay:releaseKind"] [data-value="timed"]');
   await card.type('[data-field="overlay:hours"]', "1");
   await card.type('[data-field="overlay:minutes"]', "15");
   await card.click('[data-action="release-room"]');
   await card.settle(32);
   assert.deepEqual(card.commands("release_rooms").map((message) => message.parameters), [{ grants: [{ room: library, kind: "timed", duration_seconds: 4500 }] }]);
-  assert.equal(card.root.querySelector(".voc-overlay"), null);
+  assert.equal(card.root.querySelector(".voc-dialog"), null);
   await card.click(room(card, "Dining Room").querySelector('[data-action="revoke-room"]'));
   await card.settle(32);
   assert.deepEqual(card.commands("revoke_rooms").map((message) => message.parameters), [{ rooms: [dining] }]);
@@ -55,7 +55,7 @@ test("a room is excluded after a confirmation and included again from the room l
   const studio = roomId(card, "Studio");
   await card.click(room(card, "Studio").querySelector('[data-action="edit-room"]'));
   await card.click('[data-action="disable-room"]');
-  assert.equal(card.text("#voc-overlay-title"), "Exclude room?");
+  assert.equal(card.text("#voc-dialog-title"), "Exclude room?");
   await card.click('[data-action="confirm-command"]');
   await card.settle(32);
   assert.deepEqual(card.commands("disable_room").map((message) => message.parameters), [{ room_id: studio }]);

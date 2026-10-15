@@ -20,7 +20,7 @@ export const FORMS_CSS = `
 .voc-radio.is-selected ha-icon { color: var(--tone-ink); }
 .voc-radio:focus-visible { outline: 2px solid var(--tone-ink); outline-offset: 2px; }
 .voc-radio-text { display: grid; gap: 2px; min-width: 0; }
-.voc-radio-label { font-weight: 650; }
+.voc-radio-label { font-size: 14px; font-weight: 700; line-height: 20px; }
 .voc-radio-note { font-size: 12px; color: var(--voc-muted); }
 .voc-option {
   display: inline-flex;

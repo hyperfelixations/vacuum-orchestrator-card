@@ -1,6 +1,7 @@
-// The card shell as data: accent line, header, warning block, main panel, tab row, body and the
-// per-card notice. View and overlay content is built by their own renderers and handed in, so
-// the shell stays view-agnostic. See internal dev doc §8 "Shell".
+// The card shell as data: accent line, header, warning block, main panel, tab row, body, the
+// card dialog above them and the per-card notice. View, page and dialog content is built by their
+// own renderers and handed in, so the shell stays view-agnostic. A page replaces the view with its
+// panel and tabs; a dialog leaves what is below it in place. See internal dev doc §8 "Shell".
 
 import { decide } from "../../domain/affordances.js";
 import { failureText, t } from "../common/texts.js";
@@ -24,7 +25,7 @@ function noticeFor(ui, texts) {
   return { kind: notice.kind, text: t(texts, notice.messageKey, notice.vars) };
 }
 
-export function buildCardViewModel({ model = {}, config = {}, texts, ui = {}, tabs, definitions = [], context, viewContent = null, overlay = null } = {}) {
+export function buildCardViewModel({ model = {}, config = {}, texts, ui = {}, tabs, definitions = [], context, viewContent = null, page = null, dialog = null, scheme = "light" } = {}) {
   const status = cardStatus(model);
   const tone = toneFor(status);
   const notices = buildNotices({ configDiagnostics: config._configDiagnostics || [], diagnostics: [...(model.diagnostics?.warnings || []), ...(model.diagnostics?.hints || [])] });
@@ -34,7 +35,7 @@ export function buildCardViewModel({ model = {}, config = {}, texts, ui = {}, ta
 
   let body;
   if (onboarding) body = { kind: "onboarding", content: onboarding };
-  else if (overlay) body = { kind: "overlay", key: overlay.key, content: overlay.content };
+  else if (page) body = { kind: "overlay", key: page.key, content: page.content };
   else if (tabs.activeTab?.available && viewContent) body = { kind: "view", key: tabs.active, content: viewContent };
   else if (tabs.activeTab) body = { kind: "unavailable", key: tabs.active, message: t(texts, "view.unavailable", { view: tabs.activeTab.label }) };
   else body = { kind: "empty", message: t(texts, "view.none") };
@@ -48,10 +49,12 @@ export function buildCardViewModel({ model = {}, config = {}, texts, ui = {}, ta
     header,
     warning: buildWarningBlock({ config, notices, texts }),
     notices,
-    panel: ready && !overlay ? buildPanel({ model, config, texts, context }) : { visible: false },
-    tabs: { ...tabs, visible: ready && !overlay && tabs.visible },
-    primary: ready && !overlay ? primaryAction(tabs, definitions, model, texts, context) : null,
+    panel: ready && !page ? buildPanel({ model, config, texts, context }) : { visible: false },
+    tabs: { ...tabs, visible: ready && !page && tabs.visible },
+    primary: ready && !page ? primaryAction(tabs, definitions, model, texts, context) : null,
     body,
+    dialog: ready && dialog ? { kind: "overlay", key: dialog.key, content: dialog.content } : null,
+    scheme: scheme === "dark" ? "dark" : "light",
     notice: noticeFor(ui, texts),
     liveMessage: ui?.notice ? noticeFor(ui, texts).text : "",
   };
