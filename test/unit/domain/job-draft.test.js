@@ -31,7 +31,7 @@ test("unknown and unsafe fields are ignored", async () => {
 
 test("defaults prefill a new draft, such as the room a job is created for", async () => {
   const { createDraft } = await load();
-  assert.deepEqual(createDraft({ defaults: { roomIds: ["room-hall"], unknown: 1 } }).roomIds, ["room-hall"]);
+  assert.deepEqual(createDraft({ defaults: { roomIds: ["room-studio"], unknown: 1 } }).roomIds, ["room-studio"]);
 });
 
 test("validation names the field and the integration's code", async () => {
