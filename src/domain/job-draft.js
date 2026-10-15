@@ -1,10 +1,10 @@
 // The editor draft for a job intent, and for a template wrapping one. An immutable value: every
 // change returns a new frozen draft that keeps its baseline. A new draft starts from the
-// integration's job defaults and carries exactly the settings its mode uses. Validation mirrors
-// the integration's input schema (`api/job_input.py`) so obvious mistakes are caught early; the
-// integration remains the authority. See internal dev doc §7 "Entwurf".
+// integration's job defaults and carries exactly the settings its mode uses. The integration
+// checks every input (`validate`); `draftFieldOf` places its errors. See internal dev doc §7
+// "Entwurf".
 
-import { MODE_SETTINGS, PASS_MAX, PASS_MIN, SETTING_FIELDS, canonicalizeMode, isSettingValue, isSettingsPolicy } from "./job-schema.js";
+import { MODE_SETTINGS, SETTING_FIELDS, canonicalizeMode } from "./job-schema.js";
 
 export const INTENT_FIELDS = Object.freeze([
   "roomIds",
@@ -47,7 +47,9 @@ const WIRE_NAMES = Object.freeze({
 // Text fields `update_job` accepts as an explicit null.
 const TEXT_FIELDS = Object.freeze(["name", "reason", "note", "dedupeKey"]);
 const SETTINGS = new Set(SETTING_FIELDS);
-const ENTITY_ID = /^[a-z0-9_]+\.[a-z0-9_]+$/;
+// The draft field each wire field of an intent fills; all rooms is part of the room choice.
+const FIELDS = Object.freeze({ ...Object.fromEntries(Object.entries(WIRE_NAMES).map(([field, wire]) => [wire, field])), all_rooms: "roomIds" });
+const TEMPLATE_FIELDS_ON_WIRE = Object.freeze({ name: "templateName", enabled: "enabled", automatic: "automatic" });
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 const EMPTY_INTENT = Object.freeze({
@@ -191,31 +193,15 @@ export function isDirty(draft) {
   return Object.keys(current).some((field) => !same(current[field], baseline[field]));
 }
 
-export function validateDraft(draft) {
-  const values = canonical(draft);
-  const errors = {};
-  const fail = (field, code) => {
-    if (!(field in errors)) errors[field] = code;
-  };
-  if (!values.allRooms && values.roomIds.length === 0) fail("roomIds", "job_requires_area");
-  if (!values.allRooms && new Set(values.roomIds).size !== values.roomIds.length) fail("roomIds", "duplicate_area");
-  if (!values.mode) fail("mode", "invalid_cleaning_mode");
-  if (!Number.isInteger(values.passes) || values.passes < PASS_MIN || values.passes > PASS_MAX) fail("passes", "invalid_pass_count");
-  // An unset setting takes the integration's default.
-  for (const field of settingsForMode(values.mode)) {
-    if (values[field] !== null && !isSettingValue(field, values[field])) fail(field, "unsupported_cleaning_preference");
+// The editor field an error of the integration names: a path of `create_job` or `update_job`, or
+// of `save_template` for a template (its intent below `intent`); null for the input as a whole.
+export function draftFieldOf(draft, path) {
+  const parts = String(path).split(".");
+  if (draft?.meta?.kind === "template") {
+    if (parts[0] !== "intent") return TEMPLATE_FIELDS_ON_WIRE[parts[0]] ?? null;
+    parts.shift();
   }
-  if (!isSettingsPolicy(values.settingsPolicy)) fail("settingsPolicy", "unsupported_cleaning_preference");
-  for (const field of ["requiredOn", "requiredOff"]) {
-    if (values[field].some((entityId) => !ENTITY_ID.test(entityId))) fail(field, "invalid_entity_id");
-    if (new Set(values[field]).size !== values[field].length) fail(field, "duplicate_entity");
-  }
-  if (values.requiredOn.some((entityId) => values.requiredOff.includes(entityId))) {
-    fail("requiredOn", "contradictory_state_requirement");
-    fail("requiredOff", "contradictory_state_requirement");
-  }
-  if (draft.meta.kind === "template" && values.templateName === null) fail("templateName", "template_name_required");
-  return Object.freeze({ valid: Object.keys(errors).length === 0, errors: Object.freeze(errors), dirty: isDirty(draft) });
+  return FIELDS[parts[0]] ?? null;
 }
 
 // The full intent for `create_job` or a template: unset optional fields and the settings the

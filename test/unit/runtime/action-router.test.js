@@ -1,12 +1,17 @@
 // Every control's action becomes UI navigation or exactly one integration command with the
-// integration's parameters. Destructive steps ask first; a refusal becomes the card's notice.
+// integration's parameters. Destructive steps ask first; a form asks the integration to check its
+// input first and keeps the errors at its fields; a refusal becomes the card's notice.
 // Boundary: the router with a recording session stub and real UI state.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const W = require("../../helpers/voi-records.js");
 
-async function setup({ config = {}, answer = () => ({ ok: true, data: null }), model: extra = {}, slots = {} } = {}) {
+// The integration's verdict as the session hands it on: dotted paths and codes.
+const rejects = (...errors) => ({ valid: false, errors: errors.map(([path, code]) => ({ path, code })) });
+const ACCEPTS = Object.freeze({ valid: true, errors: [] });
+
+async function setup({ config = {}, answer = () => ({ ok: true, data: null }), verdict = () => ACCEPTS, model: extra = {}, slots = {} } = {}) {
   const { createActionRouter } = await import("../../../src/controllers/runtime/action-router.js");
   const { createUIState } = await import("../../../src/controllers/runtime/ui-state.js");
   const { normalizeJob } = await import("../../../src/domain/job.js");
@@ -15,7 +20,13 @@ async function setup({ config = {}, answer = () => ({ ok: true, data: null }), m
   const { normalizeTemplate } = await import("../../../src/domain/templates.js");
   const { normalizeQueuePage } = await import("../../../src/domain/queue.js");
   const commands = [];
+  const checked = [];
   const session = {
+    validate: async (operation, parameters) => {
+      checked.push({ operation, parameters: JSON.parse(JSON.stringify(parameters)) });
+      const result = verdict(operation, parameters);
+      return result.ok === false ? result : { ok: true, data: result };
+    },
     command: async (operation, parameters, options) => {
       commands.push({ operation, parameters: JSON.parse(JSON.stringify(parameters)), target: options.target, invalidates: options.invalidates });
       return answer(operation);
@@ -37,7 +48,7 @@ async function setup({ config = {}, answer = () => ({ ok: true, data: null }), m
     ...extra,
   };
   const router = createActionRouter({ ui, getSession: () => session, getModel: () => model, getConfig: () => config, platform: { navigate: (path) => navigated.push(path) } });
-  return { router, ui, commands, navigated };
+  return { router, ui, commands, checked, navigated };
 }
 
 test("all rooms in the editor excludes single rooms, and a single room ends all rooms", async () => {
@@ -224,30 +235,34 @@ test("a new draft starts from the integration's defaults and is saved as wished,
 });
 
 test("a job is saved as a template under a name the user may change", async () => {
-  const { router, ui, commands } = await setup();
+  const verdict = (_operation, parameters) => (parameters.name ? ACCEPTS : rejects(["name", "empty_name"]));
+  const { router, ui, commands, checked } = await setup({ verdict });
   router.handle("open-save-template", { jobId: "missing" });
   assert.equal(ui.overlay, null);
   router.handle("open-save-template", { jobId: "job-1" });
   assert.deepEqual([ui.overlay.kind, ui.overlay.name, ui.overlay.automatic], ["save-template", "Library", false]);
   router.handle("set-field", { field: "overlay:name", value: "  " });
   await router.handle("save-job-template");
-  assert.deepEqual([commands.length, ui.overlay.submitted], [0, true]);
+  assert.deepEqual([commands.length, { ...ui.overlay.errors }], [0, { "overlay:name": "empty_name" }]);
   router.handle("set-field", { field: "overlay:name", value: " Weekly library " });
+  assert.equal(ui.overlay.errors, null, "changing the field takes its error back");
   router.handle("set-field", { field: "overlay:automatic", value: true });
   await router.handle("save-job-template");
   assert.deepEqual(commands[0], { operation: "save_job_as_template", parameters: { job_id: "job-1", name: "Weekly library", automatic: true }, target: "job:job-1", invalidates: ["templates"] });
+  assert.deepEqual(checked.at(-1), { operation: "save_job_as_template", parameters: commands[0].parameters }, "the check sees exactly what is sent");
   assert.deepEqual([ui.overlay, ui.snapshot.notice.messageKey], [null, "notice.templateSavedFromJob"]);
   await router.handle("save-job-template");
   assert.equal(commands.length, 1, "outside its page the save does nothing");
 });
 
 test("the job defaults open with the integration's values and are saved as a whole", async () => {
-  const { router, ui, commands } = await setup();
+  const verdict = (_operation, parameters) => (parameters.passes > 10 ? rejects(["passes", "out_of_range"]) : ACCEPTS);
+  const { router, ui, commands } = await setup({ verdict });
   router.handle("open-job-defaults");
   assert.deepEqual({ ...ui.overlay }, { kind: "job-defaults", mode: "vacuum", vacuumPower: "standard", mopIntensity: "medium", mopRoute: "standard", passes: 1, settingsPolicy: "best_effort" });
   router.handle("set-field", { field: "overlay:passes", value: 11 });
   await router.handle("save-job-defaults");
-  assert.deepEqual([commands.length, ui.overlay.submitted], [0, true]);
+  assert.deepEqual([commands.length, { ...ui.overlay.errors }], [0, { "overlay:passes": "out_of_range" }]);
   router.handle("set-field", { field: "overlay:passes", value: 2 });
   router.handle("set-field", { field: "overlay:mopRoute", value: "deep_plus" });
   await router.handle("save-job-defaults");
@@ -257,12 +272,36 @@ test("the job defaults open with the integration's values and are saved as a who
   assert.equal(commands.length, 1);
 });
 
-test("an invalid draft stays open and marks itself submitted", async () => {
-  const { router, ui, commands } = await setup();
+test("a draft the integration rejects stays open with each error at its field", async () => {
+  const verdict = (_operation, parameters) => (parameters.areas?.length || parameters.all_rooms ? ACCEPTS : rejects(["areas", "required_field"], ["passes", "out_of_range"], ["", "job_held"], ["colour", "unknown_field"]));
+  const { router, ui, commands, checked } = await setup({ verdict });
   router.handle("create-job");
   await router.handle("save-draft");
-  assert.equal(ui.overlay.submitted, true);
-  assert.equal(commands.length, 0);
+  assert.deepEqual([ui.overlay.kind, { ...ui.overlay.errors }, ui.overlay.formError], ["job-editor", { roomIds: "required_field", passes: "out_of_range" }, "job_held"]);
+  assert.deepEqual([commands.length, checked.map((entry) => entry.operation)], [0, ["create_job"]]);
+  router.handle("toggle-value", { field: "roomIds", value: "room-library" });
+  assert.deepEqual({ ...ui.overlay.errors }, { passes: "out_of_range" }, "a changed field takes back only its own error");
+  await router.handle("save-draft");
+  assert.deepEqual([commands.length, checked.at(-1).parameters], [1, commands[0].parameters]);
+  assert.equal(ui.overlay, null);
+});
+
+test("without a verdict nothing is sent; a page left meanwhile keeps nothing of the check", async () => {
+  const failure = { ok: false, code: "connection_lost", group: "connection", detail: null, channel: "ws" };
+  const lost = await setup({ verdict: () => failure });
+  lost.router.handle("create-job", { roomIds: ["room-library"] });
+  await lost.router.handle("save-draft");
+  assert.deepEqual([lost.commands.length, lost.ui.overlay.kind, { ...lost.ui.snapshot.notice }], [0, "job-editor", { kind: "error", operation: "create_job", failure }]);
+  let leave = null;
+  const verdict = () => {
+    leave();
+    return rejects(["passes", "out_of_range"]);
+  };
+  const left = await setup({ verdict });
+  leave = () => left.ui.closeOverlay();
+  left.router.handle("create-job", { roomIds: ["room-library"] });
+  await left.router.handle("save-draft");
+  assert.deepEqual([left.commands.length, left.ui.overlay], [0, null]);
 });
 
 test("a refusal keeps the page open and becomes the notice", async () => {
@@ -298,7 +337,8 @@ test("templates are created, edited, used and removed through their commands", a
 });
 
 test("a release sends its kind and, for a timed one, the duration in seconds", async () => {
-  const { router, ui, commands } = await setup();
+  const verdict = (_operation, parameters) => (parameters.grants[0].duration_seconds === 0 ? rejects(["grants.0.duration_seconds", "release_duration_mismatch"]) : ACCEPTS);
+  const { router, ui, commands, checked } = await setup({ verdict });
   router.handle("open-release", { roomId: "room-library" });
   assert.equal(ui.overlay.releaseKind, "queue_run");
   router.handle("set-overlay", { releaseKind: "timed", hours: 1, minutes: 30 });
@@ -307,13 +347,22 @@ test("a release sends its kind and, for a timed one, the duration in seconds", a
   router.handle("open-release", { roomId: "room-library" });
   router.handle("set-overlay", { releaseKind: "timed", hours: 0, minutes: 0 });
   await router.handle("release-room", { roomId: "room-library" });
-  assert.equal(ui.overlay.submitted, true);
-  assert.equal(commands.length, 1);
+  assert.deepEqual([commands.length, { ...ui.overlay.errors }], [1, { "overlay:duration": "release_duration_mismatch" }]);
+  router.input("overlay:minutes", 30);
+  assert.equal(ui.overlay.errors, null, "hours and minutes form the duration");
+  router.handle("back");
+  const checks = checked.length;
+  await router.handle("release-room", { roomId: "room-library" });
+  assert.deepEqual([commands.at(-1).parameters, checked.length], [{ grants: [{ room: "room-library", kind: "queue_run" }] }, checks], "from a room card the release asks nothing");
 });
 
 test("room settings send the patch wrapped as configuration", async () => {
-  const { router, commands } = await setup();
+  const verdict = (_operation, parameters) => (parameters.configuration.name === "Library corner" ? ACCEPTS : rejects(["configuration.name", "empty_name"], ["configuration.bindings", "duplicate_room_binding"]));
+  const { router, ui, commands } = await setup({ verdict });
   router.handle("edit-room", { roomId: "room-library" });
+  router.input("name", " ");
+  await router.handle("save-room");
+  assert.deepEqual([commands.length, { ...ui.overlay.errors }, ui.overlay.formError], [0, { name: "empty_name" }, "duplicate_room_binding"]);
   router.input("name", "Library corner");
   await router.handle("save-room");
   assert.deepEqual(commands[0].parameters, { room_id: "room-library", configuration: { name: "Library corner", follow_area_name: false } });
@@ -337,6 +386,21 @@ test("a robot profile opens with resolved role entities and saves the complete d
   assert.deepEqual(commands[0].parameters.configuration.map_options, { Ground: "map_0" });
 });
 
+test("a robot profile keeps the integration's errors at its fields until they change", async () => {
+  const verdict = (_operation, parameters) => (parameters.configuration.preference > 100 ? rejects(["configuration.preference", "invalid_robot_preference"], ["configuration.requirements.0.entity_id", "invalid_entity_id"]) : ACCEPTS);
+  const { router, ui, commands } = await setup({ verdict });
+  router.handle("edit-robot", { robotId: "robot-rocky" });
+  router.input("preference", 101);
+  await router.handle("save-robot");
+  assert.deepEqual([commands.length, { ...ui.overlay.errors }], [0, { preference: "invalid_robot_preference", "requirements.0": "invalid_entity_id" }]);
+  router.input("requirements.0.acceptedStates", "on");
+  assert.deepEqual({ ...ui.overlay.errors }, { preference: "invalid_robot_preference" });
+  router.input("preference", 100);
+  assert.equal(ui.overlay.errors, null);
+  await router.handle("save-robot");
+  assert.equal(commands[0].operation, "configure_robot");
+});
+
 test("an entity picker search is overlay state and a pick clears it", async () => {
   const { router, ui } = await setup();
   router.handle("edit-robot", { robotId: "robot-rocky" });
@@ -349,7 +413,8 @@ test("an entity picker search is overlay state and a pick clears it", async () =
 });
 
 test("the queue quiet period is edited in minutes and sent in seconds", async () => {
-  const { router, ui, commands } = await setup();
+  const verdict = (_operation, parameters) => (parameters.grace_seconds > 86400 ? rejects(["grace_seconds", "out_of_range"]) : ACCEPTS);
+  const { router, ui, commands } = await setup({ verdict });
   router.handle("open-queue-settings");
   assert.equal(ui.overlay.minutes, 15);
   router.handle("step-field", { field: "overlay:minutes", step: 1, min: 0, max: 1440 });
@@ -358,7 +423,7 @@ test("the queue quiet period is edited in minutes and sent in seconds", async ()
   router.handle("open-queue-settings");
   router.input("overlay:minutes", 2000);
   await router.handle("save-queue-settings");
-  assert.equal(ui.overlay.submitted, true);
+  assert.deepEqual([commands.length, { ...ui.overlay.errors }], [1, { "overlay:minutes": "out_of_range" }]);
 });
 
 test("recovery sends the stop confirmation the user gave", async () => {

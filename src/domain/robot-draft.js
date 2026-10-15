@@ -1,13 +1,11 @@
 // The robot profile draft. `configure_robot` takes a complete, validated definition: the draft
 // starts from the stored configuration exactly as `get_robots` returned it and changes only the
-// fields the user edits. Validation mirrors `configuration.py`. See internal dev doc §7
-// "Roboterentwurf".
+// fields the user edits. The integration checks every input (`validate`); `robotFieldOf` places
+// its errors. See internal dev doc §7 "Roboterentwurf".
 
-import { OPERATIONS, ROBOT_OPTION_MAPS, ROBOT_PREFERENCE_RANGE, ROBOT_ROLES, ROBOT_TIMEOUT_FIELDS, isOperation } from "./job-schema.js";
+import { OPERATIONS, ROBOT_OPTION_MAPS, ROBOT_ROLES, ROBOT_TIMEOUT_FIELDS, isOperation } from "./job-schema.js";
 import { splitList } from "./room-draft.js";
 
-const ENTITY_ID = /^[a-z0-9_]+\.[a-z0-9_]+$/;
-const TIMEOUT_MAX = 86400;
 const UNSAFE = new Set(["__proto__", "constructor", "prototype", "meta"]);
 
 function copy(value) {
@@ -68,44 +66,34 @@ export function updateRobotDraft(draft, path, value) {
   return freeze({ ...next, meta: copy(meta) });
 }
 
-export function validateRobotDraft(draft) {
-  const errors = {};
-  const fail = (field, code) => {
-    if (!(field in errors)) errors[field] = code;
-  };
-  if (!draft.allowedOperations.length) fail("allowedOperations", "empty_allowed_operations");
-  if (draft.fixedMode !== null && !isOperation(draft.fixedMode)) fail("fixedMode", "invalid_operation");
-  const preference = Number(draft.preference);
-  if (!Number.isInteger(preference) || preference < ROBOT_PREFERENCE_RANGE.min || preference > ROBOT_PREFERENCE_RANGE.max) fail("preference", "invalid_robot_preference");
-  if (draft.minimumBattery !== null && draft.minimumBattery !== "") {
-    const minimum = Number(draft.minimumBattery);
-    if (!Number.isInteger(minimum) || minimum < 0 || minimum > 100) fail("minimumBattery", "invalid_minimum_battery");
-  }
-  for (const [field, value] of Object.entries(draft.timeouts)) {
-    const number = Number(value);
-    if (!(number > 0)) fail(`timeouts.${field}`, "invalid_duration");
-    else if (number > TIMEOUT_MAX) fail(`timeouts.${field}`, "timeout_out_of_range");
-  }
-  for (const [role, entry] of Object.entries(draft.roles)) {
-    if (entry.mode === "entity" && !entry.entity) fail(`roles.${role}`, "invalid_role_entity");
-  }
-  // An empty value means "not mapped" and is left out when saving.
-  for (const [field, entries] of Object.entries(draft.optionMaps)) {
-    const mapped = Object.entries(entries).filter(([, value]) => String(value ?? "").trim());
-    const allowed = ROBOT_OPTION_MAPS[field];
-    if (mapped.some(([key]) => !String(key).trim() || (allowed && !allowed.includes(key)))) fail(`optionMaps.${field}`, "invalid_option_mapping");
-    if (field === "mode_options") {
-      const values = mapped.map(([, value]) => String(value).trim());
-      if (new Set(values).size !== values.length) fail(`optionMaps.${field}`, "ambiguous_mode_mapping");
-    }
-  }
-  draft.requirements.forEach((item, index) => {
-    const states = splitList(item.acceptedStates);
-    if (!ENTITY_ID.test(item.entityId || "")) fail(`requirements.${index}`, "invalid_entity_id");
-    else if (states.length < 1 || states.length > 20) fail(`requirements.${index}`, "accepted_states_count");
-  });
+export function isRobotDirty(draft) {
   const { meta, ...values } = draft;
-  return Object.freeze({ valid: Object.keys(errors).length === 0, errors: Object.freeze(errors), dirty: JSON.stringify(values) !== JSON.stringify(meta.baseline) });
+  return JSON.stringify(values) !== JSON.stringify(meta.baseline);
+}
+
+// The draft field each part of the `configure_robot` configuration fills.
+const ROBOT_FIELDS = Object.freeze({
+  enabled: "enabled",
+  allowed_operations: "allowedOperations",
+  fixed_mode: "fixedMode",
+  preference: "preference",
+  minimum_battery: "minimumBattery",
+  target_areas: "targetAreas",
+  protocol: "protocol",
+  physical_robot_id: "physicalRobotId",
+});
+
+// The editor field an error of `configure_robot` names (`configuration.preference`,
+// `configuration.roles.battery`, `configuration.requirements.0.entity_id`); null for the input or
+// a list as a whole and for a part the editor does not show.
+export function robotFieldOf(path) {
+  const [root, part, child] = String(path).split(".");
+  if (root !== "configuration") return null;
+  if (Object.hasOwn(ROBOT_TIMEOUT_FIELDS, part)) return `timeouts.${part}`;
+  if (Object.hasOwn(ROBOT_OPTION_MAPS, part)) return `optionMaps.${part}`;
+  if (part === "roles") return ROBOT_ROLES.includes(child) ? `roles.${child}` : null;
+  if (part === "requirements") return /^\d+$/.test(child ?? "") ? `requirements.${child}` : null;
+  return ROBOT_FIELDS[part] ?? null;
 }
 
 // The complete definition `configure_robot` expects: the stored configuration with the edited

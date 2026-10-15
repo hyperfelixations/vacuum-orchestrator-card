@@ -4,13 +4,13 @@
 // hidden — the integration decides at dispatch. See internal dev doc §8 "Editor".
 
 import { CREATE_TARGET, decide, jobAffordances, jobTarget, templateAffordances, templateTarget } from "../../domain/affordances.js";
-import { ALL_ROOMS, settingsForMode, validateDraft } from "../../domain/job-draft.js";
+import { ALL_ROOMS, settingsForMode } from "../../domain/job-draft.js";
 import { CLEANING_MODES, PASS_MAX, PASS_MIN, SETTING_LADDERS, SETTINGS_POLICIES } from "../../domain/job-schema.js";
 import { coveredRoomIds } from "../../domain/robots.js";
 import { findJob, list, robotsOf, roomsOf, slotData } from "../common/lookups.js";
 import { modeLabel, policyLabel, settingLabel, t } from "../common/texts.js";
 import { MODE_ICONS } from "../views/job-row.js";
-import { entityField, errorText, field } from "./editor-fields.js";
+import { entityField, field, pageErrors } from "./editor-fields.js";
 
 // All rooms first; while it is chosen the single rooms stay offered but muted.
 function roomField(model, texts, draft, error) {
@@ -52,11 +52,6 @@ export function settingChoices(draft, preview) {
   });
 }
 
-// The preview needs no room choice, but a draft with any other mistake asks nothing.
-export function previewable(draft) {
-  return Object.keys(validateDraft(draft).errors).every((key) => key === "roomIds");
-}
-
 function settingField(texts, choice, error) {
   return field(texts, {
     key: choice.name,
@@ -76,22 +71,20 @@ function settingField(texts, choice, error) {
 export function buildJobEditor({ model, texts, context, overlay }) {
   const draft = overlay.draft;
   const kind = draft.meta.kind;
-  const validation = validateDraft(draft);
-  const showErrors = overlay.submitted === true;
-  const error = (key) => (showErrors ? errorText(texts, validation.errors[key]) : null);
+  const { error, invalid } = pageErrors(texts, overlay);
   const queries = overlay.queries || {};
-  const preview = previewable(draft) ? slotData(model, "preview") : null;
+  const preview = slotData(model, "preview");
 
   const template = kind === "template"
     ? [
         field(texts, { key: "templateName", labelKey: "field.templateName", control: "text", value: draft.templateName, error: error("templateName"), required: true }),
-        field(texts, { key: "enabled", labelKey: "field.templateEnabled", control: "switch", value: draft.enabled, switchLabel: t(texts, "field.templateEnabledSwitch") }),
-        field(texts, { key: "automatic", labelKey: "field.automatic", control: "switch", value: draft.automatic, switchLabel: t(texts, "field.automaticSwitch"), hintKey: "field.automaticHint" }),
+        field(texts, { key: "enabled", labelKey: "field.templateEnabled", control: "switch", value: draft.enabled, switchLabel: t(texts, "field.templateEnabledSwitch"), error: error("enabled") }),
+        field(texts, { key: "automatic", labelKey: "field.automatic", control: "switch", value: draft.automatic, switchLabel: t(texts, "field.automaticSwitch"), hintKey: "field.automaticHint", error: error("automatic") }),
       ]
     : [];
 
   const basics = [
-    ...(kind === "job" ? [field(texts, { key: "name", labelKey: "field.jobName", control: "text", value: draft.name, optional: true, placeholder: t(texts, "field.jobNamePlaceholder") })] : []),
+    ...(kind === "job" ? [field(texts, { key: "name", labelKey: "field.jobName", control: "text", value: draft.name, optional: true, placeholder: t(texts, "field.jobNamePlaceholder"), error: error("name") })] : []),
     roomField(model, texts, draft, error("roomIds")),
     field(texts, { key: "mode", labelKey: "field.mode", control: "segmented", value: draft.mode, options: CLEANING_MODES.map((mode) => ({ value: mode, label: modeLabel(texts, mode), icon: MODE_ICONS[mode] })), error: error("mode") }),
   ];
@@ -102,8 +95,8 @@ export function buildJobEditor({ model, texts, context, overlay }) {
   ];
 
   const more = [
-    field(texts, { key: "settingsPolicy", labelKey: "field.settingsPolicy", control: "segmented", value: draft.settingsPolicy, options: SETTINGS_POLICIES.map((policy) => ({ value: policy, label: policyLabel(texts, policy) })), hintKey: `field.settingsPolicyHint.${draft.settingsPolicy === "strict" ? "strict" : "bestEffort"}` }),
-    field(texts, { key: "note", labelKey: "field.note", control: "textarea", value: draft.note, optional: true }),
+    field(texts, { key: "settingsPolicy", labelKey: "field.settingsPolicy", control: "segmented", value: draft.settingsPolicy, options: SETTINGS_POLICIES.map((policy) => ({ value: policy, label: policyLabel(texts, policy) })), hintKey: `field.settingsPolicyHint.${draft.settingsPolicy === "strict" ? "strict" : "bestEffort"}`, error: error("settingsPolicy") }),
+    field(texts, { key: "note", labelKey: "field.note", control: "textarea", value: draft.note, optional: true, error: error("note") }),
     entityField(texts, model, { key: "requiredOn", labelKey: "field.requiredOn", value: draft.requiredOn, query: queries.requiredOn, error: error("requiredOn"), hintKey: "field.requiredOnHint" }),
     entityField(texts, model, { key: "requiredOff", labelKey: "field.requiredOff", value: draft.requiredOff, query: queries.requiredOff, error: error("requiredOff"), hintKey: "field.requiredOffHint" }),
   ];
@@ -123,10 +116,9 @@ export function buildJobEditor({ model, texts, context, overlay }) {
       { key: "settings", title: t(texts, "editor.group.settings"), fields: settings },
       { key: "more", title: t(texts, "editor.group.more"), fields: more, collapsible: true, open: moreOpen },
     ],
-    dirty: validation.dirty,
-    invalid: showErrors && !validation.valid,
+    invalid,
     save: { label: t(texts, kind === "template" || draft.meta.id ? "action.save" : "action.addToQueue"), decision: decide(context, { operation, target }) },
-    startNow: newJob && validation.valid && preview?.startableNow === true ? { label: t(texts, "action.startNow"), decision: decide(context, { operation: "create_job", target }) } : null,
+    startNow: newJob && preview?.startableNow === true ? { label: t(texts, "action.startNow"), decision: decide(context, { operation: "create_job", target }) } : null,
     pending: list(model.pending).includes(target),
     remove: removeControl({ model, texts, context, draft }),
     saveAsTemplate: kind === "job" && draft.meta.id ? { action: "open-save-template", args: { jobId: draft.meta.id }, label: t(texts, "action.saveAsTemplate"), decision: decide(context, { operation: "save_job_as_template", target }) } : null,

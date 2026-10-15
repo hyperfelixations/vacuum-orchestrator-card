@@ -1,7 +1,7 @@
 // Markup parts several views share: groups, the job row, empty, loading and error states,
 // pagination and fact lists. Commands are `data-action` plus `data-args`.
 
-import { button, chip, e, icon, pill } from "../render/primitives/markup.js";
+import { atEnd, button, chip, e, icon, pill } from "../render/primitives/markup.js";
 import { failureText } from "../presentation/common/texts.js";
 
 export function group(title, content, { count = null, key = null } = {}) {
@@ -33,8 +33,8 @@ export function traceList(rows) {
 
 export function pagination(context, vm, scope) {
   if (!vm) return "";
-  const previous = button({ action: "page", args: { scope, direction: "previous" }, label: context.t("action.previousPage"), iconName: "mdi:chevron-left", variant: "icon", decision: vm.hasPrevious ? null : { state: "disabled", reason: "at_boundary" } });
-  const next = button({ action: "page", args: { scope, direction: "next" }, label: context.t("action.nextPage"), iconName: "mdi:chevron-right", variant: "icon", decision: vm.hasNext ? null : { state: "disabled", reason: "at_boundary" } });
+  const previous = button({ action: "page", args: { scope, direction: "previous" }, label: context.t("action.previousPage"), iconName: "mdi:chevron-left", variant: "icon", ...atEnd(context, !vm.hasPrevious) });
+  const next = button({ action: "page", args: { scope, direction: "next" }, label: context.t("action.nextPage"), iconName: "mdi:chevron-right", variant: "icon", ...atEnd(context, !vm.hasNext) });
   return `<nav class="voc-pagination" aria-label="${e(context.t("pagination.label"))}">${previous}<span class="voc-page-status">${e(vm.label)}</span>${next}</nav>`;
 }
 

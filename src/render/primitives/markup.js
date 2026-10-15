@@ -29,6 +29,11 @@ export function decisionAttributes(decision, reasonText) {
   return `${hard ? " disabled" : ' aria-disabled="true"'}${reasonText ? ` title="${e(reasonText)}"` : ""}`;
 }
 
+// A stepper or pager at its end: the control's own state, not a reason an action is unavailable.
+export function atEnd(context, reached) {
+  return reached ? { decision: { state: "disabled", reason: null }, reasonText: context.t("control.atEnd") } : {};
+}
+
 // `variant`: "icon" (icon only, label for assistive technology), "text", "primary", "danger",
 // "quiet". A hidden decision renders nothing.
 export function button({ action, args = null, label, iconName = null, variant = "text", decision = null, reasonText = "", className = "", extra = "", key = null, pressed = null, tooltip = false } = {}) {

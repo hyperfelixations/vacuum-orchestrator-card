@@ -6,6 +6,7 @@
 
 import { parseInstant } from "../core/time.js";
 import { backendFailure, isBackendFailure } from "../domain/backend-errors.js";
+import { normalizeValidation } from "../domain/validation.js";
 import { ACTIONS, CARD_COMMANDS, CONFIGURATION_COMMANDS, guards, messages } from "./protocol.js";
 import { SCOPE_LOADERS, scopesForChanges } from "./scopes.js";
 import { createInvalidationTimer } from "./subscription.js";
@@ -405,6 +406,16 @@ export function createSession({ transport, platform, getHass } = {}) {
     if (scope) void load(scope);
   }
 
+  // The integration's verdict on a form's input for `operation`, without effect (`validate`).
+  async function validate(operation, data = {}) {
+    if (disposed) return backendFailure("connection_lost", { detail: "disposed" });
+    if (phase !== "ready") return backendFailure("orchestrator_not_loaded", { detail: phase });
+    const result = await transport.ws(messages.query("validate", { command: operation, data }));
+    if (!result.ok) return result;
+    const verdict = guards.validation(result.data) ? normalizeValidation(result.data) : null;
+    return verdict ? Object.freeze({ ok: true, data: verdict }) : backendFailure("invalid_response", { detail: "validate" });
+  }
+
   // `invalidates`: scope names reloaded after a confirmed command, unless already read at its
   // commit; the subscription event of the same commit then finds them current.
   async function command(operation, parameters = {}, { target = operation, invalidates = "all" } = {}) {
@@ -461,6 +472,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     setDemand,
     releaseDemand,
     reload,
+    validate,
     command,
     getSnapshot,
     now,

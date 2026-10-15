@@ -6,10 +6,6 @@ import { renderField } from "../controls/fields.js";
 import { FORMS_CSS } from "../styles/forms.js";
 import { block, frame } from "./frame.js";
 
-function invalidNotice(context, invalid) {
-  return invalid ? `<div class="voc-notice voc-notice--error" role="alert" data-key="invalid">${icon("mdi:alert-circle-outline")}<span class="voc-notice-text">${e(context.t("editor.fixErrors"))}</span></div>` : "";
-}
-
 export const releaseOverlay = Object.freeze({
   key: "release",
   build: ({ model, texts, context, overlay }) => buildRelease({ model, texts, context, overlay }),
@@ -18,7 +14,7 @@ export const releaseOverlay = Object.freeze({
     const current = vm.current ? `<p class="voc-overlay-lead">${e(context.t("release.current", { kind: vm.current }))}</p>` : "";
     const revoke = vm.revoke ? button({ action: "revoke-room", args: { roomId: vm.roomId, close: true }, label: context.t("rooms.lock"), iconName: "mdi:lock-outline", variant: "danger", decision: vm.revoke, reasonText: context.reason(vm.revoke), className: "voc-action-start" }) : "";
     const actions = `${revoke}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "release-room", args: { roomId: vm.roomId }, label: context.t("rooms.release"), iconName: "mdi:lock-open-variant-outline", variant: "primary", decision: vm.submit, reasonText: context.reason(vm.submit) })}`;
-    return frame(context, { key: "release", title: vm.title, content: `${current}<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions, dialog: true });
+    return frame(context, { key: "release", title: vm.title, invalid: vm.invalid, content: `${current}<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions, dialog: true });
   },
   css: FORMS_CSS,
 });
@@ -47,7 +43,7 @@ export const roomEditorOverlay = Object.freeze({
     const targets = `<section class="voc-block" data-key="group:targets">${toggle}${vm.bindingsOpen ? `<p class="voc-overlay-lead">${e(context.t("room.targetsLead"))}</p>${detected}${vm.bindings.map((row) => bindingRow(context, row)).join("")}<div class="voc-inline-actions">${addBinding}</div>` : ""}</section>`;
     const disable = vm.disable ? button({ action: "disable-room", args: { roomId: vm.roomId }, label: context.t("room.disable"), iconName: "mdi:eye-off-outline", variant: "danger", decision: vm.disable, reasonText: context.reason(vm.disable), className: "voc-action-start" }) : "";
     const actions = `${disable}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-room", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
-    return frame(context, { key: "room-editor", title: vm.title, content: `${invalidNotice(context, vm.invalid)}<div class="voc-form">${groups}${conditions}${targets}</div>`, actions });
+    return frame(context, { key: "room-editor", title: vm.title, invalid: vm.invalid, content: `<div class="voc-form">${groups}${conditions}${targets}</div>`, actions });
   },
   css: FORMS_CSS,
 });
@@ -57,6 +53,6 @@ export const roomCreateOverlay = Object.freeze({
   build: ({ model, texts, context, overlay }) => buildRoomCreate({ model, texts, context, overlay }),
   render(context, vm) {
     const actions = `${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-new-room", label: context.t("action.createRoom"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
-    return frame(context, { key: "room-create", title: vm.title, lead: context.t("room.createLead"), content: `<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions, dialog: true });
+    return frame(context, { key: "room-create", title: vm.title, lead: context.t("room.createLead"), invalid: vm.invalid, content: `<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions, dialog: true });
   },
 });

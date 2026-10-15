@@ -54,7 +54,7 @@ function optionGroup(context, group, vm) {
   const add = group.free
     ? `<div class="voc-option-add" data-key="option-add">${renderField(context, { key: "overlay:newOptionKey", label: context.t("robotEditor.newOptionKey"), control: "text", value: vm.sections.options.newKey })}${renderField(context, { key: "overlay:newOptionValue", label: context.t("robotEditor.optionValue"), control: "text", value: vm.sections.options.newValue })}${button({ action: "add-option", args: { group: group.key }, label: context.t("robotEditor.addOption"), iconName: "mdi:plus", variant: "quiet" })}</div>`
     : "";
-  return `<div class="voc-group" data-key="option-group:${e(group.key)}"><h4 class="voc-group-title">${e(group.title)}</h4><div class="voc-list-fields">${rows}</div>${add}</div>`;
+  return `<div class="voc-group" data-key="option-group:${e(group.key)}"><h4 class="voc-group-title">${e(group.title)}</h4>${group.error ? `<div class="voc-field-error" role="alert">${e(group.error)}</div>` : ""}<div class="voc-list-fields">${rows}</div>${add}</div>`;
 }
 
 export const robotEditorOverlay = Object.freeze({
@@ -63,20 +63,18 @@ export const robotEditorOverlay = Object.freeze({
   build: ({ model, texts, context, overlay }) => buildRobotEditor({ model, texts, context, overlay }),
   render(context, vm) {
     const s = vm.sections;
-    const invalid = vm.invalid ? `<div class="voc-notice voc-notice--error" role="alert" data-key="invalid">${icon("mdi:alert-circle-outline")}<span class="voc-notice-text">${e(context.t("editor.fixErrors"))}</span></div>` : "";
     const content = [
-      invalid,
       block(context.t("robotEditor.group.general"), vm.general.map((field) => renderField(context, field)).join(""), { key: "group:general" }),
       block(context.t("robotEditor.group.areas"), renderField(context, vm.areas), { key: "group:areas" }),
       section(context, "roles", context.t("robotEditor.group.roles"), s.roles.open, `<p class="voc-overlay-lead">${e(context.t("robotEditor.rolesLead"))}</p><div class="voc-roles">${s.roles.rows.map((row) => roleRow(context, row)).join("")}</div>`),
       section(context, "requirements", context.t("robotEditor.group.requirements"), s.requirements.open, `${s.requirements.rows.map((row) => requirementRow(context, row)).join("")}${renderField(context, s.requirements.search)}`),
-      section(context, "optionMaps", context.t("robotEditor.group.options"), s.options.open, `<p class="voc-overlay-lead">${e(context.t("robotEditor.optionsLead"))}</p>${s.options.error ? `<div class="voc-field-error" role="alert">${e(s.options.error)}</div>` : ""}${s.options.groups.map((group) => optionGroup(context, group, vm)).join("")}`),
+      section(context, "optionMaps", context.t("robotEditor.group.options"), s.options.open, `<p class="voc-overlay-lead">${e(context.t("robotEditor.optionsLead"))}</p>${s.options.groups.map((group) => optionGroup(context, group, vm)).join("")}`),
       section(context, "timeouts", context.t("robotEditor.group.timeouts"), s.timeouts.open, `<div class="voc-list-fields">${s.timeouts.fields.map((field) => renderField(context, field)).join("")}</div>`),
       section(context, "identity", context.t("robotEditor.group.identity"), s.identity.open, s.identity.fields.map((field) => renderField(context, field)).join("")),
     ].join("");
     const remove = vm.remove ? button({ action: "remove-robot", args: { robotId: vm.robotId }, label: context.t("robotEditor.remove"), iconName: "mdi:delete-outline", variant: "danger", decision: vm.remove, reasonText: context.reason(vm.remove), className: "voc-action-start" }) : "";
     const actions = `${remove}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-robot", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
-    return frame(context, { key: "robot-editor", title: vm.title, lead: vm.lead, content: `<div class="voc-form">${content}</div>`, actions });
+    return frame(context, { key: "robot-editor", title: vm.title, lead: vm.lead, invalid: vm.invalid, content: `<div class="voc-form">${content}</div>`, actions });
   },
   css: `${FORMS_CSS}
 .voc-roles { display: grid; }

@@ -128,23 +128,22 @@ test("leaving a changed editor asks; Escape asks the same", async () => {
   card.unmount();
 });
 
-test("editing sends only the changed field; a refusal keeps the editor open with the reason", async () => {
+test("a refusal keeps the editor open with the reason; saving again sends only the changed field", async () => {
   const card = await at("A job for every room waits");
   const library = jobIdOf(card, "Library");
   await card.click(inRow(card, "Library", '[data-action="edit-job"]'));
   await card.click('[data-key="field:passes"] [data-action="step-field"][data-args*=\'"step":1\']');
-  await card.settle(32);
-  await card.click('[data-action="save-draft"]');
-  await card.settle(32);
-  assert.deepEqual(card.services("update_job").at(-1).data, { job_id: library, passes: 2 });
-  await card.click(inRow(card, "Library", '[data-action="edit-job"]'));
-  await card.click('[data-key="field:passes"] [data-action="step-field"][data-args*=\'"step":-1\']');
   await card.settle(32);
   card.backend.failNext({ service: "update_job" }, haError.serviceValidation("job_not_editable"));
   await card.click('[data-action="save-draft"]');
   await card.settle(32);
   assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:job-editor");
   assert.match(card.text(".voc-notice--error"), /./);
+  assert.deepEqual(card.queries("validate").map((message) => message.parameters), [{ command: "update_job", data: { job_id: library, passes: 2 } }], "the integration checks the change first");
+  await card.click('[data-action="save-draft"]');
+  await card.settle(32);
+  assert.deepEqual(card.services("update_job").at(-1).data, { job_id: library, passes: 2 });
+  assert.equal(card.root.querySelector(".voc-overlay"), null);
   card.unmount();
 });
 

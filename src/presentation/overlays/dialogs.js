@@ -3,8 +3,10 @@
 // Each shows the integration's facts and sends one command.
 
 import { QUEUE_TARGET, decide, jobTarget, recoveryAffordance } from "../../domain/affordances.js";
+import { QUEUE_GRACE_MAX_SECONDS } from "../../domain/job-schema.js";
 import { findJob, list, robotName, robotsOf, roomIndex, slotData, jobTitle } from "../common/lookups.js";
 import { reasonText, t } from "../common/texts.js";
+import { pageErrors } from "./editor-fields.js";
 import { readinessReasons } from "../views/job-row.js";
 
 export function buildConfirm({ model, texts, overlay }) {
@@ -90,12 +92,12 @@ export function buildStartJob({ model, texts, context, overlay }) {
   };
 }
 
-export const GRACE_MAX_MINUTES = 1440;
+const GRACE_MAX_MINUTES = QUEUE_GRACE_MAX_SECONDS / 60;
 
 // The quiet period after which a queue run without executable work ends, in whole minutes.
 export function buildQueueSettings({ texts, context, overlay }) {
   const minutes = overlay.minutes;
-  const valid = Number.isInteger(minutes) && minutes >= 0 && minutes <= GRACE_MAX_MINUTES;
+  const { error, invalid } = pageErrors(texts, overlay);
   return {
     key: "queue-settings",
     title: t(texts, "queueSettings.title"),
@@ -107,8 +109,9 @@ export function buildQueueSettings({ texts, context, overlay }) {
       min: 0,
       max: GRACE_MAX_MINUTES,
       hint: t(texts, "queueSettings.graceHint"),
-      error: overlay.submitted && !valid ? t(texts, "validation.queue_grace_out_of_range") : null,
+      error: error("overlay:minutes"),
     },
+    invalid,
     save: decide(context, { operation: "configure_queue", target: QUEUE_TARGET }),
   };
 }

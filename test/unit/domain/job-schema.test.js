@@ -73,6 +73,5 @@ test("bounds match the integration's schemas", async () => {
   const schema = await load();
   assert.deepEqual([schema.PASS_MIN, schema.PASS_MAX], [1, 10]);
   assert.equal(schema.QUEUE_GRACE_MAX_SECONDS, 86400);
-  assert.deepEqual({ ...schema.ROBOT_PREFERENCE_RANGE }, { min: -100, max: 100 });
   assert.equal(schema.ROBOT_OPTION_MAPS.map_options, null);
 });

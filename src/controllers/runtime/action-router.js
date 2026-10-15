@@ -1,27 +1,38 @@
 // Every control's `data-action` ends here and becomes UI navigation or one integration command.
 // Destructive commands pass through a confirmation page unless `confirm_destructive: false`.
-// The router decides nothing about domain rules: the integration answers every command, and a
-// refusal becomes this card's notice. See internal dev doc §9 "Aktionsvertrag".
+// The router decides nothing about domain rules: the integration checks every form's input
+// (`validate`) and answers every command; a refusal becomes this card's notice. See internal dev
+// doc §9 "Aktionsvertrag".
 
 import { CREATE_TARGET, QUEUE_TARGET, SETUP_TARGET, jobTarget, robotTarget, roomTarget, templateTarget, queueControl } from "../../domain/affordances.js";
-import { applyDraftChange, createDraft, draftToIntent, draftToTemplate, draftToUpdatePatch, toggleRoom, validateDraft } from "../../domain/job-draft.js";
-import { createRoomDraft, newBinding, newRequirement, roomDraftToPatch, updateRoomDraft, validateRoomDraft } from "../../domain/room-draft.js";
-import { createRobotDraft, robotDraftToConfiguration, updateRobotDraft, validateRobotDraft } from "../../domain/robot-draft.js";
-import { AFTER_CANCEL_CHOICES, GRACE_MAX_MINUTES, queueEndChoices } from "../../presentation/overlays/dialogs.js";
+import { applyDraftChange, createDraft, draftFieldOf, draftToIntent, draftToTemplate, draftToUpdatePatch, isDirty, toggleRoom } from "../../domain/job-draft.js";
+import { createRoomDraft, isRoomDirty, newBinding, newRequirement, roomDraftToPatch, roomFieldOf, updateRoomDraft } from "../../domain/room-draft.js";
+import { createRobotDraft, isRobotDirty, robotDraftToConfiguration, robotFieldOf, updateRobotDraft } from "../../domain/robot-draft.js";
+import { formErrors, withoutFieldError } from "../../domain/validation.js";
+import { AFTER_CANCEL_CHOICES, queueEndChoices } from "../../presentation/overlays/dialogs.js";
 import { jobTitle, roomIndex } from "../../presentation/common/lookups.js";
-import { PASS_MAX, PASS_MIN, SETTING_FIELDS, SETTING_WIRE_NAMES, canonicalizeMode, isSettingValue, isSettingsPolicy } from "../../domain/job-schema.js";
+import { SETTING_FIELDS, SETTING_WIRE_NAMES } from "../../domain/job-schema.js";
 
-// Each editor overlay names the reducer and the validator of its draft.
+// Each editor overlay names the reducer of its draft and whether it holds unsaved changes.
 const DRAFT_REDUCERS = Object.freeze({
   "job-editor": applyDraftChange,
   "room-editor": updateRoomDraft,
   "robot-editor": updateRobotDraft,
 });
-const DRAFT_VALIDATORS = Object.freeze({
-  "job-editor": validateDraft,
-  "room-editor": validateRoomDraft,
-  "robot-editor": validateRobotDraft,
+const DRAFT_DIRTY = Object.freeze({
+  "job-editor": isDirty,
+  "room-editor": isRoomDirty,
+  "robot-editor": isRobotDirty,
 });
+// For pages that edit their values on the page itself (`overlay:<key>`): the field an error of the
+// integration names by the command field it starts with.
+const pageFields = (fields) => (path) => fields[String(path).split(".")[0]] ?? null;
+const JOB_DEFAULT_FIELDS = Object.freeze({ mode: "overlay:mode", passes: "overlay:passes", settings_policy: "overlay:settingsPolicy", ...Object.fromEntries(SETTING_FIELDS.map((field) => [SETTING_WIRE_NAMES[field], `overlay:${field}`])) });
+// One release on the page: its kind and its duration, edited as hours and minutes.
+const RELEASE_FIELDS = Object.freeze({ "grants.0.kind": "overlay:releaseKind", "grants.0.duration_seconds": "overlay:duration" });
+const releaseFieldOf = (path) => RELEASE_FIELDS[path] ?? null;
+// Fields whose error belongs to a value they form together with others.
+const FIELD_GROUPS = Object.freeze({ "overlay:hours": "overlay:duration", "overlay:minutes": "overlay:duration" });
 
 const QUEUE_SCOPES = Object.freeze(["queue", "openJobs", "jobLog", "job", "execution", "trace"]);
 const STARTED_STATES = Object.freeze(["dispatching", "running"]);
@@ -68,6 +79,37 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     return result;
   }
 
+  // A form's command: the integration checks the input first; errors stay on the page at their
+  // fields and nothing is sent. `fieldOf(path)` names the page's field for an error path.
+  async function submit(operation, parameters, fieldOf, options) {
+    const session = getSession();
+    if (!session) return null;
+    const page = ui.overlay;
+    ui.setNotice(null);
+    const verdict = await session.validate(operation, parameters);
+    // The page changed meanwhile: what was checked is no longer what it shows.
+    if (ui.overlay !== page) return null;
+    if (!verdict?.ok) {
+      ui.setNotice({ kind: "error", operation, failure: verdict });
+      return verdict;
+    }
+    if (!verdict.data.valid) {
+      ui.updateOverlay(formErrors(verdict.data, fieldOf));
+      return null;
+    }
+    if (page?.errors || page?.formError) ui.updateOverlay({ errors: null, formError: null });
+    return run(operation, parameters, options);
+  }
+
+  // A changed field drops the error the integration gave for it; the next attempt to send
+  // checks again.
+  function clearError(field) {
+    const errors = ui.overlay?.errors;
+    if (!errors) return;
+    const next = [field, FIELD_GROUPS[field]].filter(Boolean).reduce(withoutFieldError, errors);
+    if (next !== errors) ui.updateOverlay({ errors: Object.keys(next).length ? next : null });
+  }
+
   // A destructive command asks first; the confirmation page carries the command.
   function confirmOr(command, confirmation) {
     if (getConfig()?.confirm_destructive === false) return run(command.operation, command.parameters, command.options);
@@ -80,6 +122,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     const reduce = DRAFT_REDUCERS[overlay?.kind];
     if (!overlay?.draft || !reduce) return;
     ui.updateOverlay({ draft: reduce(overlay.draft, field, value) });
+    clearError(field);
   }
 
   // A field name addresses the draft; `overlay:<key>` addresses the page's own state (a dialog's
@@ -88,6 +131,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     if (typeof field !== "string") return;
     if (field.startsWith("overlay:")) {
       ui.updateOverlay({ [field.slice("overlay:".length)]: value });
+      clearError(field);
       return;
     }
     if (field.startsWith("query:")) {
@@ -107,26 +151,22 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
   async function saveDraft({ start = false } = {}) {
     const overlay = ui.overlay;
     if (!overlay?.draft) return;
-    const validation = validateDraft(overlay.draft);
-    if (!validation.valid) {
-      ui.updateOverlay({ submitted: true });
-      return;
-    }
     const { kind, id } = overlay.draft.meta;
     const draft = overlay.draft;
+    const fieldOf = (path) => draftFieldOf(draft, path);
     if (kind === "template") {
-      await run("save_template", draftToTemplate(draft), { target: id ? templateTarget(id) : CREATE_TARGET, invalidates: ["templates"], closeOverlay: true, success: { key: "notice.templateSaved" } });
+      await submit("save_template", draftToTemplate(draft), fieldOf, { target: id ? templateTarget(id) : CREATE_TARGET, invalidates: ["templates"], closeOverlay: true, success: { key: "notice.templateSaved" } });
     } else if (id) {
       const patch = draftToUpdatePatch(draft);
       if (!Object.keys(patch).length) {
         ui.closeOverlay();
         return;
       }
-      await run("update_job", { job_id: id, ...patch }, { target: jobTarget(id), invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobUpdated" } });
+      await submit("update_job", { job_id: id, ...patch }, fieldOf, { target: jobTarget(id), invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobUpdated" } });
     } else if (start) {
-      await run("create_job", { ...draftToIntent(draft), start: true }, { target: CREATE_TARGET, invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobStarted" } });
+      await submit("create_job", { ...draftToIntent(draft), start: true }, fieldOf, { target: CREATE_TARGET, invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobStarted" } });
     } else {
-      await run("create_job", draftToIntent(draft), { target: CREATE_TARGET, invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobCreated" } });
+      await submit("create_job", draftToIntent(draft), fieldOf, { target: CREATE_TARGET, invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobCreated" } });
     }
   }
 
@@ -134,15 +174,9 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
   function saveJobDefaults() {
     const overlay = ui.overlay;
     if (overlay?.kind !== "job-defaults") return null;
-    const mode = canonicalizeMode(overlay.mode);
-    const passes = Number(overlay.passes);
-    if (!mode || !Number.isInteger(passes) || passes < PASS_MIN || passes > PASS_MAX || !isSettingsPolicy(overlay.settingsPolicy) || SETTING_FIELDS.some((field) => !isSettingValue(field, overlay[field]))) {
-      ui.updateOverlay({ submitted: true });
-      return null;
-    }
-    const parameters = { mode, passes, settings_policy: overlay.settingsPolicy };
+    const parameters = { mode: overlay.mode, passes: Number(overlay.passes), settings_policy: overlay.settingsPolicy };
     for (const field of SETTING_FIELDS) parameters[SETTING_WIRE_NAMES[field]] = overlay[field];
-    return run("configure_job_defaults", parameters, { target: QUEUE_TARGET, invalidates: ["queue"], closeOverlay: true, success: { key: "notice.jobDefaultsSaved" } });
+    return submit("configure_job_defaults", parameters, pageFields(JOB_DEFAULT_FIELDS), { target: QUEUE_TARGET, invalidates: ["queue"], closeOverlay: true, success: { key: "notice.jobDefaultsSaved" } });
   }
 
   const handlers = {
@@ -152,8 +186,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     // Leaving an editor with unsaved changes asks first, like any other destructive step.
     back: () => {
       const top = ui.overlay;
-      const validate = DRAFT_VALIDATORS[top?.kind];
-      if (top?.draft && validate?.(top.draft).dirty && getConfig()?.confirm_destructive !== false) {
+      const dirty = DRAFT_DIRTY[top?.kind];
+      if (top?.draft && dirty?.(top.draft) && getConfig()?.confirm_destructive !== false) {
         ui.openOverlay({ kind: "confirm", titleKey: "confirm.discard.title", textKey: "confirm.discard.text", confirmKey: "confirm.discard.confirm", icon: "mdi:close", command: { discard: true } });
         return;
       }
@@ -190,12 +224,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     "save-job-template": () => {
       const overlay = ui.overlay;
       if (overlay?.kind !== "save-template") return null;
-      const name = String(overlay.name ?? "").trim();
-      if (!name) {
-        ui.updateOverlay({ submitted: true });
-        return null;
-      }
-      return run("save_job_as_template", { job_id: overlay.jobId, name, automatic: overlay.automatic === true }, { target: jobTarget(overlay.jobId), invalidates: ["templates"], closeOverlay: true, success: { key: "notice.templateSavedFromJob" } });
+      const parameters = { job_id: overlay.jobId, name: String(overlay.name ?? "").trim(), automatic: overlay.automatic === true };
+      return submit("save_job_as_template", parameters, pageFields({ name: "overlay:name", automatic: "overlay:automatic" }), { target: jobTarget(overlay.jobId), invalidates: ["templates"], closeOverlay: true, success: { key: "notice.templateSavedFromJob" } });
     },
     "open-job-defaults": () => {
       const defaults = jobDefaults();
@@ -219,6 +249,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       }
       if (overlay?.kind === "job-editor" && field === "roomIds") {
         ui.updateOverlay({ draft: toggleRoom(overlay.draft, value) });
+        clearError("roomIds");
         return;
       }
       if ((overlay?.kind === "room-editor" || overlay?.kind === "robot-editor") && field === "requirementsAdd") {
@@ -324,20 +355,19 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     "save-room": async () => {
       const overlay = ui.overlay;
       if (overlay?.kind !== "room-editor") return null;
-      if (!validateRoomDraft(overlay.draft).valid) {
-        ui.updateOverlay({ submitted: true });
-        return null;
-      }
       const patch = roomDraftToPatch(overlay.draft);
       if (!Object.keys(patch).length) {
         ui.closeOverlay();
         return null;
       }
       const roomId = overlay.draft.meta.roomId;
-      return run("update_room", { room_id: roomId, configuration: patch }, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: true, success: { key: "notice.roomSaved" } });
+      return submit("update_room", { room_id: roomId, configuration: patch }, roomFieldOf, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: true, success: { key: "notice.roomSaved" } });
     },
     "remove-requirement": ({ index }) => editDraft("requirements", ui.overlay.draft.requirements.filter((_item, position) => position !== index)),
-    "add-binding": ({ robotId }) => ui.updateOverlay({ draft: updateRoomDraft(ui.overlay.draft, "bindings", [...ui.overlay.draft.bindings, newBinding(robotId)]), bindingsOpen: true }),
+    "add-binding": ({ robotId }) => {
+      ui.updateOverlay({ draft: updateRoomDraft(ui.overlay.draft, "bindings", [...ui.overlay.draft.bindings, newBinding(robotId)]), bindingsOpen: true });
+      clearError("bindings");
+    },
     "remove-binding": ({ index }) => editDraft("bindings", ui.overlay.draft.bindings.filter((_item, position) => position !== index)),
     "disable-room": ({ roomId }) => confirmOr(
       { operation: "disable_room", parameters: { room_id: roomId }, options: { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: ui.overlay?.kind === "room-editor", success: { key: "notice.roomDisabled" } } },
@@ -348,12 +378,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     "save-new-room": () => {
       const overlay = ui.overlay;
       const name = String(overlay?.name ?? "").trim();
-      if (!name) {
-        ui.updateOverlay({ submitted: true });
-        return null;
-      }
-      const parameters = overlay.areaId ? { name, area_id: overlay.areaId } : { name };
-      return run("create_room", parameters, { target: CREATE_TARGET, invalidates: ROOM_SCOPES, closeOverlay: true, success: { key: "notice.roomCreated" } });
+      const parameters = overlay?.areaId ? { name, area_id: overlay.areaId } : { name };
+      return submit("create_room", parameters, pageFields({ name: "overlay:name", area_id: "overlay:areaId" }), { target: CREATE_TARGET, invalidates: ROOM_SCOPES, closeOverlay: true, success: { key: "notice.roomCreated" } });
     },
     "add-robot": () => ui.openOverlay({ kind: "robot-add" }),
     "add-candidate": ({ entityId }) => run("add_robot", { entity_id: entityId }, { target: CREATE_TARGET, invalidates: ROBOT_SCOPES, closeOverlay: ui.overlay?.kind === "robot-add", success: { key: "notice.robotAdded" } }),
@@ -384,12 +410,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     "save-robot": () => {
       const overlay = ui.overlay;
       if (overlay?.kind !== "robot-editor") return null;
-      if (!validateRobotDraft(overlay.draft).valid) {
-        ui.updateOverlay({ submitted: true });
-        return null;
-      }
       const robotId = overlay.draft.meta.robotId;
-      return run("configure_robot", { robot_id: robotId, configuration: robotDraftToConfiguration(overlay.draft) }, { target: robotTarget(robotId), invalidates: ROBOT_SCOPES, closeOverlay: true, success: { key: "notice.robotSaved" } });
+      return submit("configure_robot", { robot_id: robotId, configuration: robotDraftToConfiguration(overlay.draft) }, robotFieldOf, { target: robotTarget(robotId), invalidates: ROBOT_SCOPES, closeOverlay: true, success: { key: "notice.robotSaved" } });
     },
     "remove-robot": ({ robotId }) => confirmOr(
       { operation: "remove_robot", parameters: { robot_id: robotId }, options: { target: robotTarget(robotId), invalidates: ROBOT_SCOPES, closeOverlay: ui.overlay?.kind === "robot-editor", success: { key: "notice.robotRemoved" } } },
@@ -400,12 +422,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       if (Number.isFinite(seconds)) ui.openOverlay({ kind: "queue-settings", minutes: Math.round(seconds / 60) });
     },
     "save-queue-settings": () => {
-      const minutes = Number(ui.overlay?.minutes);
-      if (!Number.isInteger(minutes) || minutes < 0 || minutes > GRACE_MAX_MINUTES) {
-        ui.updateOverlay({ submitted: true });
-        return null;
-      }
-      return run("configure_queue", { grace_seconds: minutes * 60 }, { target: QUEUE_TARGET, invalidates: ["queue"], closeOverlay: true, success: { key: "notice.queueSettingsSaved" } });
+      if (ui.overlay?.kind !== "queue-settings") return null;
+      return submit("configure_queue", { grace_seconds: Number(ui.overlay.minutes) * 60 }, pageFields({ grace_seconds: "overlay:minutes" }), { target: QUEUE_TARGET, invalidates: ["queue"], closeOverlay: true, success: { key: "notice.queueSettingsSaved" } });
     },
     "open-recovery": ({ robotId }) => ui.openOverlay({ kind: "recovery", robotId, confirmStopped: false }),
     "set-overlay": (patch) => ui.updateOverlay(patch),
@@ -416,18 +434,14 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     },
   };
 
+  // From the release page with its kind and duration; from a room card at once until the queue
+  // run ends, which asks nothing.
   function releaseRoom(roomId, overlay) {
-    const kind = overlay?.releaseKind || "queue_run";
-    const grant = { room: roomId, kind };
-    if (kind === "timed") {
-      const seconds = (Number(overlay.hours ?? 2) * 60 + Number(overlay.minutes ?? 0)) * 60;
-      if (!(seconds > 0)) {
-        ui.updateOverlay({ submitted: true });
-        return null;
-      }
-      grant.duration_seconds = seconds;
-    }
-    return run("release_rooms", { grants: [grant] }, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: overlay?.kind === "release", success: { key: "notice.roomReleased" } });
+    const options = { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: Boolean(overlay), success: { key: "notice.roomReleased" } };
+    if (!overlay) return run("release_rooms", { grants: [{ room: roomId, kind: "queue_run" }] }, options);
+    const grant = { room: roomId, kind: overlay.releaseKind || "queue_run" };
+    if (grant.kind === "timed") grant.duration_seconds = (Number(overlay.hours ?? 2) * 60 + Number(overlay.minutes ?? 0)) * 60;
+    return submit("release_rooms", { grants: [grant] }, releaseFieldOf, options);
   }
 
   return {

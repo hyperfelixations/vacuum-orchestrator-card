@@ -18,8 +18,8 @@ test("ui state keeps the view, an overlay stack, pages, choices and the notice",
   assert.equal(ui.overlay.kind, "confirm");
   ui.closeOverlay();
   assert.equal(ui.overlay.kind, "job-editor", "a dialog gives back the page it sat on");
-  ui.updateOverlay({ submitted: true });
-  assert.equal(ui.overlay.submitted, true);
+  ui.updateOverlay({ errors: { passes: "out_of_range" } });
+  assert.deepEqual(ui.overlay.errors, { passes: "out_of_range" });
   ui.setView("rooms");
   assert.equal(ui.overlay, null, "switching views leaves every page");
   ui.setPage("queue", -5);

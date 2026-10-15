@@ -135,13 +135,10 @@ export const ROBOT_OPTION_MAPS = Object.freeze({
   map_options: null,
 });
 
+// Bounds of API 4 that steppers show; the integration checks every value.
 export const PASS_MIN = 1;
 export const PASS_MAX = 10;
-export const PAGE_LIMIT_MAX = 100;
 export const QUEUE_GRACE_MAX_SECONDS = 86400;
-export const ROBOT_PREFERENCE_RANGE = Object.freeze({ min: -100, max: 100 });
-export const LIST_LIMIT = 100;
-export const ACCEPTED_STATES_MAX = 20;
 
 // The operations each mode is planned into, in order (`vacuum_then_mop` has two phases).
 export const MODE_OPERATIONS = Object.freeze({

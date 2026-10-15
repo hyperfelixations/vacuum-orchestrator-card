@@ -4,7 +4,7 @@
 
 // The card's own reasons a visible control is unavailable; presentation words each one. Any
 // other reason is an integration error code, worded by the integration.
-export const AFFORDANCE_REASONS = Object.freeze(["read_only", "operation_missing", "command_pending", "connection_lost", "at_boundary"]);
+export const AFFORDANCE_REASONS = Object.freeze(["read_only", "operation_missing", "command_pending", "connection_lost"]);
 
 // Integration reasons that say an action does not apply to the object as it is; such a control
 // is not shown. Every other reason keeps the control visible and explains why it is unavailable.
@@ -57,10 +57,10 @@ function local(context, operation, target) {
   return null;
 }
 
-// A control the integration gives no verdict for: creating, saving settings, paging.
-export function decide(context, { visible = true, operation, target = null, blockedBy = null }) {
+// A control the integration gives no verdict for: creating, saving settings.
+export function decide(context, { visible = true, operation, target = null }) {
   if (!visible) return HIDDEN;
-  return local(context, operation, target) ?? (blockedBy ? disabled(blockedBy) : ENABLED);
+  return local(context, operation, target) ?? ENABLED;
 }
 
 // A control for one of an object's actions: hidden without a verdict or where the action does not

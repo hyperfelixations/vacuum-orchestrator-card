@@ -48,7 +48,7 @@ test("rights, missing actions, the connection and commands in flight disable in 
   assert.equal(decide(await context({ operations: [], connected: false }), spec).reason, "operation_missing");
   assert.equal(decide(await context({ connected: false, pending: ["queue"] }), spec).reason, "connection_lost");
   assert.equal(decide(await context({ pending: ["queue"] }), spec).reason, "command_pending");
-  assert.equal(decide(await context(), { ...spec, blockedBy: "at_boundary" }).reason, "at_boundary");
+  assert.deepEqual({ ...decide(await context(), spec) }, { state: "enabled", reason: null });
   assert.equal(decide(await context({ canCommand: false }), { ...spec, visible: false }).state, "hidden");
   assert.equal(offer(await context({ pending: ["queue"] }), no("robot_busy"), spec).reason, "command_pending", "the card's own reason comes first");
   assert.equal(offer(await context({ canCommand: false }), no("queue_running"), spec).state, "hidden", "an action that does not apply stays hidden for everyone");

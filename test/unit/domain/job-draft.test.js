@@ -1,5 +1,5 @@
-// The job and template draft: immutable changes, validation mirroring the integration's input
-// schema, and the three payloads (create intent, update patch, whole template).
+// The job and template draft: immutable changes, the field an error of the integration names,
+// and the three payloads (create intent, update patch, whole template).
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -8,7 +8,7 @@ const W = require("../../helpers/voi-records.js");
 const load = async () => ({ ...(await import("../../../src/domain/job-draft.js")), ...(await import("../../../src/domain/job.js")), ...(await import("../../../src/domain/templates.js")) });
 
 test("a new draft starts empty and every change returns a new frozen draft", async () => {
-  const { createDraft, applyDraftChange, validateDraft } = await load();
+  const { createDraft, applyDraftChange, isDirty } = await load();
   const draft = createDraft();
   assert.deepEqual(draft.roomIds, []);
   assert.equal(draft.mode, "vacuum");
@@ -16,8 +16,8 @@ test("a new draft starts empty and every change returns a new frozen draft", asy
   assert.notEqual(next, draft);
   assert.deepEqual(draft.roomIds, []);
   assert.ok(Object.isFrozen(next) && Object.isFrozen(next.roomIds));
-  assert.equal(validateDraft(next).dirty, true);
-  assert.equal(validateDraft(draft).dirty, false);
+  assert.equal(isDirty(next), true);
+  assert.equal(isDirty(draft), false);
 });
 
 test("unknown and unsafe fields are ignored", async () => {
@@ -34,29 +34,23 @@ test("defaults prefill a new draft, such as the room a job is created for", asyn
   assert.deepEqual(createDraft({ defaults: { roomIds: ["room-studio"], unknown: 1 } }).roomIds, ["room-studio"]);
 });
 
-test("validation names the field and the integration's code", async () => {
-  const { createDraft, applyDraftChange, validateDraft } = await load();
-  let draft = createDraft();
-  assert.equal(validateDraft(draft).errors.roomIds, "job_requires_area");
-  const set = (field, value) => {
-    draft = applyDraftChange(draft, field, value);
-  };
-  set("roomIds", ["room-a", "room-a"]);
-  set("passes", 11);
-  set("requiredOn", ["binary_sensor.door", "not an entity"]);
-  set("requiredOff", ["binary_sensor.door"]);
-  const { errors, valid } = validateDraft(draft);
-  assert.equal(valid, false);
-  assert.deepEqual({ ...errors }, { roomIds: "duplicate_area", passes: "invalid_pass_count", requiredOn: "invalid_entity_id", requiredOff: "contradictory_state_requirement" });
+test("an error of the integration lands on the field its path names", async () => {
+  const { createDraft, draftFieldOf } = await load();
+  const job = createDraft();
+  const paths = ["areas.1", "all_rooms", "passes", "vacuum_power", "required_on.0", "settings_policy", "", "hold_id", "intent.note"];
+  assert.deepEqual(paths.map((path) => draftFieldOf(job, path)), ["roomIds", "roomIds", "passes", "vacuumPower", "requiredOn", "settingsPolicy", null, null, null]);
+  const template = createDraft({ kind: "template" });
+  const templatePaths = ["name", "enabled", "automatic", "intent.areas.0", "intent.note", "intent", "areas", "template_id"];
+  assert.deepEqual(templatePaths.map((path) => draftFieldOf(template, path)), ["templateName", "enabled", "automatic", "roomIds", "note", null, null, null], "a template's intent sits below `intent`");
 });
 
 const DEFAULTS = Object.freeze({ mode: "mop", vacuumPower: "high", mopIntensity: "low", mopRoute: "deep", passes: 2, settingsPolicy: "strict", configured: true });
 
 test("a new draft starts from the job defaults with exactly the settings its mode uses", async () => {
-  const { createDraft, validateDraft, settingsForMode } = await load();
+  const { createDraft, isDirty, settingsForMode } = await load();
   const draft = createDraft({ jobDefaults: DEFAULTS });
   assert.deepEqual([draft.mode, draft.vacuumPower, draft.mopIntensity, draft.mopRoute, draft.passes, draft.settingsPolicy], ["mop", null, "low", "deep", 2, "strict"]);
-  assert.equal(validateDraft(draft).dirty, false, "the defaults are the baseline");
+  assert.equal(isDirty(draft), false, "the defaults are the baseline");
   assert.deepEqual(settingsForMode("vac_and_mop"), ["vacuumPower", "mopIntensity", "mopRoute"]);
   assert.deepEqual(settingsForMode("polish"), []);
   const template = createDraft({ kind: "template", jobDefaults: DEFAULTS });
@@ -64,16 +58,13 @@ test("a new draft starts from the job defaults with exactly the settings its mod
 });
 
 test("a new mode keeps the settings both modes use and takes the defaults for the others", async () => {
-  const { createDraft, applyDraftChange, validateDraft } = await load();
+  const { createDraft, applyDraftChange } = await load();
   let draft = applyDraftChange(createDraft({ jobDefaults: DEFAULTS }), "mopIntensity", "high");
   draft = applyDraftChange(draft, "mode", "vacuum_and_mop");
   assert.deepEqual([draft.vacuumPower, draft.mopIntensity, draft.mopRoute], ["high", "high", "deep"]);
   draft = applyDraftChange(draft, "mode", "vacuum");
   assert.deepEqual([draft.vacuumPower, draft.mopIntensity, draft.mopRoute], ["high", null, null]);
   assert.equal(applyDraftChange(createDraft(), "mode", "mop").mopIntensity, null, "without defaults the integration fills them");
-  const wrong = applyDraftChange(applyDraftChange(createDraft({ jobDefaults: DEFAULTS }), "roomIds", ["room-a"]), "mopRoute", "medium");
-  assert.equal(validateDraft(wrong).errors.mopRoute, "unsupported_cleaning_preference");
-  assert.equal(validateDraft(applyDraftChange(wrong, "mopRoute", "deep_plus")).valid, true);
 });
 
 test("an edited job keeps its own settings and a mode change sends only what the new mode uses", async () => {
@@ -117,12 +108,12 @@ test("an update patch carries only changed fields and clears an optional one wit
 });
 
 test("all rooms is a choice of its own: it needs no room, travels as all_rooms and replaces single rooms", async () => {
-  const { ALL_ROOMS, createDraft, applyDraftChange, validateDraft, draftToIntent, draftToUpdatePatch, draftToTemplate, normalizeJob, normalizeTemplate } = await load();
+  const { ALL_ROOMS, createDraft, applyDraftChange, isDirty, draftToIntent, draftToUpdatePatch, draftToTemplate, normalizeJob, normalizeTemplate } = await load();
   assert.equal(ALL_ROOMS, "all");
   const fresh = createDraft();
   assert.equal(fresh.allRooms, false);
   const all = applyDraftChange(fresh, "allRooms", true);
-  assert.deepEqual([validateDraft(all).valid, validateDraft(all).dirty], [true, true]);
+  assert.equal(isDirty(all), true);
   assert.deepEqual([draftToIntent(all).areas, draftToIntent(all).all_rooms], [undefined, true]);
   const job = createDraft({ target: normalizeJob(W.wireJob()) });
   assert.equal(job.allRooms, false, "a job holds the rooms it was created with");
@@ -131,15 +122,14 @@ test("all rooms is a choice of its own: it needs no room, travels as all_rooms a
   assert.deepEqual({ ...draftToUpdatePatch(applyDraftChange(job, "allRooms", true)) }, { all_rooms: true });
   assert.deepEqual({ ...draftToUpdatePatch(applyDraftChange(applyDraftChange(job, "allRooms", true), "allRooms", false)) }, {});
   const template = createDraft({ kind: "template", target: normalizeTemplate(W.wireTemplate({ intent: { all_rooms: true, mode: "vacuum" } })) });
-  assert.deepEqual([template.allRooms, [...template.roomIds], validateDraft(template).dirty], [true, [], false]);
+  assert.deepEqual([template.allRooms, [...template.roomIds], isDirty(template)], [true, [], false]);
   assert.equal(draftToTemplate(template).intent.all_rooms, true);
-  assert.equal(validateDraft(applyDraftChange(template, "allRooms", false)).errors.roomIds, "job_requires_area");
+  assert.equal("all_rooms" in draftToTemplate(applyDraftChange(template, "allRooms", false)).intent, false);
 });
 
-test("a template draft wraps the intent and needs a name", async () => {
-  const { createDraft, applyDraftChange, validateDraft, draftToTemplate, normalizeTemplate } = await load();
+test("a template draft wraps the intent", async () => {
+  const { createDraft, applyDraftChange, draftToTemplate, normalizeTemplate } = await load();
   const fresh = createDraft({ kind: "template" });
-  assert.equal(validateDraft(fresh).errors.templateName, "template_name_required");
   const recorded = W.wireTemplate({ automatic: true });
   const template = normalizeTemplate(recorded);
   let draft = createDraft({ kind: "template", target: template });

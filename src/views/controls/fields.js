@@ -3,7 +3,7 @@
 // `data-field`. Label, hint and error are tied to the control with ARIA ids.
 // See internal dev doc §9 "Formularfelder".
 
-import { argsAttr, attr, button, e, icon } from "../../render/primitives/markup.js";
+import { argsAttr, atEnd, attr, button, e, icon } from "../../render/primitives/markup.js";
 
 export function fieldId(key) {
   return `voc-field-${String(key || "field").replace(/[^a-zA-Z0-9_-]+/g, "-")}`;
@@ -49,7 +49,7 @@ function chips(field) {
 
 function stepper(context, field) {
   const value = Number.isFinite(field.value) ? field.value : field.min;
-  const step = (direction) => button({ action: "step-field", args: { field: field.key, step: direction, min: field.min, max: field.max }, label: context.t(direction < 0 ? "field.decrease" : "field.increase"), iconName: direction < 0 ? "mdi:minus" : "mdi:plus", variant: "icon", decision: (direction < 0 ? value <= field.min : value >= field.max) ? { state: "disabled", reason: "at_boundary" } : null });
+  const step = (direction) => button({ action: "step-field", args: { field: field.key, step: direction, min: field.min, max: field.max }, label: context.t(direction < 0 ? "field.decrease" : "field.increase"), iconName: direction < 0 ? "mdi:minus" : "mdi:plus", variant: "icon", ...atEnd(context, direction < 0 ? value <= field.min : value >= field.max) });
   return `<div class="voc-stepper" role="group" aria-labelledby="${fieldId(field.key)}-label">${step(-1)}<input class="voc-input voc-stepper-input" type="number" inputmode="numeric" id="${fieldId(field.key)}" data-field="${e(field.key)}" min="${field.min}" max="${field.max}" step="1" value="${e(value)}"${attr("aria-describedby", describedBy(field))}${field.error ? ' aria-invalid="true"' : ""}>${step(1)}</div>`;
 }
 

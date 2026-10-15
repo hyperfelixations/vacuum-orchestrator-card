@@ -1,5 +1,5 @@
-// The room settings draft: hour-based intervals, path updates, validation mirroring the room
-// schema, and a patch that carries only what changed.
+// The room settings draft: hour-based intervals, path updates, the field an error of the
+// integration names, and a patch that carries only what changed.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -27,10 +27,11 @@ test("intervals are edited in hours, lists as comma-separated text", async () =>
 });
 
 test("an unchanged draft makes an empty patch", async () => {
-  const { createRoomDraft, roomDraftToPatch, validateRoomDraft, room } = await load();
+  const { createRoomDraft, roomDraftToPatch, isRoomDirty, updateRoomDraft, room } = await load();
   const draft = createRoomDraft(room);
   assert.deepEqual({ ...roomDraftToPatch(draft) }, {});
-  assert.equal(validateRoomDraft(draft).dirty, false);
+  assert.equal(isRoomDirty(draft), false);
+  assert.equal(isRoomDirty(updateRoomDraft(draft, "mopHours", 24)), true);
 });
 
 test("renaming stops following the area name, and the patch says so", async () => {
@@ -73,24 +74,23 @@ test("paths that do not exist or reach into meta change nothing", async () => {
   assert.equal(updateRoomDraft(draft, "nothing", 1), draft);
 });
 
-test("validation mirrors the room schema", async () => {
-  const { createRoomDraft, updateRoomDraft, validateRoomDraft, newBinding, room } = await load();
-  let draft = createRoomDraft(room);
-  draft = updateRoomDraft(draft, "name", " ");
-  draft = updateRoomDraft(draft, "vacuumHours", 0);
-  draft = updateRoomDraft(draft, "basis", "occupied");
-  draft = updateRoomDraft(draft, "unoccupiedState", "on");
-  draft = updateRoomDraft(draft, "requirements.0.acceptedStates", "");
-  draft = updateRoomDraft(draft, "bindings", [...draft.bindings, newBinding("robot-rocky"), { ...newBinding("robot-rocky"), mapId: "map-0", targetIds: "1" }]);
-  assert.deepEqual({ ...validateRoomDraft(draft).errors }, {
-    name: "room_name_required",
-    vacuumHours: "interval_positive",
-    occupancyEntityId: "occupancy_source_required",
-    occupancyStates: "invalid_occupancy_states",
-    "requirements.0": "accepted_states_count",
-    "bindings.1": "invalid_room_targets",
-    "bindings.2": "duplicate_room_binding",
-  });
+test("an error of update_room lands on the editor field its path names", async () => {
+  const { roomFieldOf } = await load();
+  const fields = {
+    "configuration.name": "name",
+    "configuration.follow_area_name": "followAreaName",
+    "configuration.due_policy.vacuum_seconds": "vacuumHours",
+    "configuration.due_policy.occupancy_entity_id": "occupancyEntityId",
+    "configuration.due_policy.unoccupied_state": "unoccupiedState",
+    "configuration.requirements.0.accepted_states": "requirements.0",
+    "configuration.bindings.2": "bindings.2",
+    "configuration.bindings": null,
+    "configuration.due_policy": null,
+    "configuration.area_id": null,
+    room_id: null,
+    "": null,
+  };
+  assert.deepEqual(Object.fromEntries(Object.keys(fields).map((path) => [path, roomFieldOf(path)])), fields);
 });
 
 test("comma and line separated lists ignore empty entries", async () => {

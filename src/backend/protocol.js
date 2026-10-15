@@ -134,6 +134,7 @@ export const guards = Object.freeze({
   diagnostics: (value) => isObject(value) && isObject(value.trace_window),
   preview: (value) => isObject(value) && isObject(value.settings) && Array.isArray(value.robots) && typeof value.startable_now === "boolean",
   setup: (value) => isObject(value) && typeof value.assistant_pending === "boolean" && isObject(value.steps),
+  validation: (value) => isObject(value) && typeof value.valid === "boolean" && Array.isArray(value.errors),
   event: (value) => isObject(value) && value.loaded === true && typeof value.runtime_id === "string" && isCount(value.runtime_sequence) && isCount(value.commit_id),
   unloadedEvent: (value) => isObject(value) && value.loaded === false,
   manifest: (value) => isObject(value) && value.domain === "vacuum_orchestrator",

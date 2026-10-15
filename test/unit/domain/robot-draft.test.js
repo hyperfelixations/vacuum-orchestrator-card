@@ -1,6 +1,6 @@
-// The robot profile draft: starts from the stored wire configuration, edits nested fields, mirrors
-// the profile schema, and hands `configure_robot` the complete definition with only the edited
-// fields replaced.
+// The robot profile draft: starts from the stored wire configuration, edits nested fields, names
+// the field an error of the integration concerns, and hands `configure_robot` the complete
+// definition with only the edited fields replaced.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -23,10 +23,10 @@ test("roles read as automatic, off or a chosen entity, resolved to its entity id
 });
 
 test("an unchanged draft gives back the stored definition", async () => {
-  const { createRobotDraft, robotDraftToConfiguration, validateRobotDraft, robot } = await load();
+  const { createRobotDraft, robotDraftToConfiguration, isRobotDirty, updateRobotDraft, robot } = await load();
   const draft = createRobotDraft(robot);
-  assert.equal(validateRobotDraft(draft).valid, true);
-  assert.equal(validateRobotDraft(draft).dirty, false);
+  assert.equal(isRobotDirty(draft), false);
+  assert.equal(isRobotDirty(updateRobotDraft(draft, "preference", 7)), true);
   const configuration = JSON.parse(JSON.stringify(robotDraftToConfiguration(draft)));
   assert.deepEqual(configuration, JSON.parse(JSON.stringify(robot.configuration.wire)));
 });
@@ -53,38 +53,32 @@ test("edited fields replace their stored values; automatic roles leave the role 
   assert.deepEqual(robotDraftToConfiguration(updateRobotDraft(draft, "targetAreas", ["dining_room"])).target_areas, ["dining_room"]);
 });
 
-test("validation mirrors the profile schema", async () => {
-  const { createRobotDraft, updateRobotDraft, validateRobotDraft, robot } = await load();
-  let draft = createRobotDraft(robot);
-  draft = updateRobotDraft(draft, "allowedOperations", []);
-  draft = updateRobotDraft(draft, "preference", 101);
-  draft = updateRobotDraft(draft, "minimumBattery", 120);
-  draft = updateRobotDraft(draft, "timeouts.settle_seconds", 0);
-  draft = updateRobotDraft(draft, "timeouts.run_timeout_seconds", 90000);
-  draft = updateRobotDraft(draft, "roles.dock_error.mode", "entity");
-  draft = updateRobotDraft(draft, "optionMaps.mode_options.mop", "Vacuum");
-  draft = updateRobotDraft(draft, "optionMaps.vacuum_levels.turbo", "Turbo");
-  draft = updateRobotDraft(draft, "requirements", [{ entityId: "not an entity", acceptedStates: "on" }]);
-  assert.deepEqual({ ...validateRobotDraft(draft).errors }, {
-    allowedOperations: "empty_allowed_operations",
-    preference: "invalid_robot_preference",
-    minimumBattery: "invalid_minimum_battery",
-    "timeouts.settle_seconds": "invalid_duration",
-    "timeouts.run_timeout_seconds": "timeout_out_of_range",
-    "roles.dock_error": "invalid_role_entity",
-    "optionMaps.vacuum_levels": "invalid_option_mapping",
-    "optionMaps.mode_options": "ambiguous_mode_mapping",
-    "requirements.0": "invalid_entity_id",
-  });
+test("an error of configure_robot lands on the editor field its path names", async () => {
+  const { robotFieldOf } = await load();
+  const fields = {
+    "configuration.allowed_operations": "allowedOperations",
+    "configuration.preference": "preference",
+    "configuration.minimum_battery": "minimumBattery",
+    "configuration.physical_robot_id": "physicalRobotId",
+    "configuration.settle_seconds": "timeouts.settle_seconds",
+    "configuration.vacuum_levels.turbo": "optionMaps.vacuum_levels",
+    "configuration.roles.dock_error": "roles.dock_error",
+    "configuration.requirements.0.entity_id": "requirements.0",
+    "configuration.roles": null,
+    "configuration.roles.unknown": null,
+    "configuration.requirements": null,
+    "configuration.unknown": null,
+    configuration: null,
+    robot_id: null,
+    "": null,
+  };
+  assert.deepEqual(Object.fromEntries(Object.keys(fields).map((path) => [path, robotFieldOf(path)])), fields);
 });
 
-test("map options take free keys; an empty key is refused", async () => {
-  const { createRobotDraft, updateRobotDraft, validateRobotDraft, robotDraftToConfiguration, robot } = await load();
-  let draft = updateRobotDraft(createRobotDraft(robot), "optionMaps.map_options", { "Ground floor": "map_0" });
-  assert.equal(validateRobotDraft(draft).valid, true);
-  assert.deepEqual(robotDraftToConfiguration(draft).map_options, { "Ground floor": "map_0" });
-  draft = updateRobotDraft(draft, "optionMaps.map_options", { " ": "map_1" });
-  assert.equal(validateRobotDraft(draft).errors["optionMaps.map_options"], "invalid_option_mapping");
+test("map options take free keys", async () => {
+  const { createRobotDraft, updateRobotDraft, robotDraftToConfiguration, robot } = await load();
+  const draft = updateRobotDraft(createRobotDraft(robot), "optionMaps.map_options", { "Main Floor": "map_0" });
+  assert.deepEqual(robotDraftToConfiguration(draft).map_options, { "Main Floor": "map_0" });
 });
 
 test("unsafe or missing paths change nothing", async () => {

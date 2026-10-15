@@ -1,14 +1,30 @@
-// Field view models shared by the editors: labels, hints, the error for a field once the user
-// tried to save, and entity search results. Option lists come from the integration's
-// vocabularies; nothing here judges whether a robot can execute a choice.
+// Field view models shared by the editors: labels, hints, the integration's error for a field
+// after an attempt to send, and entity search results. Option lists come from the integration's
+// vocabularies; nothing here judges whether a robot can execute a choice or a value is valid.
 
-import { t } from "../common/texts.js";
+import { failureText, t } from "../common/texts.js";
 import { entityName } from "../common/lookups.js";
 
 export const ENTITY_MATCH_LIMIT = 8;
 
+// An error code of the integration in its own words.
 export function errorText(texts, code) {
-  return code ? t(texts, `validation.${code}`) : null;
+  return code ? failureText(texts, { code }) : null;
+}
+
+// The errors a page keeps from the integration's last verdict (`errors` by field key,
+// `formError` for the input as a whole): the text for a field, the first text below a key, and
+// the notice above the form.
+export function pageErrors(texts, overlay) {
+  const errors = overlay?.errors ?? {};
+  const keys = Object.keys(errors);
+  return {
+    errors,
+    error: (key) => errorText(texts, errors[key]),
+    within: (prefix) => errorText(texts, errors[keys.find((key) => key === prefix || key.startsWith(`${prefix}.`))]),
+    any: (prefix) => keys.some((key) => key === prefix || key.startsWith(`${prefix}.`)),
+    invalid: overlay?.formError ? errorText(texts, overlay.formError) : keys.length ? t(texts, "editor.fixErrors") : null,
+  };
 }
 
 export function field(texts, { key, labelKey, labelVars = undefined, control, value, options = [], hintKey = null, hint = null, error = null, optional = false, ...extra }) {

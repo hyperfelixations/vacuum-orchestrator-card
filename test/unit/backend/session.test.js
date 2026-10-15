@@ -504,6 +504,22 @@ test("a refused command keeps the integration's error code", async () => {
   env.session.dispose();
 });
 
+test("a form's input is checked by the integration, which changes nothing", async () => {
+  const env = await setup({ recording: "room_controls", from: "The dining room is due every 36 hours" });
+  const early = await env.session.validate("create_room", { name: "" });
+  assert.deepEqual([early.ok, early.code], [false, "orchestrator_not_loaded"], "nothing is checked before the session is ready");
+  await env.start();
+  const unnamed = await env.session.validate("create_room", { name: "" });
+  assert.deepEqual(JSON.parse(JSON.stringify(unnamed)), { ok: true, data: { valid: false, errors: [{ path: "name", code: "invalid_room_name" }] } });
+  assert.deepEqual((await env.session.validate("create_room", { name: "Office" })).data, { valid: true, errors: [] });
+  assert.equal(env.count({ type: `${DOMAIN}/configuration/command` }), 0);
+  env.rewrite({ type: `${DOMAIN}/configuration/get`, query: "validate" }, { valid: "yes" });
+  const garbled = await env.session.validate("create_room", { name: "Office" });
+  assert.deepEqual([garbled.ok, garbled.code], [false, "invalid_response"]);
+  env.session.dispose();
+  assert.equal((await env.session.validate("create_room", { name: "Office" })).code, "connection_lost");
+});
+
 test("one command per target at a time, and only offered operations are sent", async () => {
   const env = await setup();
   await env.start();

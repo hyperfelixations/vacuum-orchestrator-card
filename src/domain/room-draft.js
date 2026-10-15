@@ -1,12 +1,5 @@
-// The room settings draft and the `update_room` patch it produces. Validation mirrors the
-// integration's room schema (`room_configuration.py`, `domain/due.py`): positive intervals, an
-// occupancy sensor for occupied time, distinct occupied and free states, at most 100 conditions
-// and bindings, 1–20 accepted states, 1–100 targets. See internal dev doc §7 "Raumentwurf".
-
-import { ACCEPTED_STATES_MAX, LIST_LIMIT, isDueBasis, isOperation } from "./job-schema.js";
-
-const ENTITY_ID = /^[a-z0-9_]+\.[a-z0-9_]+$/;
-const TARGETS_MAX = 100;
+// The room settings draft and the `update_room` patch it produces. The integration checks every
+// input (`validate`); `roomFieldOf` places its errors. See internal dev doc §7 "Raumentwurf".
 
 function copy(value) {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
@@ -98,42 +91,23 @@ function bindingWire(item) {
   return wire;
 }
 
-export function validateRoomDraft(draft) {
-  const errors = {};
-  const fail = (field, code) => {
-    if (!(field in errors)) errors[field] = code;
-  };
-  if (!String(draft.name ?? "").trim()) fail("name", "room_name_required");
-  if (!isDueBasis(draft.basis)) fail("basis", "invalid_room_configuration");
-  for (const field of ["vacuumHours", "mopHours"]) {
-    const value = draft[field];
-    if (value !== null && value !== undefined && value !== "" && !(Number(value) > 0)) fail(field, "interval_positive");
-  }
-  if (draft.basis === "occupied" && !draft.occupancyEntityId) fail("occupancyEntityId", "occupancy_source_required");
-  if (draft.occupancyEntityId && !ENTITY_ID.test(draft.occupancyEntityId)) fail("occupancyEntityId", "invalid_entity_id");
-  const occupied = String(draft.occupiedState ?? "").trim();
-  const free = String(draft.unoccupiedState ?? "").trim();
-  if (!occupied || !free || occupied === free || [occupied, free].some((state) => state === "unknown" || state === "unavailable")) fail("occupancyStates", "invalid_occupancy_states");
-  if (draft.requirements.length > LIST_LIMIT) fail("requirements", "invalid_requirements");
-  draft.requirements.forEach((item, index) => {
-    const states = splitList(item.acceptedStates);
-    if (!ENTITY_ID.test(item.entityId || "")) fail(`requirements.${index}`, "invalid_entity_id");
-    else if (states.length < 1 || states.length > ACCEPTED_STATES_MAX) fail(`requirements.${index}`, "accepted_states_count");
-    else if (item.maxAgeMinutes !== null && item.maxAgeMinutes !== undefined && item.maxAgeMinutes !== "" && !(Number(item.maxAgeMinutes) > 0)) fail(`requirements.${index}`, "interval_positive");
-    else if (item.operation && !isOperation(item.operation)) fail(`requirements.${index}`, "invalid_operation");
-  });
-  if (draft.bindings.length > LIST_LIMIT) fail("bindings", "invalid_room_targets");
-  const keys = new Set();
-  draft.bindings.forEach((item, index) => {
-    const targets = splitList(item.targetIds);
-    const key = `${item.robotId}|${String(item.mapId ?? "").trim()}`;
-    if (!item.robotId) fail(`bindings.${index}`, "unknown_robot");
-    else if (targets.length < 1 || targets.length > TARGETS_MAX || new Set(targets).size !== targets.length) fail(`bindings.${index}`, "invalid_room_targets");
-    else if (keys.has(key)) fail(`bindings.${index}`, "duplicate_room_binding");
-    keys.add(key);
-  });
+export function isRoomDirty(draft) {
   const { meta, ...values } = draft;
-  return Object.freeze({ valid: Object.keys(errors).length === 0, errors: Object.freeze(errors), dirty: !same(values, meta.baseline) });
+  return !same(values, meta.baseline);
+}
+
+// The draft field each part of the `update_room` configuration fills.
+const ROOM_FIELDS = Object.freeze({ name: "name", follow_area_name: "followAreaName", enabled: "enabled" });
+const DUE_FIELDS = Object.freeze({ basis: "basis", vacuum_seconds: "vacuumHours", mop_seconds: "mopHours", occupancy_entity_id: "occupancyEntityId", occupied_state: "occupiedState", unoccupied_state: "unoccupiedState" });
+
+// The editor field an error of `update_room` names (`configuration.due_policy.mop_seconds`,
+// `configuration.requirements.0.accepted_states`); null for the input or a list as a whole.
+export function roomFieldOf(path) {
+  const [root, part, child] = String(path).split(".");
+  if (root !== "configuration") return null;
+  if (part === "due_policy") return DUE_FIELDS[child] ?? null;
+  if (part === "requirements" || part === "bindings") return /^\d+$/.test(child ?? "") ? `${part}.${child}` : null;
+  return ROOM_FIELDS[part] ?? null;
 }
 
 const hoursToSeconds = (value) => (value === null || value === undefined || value === "" ? null : Number(value) * 3600);
