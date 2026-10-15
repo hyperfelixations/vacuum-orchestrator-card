@@ -1,19 +1,18 @@
-// Builds a Home Assistant `hass` object for a named scenario, attaches the fake integration and
-// mounts cards on the harness stage; with `recording`, plays a recording of the integration
-// instead (internal dev doc §10). Browser tests call `window.vocHarness.mount(...)`.
+// Plays a recording of the integration (internal dev doc §10) and mounts cards on the harness
+// stage. Browser tests call `window.vocHarness.mount(...)`.
 (function () {
   "use strict";
 
-  const { createFakeOrchestrator } = window.VocFake;
-  const { SCENARIOS, hassFor } = window.VocScenarios;
-
-  // The cards follow a recording opened at the mark `from`; the page clock reads its time and
-  // every recorded change hands the cards a new hass, as Home Assistant does.
+  // The cards follow a recording opened at the mark `from` (else its first); the page clock reads
+  // its time and every recorded change hands the cards a new hass, as Home Assistant does.
   async function replay(options, cards) {
     const response = await fetch(`voi/recordings/${options.recording}.json`);
     if (!response.ok) throw new Error(`no recording ${options.recording}`);
+    const recording = await response.json();
+    const from = options.from ?? recording.steps.find((step) => step.mark !== undefined)?.mark;
     const clock = { advance: (ms) => (window.__vocNow += ms) };
-    const backend = window.VocRecorded.createRecordedBackend(await response.json(), { from: options.from, language: options.language || "en", admin: options.admin !== false, clock });
+    const backend = window.VocRecorded.createRecordedBackend(recording, { from, language: options.language || "en", admin: options.admin, clock });
+    for (const [match, error] of options.failNext || []) backend.failNext(match, error);
     window.__vocNow = backend.nowMs;
     backend.onChange((hass) => {
       window.vocHarness.hass = hass;
@@ -22,23 +21,16 @@
     return backend;
   }
 
-  // options: recording, from (see replay), scenario, config, width, language, admin, installed, setUp, runtimeLoaded,
-  // apiVersion, failNext (first error frame per message type or operation), count (cards side
-  // by side), configs (one config per card), themes ("light" or "dark" per card, each card on
-  // its own themed panel), layout ("grid": a sections grid cell rows·64−8 px high as in
+  // options: recording, from (see replay), config, width, language, admin (overrides the recorded
+  // user's flag), failNext ([match, error] pairs Home Assistant refuses), count (cards side by
+  // side), configs (one config per card), themes ("light" or "dark" per card, each card on its
+  // own themed panel), layout ("grid": a sections grid cell rows·64−8 px high as in
   // `hui-grid-section`, rows from `rows` or the card's default; "panel": a block 800 px high).
   async function mount(options = {}) {
+    if (!options.recording) throw new Error("mount needs a recording of the integration");
     const cardsOnStage = [];
-    const backend = options.recording ? await replay(options, cardsOnStage) : null;
-    let fake = null;
-    let hass;
-    if (backend) {
-      hass = backend.hass;
-    } else {
-      const household = (SCENARIOS[options.scenario || "typical"] || SCENARIOS.typical)();
-      fake = createFakeOrchestrator({ seed: household.seed, admin: options.admin !== false, installed: options.installed !== false, setUp: options.setUp !== false, runtimeLoaded: options.runtimeLoaded !== false, apiVersion: options.apiVersion, failNext: options.failNext });
-      hass = fake.attachTo(hassFor(household, { language: options.language || "en", admin: options.admin !== false }));
-    }
+    const backend = await replay(options, cardsOnStage);
+    const { hass } = backend;
     const stage = document.getElementById("stage");
     stage.innerHTML = "";
     stage.style.display = options.themes ? "inline-flex" : "flex";
@@ -66,7 +58,6 @@
     });
     cardsOnStage.push(...cards);
     window.vocHarness.backend = backend;
-    window.vocHarness.fake = fake;
     window.vocHarness.hass = hass;
     window.vocHarness.cards = cards;
     await window.__vocIconsReady;

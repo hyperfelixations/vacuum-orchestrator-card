@@ -19,13 +19,13 @@ export function icon(name, { label = null, className = "" } = {}) {
   return `<ha-icon${attr("class", className || null)} icon="${e(name)}"${label ? ` aria-label="${e(label)}" role="img"` : ' aria-hidden="true"'}></ha-icon>`;
 }
 
-// Hard reasons make a control inert; a missing operation or a read-only user keeps it focusable
-// so its explanation can be read.
-const HARD_REASONS = new Set(["command_pending", "at_boundary", "robot_busy", "template_disabled"]);
+// A missing operation or a read-only user keeps a control focusable so its explanation can be
+// read; every other reason makes it inert.
+const SOFT_REASONS = new Set(["read_only", "operation_missing"]);
 
 export function decisionAttributes(decision, reasonText) {
   if (!decision || decision.state !== "disabled") return "";
-  const hard = HARD_REASONS.has(decision.reason);
+  const hard = !SOFT_REASONS.has(decision.reason);
   return `${hard ? " disabled" : ' aria-disabled="true"'}${reasonText ? ` title="${e(reasonText)}"` : ""}`;
 }
 

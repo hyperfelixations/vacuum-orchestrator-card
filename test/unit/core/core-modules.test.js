@@ -21,7 +21,9 @@ test("core numbers and time use explicit values", async () => {
   assert.equal(time.parseInstant("2026-09-17T00:00:00Z"), Date.parse("2026-09-17T00:00:00Z"));
   assert.equal(time.parseInstant(1758000000000), 1758000000000);
   assert.deepEqual(time.relativeParts(100000, 40000), { unit: "minute", value: -1 });
-  assert.deepEqual(time.durationParts(90 * 60000), { hours: 1, minutes: 30 });
+  assert.deepEqual(time.durationParts(90 * 60000), { hours: 1, minutes: 30, seconds: null });
+  assert.deepEqual(time.durationParts(5000), { hours: 0, minutes: 0, seconds: 5 }, "below a minute the seconds count");
+  assert.deepEqual(time.durationParts(59600), { hours: 0, minutes: 1, seconds: null });
 });
 
 // The card's own parser rather than Date.parse: the same string has to mean the same instant

@@ -1,0 +1,158 @@
+<div class="voc-root" data-state="view" data-tone="setup" style="--tone-color:var(--primary-color, #03a9f4);--tone-ink:color-mix(in srgb, var(--primary-color, #03a9f4) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--primary-color, #03a9f4) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-top-line">
+</div>
+<div class="voc-header">
+<div class="voc-icon-badge" aria-hidden="true">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+</div>
+<div class="voc-title-block">
+<div class="voc-title">Cleaning</div>
+<div class="voc-subtitle">Setup is not finished yet</div>
+</div>
+<div class="voc-status-pill">Setup</div>
+</div>
+<div class="voc-panel" data-queue-mode="idle">
+<div class="voc-panel-headline">
+<span class="voc-panel-label">Waiting</span>
+<span class="voc-panel-value">0</span>
+</div>
+<div class="voc-panel-status">
+<div class="voc-panel-mode">
+<span class="voc-dot" aria-hidden="true">
+</span>
+<span>Queue idle</span>
+</div>
+<div class="voc-panel-robots">
+<span class="voc-panel-robot" data-key="robot:01J00000000000000000000003" data-tone="ready">
+<span class="voc-dot" aria-hidden="true">
+</span>Rocky · Docked · 100 %</span>
+</div>
+</div>
+<div class="voc-panel-control">
+<button type="button" class="voc-button voc-button--primary voc-queue-control" data-action="queue-control" title="Start queue">
+<ha-icon icon="mdi:play" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Start queue</span>
+</button>
+</div>
+</div>
+<div class="voc-tab-row">
+<div class="voc-tabs" role="tablist" aria-label="Views">
+<button type="button" class="voc-tab" role="tab" id="voc-tab-setup" data-key="tab-setup" data-view="setup" aria-controls="voc-panel" aria-selected="true" tabindex="0" title="Setup">
+<ha-icon icon="mdi:clipboard-check-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Setup</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-queue" data-key="tab-queue" data-view="queue" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Queue">
+<ha-icon icon="mdi:format-list-numbered" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Queue</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-rooms" data-key="tab-rooms" data-view="rooms" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Rooms">
+<ha-icon icon="mdi:floor-plan" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Rooms</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-robots" data-key="tab-robots" data-view="robots" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Robots">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Robots</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-templates" data-key="tab-templates" data-view="templates" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Templates">
+<ha-icon icon="mdi:content-copy" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Templates</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-history" data-key="tab-history" data-view="history" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="History">
+<ha-icon icon="mdi:history" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">History</span>
+</button>
+<button type="button" class="voc-tab" role="tab" id="voc-tab-settings" data-key="tab-settings" data-view="settings" aria-controls="voc-panel" aria-selected="false" tabindex="-1" title="Settings">
+<ha-icon icon="mdi:cog-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-tab-label">Settings</span>
+</button>
+</div>
+<span class="voc-primary-slot" aria-hidden="true">
+</span>
+</div>
+<div class="voc-body" id="voc-panel" data-body="view:setup" data-scroll="" role="tabpanel" aria-labelledby="voc-tab-setup" tabindex="0">
+<div class="voc-view voc-setup" data-key="view:setup">
+<p class="voc-setup-lead" data-key="lead">Vacuum Orchestrator has taken over your robots and areas. Check each step; none of them is mandatory. Rooms stay locked until you release them.</p>
+<ol class="voc-setup-steps">
+<li class="voc-setup-step" data-key="step:robots" data-current="true" aria-current="step">
+<span class="voc-setup-marker" aria-hidden="true">
+<span>1</span>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">Robots</h3>
+<span class="voc-setup-summary">
+<span>Rocky</span>
+</span>
+</div>
+<div class="voc-setup-body">
+<p class="voc-setup-text">Add further robots here or later in the robot view.</p>
+</div>
+</div>
+</li>
+<li class="voc-setup-step" data-key="step:rooms" data-current="false">
+<span class="voc-setup-marker" aria-hidden="true">
+<span>2</span>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;rooms&quot;}" aria-expanded="false">Rooms and reach</button>
+</h3>
+<span class="voc-setup-summary">
+<span>3 of 4 rooms reachable</span>
+</span>
+</div>
+</div>
+</li>
+<li class="voc-setup-step" data-key="step:defaults" data-current="false">
+<span class="voc-setup-marker" aria-hidden="true">
+<span>3</span>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;defaults&quot;}" aria-expanded="false">Default cleaning</button>
+</h3>
+<span class="voc-setup-summary">
+<span class="voc-setup-mark" data-tone="default">Built-in defaults</span>
+</span>
+</div>
+</div>
+</li>
+<li class="voc-setup-step" data-key="step:queue" data-current="false">
+<span class="voc-setup-marker" aria-hidden="true">
+<span>4</span>
+</span>
+<div class="voc-setup-main">
+<div class="voc-setup-head">
+<h3 class="voc-setup-title">
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;queue&quot;}" aria-expanded="false">Queue</button>
+</h3>
+<span class="voc-setup-summary">
+<span>Wait time: 15 min · start delay: 5 s</span>
+</span>
+</div>
+</div>
+</li>
+</ol>
+<div class="voc-inline-actions" data-key="finish">
+<button type="button" class="voc-button voc-button--primary" data-action="complete-setup">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Done</span>
+</button>
+</div>
+</div>
+</div>
+<div class="voc-live-region" aria-live="polite" aria-atomic="true">
+</div>
+</div>

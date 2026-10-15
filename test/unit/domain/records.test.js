@@ -3,22 +3,21 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const W = require("../../fixtures/voi/wire.js");
+const W = require("../../helpers/voi-records.js");
 
 test("a template keeps its intent, switches and the rooms its current due period used", async () => {
   const { normalizeTemplate } = await import("../../../src/domain/templates.js");
-  const template = normalizeTemplate(W.wireTemplate({ automatic: true, suppressed_room_ids: ["room-kitchen"], intent: { areas: ["room-kitchen"], mode: "vac_and_mop", passes: 12, settings_policy: "odd", mop_route: "deep" } }));
+  const template = normalizeTemplate(W.wireTemplate({ automatic: true, suppressed_room_ids: ["room-studio"], intent: { areas: ["room-studio"], mode: "vac_and_mop", passes: 12, settings_policy: "odd", mop_route: "deep" } }));
   assert.equal(template.automatic, true);
-  assert.deepEqual(template.suppressedRoomIds, ["room-kitchen"]);
+  assert.deepEqual(template.suppressedRoomIds, ["room-studio"]);
   assert.equal(template.intent.mode, "vacuum_and_mop");
   assert.equal(template.intent.passes, 1, "an out-of-range pass count reads as one pass");
   assert.equal(template.intent.settingsPolicy, "best_effort");
   assert.equal(template.intent.mopRoute, "deep");
   assert.equal(normalizeTemplate(W.wireTemplate({ intent: { areas: [], mode: "vacuum" } })), null);
-  for (const areas of ["all", ["all"]]) {
-    const all = normalizeTemplate(W.wireTemplate({ intent: { areas, mode: "vacuum" } })).intent;
-    assert.deepEqual([all.allRooms, [...all.areas]], [true, []], JSON.stringify(areas));
-  }
+  const all = normalizeTemplate(W.wireTemplate({ intent: { areas: [], all_rooms: true, mode: "vacuum" } })).intent;
+  assert.deepEqual([all.allRooms, [...all.areas]], [true, []]);
+  assert.equal(normalizeTemplate(W.wireTemplate({ intent: { areas: "all", mode: "vacuum" } })), null, "rooms are a list; all rooms is a choice of its own");
   assert.equal(template.intent.allRooms, false);
   assert.equal(normalizeTemplate(W.wireTemplate({ template_id: "" })), null);
   assert.equal(normalizeTemplate(W.wireTemplate({ enabled: undefined })).enabled, true);
@@ -58,14 +57,14 @@ test("trace records keep their event and known details; unknown events stay", as
   const page = normalizeTracePage(W.wireTracePage([W.wireTraceRecord({ event: "teleport", robot_id: "rocky", custom: 1 }), { event: "x" }], { trace_sequence: 9 }));
   assert.equal(page.records.length, 1);
   assert.equal(page.records[0].event, "teleport");
-  assert.deepEqual({ ...page.records[0].details }, { job_id: "job-1", robot_id: "rocky", state: "queued" });
+  assert.deepEqual({ ...page.records[0].details }, { robot_id: "rocky", stage: "committed" }, "the recorded storage record's stage and the given robot");
   assert.equal(page.traceSequence, 9);
 });
 
 test("the diagnostics summary reads versions, runtime and the trace window", async () => {
   const { normalizeDiagnosticsSummary } = await import("../../../src/domain/trace.js");
   const summary = normalizeDiagnosticsSummary(W.wireDiagnostics());
-  assert.equal(summary.apiVersion, 3);
+  assert.equal(summary.apiVersion, 4);
   assert.equal(typeof summary.runtimeId, "string");
   assert.ok(Number.isFinite(summary.traceWindow.retained));
   const empty = normalizeDiagnosticsSummary({});

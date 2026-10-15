@@ -1,8 +1,8 @@
-// The Vacuum Orchestrator API V3 surface the card uses: WebSocket message builders, the
+// The Vacuum Orchestrator API 4 surface the card uses: WebSocket message builders, the
 // operation catalog and structural response guards. Guards check the envelope a normalizer
 // relies on; additional fields always pass. See internal dev doc §6 "Protokoll".
 
-export const SUPPORTED_API_VERSIONS = Object.freeze([3]);
+export const SUPPORTED_API_VERSIONS = Object.freeze([4]);
 
 export const WS = Object.freeze({
   QUEUE_GET: "vacuum_orchestrator/queue/get",
@@ -18,7 +18,7 @@ export const WS = Object.freeze({
 
 // Job and queue commands travel as Home Assistant actions; `response` marks the ones that
 // return a payload (`SupportsResponse.OPTIONAL`). Asking any other action for a response fails.
-export const ACTIONS = Object.freeze(["create_job", "update_job", "delete_job", "move_job", "start_job", "cancel_job", "retry_job", "run_queue", "pause_queue", "resume_queue", "end_queue", "return_robot"]);
+export const ACTIONS = Object.freeze(["create_job", "update_job", "delete_job", "move_job", "start_job", "cancel_job", "retry_job", "correct_job", "run_queue", "pause_queue", "resume_queue", "end_queue", "return_robot"]);
 
 // Configuration commands and queries share the action schemas and travel over the integration's
 // own WebSocket types, which report stable error codes.
@@ -29,11 +29,10 @@ export const CONFIGURATION_COMMANDS = Object.freeze([
   "update_room",
   "disable_room",
   "enable_room",
-  "release_room",
-  "revoke_room",
   "add_robot",
   "configure_robot",
   "remove_robot",
+  "rename_robot",
   "resolve_recovery",
   "save_template",
   "save_job_as_template",
@@ -42,7 +41,13 @@ export const CONFIGURATION_COMMANDS = Object.freeze([
   "reset_template_demand",
 ]);
 
+// Commands only cards send: the integration registers no action for them, so they are offered
+// whenever it is loaded.
+export const CARD_COMMANDS = Object.freeze(["complete_setup", "hold_job", "renew_job_hold", "release_job_hold", "release_rooms", "revoke_rooms"]);
+
 export const CONFIGURATION_QUERIES = Object.freeze([
+  "validate",
+  "get_setup",
   "get_rooms",
   "get_room",
   "get_robots",
@@ -56,8 +61,9 @@ export const CONFIGURATION_QUERIES = Object.freeze([
 ]);
 
 // Every operation name the card may use. Their presence as registered actions under
-// `hass.services.vacuum_orchestrator` is the integration's own statement of what it offers.
-export const OPERATIONS = Object.freeze([...ACTIONS, ...CONFIGURATION_COMMANDS, ...CONFIGURATION_QUERIES, "get_queue", "get_job"]);
+// `hass.services.vacuum_orchestrator` is the integration's own statement of what it offers;
+// card commands are not actions.
+export const OPERATIONS = Object.freeze([...ACTIONS, ...CONFIGURATION_COMMANDS, ...CARD_COMMANDS, ...CONFIGURATION_QUERIES, "get_queue", "get_job"]);
 
 export const PAGE_LIMIT = 100;
 
@@ -86,7 +92,7 @@ export const messages = Object.freeze({
     return Object.freeze({ type: WS.CONFIGURATION_GET, query, parameters: { ...parameters } });
   },
   command: (command, parameters = {}) => {
-    if (!CONFIGURATION_COMMANDS.includes(command)) throw new TypeError(`unknown command ${command}`);
+    if (!CONFIGURATION_COMMANDS.includes(command) && !CARD_COMMANDS.includes(command)) throw new TypeError(`unknown command ${command}`);
     return Object.freeze({ type: WS.CONFIGURATION_COMMAND, command, parameters: { ...parameters } });
   },
   manifest: () => Object.freeze({ type: WS.MANIFEST_GET, integration: "vacuum_orchestrator" }),
@@ -127,6 +133,7 @@ export const guards = Object.freeze({
   execution: (value) => isObject(value) && typeof value.job_id === "string" && Array.isArray(value.robots) && Array.isArray(value.attempts),
   diagnostics: (value) => isObject(value) && isObject(value.trace_window),
   preview: (value) => isObject(value) && isObject(value.settings) && Array.isArray(value.robots) && typeof value.startable_now === "boolean",
+  setup: (value) => isObject(value) && typeof value.assistant_pending === "boolean" && isObject(value.steps),
   event: (value) => isObject(value) && value.loaded === true && typeof value.runtime_id === "string" && isCount(value.runtime_sequence) && isCount(value.commit_id),
   unloadedEvent: (value) => isObject(value) && value.loaded === false,
   manifest: (value) => isObject(value) && value.domain === "vacuum_orchestrator",

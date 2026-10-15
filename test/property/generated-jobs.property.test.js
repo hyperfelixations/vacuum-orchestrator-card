@@ -1,12 +1,12 @@
 // Generated event sequences against the session: commits, readiness changes, repeated and
 // out-of-order sequences, runtime changes and reloads announced by an unload. The session ends
-// ready on the newest accepted event of the current runtime and reloads demanded scopes at least
-// once after any accepted event.
+// ready on the newest accepted event of the current runtime and reloads a demanded scope at least
+// once after any accepted event that names it.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const W = require("../fixtures/voi/wire.js");
-const { VirtualClock } = require("../helpers/fake-orchestrator.js");
+const W = require("../helpers/voi-records.js");
+const { VirtualClock } = require("../helpers/virtual-clock.js");
 const { seededRandom } = require("./seeded-random.js");
 const { propertyRun } = require("./run-config.js");
 
@@ -60,13 +60,13 @@ test("the session follows the newest event of the current runtime", async () => 
         runtime = `runtime-${step + 2}`;
         sequence = 1;
       } else if (kind <= 2 && sequence > 0) {
-        deliver(W.wireSubscriptionEvent({ runtime_id: runtime, runtime_sequence: Math.max(0, sequence - random.integer(3)), commit_id: commit }));
+        deliver(W.wireSubscriptionEvent({ runtime_id: runtime, runtime_sequence: Math.max(0, sequence - random.integer(3)), commit_id: commit, changed: ["rooms"] }));
         continue;
       } else {
         sequence += 1;
         if (random.boolean()) commit += 1;
       }
-      deliver(W.wireSubscriptionEvent({ runtime_id: runtime, runtime_sequence: sequence, commit_id: commit }));
+      deliver(W.wireSubscriptionEvent({ runtime_id: runtime, runtime_sequence: sequence, commit_id: commit, changed: ["rooms"] }));
       expected = { id: runtime, sequence, commitId: commit };
       clock.advance(random.integer(QUIET_MS * 2));
       await tick();

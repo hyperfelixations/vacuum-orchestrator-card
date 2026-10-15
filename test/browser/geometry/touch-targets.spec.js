@@ -4,27 +4,34 @@
 // targets 8 px apart under a coarse pointer.
 
 const { test, expect } = require("../../helpers/playwright.js");
-const { mountCard, setCardWidth } = require("../../helpers/browser-helpers.js");
+const { BUSY, mountCard, named, setCardWidth } = require("../../helpers/browser-helpers.js");
 
-// Boxes of the row, its main button and its action buttons in card coordinates.
-async function rowGeometry(card, jobId) {
-  return card.evaluate((element, key) => {
-    const row = element.shadowRoot.querySelector(`[data-key="job:${key}"]`);
+// Dusty vacuums the dining room while a studio job waits that Rocky could start: a waiting row
+// with every row action and a running row.
+const TWO_ROBOTS = Object.freeze({ recording: "robot_choice", from: "Rocky could start the studio while Dusty cleans" });
+const WAITING = "Studio";
+const RUNNING = "Dining Room";
+
+// Boxes of the row shown under `name`, its main button and its action buttons in card
+// coordinates.
+async function rowGeometry(card, name) {
+  return card.evaluate((element, title) => {
+    const row = [...element.shadowRoot.querySelectorAll(".voc-job")].find((node) => node.querySelector(".voc-job-title")?.textContent.trim() === title);
     const box = (node) => {
       const rect = node.getBoundingClientRect();
       return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
     };
     return { row: box(row), main: box(row.querySelector(".voc-job-main")), actions: [...row.querySelectorAll(".voc-job-actions .voc-button")].map(box) };
-  }, jobId);
+  }, name);
 }
 
 const gaps = (boxes) => boxes.slice(1).map((box, index) => box.left - boxes[index].right);
 
 test.describe("with a mouse", () => {
   test("wide rows keep their actions inline, 36 px each and set apart", async ({ page }) => {
-    const card = await mountCard(page, { width: 900 });
+    const card = await mountCard(page, { ...TWO_ROBOTS, width: 900 });
     expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(false);
-    const { main, actions } = await rowGeometry(card, "job-kitchen");
+    const { main, actions } = await rowGeometry(card, WAITING);
     expect(actions).toHaveLength(4);
     for (const action of actions) {
       expect(action.width).toBeGreaterThanOrEqual(36);
@@ -40,10 +47,10 @@ test.describe("with a mouse", () => {
   // cancel button of the running row, on wide and on narrow cards.
   for (const width of [900, 380]) {
     test(`start and cancel share the trailing slot at ${width} px`, async ({ page }) => {
-      const card = await mountCard(page, { width });
-      const start = card.locator('[data-key="job:job-kitchen"] .voc-job-actions .voc-button').last();
+      const card = await mountCard(page, { ...TWO_ROBOTS, width });
+      const start = named(card, ".voc-job", WAITING, ".voc-job-actions .voc-button").last();
       await expect(start).toHaveAttribute("data-action", "start-job");
-      const cancel = card.locator('[data-key="job:job-running"] .voc-job-actions .voc-button').last();
+      const cancel = named(card, ".voc-job", RUNNING, ".voc-job-actions .voc-button").last();
       await expect(cancel).toHaveAttribute("data-action", "cancel-job");
       const [a, b] = [await start.boundingBox(), await cancel.boundingBox()];
       expect(Math.abs((a.x + a.width) - (b.x + b.width))).toBeLessThanOrEqual(1);
@@ -51,8 +58,8 @@ test.describe("with a mouse", () => {
   }
 
   test("narrow rows spread several actions over the row and keep a single one beside the title", async ({ page }) => {
-    const card = await mountCard(page, { width: 380 });
-    const waiting = await rowGeometry(card, "job-kitchen");
+    const card = await mountCard(page, { ...TWO_ROBOTS, width: 380 });
+    const waiting = await rowGeometry(card, WAITING);
     expect(waiting.actions).toHaveLength(4);
     const span = waiting.actions.at(-1).right - waiting.actions[0].left;
     expect(span / waiting.row.width).toBeGreaterThan(0.9);
@@ -63,7 +70,7 @@ test.describe("with a mouse", () => {
     expect(Math.min(...gaps(waiting.actions))).toBeGreaterThanOrEqual(8);
     const widths = waiting.actions.map((action) => action.width);
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
-    const running = await rowGeometry(card, "job-running");
+    const running = await rowGeometry(card, RUNNING);
     expect(running.actions).toHaveLength(1);
     expect(running.actions[0].top).toBeLessThan(running.main.bottom);
     expect(running.actions[0].width).toBeGreaterThanOrEqual(40);
@@ -71,7 +78,7 @@ test.describe("with a mouse", () => {
 
   // Release and lock toggle in one place: cards side by side put their action rows on one line.
   test("room cards side by side keep their actions on one line", async ({ page }) => {
-    const card = await mountCard(page, { width: 680, config: { start_view: "rooms" } });
+    const card = await mountCard(page, { ...BUSY, width: 680, config: { start_view: "rooms" } });
     const bottoms = await card.evaluate((element) => [...element.shadowRoot.querySelectorAll(".voc-room")].map((room) => ({
       top: room.getBoundingClientRect().top,
       toggle: room.querySelector(".voc-room-toggle").getBoundingClientRect().bottom,
@@ -86,11 +93,11 @@ test.describe("with a mouse", () => {
   // The bar belongs to the narrow tier: it switches exactly where the primary action drops its
   // label. A single view has no tab strip, so only the tier can hide that label.
   test("the bar switches with the narrow tier", async ({ page }) => {
-    const card = await mountCard(page, { width: 600, config: { views: ["queue"] } });
+    const card = await mountCard(page, { ...TWO_ROBOTS, width: 600, config: { views: ["queue"] } });
     const seen = new Set();
     for (const width of [600, 563, 562, 561, 560, 559, 520]) {
       await setCardWidth(page, width);
-      const { main, actions } = await rowGeometry(card, "job-kitchen");
+      const { main, actions } = await rowGeometry(card, WAITING);
       const bar = actions[0].top >= main.bottom - 1;
       const narrowTier = await card.locator(".voc-primary-action .voc-button-label").evaluate((node) => node.getBoundingClientRect().width <= 1);
       expect(bar, `at ${width}px`).toBe(narrowTier);
@@ -104,15 +111,15 @@ test.describe("with touch", () => {
   test.use({ hasTouch: true });
 
   test("every action and control is at least 44 px", async ({ page }) => {
-    const card = await mountCard(page, { width: 380 });
+    const card = await mountCard(page, { ...TWO_ROBOTS, width: 380 });
     expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches), "the engine emulates a coarse pointer").toBe(true);
-    for (const jobId of ["job-kitchen", "job-running"]) {
-      const { actions } = await rowGeometry(card, jobId);
+    for (const name of [WAITING, RUNNING]) {
+      const { actions } = await rowGeometry(card, name);
       for (const action of actions) {
-        expect(action.width, jobId).toBeGreaterThanOrEqual(44);
-        expect(action.height, jobId).toBeGreaterThanOrEqual(44);
+        expect(action.width, name).toBeGreaterThanOrEqual(44);
+        expect(action.height, name).toBeGreaterThanOrEqual(44);
       }
-      if (actions.length > 1) expect(Math.min(...gaps(actions)), jobId).toBeGreaterThanOrEqual(8);
+      if (actions.length > 1) expect(Math.min(...gaps(actions)), name).toBeGreaterThanOrEqual(8);
     }
     const shell = await card.evaluate((element) => [...element.shadowRoot.querySelectorAll(".voc-tab, .voc-primary-action, .voc-queue-control, .voc-queue-end")].map((node) => {
       const rect = node.getBoundingClientRect();

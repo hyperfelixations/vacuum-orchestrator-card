@@ -4,7 +4,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const W = require("../../fixtures/voi/wire.js");
+const W = require("../../helpers/voi-records.js");
 
 async function load(configuration = {}) {
   const draftModule = await import("../../../src/domain/robot-draft.js");
@@ -28,7 +28,7 @@ test("an unchanged draft gives back the stored definition", async () => {
   assert.equal(validateRobotDraft(draft).valid, true);
   assert.equal(validateRobotDraft(draft).dirty, false);
   const configuration = JSON.parse(JSON.stringify(robotDraftToConfiguration(draft)));
-  assert.deepEqual(configuration, { ...JSON.parse(JSON.stringify(robot.configuration.wire)), physical_robot_id: null });
+  assert.deepEqual(configuration, JSON.parse(JSON.stringify(robot.configuration.wire)));
 });
 
 test("edited fields replace their stored values; automatic roles leave the role map", async () => {
@@ -48,7 +48,9 @@ test("edited fields replace their stored values; automatic roles leave the role 
   assert.equal(configuration.minimum_battery, null);
   assert.deepEqual(configuration.mode_options, { mop: "Mop" });
   assert.equal(configuration.start_timeout_seconds, 300);
-  assert.equal(configuration.robot_registry_id, "reg-vacuum-rocky", "identity fields travel unchanged");
+  assert.equal(configuration.robot_registry_id, robot.configuration.wire.robot_registry_id, "identity fields travel unchanged");
+  assert.equal(configuration.target_areas, null, "no area restriction stays none");
+  assert.deepEqual(robotDraftToConfiguration(updateRobotDraft(draft, "targetAreas", ["dining_room"])).target_areas, ["dining_room"]);
 });
 
 test("validation mirrors the profile schema", async () => {

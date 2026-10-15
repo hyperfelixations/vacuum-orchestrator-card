@@ -117,9 +117,11 @@ export function robotDraftToConfiguration(draft) {
   configuration.fixed_mode = draft.fixedMode;
   configuration.preference = Number(draft.preference);
   configuration.minimum_battery = draft.minimumBattery === null || draft.minimumBattery === "" ? null : Number(draft.minimumBattery);
-  configuration.target_areas = [...draft.targetAreas];
+  // No area means no restriction, which the integration stores as null.
+  configuration.target_areas = draft.targetAreas.length ? [...draft.targetAreas] : null;
   configuration.protocol = draft.protocol;
-  configuration.physical_robot_id = draft.physicalRobotId ? String(draft.physicalRobotId).trim() : null;
+  if (draft.physicalRobotId) configuration.physical_robot_id = String(draft.physicalRobotId).trim();
+  else delete configuration.physical_robot_id;
   const roles = {};
   for (const [role, entry] of Object.entries(draft.roles)) {
     if (entry.mode === "off") roles[role] = null;

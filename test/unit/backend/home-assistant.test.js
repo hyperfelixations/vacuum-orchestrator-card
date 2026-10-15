@@ -1,5 +1,5 @@
 // What the card reads from Home Assistant's frontend object, and nothing more: states, areas,
-// the admin flag, the integration's registered actions and Home Assistant's state formatter.
+// the admin flag, the operations the integration offers and Home Assistant's state formatter.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -11,7 +11,7 @@ test("the facts are taken from the hass object without copying its state objects
   const states = { "vacuum.rocky": { state: "docked" } };
   const hass = {
     states,
-    areas: { kitchen: { name: "Kitchen" } },
+    areas: { library: { name: "Library" } },
     user: { is_admin: false },
     services: { vacuum_orchestrator: { run_queue: {}, create_job: {} }, light: { turn_on: {} } },
     formatEntityState: (state) => `formatted ${state.state}`,
@@ -29,4 +29,12 @@ test("missing parts read as unknown, not as permissions or offers", async () => 
   const home = readHomeAssistant(null);
   assert.deepEqual({ ...home }, { states: null, areas: null, admin: null, operations: [], formatState: null });
   assert.equal(readHomeAssistant({ user: {} }).admin, null);
+});
+
+test("while the integration is loaded its card commands are offered beside its registered actions", async () => {
+  const { readHomeAssistant } = await load();
+  const services = { vacuum_orchestrator: { run_queue: {} } };
+  const loaded = readHomeAssistant({ services, config: { components: ["vacuum_orchestrator"] } });
+  assert.deepEqual(loaded.operations, ["complete_setup", "hold_job", "release_job_hold", "release_rooms", "renew_job_hold", "revoke_rooms", "run_queue"]);
+  assert.deepEqual(readHomeAssistant({ services, config: { components: [] } }).operations, ["run_queue"]);
 });

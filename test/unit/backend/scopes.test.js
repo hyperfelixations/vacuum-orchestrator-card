@@ -3,7 +3,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const W = require("../../fixtures/voi/wire.js");
+const W = require("../../helpers/voi-records.js");
+const { recordedAnswer } = require("../../helpers/recordings.js");
 
 const load = () => import("../../../src/backend/scopes.js");
 
@@ -27,19 +28,19 @@ test("the queue loader normalizes the page and records the API version", async (
   const transport = scripted(() => W.wireQueuePage([W.wireJob({ position: 1 })], { mode: "running", total: 1, integration_version: "0.1.0", active_count: 2, attention_count: 1 }));
   const result = await loadQueue(transport, { offset: 0, limit: 25 });
   assert.equal(result.ok, true);
-  assert.equal(result.data.apiVersion, 3);
+  assert.equal(result.data.apiVersion, 4);
   assert.equal(result.data.mode, "running");
   assert.deepEqual([result.data.integrationVersion, result.data.activeCount, result.data.attentionCount], ["0.1.0", 2, 1]);
-  assert.equal(result.data.jobs[0].jobId, "job-1");
+  assert.equal(result.data.jobs[0].jobId, W.wireJob().job_id);
   assert.deepEqual(transport.sent, [{ type: "vacuum_orchestrator/queue/get", offset: 0, limit: 25 }]);
   assert.ok(Object.isFrozen(result.data));
 });
 
 test("a queue in another API version or with a broken envelope is refused", async () => {
   const { loadQueue } = await load();
-  const newer = await loadQueue(scripted(() => W.wireQueuePage([], { api_version: 4 })));
-  assert.equal(newer.code, "api_incompatible");
-  assert.equal(newer.detail, "4");
+  const older = await loadQueue(scripted(() => W.wireQueuePage([], { api_version: 3 })));
+  assert.equal(older.code, "api_incompatible");
+  assert.equal(older.detail, "3");
   const broken = await loadQueue(scripted(() => ({ jobs: [] })));
   assert.equal(broken.code, "invalid_response");
   assert.equal(broken.detail, "queue/get");
@@ -139,7 +140,7 @@ test("history, trace, execution and diagnostics use their configuration queries"
   assert.equal((await loadRuns(transport, { offset: 0, limit: 10 })).data.runs.length, 1);
   assert.equal((await loadTrace(transport, { jobId: "job-1" })).data.records.length, 1);
   assert.equal((await loadExecution(transport, { jobId: "job-1" })).ok, true);
-  assert.equal((await loadDiagnostics(transport)).data.apiVersion, 3);
+  assert.equal((await loadDiagnostics(transport)).data.apiVersion, 4);
   assert.deepEqual(transport.sent.map((message) => [message.query, message.parameters]), [
     ["get_history", { offset: 0, limit: 10 }],
     ["get_trace", { offset: 0, limit: 100, job_id: "job-1" }],
@@ -180,22 +181,25 @@ test("the integration's error texts load in one language and are keyed by code",
 test("every read carries the view it was read at; a collection the oldest of its pages", async () => {
   const { loadQueue, loadRooms } = await load();
   const meta = (sequence, commit, runtime = "runtime-1") => ({ commit_id: commit, runtime_id: runtime, runtime_sequence: sequence });
-  const queue = await loadQueue(scripted(() => ({ ...W.wireQueuePage([]), ...meta(4, 7) })));
-  assert.deepEqual({ ...queue.view }, { runtimeId: "runtime-1", sequence: 4, commitId: 7 });
+  const queue = await loadQueue(scripted(() => ({ ...W.wireQueuePage([]), ...meta(4, 7), server_time: "2026-03-14T09:26:53.589793+00:00" })));
+  assert.deepEqual({ ...queue.view }, { runtimeId: "runtime-1", sequence: 4, commitId: 7, serverTime: Date.UTC(2026, 2, 14, 9, 26, 53, 589) });
   assert.ok(Object.isFrozen(queue.view));
   const all = rooms(150);
   const paged = (metaFor) => scripted((message) => {
     const { offset, limit } = message.parameters;
     return { ...W.wirePage("rooms", all.slice(offset, offset + limit), { total: all.length, offset, limit }), ...metaFor(offset) };
   });
-  assert.deepEqual({ ...(await loadRooms(paged((offset) => (offset ? meta(6, 9) : meta(5, 8))))).view }, { runtimeId: "runtime-1", sequence: 5, commitId: 8 });
+  const at = (second) => `2026-03-14T09:26:${second}.000000+00:00`;
+  const view = (await loadRooms(paged((offset) => (offset ? { ...meta(6, 9), server_time: at(54) } : { ...meta(5, 8), server_time: at(53) })))).view;
+  assert.deepEqual({ ...view }, { runtimeId: "runtime-1", sequence: 5, commitId: 8, serverTime: Date.UTC(2026, 2, 14, 9, 26, 54) }, "the integration's clock is the newest it reported");
   assert.equal((await loadRooms(paged((offset) => meta(5, 8, offset ? "runtime-2" : "runtime-1")))).view, null, "pages of two runtimes are no view");
-  assert.equal((await loadQueue(scripted(() => W.wireQueuePage([])))).view, null, "a read without metadata has no view");
+  const { runtime_id: _runtime, runtime_sequence: _sequence, ...bare } = W.wireQueuePage([]);
+  assert.equal((await loadQueue(scripted(() => bare))).view, null, "a read without metadata has no view");
 });
 
 test("each integration view names the scopes that read it; volatile scopes follow every event", async () => {
   const { SCOPES, VIEW_SCOPES, VOLATILE_SCOPES, scopesForChanges } = await load();
-  assert.deepEqual(Object.keys(VIEW_SCOPES).sort(), ["jobs", "queue", "robots", "rooms", "templates"]);
+  assert.deepEqual(Object.keys(VIEW_SCOPES).sort(), ["jobs", "queue", "robots", "rooms", "setup", "templates"]);
   for (const names of [...Object.values(VIEW_SCOPES), VOLATILE_SCOPES]) for (const name of names) assert.ok(SCOPES.includes(name), name);
   assert.deepEqual([...scopesForChanges(["rooms"])].sort(), ["diagnostics", "execution", "preview", "rooms", "trace"]);
   assert.deepEqual([...scopesForChanges(["queue"])].sort(), ["diagnostics", "execution", "job", "preview", "queue", "trace"]);
@@ -206,5 +210,18 @@ test("each integration view names the scopes that read it; volatile scopes follo
 
 test("every scope the session can demand has a loader", async () => {
   const { SCOPES } = await load();
-  assert.deepEqual([...SCOPES].sort(), ["candidates", "diagnostics", "errorTexts", "execution", "job", "jobLog", "manifest", "openJobs", "preview", "queue", "registry", "robots", "rooms", "runs", "templates", "trace"]);
+  assert.deepEqual([...SCOPES].sort(), ["candidates", "diagnostics", "errorTexts", "execution", "job", "jobLog", "manifest", "openJobs", "preview", "queue", "registry", "robots", "rooms", "runs", "setup", "templates", "trace"]);
+});
+
+test("the setup status loads through its query and keeps the integration's facts", async () => {
+  const { loadSetup } = await load();
+  const transport = scripted(() => recordedAnswer("setup", { type: "vacuum_orchestrator/configuration/get", query: "get_setup" }));
+  const result = await loadSetup(transport);
+  assert.deepEqual(transport.sent, [{ type: "vacuum_orchestrator/configuration/get", query: "get_setup", parameters: {} }]);
+  assert.equal(result.data.assistantPending, true);
+  assert.equal(result.data.completedAt, null);
+  assert.equal(result.data.steps.rooms.unreachableRoomIds.length, 1);
+  assert.deepEqual([result.data.steps.defaults.configured, result.data.steps.queue.graceSeconds, result.data.steps.queue.startDelaySeconds], [false, 900, 5]);
+  assert.equal(result.view.commitId, 1);
+  assert.equal((await loadSetup(scripted(() => ({ assistant_pending: "yes", steps: {} })))).code, "invalid_response");
 });

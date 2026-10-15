@@ -4,7 +4,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const W = require("../fixtures/voi/wire.js");
+const W = require("../helpers/voi-records.js");
 const { checkGenerated } = require("./check.js");
 const { propertyRun } = require("./run-config.js");
 

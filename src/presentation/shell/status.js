@@ -1,6 +1,6 @@
 // The card's overall status, read once and shared by tone, pill, subtitle and panel so they
 // can never disagree. Precedence: connection phase, then attention, then work in progress,
-// then the queue mode, then an unfinished setup. See internal dev doc §8 "Status und Ton".
+// then the queue mode, then a pending setup assistant. See internal dev doc §8 "Status und Ton".
 
 import { slotData, list } from "../common/lookups.js";
 
@@ -28,7 +28,7 @@ export function cardStatus(model = {}) {
   if (mode === "running") return "running";
   if (mode === "paused") return "paused";
   if (!queue) return "connecting";
-  if (model.setup?.known && !model.setup.complete) return "setup";
+  if (model.setup?.assistantPending) return "setup";
   return "idle";
 }
 

@@ -3,12 +3,11 @@
 // The router decides nothing about domain rules: the integration answers every command, and a
 // refusal becomes this card's notice. See internal dev doc §9 "Aktionsvertrag".
 
-import { CREATE_TARGET, QUEUE_TARGET, jobTarget, robotTarget, roomTarget, templateTarget } from "../../domain/affordances.js";
+import { CREATE_TARGET, QUEUE_TARGET, SETUP_TARGET, jobTarget, robotTarget, roomTarget, templateTarget, queueControl } from "../../domain/affordances.js";
 import { applyDraftChange, createDraft, draftToIntent, draftToTemplate, draftToUpdatePatch, toggleRoom, validateDraft } from "../../domain/job-draft.js";
 import { createRoomDraft, newBinding, newRequirement, roomDraftToPatch, updateRoomDraft, validateRoomDraft } from "../../domain/room-draft.js";
 import { createRobotDraft, robotDraftToConfiguration, updateRobotDraft, validateRobotDraft } from "../../domain/robot-draft.js";
 import { AFTER_CANCEL_CHOICES, GRACE_MAX_MINUTES, queueEndChoices } from "../../presentation/overlays/dialogs.js";
-import { shownSettings } from "../../presentation/overlays/job-editor.js";
 import { jobTitle, roomIndex } from "../../presentation/common/lookups.js";
 import { PASS_MAX, PASS_MIN, SETTING_FIELDS, SETTING_WIRE_NAMES, canonicalizeMode, isSettingValue, isSettingsPolicy } from "../../domain/job-schema.js";
 
@@ -114,9 +113,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       return;
     }
     const { kind, id } = overlay.draft.meta;
-    // A new draft is saved with the rungs the editor shows as chosen.
-    let draft = overlay.draft;
-    if (!id) for (const [field, value] of Object.entries(shownSettings(draft, getModel()?.slots?.preview?.data ?? null))) draft = applyDraftChange(draft, field, value);
+    const draft = overlay.draft;
     if (kind === "template") {
       await run("save_template", draftToTemplate(draft), { target: id ? templateTarget(id) : CREATE_TARGET, invalidates: ["templates"], closeOverlay: true, success: { key: "notice.templateSaved" } });
     } else if (id) {
@@ -166,6 +163,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     choose: ({ key, value }) => ui.choose(key, value),
     "show-view": ({ view }) => ui.setView(view),
     "open-setup": () => ui.openOverlay({ kind: "setup-guide" }),
+    "complete-setup": () => run("complete_setup", {}, { target: SETUP_TARGET, invalidates: ["setup"], closeOverlay: ui.overlay?.kind === "setup-guide" }),
     page: ({ scope, direction }) => {
       const model = getModel();
       const data = model?.slots?.[scope]?.data;
@@ -175,9 +173,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     },
 
     "queue-control": () => {
-      const mode = getModel()?.slots?.queue?.data?.mode ?? "idle";
-      const command = mode === "running" ? "pause_queue" : mode === "paused" ? "resume_queue" : "run_queue";
-      return run(command, {}, { target: QUEUE_TARGET, invalidates: ["queue", "openJobs"] });
+      const control = queueControl(getModel()?.slots?.queue?.data?.actions);
+      return control ? run(control.operation, {}, { target: QUEUE_TARGET, invalidates: ["queue", "openJobs"] }) : null;
     },
     "open-job": ({ jobId }) => ui.openOverlay({ kind: "job-detail", jobId }),
     "create-job": ({ roomIds = null } = {}) => ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "job", defaults: roomIds ? { roomIds } : {}, jobDefaults: jobDefaults() }) }),
@@ -319,7 +316,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     "reset-template-demand": ({ templateId }) => run("reset_template_demand", { template_id: templateId }, { target: templateTarget(templateId), invalidates: ["templates"], success: { key: "notice.templateDemandReset" } }),
     "open-release": ({ roomId }) => ui.openOverlay({ kind: "release", roomId, releaseKind: "queue_run", hours: 2, minutes: 0 }),
     "release-room": ({ roomId }) => releaseRoom(roomId, ui.overlay?.kind === "release" ? ui.overlay : null),
-    "revoke-room": ({ roomId, close = false }) => run("revoke_room", { room_id: roomId }, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: close, success: { key: "notice.roomLocked" } }),
+    "revoke-room": ({ roomId, close = false }) => run("revoke_rooms", { rooms: [roomId] }, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: close, success: { key: "notice.roomLocked" } }),
     "edit-room": ({ roomId }) => {
       const room = findRoom(roomId);
       if (room) ui.openOverlay({ kind: "room-editor", draft: createRoomDraft(room) });
@@ -359,7 +356,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       return run("create_room", parameters, { target: CREATE_TARGET, invalidates: ROOM_SCOPES, closeOverlay: true, success: { key: "notice.roomCreated" } });
     },
     "add-robot": () => ui.openOverlay({ kind: "robot-add" }),
-    "add-candidate": ({ entityId }) => run("add_robot", { configuration: { robot_entity_id: entityId } }, { target: CREATE_TARGET, invalidates: ROBOT_SCOPES, closeOverlay: ui.overlay?.kind === "robot-add", success: { key: "notice.robotAdded" } }),
+    "add-candidate": ({ entityId }) => run("add_robot", { entity_id: entityId }, { target: CREATE_TARGET, invalidates: ROBOT_SCOPES, closeOverlay: ui.overlay?.kind === "robot-add", success: { key: "notice.robotAdded" } }),
     "edit-robot": ({ robotId }) => {
       const robot = findIn(getModel(), "robots", "robotId", robotId);
       const live = getModel()?.robotsLive?.[robotId]?.roles || {};
@@ -421,16 +418,16 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
 
   function releaseRoom(roomId, overlay) {
     const kind = overlay?.releaseKind || "queue_run";
-    const parameters = { room_id: roomId, kind };
+    const grant = { room: roomId, kind };
     if (kind === "timed") {
       const seconds = (Number(overlay.hours ?? 2) * 60 + Number(overlay.minutes ?? 0)) * 60;
       if (!(seconds > 0)) {
         ui.updateOverlay({ submitted: true });
         return null;
       }
-      parameters.duration_seconds = seconds;
+      grant.duration_seconds = seconds;
     }
-    return run("release_room", parameters, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: overlay?.kind === "release", success: { key: "notice.roomReleased" } });
+    return run("release_rooms", { grants: [grant] }, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: overlay?.kind === "release", success: { key: "notice.roomReleased" } });
   }
 
   return {

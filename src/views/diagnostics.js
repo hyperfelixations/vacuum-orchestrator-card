@@ -7,12 +7,6 @@ import { block } from "./overlays/frame.js";
 import { errorState, facts, loadingState, traceList } from "./parts.js";
 import { DIAGNOSTICS_CSS } from "./styles/diagnostics.js";
 
-function setupList(context, vm) {
-  if (!vm.setup.length) return "";
-  const rows = vm.setup.map((step) => `<li data-key="step:${e(step.key)}" data-done="${step.done}">${icon(step.done ? "mdi:check-circle" : "mdi:circle-outline")}<span>${e(step.label)}</span></li>`).join("");
-  return block(context.t("diagnostics.setup"), `<ul class="voc-checklist">${rows}</ul>`, { iconName: "mdi:clipboard-check-outline", key: "setup" });
-}
-
 function traceBlock(context, vm) {
   if (vm.trace === null) return "";
   let content;
@@ -32,7 +26,7 @@ export function renderDiagnostics(context, vm) {
     ? `<div class="voc-diagnostics-download" data-key="download"><span>${e(context.t("diagnostics.downloadHint"))}</span>${button({ action: "navigate", args: { path: vm.download.path }, label: context.t("onboarding.action.openIntegration"), iconName: "mdi:open-in-app" })}</div>`
     : "";
   const versions = block(context.t("diagnostics.versions"), `${connection}${facts(vm.facts)}`, { iconName: "mdi:information-outline", key: "versions" });
-  return wrap(`${sink}${versions}${setupList(context, vm)}${traceBlock(context, vm)}${download}`);
+  return wrap(`${sink}${versions}${traceBlock(context, vm)}${download}`);
 }
 
 export const diagnosticsView = Object.freeze({

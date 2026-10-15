@@ -1,10 +1,11 @@
 "use strict";
-// Builds the card domain model for a named household from source modules: the fake integration
-// behind a real transport and session on a virtual clock, the card's scope requests, and Home
-// Assistant's facts. Presentation tests read views from exactly what the card would see.
+// Builds the card domain model at a mark of an integration recording from source modules: the
+// recording behind a real transport and session on the recording's clock, the card's scope
+// requests, and Home Assistant's facts as the recording has them. Presentation tests read views
+// from exactly what the card would see.
 
-const { createFakeOrchestrator, VirtualClock } = require("./fake-orchestrator.js");
-const { FIXED_NOW, SCENARIOS, hassFor } = require("../fixtures/scenarios.js");
+const { createRecordedBackend } = require("./recorded-backend.js");
+const { loadRecording } = require("./recordings.js");
 
 const tick = async (rounds = 16) => {
   for (let index = 0; index < rounds; index += 1) await new Promise((resolve) => setImmediate(resolve));
@@ -18,35 +19,49 @@ const BASE_REQUESTS = Object.freeze({
   robots: { name: "robots", params: {} },
   candidates: { name: "candidates", params: {} },
   registry: { name: "registry", params: {} },
+  setup: { name: "setup", params: {} },
 });
 
 const errorTextsRequest = (language) => ({ name: "errorTexts", params: { language } });
 
-// `requests`: extra slots, e.g. { templates: { name: "templates", params: {} } }.
-async function modelFor(scenario = "typical", { requests = {}, admin = true, language = "en", fake: fakeOptions = {}, needsEntityCatalog = false, setup = null } = {}) {
+// The first mark of a recording: where a card opens unless a test names another.
+function firstMark(recording) {
+  return recording.steps.find((step) => step.mark !== undefined)?.mark;
+}
+
+// `requests`: extra slots, e.g. { templates: { name: "templates", params: {} } }. `until`: home
+// changes played after opening, in order.
+async function modelFor(name, { from, until = [], requests = {}, admin, language = "en", needsEntityCatalog = false } = {}) {
   const { createTransport } = await import("../../src/backend/transport.js");
   const { createSession } = await import("../../src/backend/session.js");
   const { readHomeAssistant } = await import("../../src/backend/home-assistant.js");
   const { buildCardDomainModel } = await import("../../src/application/card-domain-model.js");
   const { textService } = await import("../../src/i18n/text-service.js");
   const { affordanceContext } = await import("../../src/domain/affordances.js");
-  const clock = new VirtualClock(FIXED_NOW);
-  const household = SCENARIOS[scenario]();
-  const fake = createFakeOrchestrator({ seed: household.seed, clock, admin, ...fakeOptions });
-  if (setup) setup(fake);
-  const hass = fake.attachTo(hassFor(household, { language, admin }));
-  const platform = { now: () => clock.now(), setTimeout: (fn, ms) => clock.setTimeout(fn, ms), clearTimeout: (handle) => clock.clearTimeout(handle), isDocumentHidden: () => false };
-  const session = createSession({ transport: createTransport({ getHass: () => hass, platform }), platform, getHass: () => hass });
+  const recording = loadRecording(name);
+  const clock = { time: 0, now: () => clock.time, advance: (ms) => (clock.time += ms) };
+  const backend = createRecordedBackend(recording, { from: from ?? firstMark(recording), language, admin, clock });
+  clock.time = backend.nowMs;
+  const getHass = () => backend.hass;
+  // Without timers the session reloads at once instead of after a quiet gap.
+  const platform = { now: clock.now, monotonicNow: clock.now, isDocumentHidden: () => false };
+  const session = createSession({ transport: createTransport({ getHass, platform }), platform, getHass });
   const all = { ...BASE_REQUESTS, errorTexts: errorTextsRequest(language), ...requests };
   session.syncHass();
   await tick();
   session.setDemand("test", Object.values(all));
   await tick();
-  const model = buildCardDomainModel({ snapshot: session.getSnapshot(), requests: all, home: readHomeAssistant(hass), nowMs: FIXED_NOW, needsEntityCatalog });
+  for (const change of until) {
+    backend.until(change);
+    session.syncHass();
+    await tick();
+  }
+  const model = buildCardDomainModel({ snapshot: session.getSnapshot(), requests: all, home: readHomeAssistant(backend.hass), nowMs: session.now(), needsEntityCatalog });
   session.dispose();
+  if (backend.failures.length) throw backend.failures[0];
   const texts = textService(language, { backend: model.errorTexts });
   const context = affordanceContext({ canCommand: model.permissions.canCommand, operations: model.operations, pending: model.pending });
-  return { model, texts, context, fake, household };
+  return { model, texts, context, backend };
 }
 
-module.exports = { modelFor, BASE_REQUESTS, FIXED_NOW };
+module.exports = { modelFor, BASE_REQUESTS };

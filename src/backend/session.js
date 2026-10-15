@@ -4,8 +4,9 @@
 // and sends commands one per target.
 // It holds no domain rule. See internal dev doc §6 "Sitzung".
 
+import { parseInstant } from "../core/time.js";
 import { backendFailure, isBackendFailure } from "../domain/backend-errors.js";
-import { ACTIONS, CONFIGURATION_COMMANDS, guards, messages } from "./protocol.js";
+import { ACTIONS, CARD_COMMANDS, CONFIGURATION_COMMANDS, guards, messages } from "./protocol.js";
 import { SCOPE_LOADERS, scopesForChanges } from "./scopes.js";
 import { createInvalidationTimer } from "./subscription.js";
 
@@ -89,7 +90,22 @@ export function createSession({ transport, platform, getHass } = {}) {
   let retry = null;
   let unloadedProbe = null;
   let knownEntities = null;
+  // The integration's clock at a moment of the platform's monotonic clock; null before any answer.
+  let anchor = null;
   const invalidation = createInvalidationTimer({ platform, onFire: (change) => invalidateChanged(change) });
+
+  const monotonic = () => (typeof platform?.monotonicNow === "function" ? platform.monotonicNow() : platform?.now?.() ?? 0);
+
+  function anchorAt(serverTime) {
+    if (Number.isFinite(serverTime)) anchor = { serverMs: serverTime, at: monotonic() };
+  }
+
+  // The integration's clock now, carried forward from its last answer; the platform's clock
+  // until the integration answered.
+  function now() {
+    if (!anchor) return platform?.now?.() ?? 0;
+    return anchor.serverMs + (monotonic() - anchor.at);
+  }
 
   function changed() {
     version += 1;
@@ -138,6 +154,7 @@ export function createSession({ transport, platform, getHass } = {}) {
       scope.status = "ready";
       scope.data = result.data;
       scope.view = result.view ?? null;
+      anchorAt(scope.view?.serverTime);
       scope.error = null;
       scope.stale = false;
       scope.loadedAt = platform?.now?.() ?? null;
@@ -232,6 +249,7 @@ export function createSession({ transport, platform, getHass } = {}) {
       return;
     }
     if (!guards.event(event)) return;
+    anchorAt(parseInstant(event.server_time));
     // An incompatible integration changes only with an update, which restarts Home Assistant.
     if (phase === "api_incompatible") return;
     if (phase !== "ready") {
@@ -294,6 +312,7 @@ export function createSession({ transport, platform, getHass } = {}) {
       return;
     }
     apiVersion = check.data.apiVersion;
+    anchorAt(check.data.serverTime);
     runtime = { id: check.data.runtimeId, sequence: check.data.runtimeSequence, commitId: check.data.commitId };
     cancelUnloadedProbe();
     setPhase("ready");
@@ -392,14 +411,15 @@ export function createSession({ transport, platform, getHass } = {}) {
     const commandId = `voc-${++commandCounter}`;
     if (disposed) return backendFailure("connection_lost", { detail: "disposed" });
     if (phase !== "ready") return backendFailure("orchestrator_not_loaded", { detail: phase });
-    if (!registeredOperations(getHass()).has(operation)) return backendFailure("operation_missing", { detail: operation });
+    // Card commands are no actions: a loaded integration always offers them.
+    if (!CARD_COMMANDS.includes(operation) && !registeredOperations(getHass()).has(operation)) return backendFailure("operation_missing", { detail: operation });
     if (pending.has(target)) return backendFailure("command_pending", { detail: target });
     pending.set(target, { operation, commandId });
     changed();
     let result;
     if (ACTIONS.includes(operation)) {
       result = await transport.service(operation, parameters, { returnResponse: true });
-    } else if (CONFIGURATION_COMMANDS.includes(operation)) {
+    } else if (CONFIGURATION_COMMANDS.includes(operation) || CARD_COMMANDS.includes(operation)) {
       result = await transport.ws(messages.command(operation, parameters));
       if (result.ok && !guards.commandResult(result.data)) result = backendFailure("invalid_response", { detail: operation });
     } else {
@@ -443,6 +463,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     reload,
     command,
     getSnapshot,
+    now,
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

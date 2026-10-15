@@ -59,7 +59,7 @@ function nameNamesRooms(name, rooms, language) {
   return rooms.every((room) => lower.includes(room.toLocaleLowerCase(language)));
 }
 
-export function buildJobRow(job, { model, texts, index, context, total = 0, timeFormat = "auto" }) {
+export function buildJobRow(job, { model, texts, index, context, timeFormat = "auto" }) {
   const readiness = job.readiness;
   const reasons = readinessReasons(readiness, { index, model, texts });
   const rooms = list(job.roomIds).map((roomId) => roomName(roomId, index, model));
@@ -82,6 +82,6 @@ export function buildJobRow(job, { model, texts, index, context, total = 0, time
     time: moment(texts, job.updatedAt, timeFormat, model.nowMs),
     outcome: outcomeText(texts, job.failureCode),
     pending: list(model.pending).includes(jobTarget(job.jobId)),
-    actions: jobAffordances(job, context, { position: Number.isInteger(job.position) ? job.position : null, total }),
+    actions: jobAffordances(job, context),
   };
 }

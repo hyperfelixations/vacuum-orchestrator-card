@@ -4,7 +4,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const W = require("../../fixtures/voi/wire.js");
+const W = require("../../helpers/voi-records.js");
 
 async function setup({ config = {}, answer = () => ({ ok: true, data: null }), model: extra = {}, slots = {} } = {}) {
   const { createActionRouter } = await import("../../../src/controllers/runtime/action-router.js");
@@ -26,10 +26,10 @@ async function setup({ config = {}, answer = () => ({ ok: true, data: null }), m
   const navigated = [];
   const model = {
     slots: {
-      queue: { data: normalizeQueuePage(W.wireQueuePage([W.wireJob({ job_id: "job-1", name: "Kitchen" })], { mode: "running", queue_grace_seconds: 900, total: 1 })) },
-      rooms: { data: { items: [normalizeRoom(W.wireRoom({ room_id: "room-kitchen", name: "Kitchen" }))] } },
-      robots: { data: { items: [normalizeRobot(W.wireRobot()), normalizeRobot(W.wireRobot({ robot_id: "robot-dusty", name: "Dusty" }))] } },
-      templates: { data: { items: [normalizeTemplate(W.wireTemplate())] } },
+      queue: { data: normalizeQueuePage(W.wireQueuePage([W.wireJob({ job_id: "job-1", name: "Library" })], { mode: "running", queue_grace_seconds: 900, total: 1 })) },
+      rooms: { data: { items: [normalizeRoom(W.wireRoom({ room_id: "room-library", name: "Library" }))] } },
+      robots: { data: { items: [normalizeRobot(W.wireRobot({ robot_id: "robot-rocky", configuration: { roles: { battery: "reg-rocky-battery", status: "reg-rocky-status" } } })), normalizeRobot(W.wireRobot({ robot_id: "robot-dusty", name: "Dusty" }))] } },
+      templates: { data: { items: [normalizeTemplate(W.wireTemplate({ template_id: "template-1" }))] } },
       openJobs: { data: { jobs: [normalizeJob(W.wireJob({ job_id: "job-run", state: "running" }))] } },
       ...slots,
     },
@@ -44,11 +44,11 @@ test("all rooms in the editor excludes single rooms, and a single room ends all 
   const { router, ui } = await setup();
   router.handle("create-job");
   const rooms = () => [ui.overlay.draft.allRooms, [...ui.overlay.draft.roomIds]];
-  router.handle("toggle-value", { field: "roomIds", value: "room-kitchen" });
+  router.handle("toggle-value", { field: "roomIds", value: "room-library" });
   router.handle("toggle-value", { field: "roomIds", value: "all" });
   assert.deepEqual(rooms(), [true, []]);
-  router.handle("toggle-value", { field: "roomIds", value: "room-kitchen" });
-  assert.deepEqual(rooms(), [false, ["room-kitchen"]]);
+  router.handle("toggle-value", { field: "roomIds", value: "room-library" });
+  assert.deepEqual(rooms(), [false, ["room-library"]]);
   router.handle("toggle-value", { field: "roomIds", value: "all" });
   router.handle("toggle-value", { field: "roomIds", value: "all" });
   assert.deepEqual(rooms(), [false, []]);
@@ -175,13 +175,13 @@ test("leaving a changed editor asks before the draft is dropped", async () => {
   router.handle("back");
   assert.equal(ui.overlay, null, "an untouched draft leaves at once");
   router.handle("create-job");
-  router.handle("toggle-value", { field: "roomIds", value: "room-kitchen" });
+  router.handle("toggle-value", { field: "roomIds", value: "room-library" });
   router.handle("back");
   assert.equal(ui.overlay.kind, "confirm");
   assert.equal(ui.overlay.titleKey, "confirm.discard.title");
   router.handle("back");
   assert.equal(ui.overlay.kind, "job-editor", "declining keeps the editor and its draft");
-  assert.deepEqual(ui.overlay.draft.roomIds, ["room-kitchen"]);
+  assert.deepEqual(ui.overlay.draft.roomIds, ["room-library"]);
   router.handle("back");
   await router.handle("confirm-command");
   assert.equal(ui.overlay, null);
@@ -189,9 +189,9 @@ test("leaving a changed editor asks before the draft is dropped", async () => {
 
 test("a new job is created with the full intent; an edited one sends only the changes", async () => {
   const { router, ui, commands } = await setup();
-  router.handle("create-job", { roomIds: ["room-kitchen"] });
+  router.handle("create-job", { roomIds: ["room-library"] });
   await router.handle("save-draft");
-  assert.deepEqual(commands[0], { operation: "create_job", parameters: { areas: ["room-kitchen"], mode: "vacuum", vacuum_power: "standard", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort" }, target: "create", invalidates: ["queue", "openJobs", "jobLog", "job", "execution", "trace"] });
+  assert.deepEqual(commands[0], { operation: "create_job", parameters: { areas: ["room-library"], mode: "vacuum", vacuum_power: "standard", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort" }, target: "create", invalidates: ["queue", "openJobs", "jobLog", "job", "execution", "trace"] });
   assert.equal(ui.snapshot.notice.messageKey, "notice.jobCreated");
   router.handle("edit-job", { jobId: "job-1" });
   router.handle("set-field", { field: "passes", value: 3 });
@@ -205,22 +205,22 @@ test("a new job is created with the full intent; an edited one sends only the ch
 
 test("starting a new job at once creates and starts it in one command", async () => {
   const { router, ui, commands } = await setup();
-  router.handle("create-job", { roomIds: ["room-kitchen"] });
+  router.handle("create-job", { roomIds: ["room-library"] });
   router.handle("set-field", { field: "vacuumPower", value: "maximum" });
   await router.handle("start-draft");
-  assert.deepEqual(commands[0].parameters, { areas: ["room-kitchen"], mode: "vacuum", vacuum_power: "maximum", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort", start: true });
+  assert.deepEqual(commands[0].parameters, { areas: ["room-library"], mode: "vacuum", vacuum_power: "maximum", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort", start: true });
   assert.equal(ui.snapshot.notice.messageKey, "notice.jobStarted");
   assert.equal(ui.overlay, null);
 });
 
-test("a new draft starts from the integration's defaults and is saved with the rung the preview preselects", async () => {
+test("a new draft starts from the integration's defaults and is saved as wished, whatever the preview offers", async () => {
   const { normalizePreview } = await import("../../../src/domain/preview.js");
-  const settings = { vacuum_power: { initial: "high", options: [{ value: "low", supported_by_all: true }, { value: "high", supported_by_all: true }] } };
+  const settings = { vacuum_power: { requested: "standard", options: [{ value: "low", supported_by_all: true }, { value: "high", supported_by_all: true }] } };
   const { router, ui, commands } = await setup({ slots: { preview: { data: normalizePreview(W.wirePreview({ settings })) } } });
-  router.handle("create-job", { roomIds: ["room-kitchen"] });
+  router.handle("create-job", { roomIds: ["room-library"] });
   assert.equal(ui.overlay.draft.vacuumPower, "standard");
   await router.handle("save-draft");
-  assert.equal(commands[0].parameters.vacuum_power, "high", "the integration's default is not offered for these rooms");
+  assert.equal(commands[0].parameters.vacuum_power, "standard", "the integration resolves the wish per robot when it starts");
 });
 
 test("a job is saved as a template under a name the user may change", async () => {
@@ -228,14 +228,14 @@ test("a job is saved as a template under a name the user may change", async () =
   router.handle("open-save-template", { jobId: "missing" });
   assert.equal(ui.overlay, null);
   router.handle("open-save-template", { jobId: "job-1" });
-  assert.deepEqual([ui.overlay.kind, ui.overlay.name, ui.overlay.automatic], ["save-template", "Kitchen", false]);
+  assert.deepEqual([ui.overlay.kind, ui.overlay.name, ui.overlay.automatic], ["save-template", "Library", false]);
   router.handle("set-field", { field: "overlay:name", value: "  " });
   await router.handle("save-job-template");
   assert.deepEqual([commands.length, ui.overlay.submitted], [0, true]);
-  router.handle("set-field", { field: "overlay:name", value: " Weekly kitchen " });
+  router.handle("set-field", { field: "overlay:name", value: " Weekly library " });
   router.handle("set-field", { field: "overlay:automatic", value: true });
   await router.handle("save-job-template");
-  assert.deepEqual(commands[0], { operation: "save_job_as_template", parameters: { job_id: "job-1", name: "Weekly kitchen", automatic: true }, target: "job:job-1", invalidates: ["templates"] });
+  assert.deepEqual(commands[0], { operation: "save_job_as_template", parameters: { job_id: "job-1", name: "Weekly library", automatic: true }, target: "job:job-1", invalidates: ["templates"] });
   assert.deepEqual([ui.overlay, ui.snapshot.notice.messageKey], [null, "notice.templateSavedFromJob"]);
   await router.handle("save-job-template");
   assert.equal(commands.length, 1, "outside its page the save does nothing");
@@ -269,7 +269,7 @@ test("a refusal keeps the page open and becomes the notice", async () => {
   const failure = { ok: false, code: "job_not_editable", group: "job", detail: null, channel: "service" };
   const { router, ui } = await setup({ answer: () => failure });
   router.handle("edit-job", { jobId: "job-1" });
-  router.handle("set-field", { field: "passes", value: 2 });
+  router.handle("set-field", { field: "passes", value: 3 });
   await router.handle("save-draft");
   assert.equal(ui.overlay.kind, "job-editor");
   assert.deepEqual({ ...ui.snapshot.notice }, { kind: "error", operation: "update_job", failure });
@@ -299,24 +299,24 @@ test("templates are created, edited, used and removed through their commands", a
 
 test("a release sends its kind and, for a timed one, the duration in seconds", async () => {
   const { router, ui, commands } = await setup();
-  router.handle("open-release", { roomId: "room-kitchen" });
+  router.handle("open-release", { roomId: "room-library" });
   assert.equal(ui.overlay.releaseKind, "queue_run");
   router.handle("set-overlay", { releaseKind: "timed", hours: 1, minutes: 30 });
-  await router.handle("release-room", { roomId: "room-kitchen" });
-  assert.deepEqual(commands[0].parameters, { room_id: "room-kitchen", kind: "timed", duration_seconds: 5400 });
-  router.handle("open-release", { roomId: "room-kitchen" });
+  await router.handle("release-room", { roomId: "room-library" });
+  assert.deepEqual(commands[0], { operation: "release_rooms", parameters: { grants: [{ room: "room-library", kind: "timed", duration_seconds: 5400 }] }, target: "room:room-library", invalidates: commands[0].invalidates });
+  router.handle("open-release", { roomId: "room-library" });
   router.handle("set-overlay", { releaseKind: "timed", hours: 0, minutes: 0 });
-  await router.handle("release-room", { roomId: "room-kitchen" });
+  await router.handle("release-room", { roomId: "room-library" });
   assert.equal(ui.overlay.submitted, true);
   assert.equal(commands.length, 1);
 });
 
 test("room settings send the patch wrapped as configuration", async () => {
   const { router, commands } = await setup();
-  router.handle("edit-room", { roomId: "room-kitchen" });
-  router.input("name", "Kitchen corner");
+  router.handle("edit-room", { roomId: "room-library" });
+  router.input("name", "Library corner");
   await router.handle("save-room");
-  assert.deepEqual(commands[0].parameters, { room_id: "room-kitchen", configuration: { name: "Kitchen corner", follow_area_name: false } });
+  assert.deepEqual(commands[0].parameters, { room_id: "room-library", configuration: { name: "Library corner", follow_area_name: false } });
 });
 
 test("a robot profile opens with resolved role entities and saves the complete definition", async () => {
@@ -374,7 +374,7 @@ test("navigation, paging and reload reach their owners; an unknown action does n
   router.handle("navigate", { path: "/config/integrations" });
   assert.deepEqual(navigated, ["/config/integrations"]);
   router.handle("page", { scope: "queue", direction: "next" });
-  assert.equal(ui.snapshot.pages.queue, 50);
+  assert.equal(ui.snapshot.pages.queue, 25, "one page of the integration's size further");
   router.handle("reload");
   assert.equal(commands[0].operation, "probe");
   assert.equal(router.handle("no-such-action"), undefined);

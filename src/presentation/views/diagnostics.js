@@ -1,10 +1,9 @@
-// The diagnostics view: versions, the runtime the card talks to, the setup checklist and the
+// The diagnostics view: versions, the runtime the card talks to, the setup status and the
 // integration's volatile trace. The full anonymized export stays Home Assistant's diagnostics
 // download. See internal dev doc §8 "Diagnose".
 
-import { SETUP_STEPS } from "../../application/setup-status.js";
 import { slotData } from "../common/lookups.js";
-import { number, t } from "../common/texts.js";
+import { dateTime, number, t } from "../common/texts.js";
 import { traceRows } from "../common/trace.js";
 import { INTEGRATION_PAGE_PATH } from "../common/links.js";
 
@@ -17,6 +16,13 @@ export function diagnosticsNeeded(model) {
   return (model.diagnostics?.warnings?.length ?? 0) > 0 || model.subscription === "failed";
 }
 
+// When the assistant was finished, or that it is still open.
+function setupFact(texts, setup) {
+  if (!setup) return null;
+  if (setup.completedAt !== null) return t(texts, "diagnostics.setupCompleted", { when: dateTime(texts, setup.completedAt) });
+  return t(texts, "diagnostics.setupPending");
+}
+
 function count(texts, value) {
   return Number.isInteger(value) ? number(texts, value) : null;
 }
@@ -26,7 +32,6 @@ export function buildDiagnosticsView({ model, texts, options = {} }) {
   const status = model.slots?.diagnostics?.status;
   const traceWindow = summary?.traceWindow;
   const subscription = model.subscription || "idle";
-  const setup = model.setup;
   return {
     key: "diagnostics",
     loading: !summary && (status === "loading" || status === "idle"),
@@ -44,9 +49,9 @@ export function buildDiagnosticsView({ model, texts, options = {} }) {
         label: t(texts, "diagnostics.traceWindow"),
         value: traceWindow && Number.isFinite(traceWindow.retained) ? t(texts, "diagnostics.traceWindowValue", { retained: number(texts, traceWindow.retained), recorded: number(texts, traceWindow.recorded ?? 0), dropped: number(texts, traceWindow.dropped ?? 0) }) : null,
       },
+      { label: t(texts, "diagnostics.setup"), value: setupFact(texts, model.setup) },
     ],
     sinkFailures: Number.isInteger(summary?.sinkFailures) && summary.sinkFailures > 0 ? t(texts, "diagnostics.sinkFailures", { count: summary.sinkFailures }) : null,
-    setup: setup?.known ? SETUP_STEPS.map((step) => ({ key: step, label: t(texts, `setup.step.${step}.title`), done: setup.steps[step].done })) : [],
     trace: options.show_trace === false ? null : traceRows(slotData(model, "trace")?.records, { model, texts, limit: TRACE_ROWS, withJob: true }),
     traceLoading: options.show_trace !== false && !slotData(model, "trace") && model.slots?.trace?.status !== "error",
     download: model.permissions?.isAdmin ? { path: INTEGRATION_PAGE_PATH } : null,

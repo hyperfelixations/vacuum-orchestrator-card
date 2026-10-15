@@ -8,7 +8,7 @@
 </div>
 <div class="voc-title-block">
 <div class="voc-title">Cleaning</div>
-<div class="voc-subtitle">Living room · Cleaning</div>
+<div class="voc-subtitle">Studio · Cleaning</div>
 </div>
 <div class="voc-status-pill">Cleaning</div>
 </div>
@@ -38,32 +38,21 @@
 </ha-icon>
 <span>All rooms</span>
 </button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;roomIds&quot;,&quot;value&quot;:&quot;room-bathroom&quot;}" data-value="room-bathroom" data-key="option:room-bathroom" title="This room is not released; the job waits until it is.">
-<span>Bathroom</span>
-<span class="voc-option-badge">
-<ha-icon icon="mdi:lock-outline" aria-hidden="true">
-</ha-icon>
-</span>
-</button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;roomIds&quot;,&quot;value&quot;:&quot;room-bedroom&quot;}" data-value="room-bedroom" data-key="option:room-bedroom" title="No robot reaches this room yet.">
-<span>Bedroom</span>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;roomIds&quot;,&quot;value&quot;:&quot;00000000-0000-4000-8000-000000000005&quot;}" data-value="00000000-0000-4000-8000-000000000005" data-key="option:00000000-0000-4000-8000-000000000005" title="No robot reaches this room yet.">
+<span>Conservatory</span>
 <span class="voc-option-badge">
 <ha-icon icon="mdi:robot-vacuum-alert" aria-hidden="true">
 </ha-icon>
 </span>
 </button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;roomIds&quot;,&quot;value&quot;:&quot;room-hall&quot;}" data-value="room-hall" data-key="option:room-hall">
-<span>Hall</span>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;roomIds&quot;,&quot;value&quot;:&quot;00000000-0000-4000-8000-000000000002&quot;}" data-value="00000000-0000-4000-8000-000000000002" data-key="option:00000000-0000-4000-8000-000000000002">
+<span>Dining Room</span>
 </button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;roomIds&quot;,&quot;value&quot;:&quot;room-kitchen&quot;}" data-value="room-kitchen" data-key="option:room-kitchen">
-<span>Kitchen</span>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;roomIds&quot;,&quot;value&quot;:&quot;00000000-0000-4000-8000-000000000004&quot;}" data-value="00000000-0000-4000-8000-000000000004" data-key="option:00000000-0000-4000-8000-000000000004">
+<span>Library</span>
 </button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;roomIds&quot;,&quot;value&quot;:&quot;room-living&quot;}" data-value="room-living" data-key="option:room-living" title="This room is not released; the job waits until it is.">
-<span>Living room</span>
-<span class="voc-option-badge">
-<ha-icon icon="mdi:lock-outline" aria-hidden="true">
-</ha-icon>
-</span>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;roomIds&quot;,&quot;value&quot;:&quot;00000000-0000-4000-8000-000000000003&quot;}" data-value="00000000-0000-4000-8000-000000000003" data-key="option:00000000-0000-4000-8000-000000000003">
+<span>Studio</span>
 </button>
 </div>
 </div>
@@ -98,33 +87,20 @@
 <div class="voc-field" data-key="field:vacuumPower" data-field-control="segmented">
 <div class="voc-field-label" id="voc-field-vacuumPower-label">Suction</div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-vacuumPower-label" data-control="choice">
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;low&quot;}" data-value="low" data-key="option:low" title="Not every robot for these rooms offers this level.">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;low&quot;}" data-value="low" data-key="option:low">
 <span>Quiet</span>
-<span class="voc-option-badge">
-<ha-icon icon="mdi:information-outline" aria-hidden="true">
-</ha-icon>
-</span>
 </button>
-<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;standard&quot;}" data-value="standard" data-key="option:standard" title="Not every robot for these rooms offers this level.">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;standard&quot;}" data-value="standard" data-key="option:standard">
 <span>Standard</span>
-<span class="voc-option-badge">
-<ha-icon icon="mdi:information-outline" aria-hidden="true">
-</ha-icon>
-</span>
 </button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;high&quot;}" data-value="high" data-key="option:high" title="Not every robot for these rooms offers this level.">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;high&quot;}" data-value="high" data-key="option:high">
 <span>High</span>
-<span class="voc-option-badge">
-<ha-icon icon="mdi:information-outline" aria-hidden="true">
-</ha-icon>
-</span>
 </button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;maximum&quot;}" data-value="maximum" data-key="option:maximum" title="Not every robot for these rooms offers this level.">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;maximum&quot;}" data-value="maximum" data-key="option:maximum">
 <span>Max</span>
-<span class="voc-option-badge">
-<ha-icon icon="mdi:information-outline" aria-hidden="true">
-</ha-icon>
-</span>
+</button>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;vacuumPower&quot;,&quot;value&quot;:&quot;maximum_plus&quot;}" data-value="maximum_plus" data-key="option:maximum_plus">
+<span>Max+</span>
 </button>
 </div>
 </div>

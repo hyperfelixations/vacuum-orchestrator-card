@@ -7,8 +7,8 @@ const assert = require("node:assert/strict");
 const load = () => import("../../../src/element/card-suggestions.js");
 
 const hass = {
-  states: { "vacuum.rocky": { state: "docked" }, "sensor.kitchen_temperature": { state: "21" }, "sensor.voi_mode": { state: "running" } },
-  entities: { "sensor.voi_mode": { entity_id: "sensor.voi_mode", platform: "vacuum_orchestrator" }, "switch.voi_pause": { platform: "vacuum_orchestrator" }, "sensor.kitchen_temperature": { platform: "zha" } },
+  states: { "vacuum.rocky": { state: "docked" }, "sensor.library_temperature": { state: "21" }, "sensor.voi_mode": { state: "running" } },
+  entities: { "sensor.voi_mode": { entity_id: "sensor.voi_mode", platform: "vacuum_orchestrator" }, "switch.voi_pause": { platform: "vacuum_orchestrator" }, "sensor.library_temperature": { platform: "zha" } },
 };
 
 test("a vacuum or an entity of the integration suggests the bare card", async () => {
@@ -22,7 +22,7 @@ test("other entities, unknown vacuums and malformed input suggest nothing", asyn
   const { suggestionForEntity } = await load();
   const inherited = Object.create({ "vacuum.ghost": { state: "docked" } });
   const cases = [
-    [hass, "sensor.kitchen_temperature"],
+    [hass, "sensor.library_temperature"],
     [hass, "vacuum.missing"],
     [hass, "light.vacuum_orchestrator"],
     [hass, null],

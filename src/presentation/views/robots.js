@@ -3,15 +3,13 @@
 // rooms). See internal dev doc §8 "Roboter".
 
 import { candidateAffordance, recoveryAffordance, robotAffordances } from "../../domain/affordances.js";
-import { isConfiguredCandidate } from "../../domain/robots.js";
+import { isConfiguredCandidate, reachableRoomIds } from "../../domain/robots.js";
 import { OPERATIONS, SETTING_FIELDS } from "../../domain/job-schema.js";
 import { list, robotsOf, roomIndex, roomName, slotData } from "../common/lookups.js";
 import { number, operationLabel, reasonText, settingLabel, settingName, t } from "../common/texts.js";
 import { robotStatus } from "../common/robot-status.js";
 
 const QUIET_ERRORS = new Set(["none", "ok", "no_error", "0"]);
-// Home Assistant's vacuum states of a robot at its dock or on its way there.
-const HOME_STATES = new Set(["docked", "returning"]);
 
 function readingText(reading) {
   if (!reading?.available) return null;
@@ -60,7 +58,7 @@ export function buildRobotsView({ model, texts, context, options = {}, ui = {} }
         blocked: robot.blockedReason ? reasonText(texts, robot.blockedReason) : null,
         recovery: target ? { reason: reasonText(texts, target.reason) || t(texts, "recovery.reasonUnknown"), decision: recoveryAffordance(robot.robotId, context) } : null,
         operations: capabilities ? OPERATIONS.filter((operation) => capabilities.operations.includes(operation)).map((operation) => operationLabel(texts, operation)) : [],
-        rooms: capabilities ? Object.keys(capabilities.targets).map((roomId) => roomName(roomId, index, model)) : [],
+        rooms: reachableRoomIds(robot).map((roomId) => roomName(roomId, index, model)),
         levels: capabilities && options.show_capabilities !== false
           ? [
               capabilities.maximumPasses ? t(texts, "robot.maxPasses", { count: capabilities.maximumPasses }) : null,
@@ -70,7 +68,7 @@ export function buildRobotsView({ model, texts, context, options = {}, ui = {} }
         unresolved: !capabilities,
         map: map ? { entityId: map.entityId, picture: map.picture, label: map.friendlyName || map.entityId } : null,
         mapChoices: maps.length > 1 ? maps.map((entry) => ({ entityId: entry.entityId, label: entry.friendlyName || entry.entityId, selected: entry.entityId === map?.entityId })) : [],
-        actions: robotAffordances(robot, context, { home: HOME_STATES.has(live?.vacuum?.state) }),
+        actions: robotAffordances(robot, context),
       };
     }),
   };

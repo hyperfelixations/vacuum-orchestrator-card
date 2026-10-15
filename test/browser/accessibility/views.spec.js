@@ -3,12 +3,12 @@
 // moves into a page and back to the control that opened it, and a dialog that keeps focus.
 
 const { test, expect } = require("../../helpers/playwright.js");
-const { mountCard } = require("../../helpers/browser-helpers.js");
+const { BUSY, mountCard, named } = require("../../helpers/browser-helpers.js");
 
 const INTERACTIVE = "button, a[href], input, textarea, select, [role=button], [role=tab], [role=option], [role=radio], [role=switch]";
 
 test("no interactive element sits inside another in any view", async ({ page }) => {
-  const card = await mountCard(page, { config: { views: ["queue", "rooms", "robots", "templates", "history", "diagnostics", "setup", "settings"] } });
+  const card = await mountCard(page, { ...BUSY, config: { views: ["queue", "rooms", "robots", "templates", "history", "diagnostics", "setup", "settings"] } });
   for (const view of ["queue", "rooms", "robots", "templates", "history", "diagnostics", "setup", "settings"]) {
     await card.locator(`[role=tab][data-view="${view}"]`).click();
     await expect(card.locator(`[data-key="view:${view}"]`)).toBeVisible();
@@ -21,7 +21,7 @@ test("no interactive element sits inside another in any view", async ({ page }) 
 });
 
 test("the editor is a named region whose fields carry label, error and description", async ({ page }) => {
-  const card = await mountCard(page);
+  const card = await mountCard(page, BUSY);
   await card.locator(".voc-primary-action").click();
   const editor = card.locator('[data-key="overlay:job-editor"]');
   await expect(editor).toHaveAttribute("role", "region");
@@ -36,8 +36,8 @@ test("the editor is a named region whose fields carry label, error and descripti
 });
 
 test("a confirmation is a modal dialog; Escape leaves it and focus returns to the opener", async ({ page }) => {
-  const card = await mountCard(page);
-  const cancel = card.locator('[data-key="job:job-running"] [data-action="cancel-job"]');
+  const card = await mountCard(page, BUSY);
+  const cancel = named(card, ".voc-job", "Studio", '[data-action="cancel-job"]');
   await cancel.focus();
   await page.keyboard.press("Enter");
   const dialog = card.locator('[data-key="overlay:cancel-job"]');
@@ -46,12 +46,12 @@ test("a confirmation is a modal dialog; Escape leaves it and focus returns to th
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(cancel).toBeFocused();
-  expect(await page.evaluate(() => window.vocHarness.fake.calls.services.length)).toBe(0);
+  expect(await page.evaluate(() => window.vocHarness.backend.calls.filter((message) => message.type === "call_service").length)).toBe(0);
 });
 
 test("Tab stays inside a dialog", async ({ page }) => {
-  const card = await mountCard(page);
-  await card.locator('[data-key="job:job-running"] [data-action="cancel-job"]').click();
+  const card = await mountCard(page, BUSY);
+  await named(card, ".voc-job", "Studio", '[data-action="cancel-job"]').click();
   const dialog = card.locator('[data-key="overlay:cancel-job"]');
   for (let step = 0; step < 6; step += 1) {
     await page.keyboard.press("Tab");
@@ -61,8 +61,8 @@ test("Tab stays inside a dialog", async ({ page }) => {
 });
 
 test("the choice after a cancel is a named radio group operated with arrow keys", async ({ page }) => {
-  const card = await mountCard(page);
-  await card.locator('[data-key="job:job-running"] [data-action="cancel-job"]').click();
+  const card = await mountCard(page, BUSY);
+  await named(card, ".voc-job", "Studio", '[data-action="cancel-job"]').click();
   const group = card.locator('[data-key="overlay:cancel-job"] [role=radiogroup]');
   await expect(group).toHaveAccessibleName("Then");
   const home = group.locator('[data-value="return_to_dock"]');
@@ -77,27 +77,32 @@ test("the choice after a cancel is a named radio group operated with arrow keys"
 });
 
 test("role choices in the robot profile are named radio groups", async ({ page }) => {
-  const card = await mountCard(page);
+  const card = await mountCard(page, { recording: "robot_choice", from: "The card opens" });
   await card.locator('[role=tab][data-view="robots"]').click();
-  await card.locator('[data-key="robot:robot-dusty"] [data-action="edit-robot"]').click();
+  await named(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]').click();
   await card.locator('[data-action="toggle-section"][data-args*="roles"]').click();
   const battery = card.locator('[data-key="role:battery"] [role=radiogroup]');
   await expect(battery).toHaveAccessibleName("Battery");
-  await expect(card.locator('[data-key="role:status"] [role=radiogroup]')).toHaveAccessibleDescription(/Several entities fit/);
+  await expect(battery).toHaveAccessibleDescription(/Found: sensor\.rocky_battery/);
 });
 
 // In a sections grid cell the content scrolls inside the card.
 test.describe("in a sections grid cell", () => {
-  // The focused control's box against the part of its region that is not faded.
+  // The focused control's distance to each edge of its region that is faded; an edge without a
+  // fade (the region's first or last content shown) reads as clear.
   const focusInView = (card) => card.evaluate((element) => {
     const focused = element.shadowRoot.activeElement;
-    const region = focused.closest("[data-scroll]").getBoundingClientRect();
+    const scroller = focused.closest("[data-scroll]");
+    const region = scroller.getBoundingClientRect();
     const box = focused.getBoundingClientRect();
-    return { top: box.top - region.top, bottom: region.bottom - box.bottom };
+    return {
+      top: scroller.hasAttribute("data-overflow-top") ? box.top - region.top : Infinity,
+      bottom: scroller.hasAttribute("data-overflow-bottom") ? region.bottom - box.bottom : Infinity,
+    };
   });
 
   test("the tab panel is a tab stop and a control reached by Tab stands clear of the faded edges", async ({ page }) => {
-    const card = await mountCard(page, { layout: "grid", rows: 7 });
+    const card = await mountCard(page, { ...BUSY, layout: "grid", rows: 7 });
     await card.locator(".voc-primary-action").focus();
     await page.keyboard.press("Tab");
     await expect(card.locator(".voc-body")).toBeFocused();
@@ -111,8 +116,8 @@ test.describe("in a sections grid cell", () => {
   });
 
   test("Tab stays inside a dialog, and Escape returns the view where it was", async ({ page }) => {
-    const card = await mountCard(page, { layout: "grid", rows: 7 });
-    const cancel = card.locator('[data-key="job:job-running"] [data-action="cancel-job"]');
+    const card = await mountCard(page, { ...BUSY, layout: "grid", rows: 7 });
+    const cancel = named(card, ".voc-job", "Studio", '[data-action="cancel-job"]');
     await card.locator(".voc-body").evaluate((body) => { body.scrollTop = 40; });
     await cancel.focus();
     const scrolled = await card.locator(".voc-body").evaluate((body) => body.scrollTop);

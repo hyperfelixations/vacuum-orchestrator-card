@@ -7,7 +7,6 @@ import { SUPPORTED_API_VERSIONS } from "../backend/protocol.js";
 import { scopeKey } from "../backend/session.js";
 import { collectSourceDiagnostics } from "./source-diagnostics.js";
 import { indexRegistry, robotLive } from "./ha-entities.js";
-import { setupStatus } from "./setup-status.js";
 
 function deepFreeze(value) {
   if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
@@ -82,7 +81,6 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
   const registry = indexRegistry(slots.registry?.data || []);
   const states = home?.states || null;
   const robots = slots.robots?.data?.items ?? null;
-  const rooms = slots.rooms?.data?.items ?? null;
   const candidates = new Map((slots.candidates?.data?.items || []).map((candidate) => [candidate.registryId, candidate]));
   const robotsLive = {};
   for (const robot of robots || []) robotsLive[robot.robotId] = robotLive(robot, registry, states, candidates.get(robot.configuration.registryId), home?.formatState ?? null);
@@ -108,15 +106,8 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
     entityReadings,
     areas: areaCatalog(home?.areas),
     entityCatalog: needsEntityCatalog ? entityCatalog(states) : [],
-    setup: setupStatus({
-      robots,
-      rooms,
-      queueTotal: slots.queue?.data?.total ?? null,
-      openJobs: slots.openJobs?.data?.jobs ?? null,
-      jobDefaults: slots.queue?.data?.jobDefaults ?? null,
-      templates: slots.templates?.data?.items ?? null,
-      graceSeconds: Number.isFinite(slots.queue?.data?.graceSeconds) ? slots.queue.data.graceSeconds : null,
-    }),
+    // The integration's setup status, or null until read.
+    setup: slots.setup?.data ?? null,
     nowMs,
     diagnostics: { warnings: [], hints: [] },
   };

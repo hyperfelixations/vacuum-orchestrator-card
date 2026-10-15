@@ -3,7 +3,7 @@
 // at one place, and a region shown again stands where the user left it.
 
 const { test, expect } = require("../../helpers/playwright.js");
-const { act, mountCard } = require("../../helpers/browser-helpers.js");
+const { BUSY, act, mountCard, named } = require("../../helpers/browser-helpers.js");
 
 // Boxes in card coordinates and the scroll state of a region.
 const boxes = (card, selectors) => card.evaluate((element, selectors) => Object.fromEntries(selectors.map((selector) => {
@@ -22,7 +22,7 @@ async function scrollTo(card, selector, share) {
 }
 
 test("header, panel and tabs keep their place while the body scrolls to its first and last content", async ({ page }) => {
-  const card = await mountCard(page, { layout: "grid", width: 380 });
+  const card = await mountCard(page, { ...BUSY, layout: "grid", width: 380 });
   const fixed = [".voc-header", ".voc-panel", ".voc-tab-row"];
   const before = await boxes(card, fixed);
   await scrollTo(card, ".voc-body", 1);
@@ -39,7 +39,7 @@ test("header, panel and tabs keep their place while the body scrolls to its firs
 });
 
 test("content lines up with the header and the scrollbar sits at the card's edge", async ({ page }) => {
-  const card = await mountCard(page, { layout: "grid", width: 640 });
+  const card = await mountCard(page, { ...BUSY, layout: "grid", width: 640 });
   const at = await boxes(card, ["ha-card", ".voc-header", ".voc-body", ".voc-body > *"]);
   expect(at[".voc-body > *"].left).toBeCloseTo(at[".voc-header"].left, 0);
   expect(at[".voc-body > *"].right).toBeCloseTo(at[".voc-header"].right, 0);
@@ -48,8 +48,8 @@ test("content lines up with the header and the scrollbar sits at the card's edge
 });
 
 test("an overlay's actions stand at one place, short or long, and a hairline does not move them", async ({ page }) => {
-  const card = await mountCard(page, { layout: "grid" });
-  await act(page, card.locator('[data-key="job:job-running"] [data-action="cancel-job"]'));
+  const card = await mountCard(page, { ...BUSY, layout: "grid" });
+  await act(page, named(card, ".voc-job", "Studio", '[data-action="cancel-job"]'));
   const actions = ".voc-overlay-actions .voc-button:last-child";
   const short = (await boxes(card, [actions]))[actions];
   await act(page, card.locator(".voc-back"));
@@ -67,11 +67,14 @@ test("an overlay's actions stand at one place, short or long, and a hairline doe
 });
 
 test("a page closed returns the view where it was; another tab starts at the top", async ({ page }) => {
-  const card = await mountCard(page, { layout: "grid", rows: 7 });
+  const card = await mountCard(page, { ...BUSY, layout: "grid", rows: 7 });
+  // Scrolled down, with the row to open in full view, so the click itself scrolls nothing.
   await scrollTo(card, ".voc-body", 1);
+  const row = named(card, ".voc-job", "Conservatory", ".voc-job-main");
+  await row.evaluate((node) => node.scrollIntoView({ block: "nearest" }));
   const left = await scrollTop(card, ".voc-body");
   expect(left).toBeGreaterThan(0);
-  await act(page, card.locator('[data-key="job:job-bedroom"] .voc-job-main'));
+  await act(page, row);
   await expect(card.locator(".voc-root")).toHaveAttribute("data-state", "overlay");
   await act(page, card.locator(".voc-back"));
   expect(await scrollTop(card, ".voc-body")).toBe(left);
@@ -84,7 +87,7 @@ test.describe("on a touch screen", () => {
 
   test("targets keep their size inside the frame", async ({ page }) => {
     const sizes = async (layout) => {
-      const card = await mountCard(page, { layout, width: 380 });
+      const card = await mountCard(page, { ...BUSY, layout, width: 380 });
       return card.evaluate((element) => [...element.shadowRoot.querySelectorAll(".voc-button")].map((button) => {
         const rect = button.getBoundingClientRect();
         return [Math.round(rect.width), Math.round(rect.height)];

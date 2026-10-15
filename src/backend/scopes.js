@@ -3,6 +3,7 @@
 // are not a server-side snapshot, so collections are de-duplicated by stable id.
 // See internal dev doc §6 "Scopes".
 
+import { parseInstant } from "../core/time.js";
 import { backendFailure } from "../domain/backend-errors.js";
 import { normalizeExecution } from "../domain/execution.js";
 import { normalizeJob } from "../domain/job.js";
@@ -11,6 +12,7 @@ import { normalizeQueuePage } from "../domain/queue.js";
 import { normalizeCandidate, normalizeRobot } from "../domain/robots.js";
 import { normalizeRoom } from "../domain/rooms.js";
 import { normalizeRun } from "../domain/runs.js";
+import { normalizeSetup } from "../domain/setup.js";
 import { normalizeTemplate } from "../domain/templates.js";
 import { normalizeDiagnosticsSummary, normalizeTracePage } from "../domain/trace.js";
 import { PAGE_LIMIT, QUERY_COLLECTIONS, apiVersionOf, guards, isSupportedApiVersion, messages } from "./protocol.js";
@@ -28,6 +30,7 @@ export const VIEW_SCOPES = Object.freeze({
   rooms: Object.freeze(["rooms"]),
   robots: Object.freeze(["robots"]),
   templates: Object.freeze(["templates"]),
+  setup: Object.freeze(["setup"]),
 });
 // Trace, execution, diagnostics and a draft's preview change without a commit of their own and
 // follow every event.
@@ -42,16 +45,18 @@ export function scopesForChanges(changed) {
 const invalid = (detail) => backendFailure("invalid_response", { detail });
 const done = (data, view = null) => Object.freeze({ ok: true, data, view });
 
-// The integration view a response was read at, or null without its metadata.
+// The integration view a response was read at, or null without its metadata. `serverTime`: the
+// integration's clock when it answered.
 function viewOf(wire) {
   if (!wire || typeof wire.runtime_id !== "string" || !Number.isInteger(wire.runtime_sequence) || !Number.isInteger(wire.commit_id)) return null;
-  return Object.freeze({ runtimeId: wire.runtime_id, sequence: wire.runtime_sequence, commitId: wire.commit_id });
+  return Object.freeze({ runtimeId: wire.runtime_id, sequence: wire.runtime_sequence, commitId: wire.commit_id, serverTime: parseInstant(wire.server_time) });
 }
 
 // Pages of one collection form a view only within one runtime; the oldest page bounds it.
 function oldestView(views) {
   if (!views.length || views.some((view) => !view || view.runtimeId !== views[0].runtimeId)) return null;
-  return Object.freeze({ runtimeId: views[0].runtimeId, sequence: Math.min(...views.map((view) => view.sequence)), commitId: Math.min(...views.map((view) => view.commitId)) });
+  const times = views.map((view) => view.serverTime).filter(Number.isFinite);
+  return Object.freeze({ runtimeId: views[0].runtimeId, sequence: Math.min(...views.map((view) => view.sequence)), commitId: Math.min(...views.map((view) => view.commitId)), serverTime: times.length ? Math.max(...times) : null });
 }
 
 async function guarded(request, guard, detail) {
@@ -158,6 +163,13 @@ export async function loadDiagnostics(transport) {
   return done(normalizeDiagnosticsSummary(result.data), viewOf(result.data));
 }
 
+export async function loadSetup(transport) {
+  const result = await guarded(transport.ws(messages.query("get_setup")), guards.setup, "get_setup");
+  if (!result.ok) return result;
+  const setup = normalizeSetup(result.data);
+  return setup ? done(setup, viewOf(result.data)) : invalid("get_setup");
+}
+
 export async function loadManifest(transport) {
   const result = await guarded(transport.ws(messages.manifest()), guards.manifest, "manifest/get");
   if (!result.ok) return result;
@@ -209,6 +221,7 @@ export const SCOPE_LOADERS = Object.freeze({
   job: loadJob,
   diagnostics: loadDiagnostics,
   preview: loadPreview,
+  setup: loadSetup,
   manifest: loadManifest,
   registry: loadEntityRegistry,
   errorTexts: loadErrorTexts,

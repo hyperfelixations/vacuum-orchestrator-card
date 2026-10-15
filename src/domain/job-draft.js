@@ -24,8 +24,9 @@ export const INTENT_FIELDS = Object.freeze([
 
 export const TEMPLATE_FIELDS = Object.freeze(["templateName", "enabled", "automatic"]);
 
-// The integration resolves "all" to the rooms a robot can clean when a job is created; a
-// template keeps the choice itself.
+// "All rooms" travels as `all_rooms`: the integration takes every active room when a job is
+// created, whichever robot cleans them; a template keeps the choice itself. The value names the
+// choice among the editor's room chips.
 export const ALL_ROOMS = "all";
 
 const WIRE_NAMES = Object.freeze({
@@ -229,7 +230,10 @@ export function draftToIntent(draft) {
     if (SETTINGS.has(field) && !used.has(field)) continue;
     result[WIRE_NAMES[field]] = Array.isArray(value) ? [...value] : value;
   }
-  if (values.allRooms) result.areas = ALL_ROOMS;
+  if (values.allRooms) {
+    delete result.areas;
+    result.all_rooms = true;
+  }
   return Object.freeze(result);
 }
 
@@ -247,8 +251,10 @@ export function draftToUpdatePatch(draft) {
     if (values[field] === null && !TEXT_FIELDS.includes(field)) continue;
     patch[WIRE_NAMES[field]] = Array.isArray(values[field]) ? [...values[field]] : values[field];
   }
+  // Any room selection replaces the job's whole selection.
   if (values.allRooms !== baseline.allRooms || (!values.allRooms && !same(values.roomIds, baseline.roomIds))) {
-    patch.areas = values.allRooms ? ALL_ROOMS : [...values.roomIds];
+    if (values.allRooms) patch.all_rooms = true;
+    else patch.areas = [...values.roomIds];
   }
   return Object.freeze(patch);
 }
@@ -268,7 +274,7 @@ export function draftToPreview(draft) {
   const intent = draftToIntent(draft);
   const parameters = {};
   const settings = intent.settings_policy === "strict" ? ["vacuum_power", "mop_intensity", "mop_route"] : [];
-  for (const key of ["areas", "mode", ...settings, "passes", "settings_policy", "required_on", "required_off"]) {
+  for (const key of ["areas", "all_rooms", "mode", ...settings, "passes", "settings_policy", "required_on", "required_off"]) {
     if (intent[key] !== undefined) parameters[key] = intent[key];
   }
   if (Array.isArray(parameters.areas) && parameters.areas.length === 0) delete parameters.areas;

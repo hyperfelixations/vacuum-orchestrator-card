@@ -22,7 +22,7 @@ export function buildQueueView({ model, texts, context, options = {}, timeFormat
   }));
   const active = options.show_active === false ? [] : openJobs.filter((job) => job.state !== "needs_attention").map((job) => buildJobRow(job, shared));
   const attention = options.show_attention === false ? [] : openJobs.filter((job) => job.state === "needs_attention").map((job) => buildJobRow(job, shared));
-  const waiting = list(queue?.jobs).map((job) => buildJobRow(job, { ...shared, total: queue.total }));
+  const waiting = list(queue?.jobs).map((job) => buildJobRow(job, shared));
   const templates = options.show_templates === false
     ? []
     : list(slotData(model, "templates")?.items)

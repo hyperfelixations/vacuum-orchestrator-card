@@ -67,9 +67,12 @@ export function relativeParts(nowMs, thenMs) {
   return { unit: "day", value: Math.round(hours / 24) };
 }
 
-// Hours and minutes of a duration; the wording belongs to the i18n layer.
+// Hours and minutes of a duration, or its seconds below a minute; the wording belongs to the
+// i18n layer.
 export function durationParts(durationMs) {
   if (!Number.isFinite(durationMs)) return null;
-  const totalMinutes = Math.max(0, Math.round(durationMs / 60000));
-  return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
+  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+  if (totalSeconds < 60) return { hours: 0, minutes: 0, seconds: totalSeconds };
+  const totalMinutes = Math.round(totalSeconds / 60);
+  return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60, seconds: null };
 }

@@ -25,6 +25,8 @@
     return JSON.stringify(value);
   }
   const requestKey = ({ id: _id, ...message }) => canonical(message);
+  // Whether every field of `match` equals the message's.
+  const matches = (message, match) => Object.entries(match).every(([key, value]) => canonical(message[key]) === canonical(value));
 
   // `subscribe_entities` states as home-assistant-js-websocket expands them.
   function expandState(entityId, compressed) {
@@ -94,6 +96,8 @@
     const connectionListeners = { ready: new Set(), disconnected: new Set() };
     const changeListeners = new Set();
     const held = [];
+    // Messages Home Assistant refuses before the integration sees them: { match, error }.
+    const refusals = [];
     // Commands the card sent whose answer lies ahead in the recording, by the answer's step.
     const pending = new Map();
     // Frames that arrive in a later task, in recorded order.
@@ -105,6 +109,8 @@
     let elapsedMs = 0;
     // The recorded id of the subscription the card holds.
     let subscription = null;
+    // The connection's last command id; home-assistant-js-websocket writes each into the message.
+    let commandId = 0;
 
     const view = {
       config: copy(recording.hass.config),
@@ -116,8 +122,12 @@
     };
     let hass = null;
 
+    // Every departure from the recording, kept even where the card catches the error.
+    const failures = [];
     function fail(message) {
-      throw new Error(`${name}: ${message}`);
+      const error = new Error(`${name}: ${message}`);
+      failures.push(error);
+      throw error;
     }
 
     function applyHass(change) {
@@ -254,7 +264,18 @@
     }
 
     function send(message) {
+      // A message that cannot take its id never leaves, as with home-assistant-js-websocket.
+      try {
+        message.id = ++commandId;
+      } catch (error) {
+        return Promise.reject(error);
+      }
       calls.push(copy({ ...message, id: undefined }));
+      const refused = refusals.findIndex(({ match }) => matches(message, match));
+      if (refused !== -1) {
+        const [{ error }] = refusals.splice(refused, 1);
+        return settle(() => Promise.reject(copy(error)));
+      }
       return settle(() => (MUTATIONS.has(message.type) ? mutate(message) : read(message)));
     }
 
@@ -269,6 +290,12 @@
       sendMessagePromise: (message) => send(message),
       subscribeMessage(callback, message) {
         if (message.type !== SUBSCRIBE) fail(`unexpected subscription ${canonical(message)}`);
+        // home-assistant-js-websocket swallows a subscription it cannot send: it never settles.
+        try {
+          message.id = ++commandId;
+        } catch {
+          return new Promise(() => {});
+        }
         calls.push(copy({ ...message, id: undefined }));
         const recorded = sends.find((entry) => entry.key === requestKey(message));
         if (!recorded) fail(`the recording has no ${SUBSCRIBE}`);
@@ -303,6 +330,7 @@
         return hass;
       },
       calls,
+      failures,
       // The step index the recording has been played to.
       get position() {
         return cursor;
@@ -331,6 +359,11 @@
       // Whether the card sent every recorded command.
       get finished() {
         return !sends.some((entry) => entry.mutation && entry.position >= cursor);
+      },
+      // The next message like `match` is refused with `error`, a Home Assistant error frame. The
+      // integration never sees it, so the recording does not move.
+      failNext(match, error) {
+        refusals.push({ match, error });
       },
       // Answers wait until `release()`, as if the integration were slow.
       hold() {

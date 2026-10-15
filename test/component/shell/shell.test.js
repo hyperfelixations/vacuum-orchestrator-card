@@ -4,19 +4,15 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createTestEnvironment } = require("../../helpers/load-card.jsdom.js");
-const { mountCard, FIXED_NOW } = require("../../helpers/mount-card.js");
-const { haError } = require("../../fixtures/voi/wire.js");
-const { EXCEPTIONS } = require("../../fixtures/voi/exceptions.js");
+const { mountCard } = require("../../helpers/mount-card.js");
+const { exceptionText, haError } = require("../../helpers/voi-records.js");
 
-let env;
-test.before(() => {
-  env = createTestEnvironment({ now: FIXED_NOW });
-});
-test.after(() => env.cleanupAll());
+const BUSY = { recording: "showcase", from: "A busy afternoon" };
+// Rocky cleans the studio with the queue running; the user may pause it next.
+const RUNNING = { recording: "queue_controls", from: "The library job is next" };
 
 test("the card speaks the configured language", async () => {
-  const card = await mountCard({ env, config: { language: "de" } });
+  const card = await mountCard({ ...BUSY, config: { language: "de" } });
   assert.equal(card.text(".voc-title"), "Reinigung");
   assert.equal(card.text(".voc-status-pill"), "Reinigt");
   assert.deepEqual(card.all('[role="tab"]').map((tab) => tab.getAttribute("title")), ["Warteschlange", "Räume", "Roboter", "Vorlagen", "Verlauf", "Einstellungen"]);
@@ -24,7 +20,7 @@ test("the card speaks the configured language", async () => {
 });
 
 test("header options set title, subtitle, icon and the accent line position", async () => {
-  const card = await mountCard({ env, config: { title: "Upstairs", subtitle: { text: "Cleaning crew", overflow: "wrap" }, icon: "mdi:broom", accent_line: "bottom" } });
+  const card = await mountCard({ ...BUSY, config: { title: "Upstairs", subtitle: { text: "Cleaning crew", overflow: "wrap" }, icon: "mdi:broom", accent_line: "bottom" } });
   const root = card.root.querySelector(".voc-root");
   assert.equal(card.text(".voc-title"), "Upstairs");
   assert.equal(card.text(".voc-subtitle"), "Cleaning crew");
@@ -35,7 +31,7 @@ test("header options set title, subtitle, icon and the accent line position", as
 });
 
 test("an unusable option is a warning with its fallback; show.warnings hides the block", async () => {
-  const card = await mountCard({ env, config: { page_size: 1 } });
+  const card = await mountCard({ ...BUSY, config: { page_size: 1 } });
   assert.match(card.text(".voc-warning-text"), /page_size/);
   card.card.setConfig({ type: "custom:vacuum-orchestrator-card", page_size: 1, show: { warnings: false } });
   await card.settle();
@@ -44,19 +40,19 @@ test("an unusable option is a warning with its fallback; show.warnings hides the
 });
 
 test("a lost connection is a hint behind the subtitle, not a warning", async () => {
-  const card = await mountCard({ env });
-  card.fake.disconnect();
+  const card = await mountCard(BUSY);
+  card.backend.disconnect();
   await card.updateHass({});
   assert.match(card.text(".voc-subtitle"), / · .*reconnect/i);
   assert.equal(card.root.querySelector(".voc-warning"), null);
-  card.fake.reconnect();
+  card.backend.reconnect();
   await card.settle(24);
   assert.doesNotMatch(card.text(".voc-subtitle"), /reconnect/i);
   card.unmount();
 });
 
 test("show switches remove the panel, the tab strip and the queue control", async () => {
-  const card = await mountCard({ env, config: { show: { panel: false, tabs: false } } });
+  const card = await mountCard({ ...BUSY, config: { show: { panel: false, tabs: false } } });
   assert.equal(card.root.querySelector(".voc-panel"), null);
   assert.equal(card.root.querySelector(".voc-tabs"), null);
   card.card.setConfig({ type: "custom:vacuum-orchestrator-card", show: { queue_controls: false } });
@@ -67,7 +63,7 @@ test("show switches remove the panel, the tab strip and the queue control", asyn
 });
 
 test("arrow keys move through the tabs and switch the view with focus on the tab", async () => {
-  const card = await mountCard({ env });
+  const card = await mountCard(BUSY);
   await card.press('[role="tab"][data-view="queue"]', "ArrowRight");
   const selected = card.root.querySelector('[role="tab"][aria-selected="true"]');
   assert.equal(selected.dataset.view, "rooms");
@@ -77,16 +73,16 @@ test("arrow keys move through the tabs and switch the view with focus on the tab
 });
 
 test("the body is a region that scrolls; as a tab panel it is a tab stop", async () => {
-  const card = await mountCard({ env });
+  const card = await mountCard(BUSY);
   const body = () => card.root.querySelector("#voc-panel");
   assert.deepEqual([body().hasAttribute("data-scroll"), body().getAttribute("role"), body().getAttribute("tabindex")], [true, "tabpanel", "0"]);
-  await card.click('[data-key="job:job-kitchen"] .voc-job-main');
+  await card.click('[data-key="waiting"] .voc-job .voc-job-main');
   assert.deepEqual([body().hasAttribute("data-scroll"), body().hasAttribute("role"), body().hasAttribute("tabindex")], [true, false, false]);
   card.unmount();
 });
 
 test("a view the integration does not offer is listed and explained", async () => {
-  const card = await mountCard({ env });
+  const card = await mountCard(BUSY);
   const services = { ...card.hass.services.vacuum_orchestrator };
   delete services.get_history;
   card.card.hass = { ...card.card.hass, services: { ...card.card.hass.services, vacuum_orchestrator: services } };
@@ -99,11 +95,11 @@ test("a view the integration does not offer is listed and explained", async () =
 });
 
 test("a command's notice is announced and can be dismissed", async () => {
-  const card = await mountCard({ env });
+  const card = await mountCard(RUNNING);
   await card.click(".voc-queue-control");
   await card.settle(32);
   assert.equal(card.services("pause_queue").length, 1);
-  card.fake.failNext("resume_queue", { code: "home_assistant_error", message: "Unauthorized" });
+  card.backend.failNext({ service: "resume_queue" }, haError.homeAssistant("Unauthorized"));
   await card.click(".voc-queue-control");
   await card.settle(32);
   assert.equal(card.root.querySelector(".voc-notice").getAttribute("role"), "alert");
@@ -114,10 +110,10 @@ test("a command's notice is announced and can be dismissed", async () => {
 });
 
 test("a command the integration refuses shows the integration's own text in the card's language", async () => {
-  const card = await mountCard({ env, config: { language: "de" } });
-  card.fake.failNext("pause_queue", haError.serviceValidation("critical_storage_state_uncertain"));
+  const card = await mountCard({ ...RUNNING, config: { language: "de" } });
+  card.backend.failNext({ service: "pause_queue" }, haError.serviceValidation("critical_storage_state_uncertain"));
   await card.click(".voc-queue-control");
   await card.settle(32);
-  assert.equal(card.text(".voc-notice-text"), EXCEPTIONS.de.critical_storage_state_uncertain);
+  assert.equal(card.text(".voc-notice-text"), exceptionText("critical_storage_state_uncertain", "de"));
   card.unmount();
 });

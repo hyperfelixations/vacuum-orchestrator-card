@@ -4,20 +4,21 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const W = require("../../fixtures/voi/wire.js");
+const W = require("../../helpers/voi-records.js");
 
 const load = async () => ({ ...(await import("../../../src/domain/job.js")), ...(await import("../../../src/domain/readiness.js")) });
 
 test("a complete record keeps every field in camelCase with instants as epoch milliseconds", async () => {
   const { normalizeJob } = await load();
-  const job = normalizeJob(W.wireJob({ name: " Kitchen ", mode: "vac_then_mop", mop_intensity: "medium", passes: 2, required_on: ["binary_sensor.a", "binary_sensor.a"], readiness: W.wireReadiness() }));
-  assert.equal(job.jobId, "job-1");
-  assert.equal(job.name, "Kitchen");
+  const recorded = W.wireJob({ name: " Dining room ", mode: "vac_then_mop", mop_intensity: "medium", passes: 2, required_on: ["binary_sensor.a", "binary_sensor.a"], readiness: W.wireReadiness() });
+  const job = normalizeJob(recorded);
+  assert.equal(job.jobId, recorded.job_id);
+  assert.equal(job.name, "Dining room");
   assert.equal(job.mode, "vacuum_then_mop");
   assert.equal(job.mopIntensity, "medium");
   assert.equal(job.passes, 2);
   assert.deepEqual(job.requiredOn, ["binary_sensor.a"]);
-  assert.equal(job.createdAt, Date.parse("2026-09-17T00:00:00Z"));
+  assert.equal(job.createdAt, Date.parse(recorded.created_at));
   assert.equal(job.readiness.state, "ready");
   assert.ok(Object.isFrozen(job) && Object.isFrozen(job.readiness));
   assert.deepEqual([job.allRooms, { ...job.origin }, job.afterCancel], [false, { kind: "manual", templateId: null }, null]);
@@ -33,10 +34,10 @@ test("the origin, the all-rooms choice and the cancel choice are the integration
 
 test("room ids are canonical; without them the area aliases stand in", async () => {
   const { normalizeJob } = await load();
-  assert.deepEqual(normalizeJob(W.wireJob({ areas: ["kitchen"], room_ids: ["room-kitchen"] })).roomIds, ["room-kitchen"]);
-  const legacy = W.wireJob({ areas: ["kitchen", "hall"] });
+  assert.deepEqual(normalizeJob(W.wireJob({ areas: ["library"], room_ids: ["room-library"] })).roomIds, ["room-library"]);
+  const legacy = W.wireJob({ areas: ["library", "studio"] });
   delete legacy.room_ids;
-  assert.deepEqual(normalizeJob(legacy).roomIds, ["kitchen", "hall"]);
+  assert.deepEqual(normalizeJob(legacy).roomIds, ["library", "studio"]);
 });
 
 test("a record without identity, targets, mode or timestamps is dropped", async () => {
@@ -71,12 +72,12 @@ test("readiness keeps reason codes, unreleased rooms and requirement results", a
   const readiness = normalizeReadiness(W.wireReadiness({
     state: "blocked",
     reason_codes: ["room_not_released", "requirement_not_satisfied"],
-    blocked_room_ids: ["room-bathroom"],
-    requirements: [W.wireRequirementResult({ state: "blocked", operation: "mop" }), W.wireRequirementResult({ entity_id: "" }), W.wireRequirementResult({ entity_id: "sensor.x", state: "sideways" })],
+    blocked_room_ids: ["room-conservatory"],
+    requirements: [W.wireRequirementResult({ state: "blocked", operation: "mop" }), W.wireRequirementResult({ entity_id: "" }), W.wireRequirementResult({ entity_id: "sensor.x", state: "sideways", operation: null })],
   }));
   assert.equal(readiness.state, "blocked");
-  assert.deepEqual(readiness.blockedRoomIds, ["room-bathroom"]);
-  assert.deepEqual(readiness.requirements.map((item) => [item.entityId, item.state, item.operation]), [["binary_sensor.hall_door", "blocked", "mop"], ["sensor.x", "unknown", null]]);
+  assert.deepEqual(readiness.blockedRoomIds, ["room-conservatory"]);
+  assert.deepEqual(readiness.requirements.map((item) => [item.entityId, item.state, item.operation]), [["binary_sensor.conservatory_door", "blocked", "mop"], ["sensor.x", "unknown", null]]);
   assert.equal(normalizeReadiness(W.wireReadiness({ state: "maybe" })).state, "unknown");
 });
 

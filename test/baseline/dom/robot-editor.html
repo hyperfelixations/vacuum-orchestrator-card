@@ -1,4 +1,4 @@
-<div class="voc-root" data-state="overlay" data-tone="cleaning" style="--tone-color:var(--info-color, #039be5);--tone-ink:color-mix(in srgb, var(--info-color, #039be5) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--info-color, #039be5) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
+<div class="voc-root" data-state="overlay" data-tone="idle" style="--tone-color:var(--success-color, #43a047);--tone-ink:color-mix(in srgb, var(--success-color, #43a047) 82%, var(--primary-text-color));--tone-soft:color-mix(in srgb, var(--success-color, #43a047) 20%, transparent);--tone-border:color-mix(in srgb, var(--tone-ink) 38%, transparent);" tabindex="-1">
 <div class="voc-top-line">
 </div>
 <div class="voc-header">
@@ -8,9 +8,9 @@
 </div>
 <div class="voc-title-block">
 <div class="voc-title">Cleaning</div>
-<div class="voc-subtitle">Living room · Cleaning</div>
+<div class="voc-subtitle">Nothing waiting</div>
 </div>
-<div class="voc-status-pill">Cleaning</div>
+<div class="voc-status-pill">Ready</div>
 </div>
 <div class="voc-body" id="voc-panel" data-body="overlay:robot-editor" data-scroll="">
 <section class="voc-overlay" data-key="overlay:robot-editor" role="region" aria-labelledby="voc-overlay-title">
@@ -43,10 +43,10 @@
 <button type="button" class="voc-option is-selected" role="option" aria-selected="true" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;allowedOperations&quot;,&quot;value&quot;:&quot;vacuum&quot;}" data-value="vacuum" data-key="option:vacuum">
 <span>Vacuuming</span>
 </button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;allowedOperations&quot;,&quot;value&quot;:&quot;mop&quot;}" data-value="mop" data-key="option:mop">
+<button type="button" class="voc-option is-selected" role="option" aria-selected="true" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;allowedOperations&quot;,&quot;value&quot;:&quot;mop&quot;}" data-value="mop" data-key="option:mop">
 <span>Mopping</span>
 </button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;allowedOperations&quot;,&quot;value&quot;:&quot;vacuum_and_mop&quot;}" data-value="vacuum_and_mop" data-key="option:vacuum_and_mop">
+<button type="button" class="voc-option is-selected" role="option" aria-selected="true" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;allowedOperations&quot;,&quot;value&quot;:&quot;vacuum_and_mop&quot;}" data-value="vacuum_and_mop" data-key="option:vacuum_and_mop">
 <span>Vacuuming and mopping</span>
 </button>
 </div>
@@ -54,10 +54,10 @@
 <div class="voc-field" data-key="field:fixedMode" data-field-control="segmented">
 <div class="voc-field-label" id="voc-field-fixedMode-label">Fixed mode</div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-fixedMode-label" aria-describedby="voc-field-fixedMode-hint" data-control="choice">
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;fixedMode&quot;,&quot;value&quot;:null}" data-value="" data-key="option:">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;fixedMode&quot;,&quot;value&quot;:null}" data-value="" data-key="option:">
 <span>Not fixed</span>
 </button>
-<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;fixedMode&quot;,&quot;value&quot;:&quot;vacuum&quot;}" data-value="vacuum" data-key="option:vacuum">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;fixedMode&quot;,&quot;value&quot;:&quot;vacuum&quot;}" data-value="vacuum" data-key="option:vacuum">
 <span>Vacuuming</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;fixedMode&quot;,&quot;value&quot;:&quot;mop&quot;}" data-value="mop" data-key="option:mop">
@@ -86,20 +86,17 @@
 <div class="voc-field" data-key="field:targetAreas" data-field-control="chips">
 <div class="voc-field-label" id="voc-field-targetAreas-label">Areas the robot cleans</div>
 <div class="voc-chips" role="listbox" aria-multiselectable="true" aria-labelledby="voc-field-targetAreas-label" aria-describedby="voc-field-targetAreas-hint" data-control="choice">
-<button type="button" class="voc-option is-selected" role="option" aria-selected="true" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;kitchen&quot;}" data-value="kitchen" data-key="option:kitchen">
-<span>Kitchen</span>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;dining_room&quot;}" data-value="dining_room" data-key="option:dining_room">
+<span>Dining Room</span>
 </button>
-<button type="button" class="voc-option is-selected" role="option" aria-selected="true" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;hall&quot;}" data-value="hall" data-key="option:hall">
-<span>Hall</span>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;studio&quot;}" data-value="studio" data-key="option:studio">
+<span>Studio</span>
 </button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;bathroom&quot;}" data-value="bathroom" data-key="option:bathroom">
-<span>Bathroom</span>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;library&quot;}" data-value="library" data-key="option:library">
+<span>Library</span>
 </button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;living_room&quot;}" data-value="living_room" data-key="option:living_room">
-<span>Living room</span>
-</button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;bedroom&quot;}" data-value="bedroom" data-key="option:bedroom">
-<span>Bedroom</span>
+<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;conservatory&quot;}" data-value="conservatory" data-key="option:conservatory">
+<span>Conservatory</span>
 </button>
 </div>
 <div class="voc-field-hint" id="voc-field-targetAreas-hint">For robots addressed by Home Assistant areas. Map segments are assigned in the room settings.</div>
@@ -117,39 +114,26 @@
 <div class="voc-field voc-field--inline" data-key="field:roles.battery.mode" data-field-control="segmented">
 <div class="voc-field-text">
 <div class="voc-field-label" id="voc-field-roles-battery-mode-label">Battery</div>
+<div class="voc-field-hint" id="voc-field-roles-battery-mode-hint">No entity found.</div>
 </div>
-<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-battery-mode-label" data-control="choice">
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.battery.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-battery-mode-label" aria-describedby="voc-field-roles-battery-mode-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.battery.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
 <span>Automatic</span>
 </button>
 <button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.battery.mode&quot;,&quot;value&quot;:&quot;off&quot;}" data-value="off" data-key="option:off">
 <span>Off</span>
 </button>
-<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.battery.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.battery.mode&quot;,&quot;value&quot;:&quot;entity&quot;}" data-value="entity" data-key="option:entity">
 <span>Entity</span>
 </button>
 </div>
 </div>
-<div class="voc-field" data-key="field:roles.battery.entity" data-field-control="entities">
-<label class="voc-field-label voc-sr-only" id="voc-field-roles-battery-entity-label" for="voc-field-roles-battery-entity">Entity for Battery</label>
-<div class="voc-entities" data-control="entities">
-<div class="voc-entity-chips">
-<span class="voc-entity-chip" data-key="selected:sensor.dusty_battery">
-<span>Dusty Battery</span>
-<button type="button" class="voc-button voc-button--icon voc-entity-remove" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;roles.battery.entity&quot;,&quot;value&quot;:&quot;sensor.dusty_battery&quot;}" aria-label="Remove Dusty Battery" title="Remove Dusty Battery">
-<ha-icon icon="mdi:close" aria-hidden="true">
-</ha-icon>
-</button>
-</span>
 </div>
-</div>
-</div>
-</div>
-<div class="voc-role is-attention" data-key="role:status">
+<div class="voc-role" data-key="role:status">
 <div class="voc-field voc-field--inline" data-key="field:roles.status.mode" data-field-control="segmented">
 <div class="voc-field-text">
 <div class="voc-field-label" id="voc-field-roles-status-mode-label">Status</div>
-<div class="voc-field-hint" id="voc-field-roles-status-mode-hint">Several entities fit. Choose one.</div>
+<div class="voc-field-hint" id="voc-field-roles-status-mode-hint">No entity found.</div>
 </div>
 <div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-roles-status-mode-label" aria-describedby="voc-field-roles-status-mode-hint" data-control="choice">
 <button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;roles.status.mode&quot;,&quot;value&quot;:&quot;auto&quot;}" data-value="auto" data-key="option:auto">
@@ -520,7 +504,7 @@
 </div>
 </div>
 <div class="voc-overlay-actions">
-<button type="button" class="voc-button voc-button--danger voc-action-start" data-action="remove-robot" data-args="{&quot;robotId&quot;:&quot;robot-dusty&quot;}">
+<button type="button" class="voc-button voc-button--danger voc-action-start" data-action="remove-robot" data-args="{&quot;robotId&quot;:&quot;01J00000000000000000000005&quot;}">
 <ha-icon icon="mdi:delete-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Remove robot</span>

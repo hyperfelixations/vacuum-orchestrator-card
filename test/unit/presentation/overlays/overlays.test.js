@@ -1,10 +1,11 @@
 // The pages that replace the tabs: job and template editor, job detail with the execution
-// explanation, the small dialogs, room release and settings, robot discovery and profile.
+// explanation, the small dialogs, room release and settings, robot discovery and profile. Every
+// page reads the integration's recordings at named marks.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { modelFor } = require("../../../helpers/model.js");
-const W = require("../../../fixtures/voi/wire.js");
+const W = require("../../../helpers/voi-records.js");
 
 const LOADERS = {
   "job-editor": () => import("../../../../src/presentation/overlays/job-editor.js"),
@@ -17,26 +18,51 @@ const overlays = (name) => LOADERS[name]();
 const draftModule = () => import("../../../../src/domain/job-draft.js");
 const fieldsOf = (vm, group) => Object.fromEntries(vm.groups.find((entry) => entry.key === group).fields.map((field) => [field.key, field]));
 
-test("a new job editor offers rooms by name with a mark for unreachable rooms", async () => {
+const BUSY = "A busy afternoon";
+const TEMPLATES = { templates: { name: "templates", params: {} } };
+const busy = (requests = {}, options = {}) => modelFor("showcase", { from: BUSY, requests, ...options });
+const roomId = (model, name) => model.slots.rooms.data.items.find((room) => room.name === name).roomId;
+const robotId = (model, name) => model.slots.robots.data.items.find((robot) => robot.name === name).robotId;
+// The open job of a room: queued jobs from the queue page, running ones from the open jobs.
+const jobIn = (model, name) => {
+  const id = roomId(model, name);
+  return [...model.slots.queue.data.jobs, ...model.slots.openJobs.data.jobs].find((job) => job.roomIds.includes(id));
+};
+const jobRequests = (jobId) => ({
+  job: { name: "job", params: { jobId } },
+  execution: { name: "execution", params: { jobId } },
+  trace: { name: "trace", params: { jobId } },
+});
+// A new draft from the integration's job defaults, as the editor starts one.
+const newDraft = async (model, changes = {}) => {
+  const { createDraft, applyDraftChange } = await draftModule();
+  let draft = createDraft({ jobDefaults: model.slots.queue.data.jobDefaults });
+  for (const [key, value] of Object.entries(changes)) draft = applyDraftChange(draft, key, value);
+  return draft;
+};
+
+test("a new job editor offers rooms by name with a mark for unreachable and unreleased rooms", async () => {
   const { buildJobEditor } = await overlays("job-editor");
-  const { createDraft } = await draftModule();
-  const built = await modelFor("typical", { needsEntityCatalog: true });
-  const vm = buildJobEditor({ ...built, overlay: { kind: "job-editor", draft: createDraft() } });
+  const built = await modelFor("room_controls", { from: "The library is released for 75 minutes", needsEntityCatalog: true });
+  const vm = buildJobEditor({ ...built, overlay: { kind: "job-editor", draft: await newDraft(built.model) } });
   assert.equal(vm.title, built.texts.t("editor.newJob"));
   assert.equal(vm.save.label, built.texts.t("action.addToQueue"));
   assert.equal(vm.remove, null);
   const rooms = fieldsOf(vm, "basics").roomIds.options;
-  assert.deepEqual(rooms.map((room) => room.label), ["All rooms", "Bathroom", "Bedroom", "Hall", "Kitchen", "Living room"]);
-  assert.equal(rooms.find((room) => room.value === "room-bedroom").badge, "mdi:robot-vacuum-alert");
-  assert.equal(rooms.find((room) => room.value === "room-bathroom").badge, "mdi:lock-outline");
-  assert.equal(rooms.find((room) => room.value === "room-kitchen").badge, null);
+  assert.deepEqual(rooms.map((room) => [room.label, room.badge]), [
+    ["All rooms", undefined],
+    ["Conservatory", "mdi:robot-vacuum-alert"],
+    ["Dining Room", "mdi:lock-outline"],
+    ["Library", null],
+    ["Studio", "mdi:lock-outline"],
+  ]);
 });
 
 test("the editor shows only the settings the mode uses, and errors only after a save attempt", async () => {
   const { buildJobEditor } = await overlays("job-editor");
-  const { createDraft, applyDraftChange } = await draftModule();
-  const built = await modelFor("typical");
-  const draft = createDraft();
+  const { applyDraftChange } = await draftModule();
+  const built = await busy();
+  const draft = await newDraft(built.model);
   const vacuum = buildJobEditor({ ...built, overlay: { draft } });
   assert.deepEqual(Object.keys(fieldsOf(vacuum, "settings")), ["vacuumPower", "passes"]);
   assert.deepEqual(fieldsOf(vacuum, "settings").vacuumPower.options.map((option) => [option.value, option.badge]), ["low", "standard", "high", "maximum", "maximum_plus"].map((value) => [value, null]), "without a preview every rung is offered");
@@ -51,37 +77,39 @@ test("the editor shows only the settings the mode uses, and errors only after a 
 });
 
 test("the preview limits the rungs, marks those not every robot offers and allows starting at once", async () => {
-  const { buildJobEditor, settingChoices, shownSettings, previewable } = await overlays("job-editor");
+  const { buildJobEditor, settingChoices, previewable } = await overlays("job-editor");
   const { createDraft, applyDraftChange, draftToPreview } = await draftModule();
-  const { normalizeJob } = await import("../../../../src/domain/job.js");
-  const draft = applyDraftChange(createDraft({ jobDefaults: { mode: "vacuum", vacuumPower: "maximum_plus", passes: 1, settingsPolicy: "best_effort" } }), "roomIds", ["room-kitchen"]);
-  const setup = (fake) => {
-    fake.state.jobDefaults = W.wireJobDefaults({ vacuum_power: "maximum_plus", configured: true });
-  };
-  const built = await modelFor("typical", { setup, requests: { preview: { name: "preview", params: draftToPreview(draft) } } });
-  const vm = buildJobEditor({ ...built, overlay: { draft } });
-  const power = fieldsOf(vm, "settings").vacuumPower;
-  assert.deepEqual(power.options.map((option) => option.value), ["low", "standard", "high", "maximum"]);
-  assert.equal(power.value, "maximum", "a new draft shows the rung the integration preselects");
-  assert.deepEqual([power.options[0].badge, power.options[0].title], ["mdi:information-outline", built.texts.t("editor.notEveryRobot")]);
-  assert.deepEqual(shownSettings(draft, built.model.slots.preview.data), { vacuumPower: "maximum" });
-  assert.equal(vm.startNow.label, built.texts.t("action.startNow"));
-  const job = normalizeJob(W.wireJob({ vacuum_power: "maximum_plus" }));
-  const kept = settingChoices(createDraft({ target: job }), built.model.slots.preview.data)[0];
-  assert.equal(kept.value, "maximum_plus", "an existing job keeps its rung, marked");
-  assert.deepEqual(kept.options.at(-1), { value: "maximum_plus", note: "notOffered" });
+  const previewOf = (draft) => ({ preview: { name: "preview", params: draftToPreview(draft) } });
+
+  const either = await modelFor("robot_choice", { from: "Either robot can start the dining room" });
+  const dining = await newDraft(either.model, { roomIds: [roomId(either.model, "Dining Room")] });
+  const shared = await modelFor("robot_choice", { from: "Either robot can start the dining room", requests: previewOf(dining) });
+  const power = fieldsOf(buildJobEditor({ ...shared, overlay: { draft: dining } }), "settings").vacuumPower;
+  assert.equal(power.value, "standard");
+  assert.ok(power.options.every((option) => option.badge === "mdi:information-outline" && option.title === shared.texts.t("editor.notEveryRobot")), "Dusty sets no suction");
+
+  const docked = await modelFor("queue_controls", { from: "Rocky is back at its dock" });
+  const studio = await newDraft(docked.model, { roomIds: [roomId(docked.model, "Studio")] });
+  const ready = await modelFor("queue_controls", { from: "Rocky is back at its dock", requests: previewOf(studio) });
+  const vm = buildJobEditor({ ...ready, overlay: { draft: studio } });
+  assert.ok(fieldsOf(vm, "settings").vacuumPower.options.every((option) => option.badge === null), "Rocky alone offers every rung");
+  assert.equal(vm.startNow.label, ready.texts.t("action.startNow"));
+
+  const plain = await busy();
+  const diningRoom = await newDraft(plain.model, { roomIds: [roomId(plain.model, "Dining Room")] });
+  const built = await busy(previewOf(diningRoom));
+  assert.equal(buildJobEditor({ ...built, overlay: { draft: diningRoom } }).startNow, null, "Rocky is busy");
+  const library = jobIn(built.model, "Library");
+  assert.deepEqual(settingChoices(createDraft({ target: library }), built.model.slots.preview.data)[0].value, library.vacuumPower, "an existing job keeps its wish");
+  assert.equal(buildJobEditor({ ...ready, overlay: { draft: createDraft({ target: library }) } }).startNow, null, "an existing job is started from the queue");
   assert.equal(previewable(createDraft()), true, "a missing room does not hold the preview back");
   assert.equal(previewable(applyDraftChange(createDraft(), "passes", 11)), false);
-  const blocked = applyDraftChange(draft, "roomIds", ["room-bathroom"]);
-  const waiting = await modelFor("typical", { requests: { preview: { name: "preview", params: draftToPreview(blocked) } } });
-  assert.equal(buildJobEditor({ ...waiting, overlay: { draft: blocked } }).startNow, null);
-  assert.equal(buildJobEditor({ ...built, overlay: { draft: createDraft({ target: job }) } }).startNow, null, "an existing job is started from the queue");
 });
 
 test("the room choice starts with all rooms; chosen, it mutes the single rooms and says what it means", async () => {
   const { buildJobEditor } = await overlays("job-editor");
   const { createDraft, applyDraftChange } = await draftModule();
-  const built = await modelFor("typical");
+  const built = await busy();
   const roomsField = (draft) => fieldsOf(buildJobEditor({ ...built, overlay: { draft } }), "basics").roomIds;
   const plain = roomsField(createDraft());
   assert.deepEqual([plain.options[0].value, plain.options[0].icon, plain.options[0].label], ["all", "mdi:select-all", built.texts.t("field.allRooms")]);
@@ -96,38 +124,39 @@ test("the room choice starts with all rooms; chosen, it mutes the single rooms a
 test("editing a job or a template offers removing it from the editor", async () => {
   const { buildJobEditor } = await overlays("job-editor");
   const { createDraft } = await draftModule();
-  const { findJob } = await import("../../../../src/presentation/common/lookups.js");
-  const built = await modelFor("typical", { requests: { templates: { name: "templates", params: {} } } });
-  const job = buildJobEditor({ ...built, overlay: { draft: createDraft({ target: findJob(built.model, "job-kitchen") }) } });
+  const built = await busy(TEMPLATES);
+  const library = jobIn(built.model, "Library");
+  const job = buildJobEditor({ ...built, overlay: { draft: createDraft({ target: library }) } });
   assert.deepEqual([job.remove.action, job.remove.decision.state], ["delete-job", "enabled"]);
   assert.equal(job.save.label, built.texts.t("action.save"));
   const template = built.model.slots.templates.data.items[0];
   const editor = buildJobEditor({ ...built, overlay: { draft: createDraft({ kind: "template", target: template }) } });
   assert.equal(editor.groups[0].key, "template");
-  assert.deepEqual([editor.remove.action, editor.remove.args], ["remove-template", { templateId: "template-daily" }]);
+  assert.deepEqual([editor.remove.action, editor.remove.args], ["remove-template", { templateId: template.templateId }]);
 });
 
 test("the detail page shows readiness, unreleased rooms to release and the execution explanation", async () => {
   const { buildJobDetail } = await overlays("job-detail");
-  const built = await modelFor("typical", { requests: { job: { name: "job", params: { jobId: "job-bathroom" } }, execution: { name: "execution", params: { jobId: "job-bathroom" } }, trace: { name: "trace", params: { jobId: "job-bathroom" } } } });
-  const vm = buildJobDetail({ ...built, overlay: { jobId: "job-bathroom" }, config: {} });
-  assert.equal(vm.title, "Bathroom");
-  assert.equal(vm.position, 2);
+  const conservatory = jobIn((await busy()).model, "Conservatory");
+  const built = await busy(jobRequests(conservatory.jobId));
+  const vm = buildJobDetail({ ...built, overlay: { jobId: conservatory.jobId }, config: {} });
+  assert.equal(vm.title, "Conservatory");
+  assert.equal(vm.position, 1);
   assert.equal(vm.readiness.state, "blocked");
-  assert.deepEqual(vm.releaseable.map((room) => [room.roomId, room.decision.state]), [["room-bathroom", "enabled"]]);
+  assert.deepEqual(vm.releaseable.map((room) => [room.roomId, room.decision.state]), [[roomId(built.model, "Conservatory"), "enabled"]]);
   assert.deepEqual(vm.execution.map((group) => [group.key, group.eligible]), [["mop", false]]);
-  assert.deepEqual(vm.execution[0].robots.map((robot) => robot.reason), [built.texts.backend("robot_busy"), built.texts.backend("unsupported_operation")]);
+  const reasons = built.model.slots.execution.data.robots.map((robot) => built.texts.backend(robot.eligibilityReason));
+  assert.deepEqual(vm.execution[0].robots.map((robot) => [robot.name, robot.reason]), [["Rocky", reasons[0]]], "the integration's own reason");
   assert.deepEqual([vm.actions.delete.state, vm.actions.retry.state], ["enabled", "hidden"]);
-  assert.equal(vm.execution[0].robots[0].settings, "Mop route: Standard instead of Deep");
   assert.equal(vm.saveAsTemplate.state, "enabled");
   const facts = Object.fromEntries(vm.facts.map((fact) => [fact.label, fact.value]));
-  assert.equal(facts[built.texts.t("detail.occasion")], built.texts.t("origin.template"), "without the templates read the origin stands alone");
+  assert.equal(facts[built.texts.t("detail.occasion")], "Added by hand · Guests are coming", "the origin with the job's own occasion");
 });
 
 test("the occasion names the origin with its template and the job's own reason; settings notes name each deviation", async () => {
   const { occasionText, settingsNote } = await overlays("job-detail");
   const { normalizeJob } = await import("../../../../src/domain/job.js");
-  const built = await modelFor("typical", { requests: { templates: { name: "templates", params: {} } } });
+  const built = await busy(TEMPLATES);
   const template = built.model.slots.templates.data.items[0];
   const fromTemplate = normalizeJob(W.wireJob({ origin: { kind: "automatic", template_id: template.templateId }, reason: "Guests tonight" }));
   assert.equal(occasionText(built.texts, fromTemplate, built.model), `Created when due “${template.name}” · Guests tonight`);
@@ -140,10 +169,11 @@ test("the occasion names the origin with its template and the job's own reason; 
 
 test("a job is saved as a template under a required name; the defaults page offers every rung", async () => {
   const { buildSaveTemplate, buildJobDefaults } = await import("../../../../src/presentation/overlays/job-defaults.js");
-  const built = await modelFor("typical");
-  const save = buildSaveTemplate({ ...built, overlay: { jobId: "job-kitchen", name: "Kitchen and hall", automatic: false } });
-  assert.deepEqual([save.job, save.fields.map((entry) => entry.key), save.fields[0].error, save.save.state], ["Kitchen and hall", ["overlay:name", "overlay:automatic"], null, "enabled"]);
-  assert.equal(buildSaveTemplate({ ...built, overlay: { jobId: "job-kitchen", name: " ", submitted: true } }).fields[0].error, built.texts.t("validation.template_name_required"));
+  const built = await busy();
+  const library = jobIn(built.model, "Library");
+  const save = buildSaveTemplate({ ...built, overlay: { jobId: library.jobId, name: "Library twice", automatic: false } });
+  assert.deepEqual([save.job, save.fields.map((entry) => entry.key), save.fields[0].error, save.save.state], ["Library, thoroughly", ["overlay:name", "overlay:automatic"], null, "enabled"]);
+  assert.equal(buildSaveTemplate({ ...built, overlay: { jobId: library.jobId, name: " ", submitted: true } }).fields[0].error, built.texts.t("validation.template_name_required"));
   assert.equal(buildSaveTemplate({ ...built, overlay: { jobId: "job-gone" } }).job, null);
   const defaults = buildJobDefaults({ ...built, overlay: { mode: "mop", vacuumPower: "standard", mopIntensity: "medium", mopRoute: "deep", passes: 1, settingsPolicy: "strict" } });
   const fields = Object.fromEntries(defaults.fields.map((entry) => [entry.key, entry]));
@@ -153,43 +183,35 @@ test("a job is saved as a template under a required name; the defaults page offe
   assert.deepEqual([defaults.invalid, defaults.save.state, defaults.pending], [false, "enabled", false]);
 });
 
-test("a job waiting between phases explains why and offers the release the integration names", async () => {
+test("a running job is not re-evaluated; a job the integration no longer has is a missing page", async () => {
   const { buildJobDetail } = await overlays("job-detail");
-  const built = await modelFor("typical", { requests: { job: { name: "job", params: { jobId: "job-kitchen" } } }, setup: (fake) => {
-    fake.setJob("job-kitchen", { state: "dispatching", active_attempt_id: null });
-    fake.setReadiness("job-kitchen", { state: "blocked", reason_codes: ["room_not_released"], blocked_room_ids: ["room-kitchen"] });
-  } });
-  const vm = buildJobDetail({ ...built, overlay: { jobId: "job-kitchen" }, config: {} });
-  assert.equal(vm.state, "dispatching");
-  assert.equal(vm.readiness.state, "blocked");
-  assert.deepEqual(vm.releaseable.map((room) => room.roomId), ["room-kitchen"]);
-  const running = await modelFor("typical", { requests: { job: { name: "job", params: { jobId: "job-running" } } } });
-  assert.equal(buildJobDetail({ ...running, overlay: { jobId: "job-running" }, config: {} }).readiness, null, "a running attempt is not re-evaluated");
-});
-
-test("a job the integration no longer has is a missing page", async () => {
-  const { buildJobDetail } = await overlays("job-detail");
-  const built = await modelFor("typical");
-  const vm = buildJobDetail({ ...built, overlay: { jobId: "job-gone" }, config: {} });
+  const studio = jobIn((await busy()).model, "Studio");
+  const running = await busy(jobRequests(studio.jobId));
+  assert.equal(buildJobDetail({ ...running, overlay: { jobId: studio.jobId }, config: {} }).readiness, null);
+  const vm = buildJobDetail({ ...running, overlay: { jobId: "job-gone" }, config: {} });
   assert.equal(vm.jobId, undefined);
-  assert.equal(vm.title, built.texts.t("detail.title"));
+  assert.equal(vm.title, running.texts.t("detail.title"));
 });
 
 test("the small dialogs word their command and validate their input", async () => {
   const dialogs = await overlays("dialogs");
-  const built = await modelFor("attention", { requests: { execution: { name: "execution", params: { jobId: "job-kitchen" } } } });
-  const confirm = dialogs.buildConfirm({ ...built, overlay: { titleKey: "confirm.deleteJob.title", textKey: "confirm.deleteJob.text", confirmKey: "confirm.deleteJob.confirm", jobId: "job-kitchen", command: { options: { target: "job:job-kitchen" } } } });
-  assert.match(confirm.text, /Kitchen and hall/);
+  const choice = await modelFor("robot_choice", { from: "Either robot can start the dining room" });
+  const dining = jobIn(choice.model, "Dining Room");
+  const built = await modelFor("robot_choice", { from: "Either robot can start the dining room", requests: jobRequests(dining.jobId) });
+  const confirm = dialogs.buildConfirm({ ...built, overlay: { titleKey: "confirm.deleteJob.title", textKey: "confirm.deleteJob.text", confirmKey: "confirm.deleteJob.confirm", jobId: dining.jobId, command: { options: { target: `job:${dining.jobId}` } } } });
+  assert.match(confirm.text, /Dining Room/);
   assert.equal(confirm.tone, "danger");
   assert.equal(confirm.confirmIcon, "mdi:check", "without an icon of its own the confirmation shows a check");
-  assert.equal(dialogs.buildConfirm({ ...built, overlay: { titleKey: "confirm.cancelJob.title", textKey: "confirm.cancelJob.text", confirmKey: "confirm.cancelJob.confirm", icon: "mdi:stop-circle-outline", jobId: "job-kitchen", command: {} } }).confirmIcon, "mdi:stop-circle-outline");
-  const start = dialogs.buildStartJob({ ...built, overlay: { jobId: "job-kitchen" } });
-  assert.match(start.lead, /Kitchen and hall/);
-  assert.ok(start.robots.length >= 2);
-  const recovery = dialogs.buildRecovery({ ...built, overlay: { robotId: "robot-rocky", confirmStopped: false } });
-  assert.equal(recovery.open, true);
-  assert.equal(recovery.reason, built.texts.t("failure.physical_run_ownership_uncertain"));
-  assert.equal(dialogs.buildRecovery({ ...built, overlay: { robotId: "robot-dusty" } }).open, false);
+  assert.equal(dialogs.buildConfirm({ ...built, overlay: { titleKey: "confirm.cancelJob.title", textKey: "confirm.cancelJob.text", confirmKey: "confirm.cancelJob.confirm", icon: "mdi:stop-circle-outline", jobId: dining.jobId, command: {} } }).confirmIcon, "mdi:stop-circle-outline");
+  const start = dialogs.buildStartJob({ ...built, overlay: { jobId: dining.jobId } });
+  assert.match(start.lead, /Dining Room/);
+  assert.deepEqual(start.robots.map((robot) => robot.name).sort(), ["Dusty", "Rocky"]);
+  const recovery = await modelFor("recovery", { from: "The job needs clarification" });
+  const rocky = robotId(recovery.model, "Rocky");
+  const stuck = dialogs.buildRecovery({ ...recovery, overlay: { robotId: rocky, confirmStopped: false } });
+  assert.equal(stuck.open, true);
+  assert.equal(stuck.reason, recovery.texts.t("failure.robot_connection_lost"));
+  assert.equal(dialogs.buildRecovery({ ...built, overlay: { robotId: robotId(built.model, "Rocky") } }).open, false);
   const settings = dialogs.buildQueueSettings({ ...built, overlay: { minutes: 2000, submitted: true } });
   assert.equal(settings.field.error, built.texts.t("validation.queue_grace_out_of_range"));
   assert.equal(dialogs.buildQueueSettings({ ...built, overlay: { minutes: 15 } }).field.error, null);
@@ -197,13 +219,14 @@ test("the small dialogs word their command and validate their input", async () =
 
 test("cancelling a started job and ending the queue offer their choices as radios", async () => {
   const dialogs = await overlays("dialogs");
-  const built = await modelFor("typical");
-  const cancel = dialogs.buildCancelJob({ ...built, overlay: { jobId: "job-running", afterCancel: "return_to_dock" } });
+  const built = await busy();
+  const studio = jobIn(built.model, "Studio");
+  const cancel = dialogs.buildCancelJob({ ...built, overlay: { jobId: studio.jobId, afterCancel: "return_to_dock" } });
   assert.deepEqual([cancel.field.control, cancel.field.key, cancel.field.value], ["radios", "overlay:afterCancel", "return_to_dock"]);
   assert.deepEqual(cancel.field.options.map((option) => option.value), ["return_to_dock", "stay"]);
   assert.ok(cancel.field.options.every((option) => option.label && option.description));
   assert.deepEqual([cancel.confirmLabel, cancel.pending], [built.texts.t("confirm.cancelJob.confirm"), false]);
-  assert.match(cancel.lead, /Living room/);
+  assert.match(cancel.lead, /Studio/);
   const end = dialogs.buildQueueEnd({ ...built, overlay: { choice: "finish" } });
   assert.deepEqual(end.field.options.map((option) => option.value), ["finish", "cancel_return", "cancel_stay"]);
   assert.deepEqual(dialogs.queueEndChoices({ slots: {} }), ["finish", "cancel_stay"]);
@@ -211,12 +234,12 @@ test("cancelling a started job and ending the queue offer their choices as radio
 
 test("a release offers the four kinds; a timed one asks for its duration", async () => {
   const { buildRelease } = await overlays("rooms");
-  const built = await modelFor("typical");
-  const queueRun = buildRelease({ ...built, overlay: { roomId: "room-bathroom" } });
-  assert.deepEqual(queueRun.fields[0].options.map((option) => option.value), ["permanent", "once", "timed", "queue_run"]);
-  assert.equal(queueRun.fields.length, 1);
-  assert.equal(queueRun.revoke.state, "hidden");
-  const timed = buildRelease({ ...built, overlay: { roomId: "room-kitchen", releaseKind: "timed", hours: 0, minutes: 0, submitted: true } });
+  const built = await busy();
+  const locked = buildRelease({ ...built, overlay: { roomId: roomId(built.model, "Conservatory") } });
+  assert.deepEqual(locked.fields[0].options.map((option) => option.value), ["permanent", "once", "timed", "queue_run"]);
+  assert.equal(locked.fields.length, 1);
+  assert.equal(locked.revoke.state, "hidden");
+  const timed = buildRelease({ ...built, overlay: { roomId: roomId(built.model, "Studio"), releaseKind: "timed", hours: 0, minutes: 0, submitted: true } });
   assert.equal(timed.fields.length, 3);
   assert.equal(timed.durationValid, false);
   assert.ok(timed.fields[2].error);
@@ -227,11 +250,11 @@ test("a release offers the four kinds; a timed one asks for its duration", async
 test("room settings show detected robot targets and the occupancy fields only for occupied time", async () => {
   const { buildRoomEditor, buildRoomCreate } = await overlays("rooms");
   const { createRoomDraft, updateRoomDraft } = await import("../../../../src/domain/room-draft.js");
-  const built = await modelFor("typical", { needsEntityCatalog: true });
-  const room = built.model.slots.rooms.data.items.find((entry) => entry.roomId === "room-kitchen");
+  const built = await busy({}, { needsEntityCatalog: true });
+  const room = built.model.slots.rooms.data.items.find((entry) => entry.name === "Dining Room");
   const draft = createRoomDraft(room);
   const vm = buildRoomEditor({ ...built, overlay: { draft } });
-  assert.deepEqual(vm.detected.map((item) => item.key), ["robot-rocky", "robot-dusty"]);
+  assert.deepEqual(vm.detected.map((item) => item.key), [robotId(built.model, "Rocky")]);
   assert.equal(fieldsOf(vm, "due").occupancyEntityId, undefined);
   const occupied = buildRoomEditor({ ...built, overlay: { draft: updateRoomDraft(draft, "basis", "occupied"), submitted: true } });
   assert.ok(fieldsOf(occupied, "due").occupancyEntityId.error);
@@ -242,15 +265,13 @@ test("room settings show detected robot targets and the occupancy fields only fo
 test("robot discovery marks configured vacuums; the profile explains each role", async () => {
   const { buildRobotAdd, buildRobotEditor } = await overlays("robots");
   const { createRobotDraft, updateRobotDraft } = await import("../../../../src/domain/robot-draft.js");
-  const built = await modelFor("typical", { needsEntityCatalog: true });
+  const built = await modelFor("robot_choice", { from: "Either robot can start the dining room", needsEntityCatalog: true });
   const add = buildRobotAdd(built);
   assert.deepEqual(add.candidates.map((candidate) => [candidate.entityId, candidate.configured]), [["vacuum.rocky", true], ["vacuum.dusty", true]]);
-  const dusty = built.model.slots.robots.data.items.find((robot) => robot.robotId === "robot-dusty");
+  const dusty = built.model.slots.robots.data.items.find((robot) => robot.name === "Dusty");
   let draft = createRobotDraft(dusty);
   const vm = buildRobotEditor({ ...built, overlay: { draft, open: [] } });
   const roles = Object.fromEntries(vm.sections.roles.rows.map((row) => [row.key, row]));
-  assert.equal(roles.status.mode.hint, built.texts.t("robotEditor.roleAmbiguous"));
-  assert.equal(roles.status.mode.attention, true);
   assert.equal(roles.error.mode.hint, built.texts.t("robotEditor.roleNotFound"));
   draft = updateRobotDraft(draft, "roles.error.mode", "entity");
   const picking = buildRobotEditor({ ...built, overlay: { draft, open: [], submitted: true } });
@@ -259,6 +280,7 @@ test("robot discovery marks configured vacuums; the profile explains each role",
   assert.ok(error.entity.error);
   assert.equal(picking.sections.roles.open, true, "a section with an error opens");
   assert.equal(vm.remove.state, "enabled");
-  const rocky = built.model.slots.robots.data.items.find((robot) => robot.robotId === "robot-rocky");
-  assert.equal(buildRobotEditor({ ...built, overlay: { draft: createRobotDraft(rocky), open: [] } }).remove.reason, "robot_busy");
+  const cleaning = await busy({}, { needsEntityCatalog: true });
+  const rocky = cleaning.model.slots.robots.data.items.find((robot) => robot.name === "Rocky");
+  assert.equal(buildRobotEditor({ ...cleaning, overlay: { draft: createRobotDraft(rocky), open: [] } }).remove.reason, "robot_busy");
 });

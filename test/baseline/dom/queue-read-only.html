@@ -8,7 +8,7 @@
 </div>
 <div class="voc-title-block">
 <div class="voc-title">Cleaning</div>
-<div class="voc-subtitle">Living room · Cleaning</div>
+<div class="voc-subtitle">Studio · Cleaning</div>
 </div>
 <div class="voc-status-pill">Cleaning</div>
 </div>
@@ -24,12 +24,9 @@
 <span>Queue running</span>
 </div>
 <div class="voc-panel-robots">
-<span class="voc-panel-robot" data-key="robot:robot-rocky" data-tone="running">
+<span class="voc-panel-robot" data-key="robot:01J00000000000000000000003" data-tone="running">
 <span class="voc-dot" aria-hidden="true">
-</span>Rocky · Cleaning · 76 %</span>
-<span class="voc-panel-robot" data-key="robot:robot-dusty" data-tone="ready">
-<span class="voc-dot" aria-hidden="true">
-</span>Dusty · Docked · 100 %</span>
+</span>Rocky · Cleaning · 100 %</span>
 </div>
 </div>
 <div class="voc-panel-control">
@@ -83,28 +80,22 @@
 <div class="voc-view voc-queue" data-key="view:queue">
 <section class="voc-group" data-key="active">
 <h3 class="voc-group-title">In progress</h3>
-<article class="voc-job" data-key="job:job-running" data-state="running" data-tone="running" data-actions="one">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000042" data-state="running" data-tone="running" data-actions="one">
 <div class="voc-job-lead" aria-hidden="true">
 <ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
 </ha-icon>
 </div>
-<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;job-running&quot;}" aria-label="Open Living room">
+<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000042&quot;}" aria-label="Open Studio">
 <span class="voc-job-title-line">
-<span class="voc-job-title">Living room</span>
+<span class="voc-job-title">Studio</span>
 <span class="voc-pill voc-pill--running">Cleaning</span>
 </span>
 <span class="voc-job-meta">
 <span class="voc-job-mode">Vacuum</span>
-<span class="voc-chip" title="Suction: High">
-<ha-icon icon="mdi:fan" aria-hidden="true">
-</ha-icon>
-<span class="voc-sr-only">Suction: </span>
-<span>High</span>
-</span>
 </span>
 </button>
 <div class="voc-job-actions">
-<button type="button" class="voc-button voc-button--icon" data-action="cancel-job" data-args="{&quot;jobId&quot;:&quot;job-running&quot;}" aria-label="Cancel job" aria-disabled="true" title="Only administrators can change this.">
+<button type="button" class="voc-button voc-button--icon" data-action="cancel-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000042&quot;}" aria-label="Cancel job" aria-disabled="true" title="Only administrators can change this.">
 <ha-icon icon="mdi:stop-circle-outline" aria-hidden="true">
 </ha-icon>
 </button>
@@ -114,18 +105,53 @@
 <section class="voc-group" data-key="waiting">
 <h3 class="voc-group-title">Waiting<span class="voc-group-count">· 3</span>
 </h3>
-<article class="voc-job" data-key="job:job-kitchen" data-state="queued" data-tone="neutral" data-actions="several">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000062" data-state="queued" data-tone="neutral" data-actions="several">
 <div class="voc-job-lead" aria-hidden="true">
 <span class="voc-job-position">1</span>
 </div>
-<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;job-kitchen&quot;}" aria-label="Open Kitchen and hall">
+<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;}" aria-label="Open Conservatory">
 <span class="voc-job-title-line">
-<span class="voc-job-title">Kitchen and hall</span>
+<span class="voc-job-title">Conservatory</span>
 </span>
 <span class="voc-job-meta">
 <span class="voc-job-mode">
-<ha-icon icon="mdi:transfer-right" aria-hidden="true">
-</ha-icon>Vacuum, then mop</span>
+<ha-icon icon="mdi:water-outline" aria-hidden="true">
+</ha-icon>Mop</span>
+</span>
+<span class="voc-job-readiness" data-readiness="blocked">
+<ha-icon icon="mdi:lock-outline" aria-hidden="true">
+</ha-icon>
+<span>Not released: Conservatory</span>
+<span class="voc-job-more">+1</span>
+</span>
+</button>
+<div class="voc-job-actions">
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Move up" aria-disabled="true" title="Only administrators can change this.">
+<ha-icon icon="mdi:arrow-up" aria-hidden="true">
+</ha-icon>
+</button>
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Move down" aria-disabled="true" title="Only administrators can change this.">
+<ha-icon icon="mdi:arrow-down" aria-hidden="true">
+</ha-icon>
+</button>
+<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;}" aria-label="Edit" aria-disabled="true" title="Only administrators can change this.">
+<ha-icon icon="mdi:pencil-outline" aria-hidden="true">
+</ha-icon>
+</button>
+</div>
+</article>
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000082" data-state="queued" data-tone="neutral" data-actions="several">
+<div class="voc-job-lead" aria-hidden="true">
+<span class="voc-job-position">2</span>
+</div>
+<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000082&quot;}" aria-label="Open Library, thoroughly">
+<span class="voc-job-title-line">
+<span class="voc-job-title">Library, thoroughly</span>
+</span>
+<span class="voc-job-meta">
+<span class="voc-job-mode">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>Vacuum</span>
 <span class="voc-chip" title="Passes: 2×">
 <span class="voc-sr-only">Passes: </span>
 <span>2×</span>
@@ -138,120 +164,50 @@
 </span>
 </button>
 <div class="voc-job-actions">
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;job-kitchen&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Move up" aria-disabled="true" title="Only administrators can change this.">
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000082&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Move up" aria-disabled="true" title="Only administrators can change this.">
 <ha-icon icon="mdi:arrow-up" aria-hidden="true">
 </ha-icon>
 </button>
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;job-kitchen&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Move down" aria-disabled="true" title="Only administrators can change this.">
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000082&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Move down" aria-disabled="true" title="Only administrators can change this.">
 <ha-icon icon="mdi:arrow-down" aria-hidden="true">
 </ha-icon>
 </button>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;job-kitchen&quot;}" aria-label="Edit" aria-disabled="true" title="Only administrators can change this.">
+<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000082&quot;}" aria-label="Edit" aria-disabled="true" title="Only administrators can change this.">
 <ha-icon icon="mdi:pencil-outline" aria-hidden="true">
-</ha-icon>
-</button>
-<span class="voc-job-actions-gap" aria-hidden="true">
-</span>
-<button type="button" class="voc-button voc-button--icon" data-action="start-job" data-args="{&quot;jobId&quot;:&quot;job-kitchen&quot;}" aria-label="Start now" aria-disabled="true" title="Only administrators can change this.">
-<ha-icon icon="mdi:play" aria-hidden="true">
 </ha-icon>
 </button>
 </div>
 </article>
-<article class="voc-job" data-key="job:job-bathroom" data-state="queued" data-tone="neutral" data-actions="several">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000110" data-state="queued" data-tone="neutral" data-actions="several">
 <div class="voc-job-lead" aria-hidden="true">
-<span class="voc-job-position">2</span>
+<span class="voc-job-position">3</span>
 </div>
-<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;}" aria-label="Open Bathroom">
+<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000110&quot;}" aria-label="Open Dining Room">
 <span class="voc-job-title-line">
-<span class="voc-job-title">Bathroom</span>
+<span class="voc-job-title">Dining Room</span>
 </span>
 <span class="voc-job-meta">
 <span class="voc-job-mode">
 <ha-icon icon="mdi:water-outline" aria-hidden="true">
 </ha-icon>Mop</span>
-<span class="voc-chip" title="Water: High">
-<ha-icon icon="mdi:water" aria-hidden="true">
-</ha-icon>
-<span class="voc-sr-only">Water: </span>
-<span>High</span>
 </span>
-<span class="voc-chip" title="Mop route: Deep">
-<ha-icon icon="mdi:map-marker-path" aria-hidden="true">
+<span class="voc-job-readiness" data-readiness="ready">
+<ha-icon icon="mdi:check-circle-outline" aria-hidden="true">
 </ha-icon>
-<span class="voc-sr-only">Mop route: </span>
-<span>Deep</span>
-</span>
-<span class="voc-chip">
-<ha-icon icon="mdi:lock-outline" aria-hidden="true">
-</ha-icon>
-<span>Strict</span>
-</span>
-</span>
-<span class="voc-job-readiness" data-readiness="blocked">
-<ha-icon icon="mdi:lock-outline" aria-hidden="true">
-</ha-icon>
-<span>Not released: Bathroom</span>
-<span class="voc-job-more">+1</span>
+<span>Ready</span>
 </span>
 </button>
 <div class="voc-job-actions">
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Move up" aria-disabled="true" title="Only administrators can change this.">
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000110&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Move up" aria-disabled="true" title="Only administrators can change this.">
 <ha-icon icon="mdi:arrow-up" aria-hidden="true">
 </ha-icon>
 </button>
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Move down" aria-disabled="true" title="Only administrators can change this.">
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000110&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Move down" aria-disabled="true" title="Only administrators can change this.">
 <ha-icon icon="mdi:arrow-down" aria-hidden="true">
 </ha-icon>
 </button>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;}" aria-label="Edit" aria-disabled="true" title="Only administrators can change this.">
+<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000110&quot;}" aria-label="Edit" aria-disabled="true" title="Only administrators can change this.">
 <ha-icon icon="mdi:pencil-outline" aria-hidden="true">
-</ha-icon>
-</button>
-<span class="voc-job-actions-gap" aria-hidden="true">
-</span>
-<button type="button" class="voc-button voc-button--icon" data-action="start-job" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;}" aria-label="Start now" aria-disabled="true" title="Only administrators can change this.">
-<ha-icon icon="mdi:play" aria-hidden="true">
-</ha-icon>
-</button>
-</div>
-</article>
-<article class="voc-job" data-key="job:job-bedroom" data-state="queued" data-tone="neutral" data-actions="several">
-<div class="voc-job-lead" aria-hidden="true">
-<span class="voc-job-position">3</span>
-</div>
-<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;job-bedroom&quot;}" aria-label="Open Bedroom">
-<span class="voc-job-title-line">
-<span class="voc-job-title">Bedroom</span>
-</span>
-<span class="voc-job-meta">
-<span class="voc-job-mode">
-<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
-</ha-icon>Vacuum</span>
-</span>
-<span class="voc-job-readiness" data-readiness="unknown">
-<ha-icon icon="mdi:help-circle-outline" aria-hidden="true">
-</ha-icon>
-<span>Bedroom window cannot be read</span>
-</span>
-</button>
-<div class="voc-job-actions">
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;job-bedroom&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Move up" aria-disabled="true" title="Only administrators can change this.">
-<ha-icon icon="mdi:arrow-up" aria-hidden="true">
-</ha-icon>
-</button>
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;job-bedroom&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Move down" aria-disabled="true" title="Only administrators can change this.">
-<ha-icon icon="mdi:arrow-down" aria-hidden="true">
-</ha-icon>
-</button>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;job-bedroom&quot;}" aria-label="Edit" aria-disabled="true" title="Only administrators can change this.">
-<ha-icon icon="mdi:pencil-outline" aria-hidden="true">
-</ha-icon>
-</button>
-<span class="voc-job-actions-gap" aria-hidden="true">
-</span>
-<button type="button" class="voc-button voc-button--icon" data-action="start-job" data-args="{&quot;jobId&quot;:&quot;job-bedroom&quot;}" aria-label="Start now" aria-disabled="true" title="Only administrators can change this.">
-<ha-icon icon="mdi:play" aria-hidden="true">
 </ha-icon>
 </button>
 </div>
@@ -259,15 +215,15 @@
 </section>
 <div class="voc-quick" data-key="quick">
 <span class="voc-quick-label">From template</span>
-<button type="button" class="voc-button voc-button--text" data-action="create-from-template" data-args="{&quot;templateId&quot;:&quot;template-daily&quot;}" data-key="template:template-daily" aria-disabled="true" title="Only administrators can change this.">
+<button type="button" class="voc-button voc-button--text" data-action="create-from-template" data-args="{&quot;templateId&quot;:&quot;00000000-0000-4000-8000-000000000008&quot;}" data-key="template:00000000-0000-4000-8000-000000000008" aria-disabled="true" title="Only administrators can change this.">
 <ha-icon icon="mdi:content-copy" aria-hidden="true">
 </ha-icon>
-<span class="voc-button-label">Daily vacuum</span>
+<span class="voc-button-label">Weekly clean</span>
 </button>
-<button type="button" class="voc-button voc-button--text" data-action="create-from-template" data-args="{&quot;templateId&quot;:&quot;template-weekly&quot;}" data-key="template:template-weekly" aria-disabled="true" title="Only administrators can change this.">
+<button type="button" class="voc-button voc-button--text" data-action="create-from-template" data-args="{&quot;templateId&quot;:&quot;00000000-0000-4000-8000-000000000010&quot;}" data-key="template:00000000-0000-4000-8000-000000000010" aria-disabled="true" title="Only administrators can change this.">
 <ha-icon icon="mdi:content-copy" aria-hidden="true">
 </ha-icon>
-<span class="voc-button-label">Weekly mop</span>
+<span class="voc-button-label">Mop the dining room</span>
 </button>
 </div>
 </div>

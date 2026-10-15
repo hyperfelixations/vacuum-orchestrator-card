@@ -3,15 +3,13 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createTestEnvironment } = require("../helpers/load-card.jsdom.js");
-const { mountCard, FIXED_NOW } = require("../helpers/mount-card.js");
+const { mountCard } = require("../helpers/mount-card.js");
 
 test("foreign nodes in the shadow root and in ha-card survive every render", async () => {
-  const env = createTestEnvironment({ now: FIXED_NOW });
-  const card = await mountCard({ env });
-  const cardMod = env.document.createElement("card-mod");
+  const card = await mountCard({ recording: "showcase", from: "A busy afternoon" });
+  const cardMod = card.env.document.createElement("card-mod");
   card.root.appendChild(cardMod);
-  const style = env.document.createElement("style");
+  const style = card.env.document.createElement("style");
   style.textContent = ".voc-title { color: red; }";
   card.root.querySelector("ha-card").appendChild(style);
   await card.click('[role="tab"][data-view="rooms"]');
@@ -22,5 +20,4 @@ test("foreign nodes in the shadow root and in ha-card survive every render", asy
   assert.equal(card.root.querySelectorAll("ha-card").length, 1);
   assert.deepEqual(card.card.config, { type: "custom:vacuum-orchestrator-card", title: "Changed" });
   card.unmount();
-  env.cleanupAll();
 });

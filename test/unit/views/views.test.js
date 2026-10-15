@@ -6,6 +6,16 @@ const assert = require("node:assert/strict");
 const { JSDOM } = require("jsdom");
 const { modelFor } = require("../../helpers/model.js");
 
+const BUSY = "A busy afternoon";
+const busy = (options = {}) => modelFor("showcase", { from: BUSY, ...options });
+const TEMPLATES = { templates: { name: "templates", params: {} } };
+const jobRequests = (jobId) => ({ job: { name: "job", params: { jobId } }, execution: { name: "execution", params: { jobId } }, trace: { name: "trace", params: { jobId } } });
+const roomId = (model, name) => model.slots.rooms.data.items.find((room) => room.name === name).roomId;
+const jobIn = (model, name) => {
+  const id = roomId(model, name);
+  return [...model.slots.queue.data.jobs, ...model.slots.openJobs.data.jobs].find((job) => job.roomIds.includes(id));
+};
+
 async function renderContext(texts) {
   const { createRenderContext } = await import("../../../src/render/primitives/render-context.js");
   const document = new JSDOM("<!doctype html><body></body>").window.document;
@@ -54,7 +64,7 @@ test("the registry declares every view and page once with build and render", asy
 
 test("a field ties its label, hint and error to the control", async () => {
   const { renderField, fieldId } = await import("../../../src/views/controls/fields.js");
-  const built = await modelFor("typical");
+  const built = await busy();
   const { document, context } = await renderContext(built.texts);
   const text = parse(document, renderField(context, { key: "name", label: "Name", control: "text", value: `<b>`, hint: "Shown in the queue", error: "Required", optionalLabel: "optional" }));
   const input = text.querySelector("input");
@@ -76,7 +86,7 @@ test("a field ties its label, hint and error to the control", async () => {
 
 test("an inline field puts label and hint beside the control; a single entity hides its search once chosen", async () => {
   const { renderField } = await import("../../../src/views/controls/fields.js");
-  const built = await modelFor("typical");
+  const built = await busy();
   const { document, context } = await renderContext(built.texts);
   const inline = parse(document, renderField(context, { key: "roles.battery.mode", label: "Battery", control: "segmented", layout: "inline", value: "auto", hint: "Found: Rocky battery", options: [{ value: "auto", label: "Automatic" }] }));
   assert.ok(inline.querySelector(".voc-field--inline > .voc-field-text > .voc-field-hint"));
@@ -92,7 +102,7 @@ test("an inline field puts label and hint beside the control; a single entity hi
 
 test("a stepper disables the step that would leave its bounds", async () => {
   const { renderField } = await import("../../../src/views/controls/fields.js");
-  const built = await modelFor("typical");
+  const built = await busy();
   const { document, context } = await renderContext(built.texts);
   const host = parse(document, renderField(context, { key: "passes", label: "Passes", control: "stepper", value: 1, min: 1, max: 10 }));
   const [down, up] = host.querySelectorAll("button");
@@ -103,9 +113,18 @@ test("a stepper disables the step that would leave its bounds", async () => {
 
 test("every view renders keyed markup with named controls", async () => {
   const { VIEWS } = await import("../../../src/views/registry.js");
-  const requests = { templates: { name: "templates", params: {} }, jobLog: { name: "jobLog", params: { offset: 0, limit: 25 } }, runs: { name: "runs", params: { offset: 0, limit: 25 } }, diagnostics: { name: "diagnostics", params: {} }, trace: { name: "trace", params: {} } };
-  for (const scenario of ["typical", "attention", "fresh", "empty"]) {
-    const built = await modelFor(scenario, { requests });
+  // The busy afternoon with history and diagnostics; the other homes read what a card reads first.
+  const history = { jobLog: { name: "jobLog", params: { offset: 0, limit: 25 } }, runs: { name: "runs", params: { offset: 0, limit: 25 } }, diagnostics: { name: "diagnostics", params: {} }, trace: { name: "trace", params: {} } };
+  const homes = [
+    ["showcase", BUSY, { ...TEMPLATES, ...history }],
+    ["attention", "The station needs attention", TEMPLATES],
+    ["recovery", "The job needs clarification", TEMPLATES],
+    ["no_robot", "The card opens", TEMPLATES],
+    ["queue_end", "The card opens", TEMPLATES],
+  ];
+  for (const [name, from, requests] of homes) {
+    const scenario = `${name}/${from}`;
+    const built = await modelFor(name, { from, requests });
     const { document, context } = await renderContext(built.texts);
     for (const view of VIEWS) {
       const options = Object.fromEntries(Object.entries(view.optionsSchema).map(([name, schema]) => [name, schema.default]));
@@ -123,22 +142,24 @@ test("a job row states how many actions it carries and ends with the action that
   const { viewFor } = await import("../../../src/views/registry.js");
   const queue = viewFor("queue");
   const options = { show_active: true, show_attention: true, show_templates: true };
-  const layoutOf = async (scenario) => {
-    const built = await modelFor(scenario, { requests: { templates: { name: "templates", params: {} } } });
+  const layoutOf = async (name, from) => {
+    const built = await modelFor(name, { from, requests: TEMPLATES });
     const { document, context } = await renderContext(built.texts);
     const host = parse(document, queue.render(context, queue.build({ ...built, options, config: { time_format: "auto" }, ui: { choices: {} } })));
-    return Object.fromEntries([...host.querySelectorAll(".voc-job")].map((node) => {
+    const rows = Object.fromEntries([...host.querySelectorAll(".voc-job")].map((node) => {
       const actions = node.querySelector(".voc-job-actions");
       const sequence = actions ? [...actions.children].map((child) => child.dataset.action || child.className) : null;
       return [node.dataset.key, { layout: node.dataset.actions, sequence }];
     }));
+    return { rows, built };
   };
-  const typical = await layoutOf("typical");
-  assert.deepEqual(typical["job:job-kitchen"], { layout: "several", sequence: ["move-job", "move-job", "edit-job", "voc-job-actions-gap", "start-job"] });
-  assert.deepEqual(typical["job:job-running"], { layout: "one", sequence: ["cancel-job"] });
-  const attention = await layoutOf("attention");
-  const attentionRow = Object.entries(attention).find(([, row]) => row.layout === "none");
-  assert.ok(attentionRow, "a job that needs attention offers no row action");
+  const { rows: either, built: choice } = await layoutOf("robot_choice", "Either robot can start the dining room");
+  assert.deepEqual(either[`job:${jobIn(choice.model, "Dining Room").jobId}`], { layout: "several", sequence: ["move-job", "move-job", "edit-job", "voc-job-actions-gap", "start-job"] });
+  const { rows: busyRows, built } = await layoutOf("showcase", BUSY);
+  assert.deepEqual(busyRows[`job:${jobIn(built.model, "Studio").jobId}`], { layout: "one", sequence: ["cancel-job"] });
+  const { rows: stuck } = await layoutOf("recovery", "The job needs clarification");
+  const attentionRow = Object.entries(stuck).find(([, row]) => row.layout === "none");
+  assert.ok(attentionRow, "a job that needs clarification offers no row action");
   assert.equal(attentionRow[1].sequence, null);
 });
 
@@ -146,12 +167,12 @@ test("a job row states how many actions it carries and ends with the action that
 test("a room card ends with the control that switches its release", async () => {
   const { viewFor } = await import("../../../src/views/registry.js");
   const rooms = viewFor("rooms");
-  const built = await modelFor("typical");
+  const built = await busy();
   const { document, context } = await renderContext(built.texts);
   const host = parse(document, rooms.render(context, rooms.build({ ...built, options: { sort: "configured", show_disabled: false }, config: {}, ui: { choices: {}, expanded: [] } })));
   const actionsOf = (roomId) => [...host.querySelectorAll(`[data-key="room:${roomId}"] .voc-room-actions > button`)].map((node) => [node.dataset.action, node.classList.contains("voc-room-toggle")]);
-  assert.deepEqual(actionsOf("room-kitchen"), [["create-job", false], ["revoke-room", true]]);
-  assert.deepEqual(actionsOf("room-bathroom"), [["create-job", false], ["open-release", true]]);
+  assert.deepEqual(actionsOf(roomId(built.model, "Dining Room")), [["create-job", false], ["revoke-room", true]]);
+  assert.deepEqual(actionsOf(roomId(built.model, "Conservatory")), [["create-job", false], ["open-release", true]]);
 });
 
 // The detail footer follows the job row: destructive actions first and set apart, editing in the
@@ -159,20 +180,26 @@ test("a room card ends with the control that switches its release", async () => 
 test("the detail page keeps the run action last and the reordering beside the position", async () => {
   const { overlayFor } = await import("../../../src/views/registry.js");
   const detail = overlayFor("job-detail");
-  const pageFor = async (jobId) => {
-    const built = await modelFor("typical", { requests: { job: { name: "job", params: { jobId } }, execution: { name: "execution", params: { jobId } }, trace: { name: "trace", params: { jobId } } } });
+  // The open or finished job of a room at a mark, with its detail as a card reads it.
+  // A finished job is found in the job log, which only a recording with history holds.
+  const pageFor = async (name, from, room, { finished = false } = {}) => {
+    const plain = await modelFor(name, { from, requests: finished ? { jobLog: { name: "jobLog", params: { offset: 0, limit: 25 } } } : {} });
+    const id = roomId(plain.model, room);
+    const jobs = [...plain.model.slots.queue.data.jobs, ...plain.model.slots.openJobs.data.jobs, ...(plain.model.slots.jobLog?.data?.jobs ?? [])];
+    const { jobId } = jobs.find((job) => job.roomIds.includes(id));
+    const built = await modelFor(name, { from, requests: jobRequests(jobId) });
     const { document, context } = await renderContext(built.texts);
     return parse(document, detail.render(context, detail.build({ ...built, overlay: { kind: "job-detail", jobId }, config: {}, ui: {} })));
   };
   const footer = (host) => [...host.querySelectorAll(".voc-overlay-actions > button")].map((node) => [node.dataset.action, node.classList.contains("voc-action-start")]);
-  const waiting = await pageFor("job-bathroom");
-  assert.deepEqual(footer(waiting), [["delete-job", false], ["cancel-job", true], ["open-save-template", false], ["edit-job", false], ["start-job", false]]);
+  const waiting = await pageFor("robot_choice", "Either robot can start the dining room", "Dining Room");
+  assert.deepEqual(footer(waiting), [["delete-job", true], ["open-save-template", false], ["edit-job", false], ["start-job", false]]);
   assert.deepEqual([...waiting.querySelectorAll('[data-key="position"] [data-action="move-job"]')].map((node) => JSON.parse(node.dataset.args).direction), ["top", "bottom"]);
-  const running = await pageFor("job-running");
+  const running = await pageFor("showcase", BUSY, "Studio");
   assert.deepEqual(footer(running), [["open-save-template", false], ["cancel-job", false]]);
   assert.equal(running.querySelector('[data-key="position"]'), null);
-  const failed = await pageFor("job-failed");
-  assert.deepEqual(footer(failed), [["delete-job", true], ["open-save-template", false], ["retry-job", false]]);
+  const corrected = await pageFor("recovery", "The library job is corrected", "Library", { finished: true });
+  assert.deepEqual(footer(corrected), [["delete-job", true], ["open-save-template", false], ["retry-job", false]]);
 });
 
 test("every page renders inside the shared frame with a heading to focus", async () => {
@@ -180,15 +207,16 @@ test("every page renders inside the shared frame with a heading to focus", async
   const { createDraft } = await import("../../../src/domain/job-draft.js");
   const { createRoomDraft } = await import("../../../src/domain/room-draft.js");
   const { createRobotDraft } = await import("../../../src/domain/robot-draft.js");
-  const built = await modelFor("attention", { needsEntityCatalog: true, requests: { candidates: { name: "candidates", params: {} } } });
+  const built = await busy({ needsEntityCatalog: true });
   const room = built.model.slots.rooms.data.items[0];
-  const robot = built.model.slots.robots.data.items[1];
+  const robot = built.model.slots.robots.data.items[0];
+  const library = jobIn(built.model, "Library").jobId;
   const pages = {
     "job-editor": { draft: createDraft() },
-    "job-detail": { jobId: "job-kitchen" },
-    confirm: { titleKey: "confirm.deleteJob.title", textKey: "confirm.deleteJob.text", confirmKey: "confirm.deleteJob.confirm", jobId: "job-kitchen", command: {} },
-    "start-job": { jobId: "job-kitchen" },
-    recovery: { robotId: "robot-rocky", confirmStopped: false },
+    "job-detail": { jobId: library },
+    confirm: { titleKey: "confirm.deleteJob.title", textKey: "confirm.deleteJob.text", confirmKey: "confirm.deleteJob.confirm", jobId: library, command: {} },
+    "start-job": { jobId: library },
+    recovery: { robotId: robot.robotId, confirmStopped: false },
     "queue-settings": { minutes: 15 },
     release: { roomId: room.roomId, releaseKind: "timed" },
     "room-editor": { draft: createRoomDraft(room), bindingsOpen: true },

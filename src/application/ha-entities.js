@@ -61,7 +61,8 @@ export function roleReference(robot, candidate, role) {
 }
 
 // What Home Assistant reports for one profile: its vacuum entity and each role in use, plus
-// what discovery found per role. Image entities on the vacuum's device are offered as map pictures.
+// what discovery found per role. The map pictures are the image entities the integration names,
+// the current map's first.
 export function robotLive(robot, registry, states, candidate = null, format = null) {
   const entityId = robot?.configuration?.entityId || resolveEntityId(robot?.configuration?.registryId, registry);
   const roles = {};
@@ -72,10 +73,7 @@ export function robotLive(robot, registry, states, candidate = null, format = nu
     const found = resolveEntityId(candidate?.roles?.[role], registry);
     if (found) discovered[role] = found;
   }
-  const deviceId = entityId ? registry?.byEntityId?.get(entityId)?.deviceId ?? null : null;
-  const maps = deviceId
-    ? registry.entries.filter((entry) => entry.deviceId === deviceId && !entry.disabled && entry.entityId.startsWith("image.")).map((entry) => entry.entityId).sort()
-    : [];
+  const maps = [...new Set([robot?.mapImageEntityId, ...(robot?.maps || []).map((map) => map.imageEntityId)].filter(Boolean))];
   return Object.freeze({
     vacuum: reading(states, entityId, format),
     roles: Object.freeze(roles),

@@ -5,17 +5,13 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createTestEnvironment } = require("../../helpers/load-card.jsdom.js");
-const { mountCard, FIXED_NOW } = require("../../helpers/mount-card.js");
+const { mountCard } = require("../../helpers/mount-card.js");
 
-let env;
-test.before(() => {
-  env = createTestEnvironment({ now: FIXED_NOW });
-});
-test.after(() => env.cleanupAll());
+const BUSY = { recording: "showcase", from: "A busy afternoon" };
+const settings = (from, options = {}) => mountCard({ recording: "settings_controls", from, ...options });
 
 test("the wait time is changed in minutes, sent in seconds, and the page returns to settings", async () => {
-  const card = await mountCard({ env });
+  const card = await settings("The card opens");
   assert.equal(card.root.querySelector('[data-key="grace"]'), null, "the queue view carries no setting");
   await card.click('[role=tab][data-view="settings"]');
   assert.equal(card.text('[data-key="setting:grace"] .voc-setting-value'), "15 min");
@@ -32,7 +28,7 @@ test("the wait time is changed in minutes, sent in seconds, and the page returns
 });
 
 test("the job defaults are changed on their own page and shown again from the integration's answer", async () => {
-  const card = await mountCard({ env, config: { start_view: "settings" } });
+  const card = await settings("The queue waits 30 minutes", { config: { start_view: "settings" } });
   assert.equal(card.text('[data-key="built-in"]'), "Built-in defaults");
   await card.click('[data-action="open-job-defaults"]');
   assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:job-defaults");
@@ -47,16 +43,16 @@ test("the job defaults are changed on their own page and shown again from the in
   card.unmount();
 });
 
-test("the setup opens from the settings with all nine steps, and any step opens on request", async () => {
-  const card = await mountCard({ env, config: { start_view: "settings" } });
+test("the setup opens from the settings with the integration's steps, and any step opens on request", async () => {
+  const card = await mountCard({ ...BUSY, config: { start_view: "settings" } });
   await card.click('[data-action="open-setup"]');
   await card.settle(32);
   assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:setup-guide");
-  assert.equal(card.all(".voc-setup-step").length, 9);
-  assert.equal(card.root.querySelector('[data-current="true"]').dataset.key, "step:defaults");
+  assert.deepEqual(card.all(".voc-setup-step").map((node) => node.dataset.key), ["step:robots", "step:rooms", "step:defaults", "step:queue"]);
+  assert.equal(card.root.querySelector('[data-current="true"]').dataset.key, "step:robots");
+  assert.match(card.text('[data-key="step:rooms"]'), /3 of 4 rooms reachable/);
   assert.match(card.text('[data-key="step:defaults"]'), /Built-in defaults/);
-  assert.equal(card.all('.voc-setup-mark').filter((node) => node.textContent === "Optional").length, 7);
-  await card.click('[data-key="step:queue"] .voc-setup-open');
+  await card.click('[data-key="step:queue"] [data-action="choose"]');
   assert.equal(card.root.querySelector('[data-current="true"]').dataset.key, "step:queue");
   await card.click('[data-key="step:queue"] [data-action="open-queue-settings"]');
   assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:queue-settings");
@@ -64,7 +60,7 @@ test("the setup opens from the settings with all nine steps, and any step opens 
 });
 
 test("the integration block names the version and opens the integration in Home Assistant", async () => {
-  const card = await mountCard({ env, config: { start_view: "settings" } });
+  const card = await mountCard({ ...BUSY, config: { start_view: "settings" } });
   const integration = card.text('[data-key="integration"]');
   assert.match(integration, /Version/);
   assert.match(integration, /API version/);
@@ -75,17 +71,17 @@ test("the integration block names the version and opens the integration in Home 
 
 test("the card block names the running card version", async () => {
   const { CARD_VERSION } = await import("../../../src/core/card-metadata.js");
-  const card = await mountCard({ env, config: { start_view: "settings" } });
+  const card = await mountCard({ ...BUSY, config: { start_view: "settings" } });
   assert.equal(card.text('[data-key="card"] .voc-block-title'), "Card");
   assert.deepEqual([...card.root.querySelectorAll('[data-key="card"] .voc-facts dt, [data-key="card"] .voc-facts dd')].map((node) => node.textContent), ["Version", CARD_VERSION]);
   card.unmount();
 });
 
 test("a user who may not change settings sees them only when enabled, locked and explained", async () => {
-  const automatic = await mountCard({ env, admin: false });
+  const automatic = await mountCard({ ...BUSY, admin: false });
   assert.equal(automatic.root.querySelector('[role=tab][data-view="settings"]'), null);
   automatic.unmount();
-  const card = await mountCard({ env, admin: false, config: { views: ["queue", { type: "settings", enabled: true }], start_view: "settings" } });
+  const card = await mountCard({ ...BUSY, admin: false, config: { views: ["queue", { type: "settings", enabled: true }], start_view: "settings" } });
   const change = card.root.querySelector('[data-key="setting:grace"] [data-action="open-queue-settings"]');
   assert.equal(change.getAttribute("aria-disabled"), "true");
   assert.match(change.getAttribute("title"), /administrator/i);

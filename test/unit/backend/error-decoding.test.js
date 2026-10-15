@@ -3,7 +3,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { haError } = require("../../fixtures/voi/wire.js");
+const { haError } = require("../../helpers/voi-records.js");
 
 const load = () => import("../../../src/backend/error-decoding.js");
 
@@ -67,4 +67,16 @@ test("anything else is unknown, and a failure record passes through unchanged", 
   assert.equal(decodeError({ message: "no code" }, "ws").code, "unknown");
   const record = backendFailure("timeout", { channel: "ws" });
   assert.equal(decodeError(record, "service"), record);
+});
+
+test("the integration's recorded refusals decode to their codes on both channels", async () => {
+  const { decodeError } = await load();
+  const { loadRecording } = require("../../helpers/recordings.js");
+  const steps = loadRecording("job_hold").steps;
+  const refusals = steps.filter((step) => step.receive?.type === "result" && !step.receive.success).map((step) => {
+    const sent = steps.find((entry) => entry.send?.id === step.receive.id).send;
+    return [sent.type === "call_service" ? "service" : "ws", step.receive.error];
+  });
+  const decoded = refusals.map(([channel, error]) => [channel, decodeError(error, channel).code]);
+  assert.deepEqual(decoded, [["ws", "job_held"], ["service", "job_held"], ["service", "all_rooms_with_selection"], ["ws", "invalid_parameters"]]);
 });

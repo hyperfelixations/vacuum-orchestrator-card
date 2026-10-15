@@ -6,7 +6,7 @@
 import { CREATE_TARGET, decide, jobAffordances, jobTarget, templateAffordances, templateTarget } from "../../domain/affordances.js";
 import { ALL_ROOMS, settingsForMode, validateDraft } from "../../domain/job-draft.js";
 import { CLEANING_MODES, PASS_MAX, PASS_MIN, SETTING_LADDERS, SETTINGS_POLICIES } from "../../domain/job-schema.js";
-import { coveredRoomIds } from "../../application/setup-status.js";
+import { coveredRoomIds } from "../../domain/robots.js";
 import { findJob, list, robotsOf, roomsOf, slotData } from "../common/lookups.js";
 import { modeLabel, policyLabel, settingLabel, t } from "../common/texts.js";
 import { MODE_ICONS } from "../views/job-row.js";
@@ -37,26 +37,19 @@ function roomOptions(model, texts, selected) {
     });
 }
 
-// Per setting the mode uses: the rungs on offer and the one shown as chosen. Without a preview
-// every rung is offered. A new draft shows the rung the integration preselects when its own is
-// not on offer for these rooms; an existing job keeps its rung, marked.
+// Per setting the mode uses: the rungs on offer and the wished one, which stays chosen and marked
+// when no robot offers it. Without a preview every rung is offered.
 export function settingChoices(draft, preview) {
   return settingsForMode(draft.mode).map((name) => {
     const choice = preview?.settings?.[name] ?? null;
     const offered = new Map(list(choice?.options).map((option) => [option.value, option]));
     const known = offered.size > 0;
-    let value = draft[name];
-    if (known && !draft.meta.id && !offered.has(value)) value = choice.initial ?? value;
+    const value = draft[name];
     const options = SETTING_LADDERS[name]
       .filter((rung) => !known || offered.has(rung) || rung === value)
       .map((rung) => ({ value: rung, note: !known ? null : !offered.has(rung) ? "notOffered" : offered.get(rung).supportedByAll ? null : "notEveryRobot" }));
     return { name, value, options };
   });
-}
-
-// The values a new draft is saved with: what the editor shows as chosen.
-export function shownSettings(draft, preview) {
-  return Object.fromEntries(settingChoices(draft, preview).map((choice) => [choice.name, choice.value]));
 }
 
 // The preview needs no room choice, but a draft with any other mistake asks nothing.

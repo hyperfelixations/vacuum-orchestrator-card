@@ -3,7 +3,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const W = require("../../fixtures/voi/wire.js");
+const W = require("../../helpers/voi-records.js");
+const { modelFor } = require("../../helpers/model.js");
 
 async function modules() {
   const { buildCardDomainModel } = await import("../../../src/application/card-domain-model.js");
@@ -23,11 +24,10 @@ async function fixture({ admin = true } = {}) {
     { id: "reg-rocky-battery", entityId: "sensor.rocky_battery", platform: "roborock", uniqueId: "b", deviceId: "dev", disabled: false },
     { id: "reg-rocky-status", entityId: "sensor.rocky_status", platform: "roborock", uniqueId: "s", deviceId: "dev", disabled: false },
     { id: "reg-vacuum-rocky", entityId: "vacuum.rocky", platform: "roborock", uniqueId: "v", deviceId: "dev", disabled: false },
-    { id: "reg-map", entityId: "image.rocky_map", platform: "roborock", uniqueId: "m", deviceId: "dev", disabled: false },
     { id: "reg-mode", entityId: "sensor.voi_mode", platform: "vacuum_orchestrator", uniqueId: "vacuum_orchestrator_queue_mode", deviceId: null, disabled: false },
   ];
   const scopes = {
-    [m.scopeKey("queue", { offset: 0, limit: 25 })]: ready({ apiVersion: 2, ...m.normalizeQueuePage(W.wireQueuePage([W.wireJob({ required_on: ["binary_sensor.door"] })], { mode: "running", integration_version: "0.1.0" })) }),
+    [m.scopeKey("queue", { offset: 0, limit: 25 })]: ready({ apiVersion: 4, ...m.normalizeQueuePage(W.wireQueuePage([W.wireJob({ required_on: ["binary_sensor.door"] })], { mode: "running", integration_version: "0.1.0" })) }),
     [m.scopeKey("robots", {})]: ready({ items: [m.normalizeRobot(W.wireRobot({ configuration: { roles: { status: null } } }))], total: 1, complete: true }),
     [m.scopeKey("candidates", {})]: ready({ items: [m.normalizeCandidate(W.wireCandidate({ roles: { battery: "reg-rocky-battery", status: "reg-rocky-status" } }))], total: 1, complete: true }),
     [m.scopeKey("rooms", {})]: ready({ items: [m.normalizeRoom(W.wireRoom())], total: 1, complete: true }),
@@ -37,13 +37,14 @@ async function fixture({ admin = true } = {}) {
     "sensor.rocky_battery": { state: "76", attributes: { unit_of_measurement: "%", friendly_name: "Rocky battery" } },
     "sensor.rocky_status": { state: "segment_cleaning", attributes: {} },
     "vacuum.rocky": { state: "cleaning", attributes: { friendly_name: "Rocky" } },
-    "image.rocky_map": { state: "x", attributes: { entity_picture: "/map.png", friendly_name: "Map" } },
+    "image.rocky_main_floor": { state: "x", attributes: { entity_picture: "/main_floor.png", friendly_name: "Main Floor" } },
     "binary_sensor.door": { state: "on", attributes: { friendly_name: "Door" } },
     "sensor.voi_mode": { state: "running", attributes: {} },
   };
-  const home = { states, areas: { kitchen: { name: " Kitchen ", floor_id: "ground" }, "": { name: "x" } }, admin, operations: ["create_job", "run_queue"], formatState: (state) => `«${state.state}»` };
-  const snapshot = { version: 3, phase: "ready", phaseFailure: null, apiVersion: 2, runtime: { id: "runtime-1", sequence: 4, commitId: 9 }, live: null, subscription: "live", scopes, pending: { "job:job-1": "move_job" } };
-  return { ...m, requests, snapshot, home, states };
+  const home = { states, areas: { library: { name: " Library ", floor_id: "ground" }, "": { name: "x" } }, admin, operations: ["create_job", "run_queue"], formatState: (state) => `«${state.state}»` };
+  const snapshot = { version: 3, phase: "ready", phaseFailure: null, apiVersion: 4, runtime: { id: "runtime-1", sequence: 4, commitId: 9 }, live: null, subscription: "live", scopes, pending: { "job:job-1": "move_job" } };
+  const robotId = scopes[m.scopeKey("robots", {})].data.items[0].robotId;
+  return { ...m, requests, snapshot, home, states, robotId };
 }
 
 test("slots follow the card's requests; an unloaded scope is an idle slot", async () => {
@@ -67,22 +68,22 @@ test("rights and offered operations come from Home Assistant", async () => {
 });
 
 test("robot live state uses the configured roles, else discovery, and never an opted-out role", async () => {
-  const { buildCardDomainModel, requests, snapshot, home } = await fixture();
-  const live = buildCardDomainModel({ snapshot, requests, home }).robotsLive["robot-rocky"];
+  const { buildCardDomainModel, requests, snapshot, home, robotId } = await fixture();
+  const live = buildCardDomainModel({ snapshot, requests, home }).robotsLive[robotId];
   assert.equal(live.vacuum.state, "cleaning");
   assert.equal(live.vacuum.display, "«cleaning»");
   assert.equal(live.roles.battery.state, "76");
   assert.equal(live.roles.battery.unit, "%");
   assert.equal(live.roles.status, undefined, "status is switched off in the profile");
   assert.equal(live.discovered.status, "sensor.rocky_status");
-  assert.deepEqual(live.maps.map((map) => map.picture), ["/map.png"]);
+  assert.deepEqual(live.maps.map((map) => [map.entityId, map.picture]), [["image.rocky_main_floor", "/main_floor.png"], ["image.rocky_lower_floor", null]]);
 });
 
 test("entities the views name get a reading; areas become a catalog", async () => {
   const { buildCardDomainModel, requests, snapshot, home } = await fixture();
   const model = buildCardDomainModel({ snapshot, requests, home });
   assert.deepEqual({ ...model.entityReadings["binary_sensor.door"] }, { state: "on", name: "Door", available: true });
-  assert.deepEqual(model.areas.map((area) => ({ ...area })), [{ areaId: "kitchen", name: "Kitchen", icon: null, floorId: "ground" }]);
+  assert.deepEqual(model.areas.map((area) => ({ ...area })), [{ areaId: "library", name: "Library", icon: null, floorId: "ground" }]);
   assert.equal("summary" in model, false, "counts come from the queue, not from sensors");
 });
 
@@ -117,6 +118,17 @@ test("without a snapshot the model is still total", async () => {
   assert.equal(model.phase, "probing");
   assert.equal(model.subscription, "idle");
   assert.deepEqual({ ...model.slots }, {});
-  assert.equal(model.setup.known, false);
+  assert.equal(model.setup, null, "the setup status is unknown until the integration is read");
   assert.deepEqual(model.diagnostics.warnings, []);
+});
+
+test("at a recorded state every scope the card holds is ready and robots are joined with their entities", async () => {
+  const { model } = await modelFor("showcase", { from: "A busy afternoon" });
+  assert.equal(model.phase, "ready");
+  assert.equal(model.apiVersion, 4);
+  assert.deepEqual(Object.entries(model.slots).filter(([, slot]) => slot.status !== "ready").map(([name]) => name), []);
+  assert.equal(model.setup.assistantPending, false);
+  const [live] = Object.values(model.robotsLive);
+  assert.equal(live.vacuum.entityId, "vacuum.rocky");
+  assert.deepEqual(live.maps.map((map) => map.entityId), ["image.rocky_main_floor", "image.rocky_lower_floor"]);
 });

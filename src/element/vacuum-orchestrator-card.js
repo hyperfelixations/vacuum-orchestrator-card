@@ -231,6 +231,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
       robots: { name: "robots", params: {} },
       candidates: { name: "candidates", params: {} },
       registry: { name: "registry", params: {} },
+      setup: { name: "setup", params: {} },
       errorTexts: { name: "errorTexts", params: { language: this._language() } },
     };
     const add = (list) => {
@@ -253,13 +254,18 @@ export class VacuumOrchestratorCard extends HTMLElement {
     return textService(this._language(), { backend: model?.errorTexts ?? null });
   }
 
+  // The integration's clock as the session carries it forward; the platform's before a session.
+  _now() {
+    return this._hold?.session.now?.() ?? this._platform.now();
+  }
+
   // Model, tabs and scope demand settle together: the active view decides the demand, and the
   // demand decides what the model holds.
   _computeModel() {
     const snapshot = this._hold?.session.getSnapshot() ?? null;
     const overlay = this._ui.overlay;
     const needsEntityCatalog = Boolean(overlay && overlayFor(overlay.kind)?.needsEntityCatalog);
-    let model = buildCardDomainModel({ snapshot, requests: this._lastRequests || {}, home: readHomeAssistant(this._hass), nowMs: this._platform.now(), needsEntityCatalog });
+    let model = buildCardDomainModel({ snapshot, requests: this._lastRequests || {}, home: readHomeAssistant(this._hass), nowMs: this._now(), needsEntityCatalog });
     let texts = this._texts(model);
     const tabs = buildTabs({ definitions: VIEWS, model, config: this._config, ui: this._ui.snapshot, texts });
     this._model = model;
@@ -267,7 +273,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     if (this._hold && JSON.stringify(requests) !== JSON.stringify(this._lastRequests)) {
       this._lastRequests = requests;
       this._hold?.session.setDemand(this._owner, Object.values(requests));
-      model = buildCardDomainModel({ snapshot: this._hold?.session.getSnapshot() ?? null, requests, home: readHomeAssistant(this._hass), nowMs: this._platform.now(), needsEntityCatalog });
+      model = buildCardDomainModel({ snapshot: this._hold?.session.getSnapshot() ?? null, requests, home: readHomeAssistant(this._hass), nowMs: this._now(), needsEntityCatalog });
       texts = this._texts(model);
     }
     this._model = model;
@@ -287,7 +293,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
 
   _computeViewModel() {
     const { model, tabs, texts } = this._pending;
-    const context = affordanceContext({ canCommand: model.permissions.canCommand, operations: model.operations, pending: model.pending });
+    const context = affordanceContext({ canCommand: model.permissions.canCommand, connected: model.subscription !== "reconnecting", operations: model.operations, pending: model.pending });
     const config = this._config;
     let viewContent = null;
     const definition = viewFor(tabs.active);

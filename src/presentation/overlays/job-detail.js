@@ -2,7 +2,7 @@
 // phase (execution explanation), what was tried (attempts) and its trace. Everything is the
 // integration's own statement; see internal dev doc §8 "Auftragsdetail".
 
-import { decide, jobAffordances, jobTarget, roomTarget } from "../../domain/affordances.js";
+import { decide, jobAffordances, jobTarget, roomAffordances } from "../../domain/affordances.js";
 import { explanationsByOperation } from "../../domain/execution.js";
 import { findJob, list, robotName, roomIndex, roomName, slotData } from "../common/lookups.js";
 import { attemptStateLabel, jobStateLabel, modeLabel, moment, operationLabel, outcomeText, qualityLabel, reasonText, settingLabel, settingName, t } from "../common/texts.js";
@@ -39,13 +39,12 @@ export function buildJobDetail({ model, texts, context, overlay, config }) {
     return { key: "job-detail", missing: status !== "loading" && status !== "idle", loading: status === "loading" || status === "idle", title: t(texts, "detail.title") };
   }
   const index = roomIndex(model);
-  const queue = slotData(model, "queue");
-  const position = list(queue?.jobs).find((entry) => entry.jobId === job.jobId)?.position ?? null;
-  const actions = jobAffordances(job, context, { position, total: queue?.total ?? 0 });
+  const position = list(slotData(model, "queue")?.jobs).find((entry) => entry.jobId === job.jobId)?.position ?? null;
+  const actions = jobAffordances(job, context);
   const execution = slotData(model, "execution");
   // The integration explains a start only where one is due (queued, or between phases).
   const releaseable = job.readiness?.blockedRoomIds?.length
-    ? job.readiness.blockedRoomIds.map((roomId) => ({ roomId, name: roomName(roomId, index, model), decision: decide(context, { operation: "release_room", target: roomTarget(roomId) }) }))
+    ? job.readiness.blockedRoomIds.map((roomId) => ({ roomId, name: roomName(roomId, index, model), decision: roomAffordances(index.byId.get(roomId), context).release }))
     : [];
   const trace = traceRows(slotData(model, "trace")?.records, { model, texts, limit: TRACE_LIMIT });
 

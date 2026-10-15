@@ -30,10 +30,11 @@ test("failure records are recognized by shape", async () => {
 
 test("client codes are the card's and Home Assistant's own, never an integration code", async () => {
   const { CLIENT_CODES, isClientCode } = await load();
-  const { EXCEPTIONS } = require("../../fixtures/voi/exceptions.js");
+  const integrationCodes = new Set(require("../../helpers/voi-records.js").exceptionCodes());
+  assert.ok(integrationCodes.has("robot_busy"));
   assert.ok(Object.isFrozen(CLIENT_CODES));
   assert.equal(new Set(CLIENT_CODES).size, CLIENT_CODES.length);
-  assert.deepEqual(CLIENT_CODES.filter((code) => code in EXCEPTIONS.en), []);
+  assert.deepEqual(CLIENT_CODES.filter((code) => integrationCodes.has(code)), []);
   assert.equal(isClientCode("connection_lost"), true);
   assert.equal(isClientCode("robot_busy"), false);
 });
@@ -44,6 +45,6 @@ test("outcome, readiness and due vocabularies are closed lists without duplicate
     assert.ok(Object.isFrozen(list));
     assert.equal(new Set(list).size, list.length);
   }
-  assert.ok(FAILURE_CODES.includes("physical_run_ownership_uncertain"));
+  assert.ok(FAILURE_CODES.includes("start_not_observed") && FAILURE_CODES.includes("reported_failed"));
   assert.deepEqual([...READINESS_REASONS], ["room_not_released", "requirement_not_satisfied", "requirement_unknown", "requirement_stale"]);
 });

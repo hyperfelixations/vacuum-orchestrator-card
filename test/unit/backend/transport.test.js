@@ -3,8 +3,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { VirtualClock } = require("../../helpers/fake-orchestrator.js");
-const { haError } = require("../../fixtures/voi/wire.js");
+const { VirtualClock } = require("../../helpers/virtual-clock.js");
+const { haError } = require("../../helpers/voi-records.js");
 
 const load = () => import("../../../src/backend/transport.js");
 
@@ -75,9 +75,9 @@ test("an action returns its response only when one was requested", async () => {
   const calls = [];
   const hass = { callService: async (...args) => { calls.push(args); return { context: {}, response: { job_id: "job-1" } }; } };
   const transport = createTransport({ getHass: () => hass });
-  assert.deepEqual({ ...(await transport.service("create_job", { areas: ["kitchen"] }, { returnResponse: true })) }, { ok: true, data: { job_id: "job-1" } });
+  assert.deepEqual({ ...(await transport.service("create_job", { areas: ["library"] }, { returnResponse: true })) }, { ok: true, data: { job_id: "job-1" } });
   assert.equal((await transport.service("pause_queue")).data, null);
-  assert.deepEqual(calls[0], [DOMAIN, "create_job", { areas: ["kitchen"] }, undefined, false, true]);
+  assert.deepEqual(calls[0], [DOMAIN, "create_job", { areas: ["library"] }, undefined, false, true]);
   assert.equal(calls[1][5], false);
 });
 

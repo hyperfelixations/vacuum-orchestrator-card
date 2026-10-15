@@ -8,8 +8,13 @@ export function createRenderContext(ownerDocument, { texts = null, resolveUrl = 
     ownerDocument,
     texts,
     t,
-    // The sentence for an affordance decision's reason, or "".
-    reason: (decision) => (decision?.state === "disabled" && decision.reason ? t(`affordance.${decision.reason}`) : ""),
+    // The sentence for an affordance decision's reason, or "": the integration words its own
+    // reasons, the card its client-local ones.
+    reason: (decision) => {
+      if (decision?.state !== "disabled" || !decision.reason) return "";
+      if (decision.source !== "integration") return t(`affordance.${decision.reason}`);
+      return texts?.backend?.(decision.reason, { detail: decision.detail }) || t("affordance.unavailable");
+    },
     resolveUrl: typeof resolveUrl === "function" ? resolveUrl : () => null,
     fragment: (html) => fragmentIn(ownerDocument, html),
   });

@@ -1,54 +1,75 @@
-// Controls over generated jobs, rights, offered actions and commands in flight: nothing is enabled
-// for a read-only user, for a missing action or for a job with a command in flight, and a
-// control is hidden exactly where the integration's preconditions refuse it.
+// Controls over generated verdicts of the integration, rights, offered operations and commands in
+// flight: a control shows exactly where the integration offers the action or explains why not;
+// the card's own reasons come first, then the integration's; nothing else decides.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const W = require("../helpers/voi-records.js");
 const { checkGenerated } = require("./check.js");
 const { propertyRun } = require("./run-config.js");
 
-const STATES = ["queued", "dispatching", "running", "canceling", "completed", "failed", "cancelled", "needs_attention", "unknown"];
-const OPERATIONS = ["move_job", "update_job", "start_job", "cancel_job", "delete_job", "retry_job"];
-const VISIBLE = {
-  edit: (state) => state === "queued",
-  start: (state) => state === "queued",
-  moveUp: (state) => state === "queued",
-  moveDown: (state) => state === "queued",
-  cancel: (state) => ["queued", "dispatching", "running"].includes(state),
-  delete: (state) => ["queued", "completed", "failed", "cancelled"].includes(state),
-  retry: (state) => ["completed", "failed", "cancelled"].includes(state),
+const OPERATIONS = ["move_job", "update_job", "start_job", "cancel_job", "delete_job", "retry_job", "correct_job"];
+// Each control with the integration's action name and the operation that carries it out.
+const CONTROLS = {
+  moveUp: ["move_up", "move_job"],
+  moveDown: ["move_down", "move_job"],
+  edit: ["edit", "update_job"],
+  start: ["start", "start_job"],
+  cancel: ["cancel", "cancel_job"],
+  delete: ["delete", "delete_job"],
+  retry: ["retry", "retry_job"],
+  correct: ["correct", "correct_job"],
 };
-const OPERATION_OF = { edit: "update_job", start: "start_job", moveUp: "move_job", moveDown: "move_job", cancel: "cancel_job", delete: "delete_job", retry: "retry_job" };
+// Reasons that keep a control visible and explained.
+const EXPLAINED = ["robot_busy", "job_held", "start_delayed"];
 
-test("job controls follow state, rights, offered actions and commands in flight", async () => {
-  const { affordanceContext, jobAffordances } = await import("../../src/domain/affordances.js");
-  const { cases, seed } = propertyRun("BACKEND_UI", 400, "voc-backend-ui-v2");
+// The actions that run a job; the integration lets at most one of them apply to a job at a time.
+const RUN_ACTIONS = ["start", "cancel", "retry"];
+
+// A recorded job with a generated verdict per action: none, offered, not applicable, or refused
+// with an explanation; of the run actions only one may apply.
+function generatedJob(random, notApplicable) {
+  const actions = {};
+  const run = random.pick([...RUN_ACTIONS, null]);
+  for (const [name] of Object.values(CONTROLS)) {
+    const kind = RUN_ACTIONS.includes(name) && name !== run ? 2 * random.integer(2) : random.integer(4);
+    if (kind === 1) actions[name] = { available: true, reason: null, detail: null };
+    else if (kind === 2) actions[name] = { available: false, reason: random.pick(notApplicable), detail: null };
+    else if (kind === 3) actions[name] = { available: false, reason: random.pick(EXPLAINED), detail: null };
+  }
+  return W.wireJob({ job_id: "j", actions });
+}
+
+test("job controls follow the integration's verdicts, rights, offered operations and commands in flight", async () => {
+  const { affordanceContext, jobAffordances, NOT_APPLICABLE } = await import("../../src/domain/affordances.js");
+  const { normalizeJob } = await import("../../src/domain/job.js");
+  const notApplicable = [...NOT_APPLICABLE];
+  const { cases, seed } = propertyRun("BACKEND_UI", 400, "voc-backend-ui-v3");
   checkGenerated({
     name: "job affordances",
     cases,
     seed,
     generate: (random) => ({
-      state: random.pick(STATES),
+      wire: generatedJob(random, notApplicable),
       canCommand: random.integer(4) !== 0,
       operations: OPERATIONS.filter(() => random.integer(5) !== 0),
       pending: random.integer(4) === 0,
-      position: 1 + random.integer(5),
-      total: 5,
     }),
-    classify: ({ state, canCommand }) => `${state}/${canCommand ? "admin" : "read-only"}`,
-    verify({ state, canCommand, operations, pending, position, total }) {
+    classify: ({ canCommand, pending }) => `${canCommand ? "admin" : "read-only"}/${pending ? "pending" : "idle"}`,
+    verify({ wire, canCommand, operations, pending }) {
       const context = affordanceContext({ canCommand, operations, pending: pending ? ["job:j"] : [] });
-      const decisions = jobAffordances({ jobId: "j", state }, context, { position, total });
-      for (const [control, visible] of Object.entries(VISIBLE)) {
+      const decisions = jobAffordances(normalizeJob(wire), context);
+      for (const [control, [name, operation]] of Object.entries(CONTROLS)) {
+        const verdict = wire.actions[name];
         const decision = decisions[control];
-        assert.equal(decision.state === "hidden", !visible(state), `${control} visibility in ${state}`);
-        if (decision.state === "hidden") continue;
+        const shown = Boolean(verdict) && (verdict.available || !NOT_APPLICABLE.has(verdict.reason));
+        assert.equal(decision.state !== "hidden", shown, `${control} shows where the integration offers or explains it`);
+        if (!shown) continue;
         if (!canCommand) assert.deepEqual([decision.state, decision.reason], ["disabled", "read_only"]);
-        else if (!operations.includes(OPERATION_OF[control])) assert.deepEqual([decision.state, decision.reason], ["disabled", "operation_missing"]);
+        else if (!operations.includes(operation)) assert.deepEqual([decision.state, decision.reason], ["disabled", "operation_missing"]);
         else if (pending) assert.deepEqual([decision.state, decision.reason], ["disabled", "command_pending"]);
-        else if (control === "moveUp" && position === 1) assert.equal(decision.reason, "at_boundary");
-        else if (control === "moveDown" && position === total) assert.equal(decision.reason, "at_boundary");
-        else assert.equal(decision.state, "enabled", control);
+        else if (verdict.available) assert.equal(decision.state, "enabled", control);
+        else assert.deepEqual([decision.state, decision.reason, decision.source], ["disabled", verdict.reason, "integration"]);
       }
     },
   });
@@ -56,20 +77,22 @@ test("job controls follow state, rights, offered actions and commands in flight"
 
 test("rendered queue rows never show a control the decisions hide", async () => {
   const { JSDOM } = require("jsdom");
-  const { affordanceContext, jobAffordances } = await import("../../src/domain/affordances.js");
+  const { affordanceContext, jobAffordances, NOT_APPLICABLE } = await import("../../src/domain/affordances.js");
+  const { normalizeJob } = await import("../../src/domain/job.js");
   const { jobRow } = await import("../../src/views/parts.js");
+  const notApplicable = [...NOT_APPLICABLE];
   const { createRenderContext } = await import("../../src/render/primitives/render-context.js");
   const { textService } = await import("../../src/i18n/text-service.js");
   const document = new JSDOM("<!doctype html><body></body>").window.document;
   const context = createRenderContext(document, { texts: textService("en") });
-  const { cases, seed } = propertyRun("BACKEND_UI", 200, "voc-backend-ui-v2");
+  const { cases, seed } = propertyRun("BACKEND_UI", 200, "voc-backend-ui-v3");
   checkGenerated({
     name: "rendered rows",
     cases,
     seed: seed ^ 0x6a09e667,
-    generate: (random) => ({ state: random.pick(STATES), canCommand: random.boolean() }),
-    verify({ state, canCommand }) {
-      const actions = jobAffordances({ jobId: "j", state }, affordanceContext({ canCommand, operations: OPERATIONS }), { position: 2, total: 3 });
+    generate: (random) => ({ wire: generatedJob(random, notApplicable), state: random.pick(["queued", "running"]), canCommand: random.boolean() }),
+    verify({ wire, state, canCommand }) {
+      const actions = jobAffordances(normalizeJob(wire), affordanceContext({ canCommand, operations: OPERATIONS }));
       const row = { jobId: "j", position: state === "queued" ? "2" : "", title: "<Job>", rooms: "", showRooms: false, modeIcon: "mdi:robot-vacuum", modeLabel: "Vacuum", state, stateLabel: state, stateTone: "neutral", readiness: null, settings: [], outcome: null, pending: false, actions, time: "" };
       const host = document.createElement("div");
       host.innerHTML = jobRow(context, row);

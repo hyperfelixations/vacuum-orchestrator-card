@@ -1,10 +1,12 @@
 // The pending-queue page and the queue run as the integration reports them. Positions follow
-// from the page offset; the integration owns the order. See internal dev doc §7 "Queue".
+// from the page offset; the integration owns the order and names the run's phase. See internal
+// dev doc §7 "Queue".
 
-import { isQueueMode } from "./job-schema.js";
+import { normalizeActions } from "./availability.js";
+import { isAttentionKind, isOperation, isQueueMode, isRunPhase } from "./job-schema.js";
 import { normalizeJob } from "./job.js";
 import { normalizeJobDefaults } from "./settings.js";
-import { bool, finite, instant, integer, isRecord, records, text } from "./wire-values.js";
+import { bool, finite, instant, integer, isRecord, records, strings, text } from "./wire-values.js";
 
 function queueRun(wire) {
   if (!isRecord(wire)) return null;
@@ -12,12 +14,10 @@ function queueRun(wire) {
   if (!runId) return null;
   return Object.freeze({
     runId,
+    // `off`, `active`, `standby` (waits for work until `endsAt`), `paused` or `ending`.
+    phase: isRunPhase(wire.phase) ? wire.phase : "off",
+    endsAt: instant(wire.ends_at),
     startedAt: instant(wire.started_at),
-    active: wire.active === true,
-    idleSince: instant(wire.idle_since),
-    deadline: instant(wire.deadline),
-    // `end_queue` asked the run to close once nothing started is left running.
-    ending: wire.ending === true,
     completedAt: instant(wire.completed_at),
   });
 }
@@ -27,6 +27,20 @@ function queueRun(wire) {
 function recoveryTarget(wire) {
   const robotId = text(wire.robot_id);
   return robotId ? Object.freeze({ robotId, reason: text(wire.reason) }) : null;
+}
+
+// Something at a robot or a job needs someone now; `failsAt` while a job waits for the fix.
+function attention(wire) {
+  if (!isAttentionKind(wire.kind)) return null;
+  return Object.freeze({
+    kind: wire.kind,
+    robotId: text(wire.robot_id),
+    jobId: text(wire.job_id),
+    codes: strings(wire.codes),
+    operations: Object.freeze(strings(wire.operations).filter(isOperation)),
+    since: instant(wire.since),
+    failsAt: instant(wire.fails_at),
+  });
 }
 
 export function normalizeQueuePage(wire) {
@@ -44,12 +58,16 @@ export function normalizeQueuePage(wire) {
     commitId: integer(wire.commit_id),
     runtimeId: text(wire.runtime_id),
     runtimeSequence: integer(wire.runtime_sequence),
+    serverTime: instant(wire.server_time),
     queueRevision: integer(wire.queue_revision),
     needsAttention: bool(wire.needs_attention) === true,
+    attention: Object.freeze(records(wire.attention).map(attention).filter(Boolean)),
     recoveryTargets: Object.freeze(records(wire.recovery_targets).map(recoveryTarget).filter(Boolean)),
     graceSeconds: finite(wire.queue_grace_seconds),
+    startDelaySeconds: finite(wire.start_delay_seconds),
     jobDefaults: normalizeJobDefaults(wire.job_defaults),
     run: queueRun(wire.queue_run),
+    actions: normalizeActions(wire.actions),
     total: Math.max(0, integer(wire.total) ?? jobs.length),
     offset,
     limit: Math.max(1, integer(wire.limit) ?? 50),
@@ -57,11 +75,7 @@ export function normalizeQueuePage(wire) {
   });
 }
 
-// A run is live while the integration says so; an ending run closes once its started jobs are
-// done, and a deadline only exists during the quiet period. The phase is read, never computed.
+// The run's phase as the integration names it; `off` without a run.
 export function queueRunPhase(run) {
-  if (!run) return "none";
-  if (!run.active) return "finished";
-  if (run.ending) return "ending";
-  return run.deadline !== null ? "winding_down" : "active";
+  return run?.phase ?? "off";
 }

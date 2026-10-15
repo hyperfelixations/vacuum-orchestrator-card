@@ -1,5 +1,5 @@
 // Home Assistant entities the integration names: role references resolved through the
-// registry, and readings copied value by value.
+// registry, map images from the integration's maps, and readings copied value by value.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -35,18 +35,19 @@ test("the profile's own role wins over discovery; null opts a role out", async (
 
 test("readings copy single values, use Home Assistant's formatter and report unusable states", async () => {
   const { indexRegistry, robotLive } = await load();
-  const registry = indexRegistry([entry("reg-v", "vacuum.rocky", { deviceId: "dev" }), entry("reg-b", "sensor.battery"), entry("reg-img", "image.map", { deviceId: "dev" }), entry("reg-old", "image.old", { deviceId: "dev", disabled: true })]);
+  const registry = indexRegistry([entry("reg-v", "vacuum.rocky", { deviceId: "dev" }), entry("reg-b", "sensor.battery")]);
   const states = {
     "vacuum.rocky": { state: "unavailable", attributes: {} },
     "sensor.battery": { state: "55", attributes: { unit_of_measurement: "%" } },
-    "image.map": { state: "t", attributes: { entity_picture: "/m.png" } },
+    "image.main_floor": { state: "t", attributes: { entity_picture: "/main.png" } },
   };
-  const robot = { configuration: { registryId: "reg-v", roles: { battery: "reg-b" } } };
+  const maps = [{ imageEntityId: "image.main_floor" }, { imageEntityId: "image.lower_floor" }];
+  const robot = { configuration: { registryId: "reg-v", roles: { battery: "reg-b" } }, mapImageEntityId: "image.main_floor", maps };
   const live = robotLive(robot, registry, states, { roles: {}, ambiguousRoles: ["selected_map"] }, (state) => `fmt:${state.state}`);
   assert.equal(live.vacuum.entityId, "vacuum.rocky");
   assert.equal(live.vacuum.available, false);
   assert.deepEqual([live.roles.battery.state, live.roles.battery.display, live.roles.battery.unit], ["55", "fmt:55", "%"]);
-  assert.deepEqual(live.maps.map((map) => map.entityId), ["image.map"]);
+  assert.deepEqual(live.maps.map((map) => [map.entityId, map.picture]), [["image.main_floor", "/main.png"], ["image.lower_floor", null]], "the integration's maps, the current one first");
   assert.deepEqual(live.ambiguousRoles, ["selected_map"]);
   assert.notEqual(live.roles.battery, states["sensor.battery"]);
   const throwing = robotLive(robot, registry, states, null, () => {

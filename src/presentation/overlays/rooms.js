@@ -38,7 +38,7 @@ export function buildRelease({ model, texts, context, overlay }) {
     ],
     current: room?.release ? releaseKindLabel(texts, room.release.kind) : null,
     durationValid: kind !== "timed" || durationValid,
-    submit: actions?.release ?? decide(context, { operation: "release_room" }),
+    submit: actions?.release ?? decide(context, { operation: "release_rooms" }),
     revoke: actions?.revoke ?? null,
   };
 }

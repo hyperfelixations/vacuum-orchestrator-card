@@ -27,21 +27,14 @@ const BODIES = Object.freeze({
     itemList(step.candidates.map((candidate) => item(`candidate:${candidate.key}`, candidate.name, candidate.detail, button({ action: "add-candidate", args: { entityId: candidate.entityId }, label: context.t("action.addRobot"), iconName: "mdi:plus", variant: "primary", decision: candidate.decision, reasonText: context.reason(candidate.decision) })))),
   rooms: (context, step) =>
     `${step.uncovered.length ? `<p class="voc-setup-label">${e(context.t("setup.step.rooms.uncovered"))}</p>` : ""}${itemList(step.uncovered.map((room) => item(`room:${room.key}`, room.name, null, button({ action: "edit-room", args: { roomId: room.roomId }, label: context.t("setup.step.rooms.assign"), iconName: "mdi:map-marker-plus-outline", decision: room.decision, reasonText: context.reason(room.decision) }))))}${more(context, step.more)}`,
-  release: (context, step) =>
-    `${itemList(step.rooms.map((room) => item(`release:${room.key}`, room.name, null, button({ action: "open-release", args: { roomId: room.roomId }, label: context.t("rooms.openRelease"), iconName: "mdi:lock-open-variant-outline", decision: room.decision, reasonText: context.reason(room.decision) }))))}${more(context, step.more)}`,
   defaults: (context, step) => link(context, step),
-  conditions: (context, step) => link(context, step),
-  due: (context, step) => link(context, step),
-  templates: (context, step) => link(context, step),
   queue: (context, step) => link(context, step),
-  firstJob: (context, step) => `<div class="voc-inline-actions">${button({ action: "create-job", label: context.t("action.createJob"), iconName: "mdi:plus", variant: "primary", decision: step.create, reasonText: context.reason(step.create) })}</div>`,
 });
 
-// A collapsed step opens through its title; the marks say which steps are optional and where the
-// built-in defaults apply.
+// A collapsed step opens through its title; a mark says where the built-in defaults apply.
 function stepCard(context, step) {
-  const marker = step.done ? icon("mdi:check") : `<span>${e(step.number)}</span>`;
-  const marks = [step.optional ? `<span class="voc-setup-mark">${e(context.t("setup.optional"))}</span>` : "", step.builtIn ? `<span class="voc-setup-mark" data-tone="default">${e(context.t("settings.defaultsBuiltIn"))}</span>` : ""].join("");
+  const marker = `<span>${e(step.number)}</span>`;
+  const marks = step.builtIn ? `<span class="voc-setup-mark" data-tone="default">${e(context.t("settings.defaultsBuiltIn"))}</span>` : "";
   const status = step.summary || marks ? `<span class="voc-setup-summary">${marks}${step.summary ? `<span>${e(step.summary)}</span>` : ""}</span>` : "";
   const title = step.current
     ? `<h3 class="voc-setup-title">${e(step.title)}</h3>`
@@ -49,10 +42,10 @@ function stepCard(context, step) {
   const body = step.current
     ? `<div class="voc-setup-body"><p class="voc-setup-text">${e(step.text)}</p>${step.note ? `<p class="voc-setup-note">${icon("mdi:information-outline")}<span>${e(step.note)}</span></p>` : ""}${BODIES[step.key](context, step)}</div>`
     : "";
-  return `<li class="voc-setup-step" data-key="step:${e(step.key)}" data-done="${step.done}" data-current="${step.current}"${step.current ? ' aria-current="step"' : ""}><span class="voc-setup-marker" aria-hidden="true">${marker}</span><div class="voc-setup-main"><div class="voc-setup-head">${title}${step.done ? `<span class="voc-sr-only">${e(context.t("setup.doneLabel"))}</span>` : ""}${status}</div>${body}</div></li>`;
+  return `<li class="voc-setup-step" data-key="step:${e(step.key)}" data-current="${step.current}"${step.current ? ' aria-current="step"' : ""}><span class="voc-setup-marker" aria-hidden="true">${marker}</span><div class="voc-setup-main"><div class="voc-setup-head">${title}${status}</div>${body}</div></li>`;
 }
 
-// The setup steps again, opened from the settings once the setup view is no longer a tab.
+// The setup steps again, opened from the settings once the assistant is finished.
 export const setupGuideOverlay = Object.freeze({
   key: "setup-guide",
   scopes: () => [{ name: "candidates" }, { name: "templates" }],
@@ -64,16 +57,15 @@ export const setupGuideOverlay = Object.freeze({
 export function renderSetup(context, vm) {
   const wrap = (content) => `<div class="voc-view voc-setup" data-key="view:setup">${content}</div>`;
   if (vm.loading) return wrap(loadingState(context));
-  const lead = vm.allDone
-    ? `<div class="voc-alert voc-alert--success" data-key="done" role="status">${icon("mdi:check-circle-outline")}<div class="voc-alert-text"><strong>${e(context.t("setup.allDone"))}</strong></div></div>`
-    : `<p class="voc-setup-lead" data-key="lead">${e(context.t(vm.complete ? "setup.leadReady" : "setup.lead"))}</p>`;
-  return wrap(`${lead}<ol class="voc-setup-steps">${vm.steps.map((step) => stepCard(context, step)).join("")}</ol>`);
+  const lead = `<p class="voc-setup-lead" data-key="lead">${e(context.t("setup.lead"))}</p>`;
+  const finish = vm.finish ? `<div class="voc-inline-actions" data-key="finish">${button({ action: "complete-setup", label: context.t("setup.finish"), iconName: "mdi:check", variant: "primary", decision: vm.finish, reasonText: context.reason(vm.finish) })}</div>` : "";
+  return wrap(`${lead}<ol class="voc-setup-steps">${vm.steps.map((step) => stepCard(context, step)).join("")}</ol>${finish}`);
 }
 
 export const setupView = Object.freeze({
   key: "setup",
   icon: "mdi:clipboard-check-outline",
-  requires: ["get_robots", "get_rooms"],
+  requires: ["get_setup"],
   defaultEnabled: (model) => setupNeeded(model),
   preferredStart: (model) => setupNeeded(model),
   optionsSchema: Object.freeze({}),

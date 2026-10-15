@@ -1,4 +1,4 @@
-// Closed vocabularies of the Vacuum Orchestrator API V3. Values are protocol identifiers;
+// Closed vocabularies of the Vacuum Orchestrator API 4. Values are protocol identifiers;
 // wording belongs to i18n. See internal dev doc §7 "Vokabular".
 
 const list = (values) => Object.freeze([...values]);
@@ -40,6 +40,18 @@ export const JOB_STATES = list(["queued", "dispatching", "running", "canceling",
 export const TERMINAL_STATES = list(["completed", "failed", "cancelled"]);
 export const ACTIVE_STATES = list(["dispatching", "running", "canceling"]);
 export const QUEUE_MODES = list(["idle", "running", "paused"]);
+// The queue run as the integration names it (`queue_run.phase`).
+export const RUN_PHASES = list(["off", "active", "standby", "paused", "ending"]);
+export const HOLD_PURPOSES = list(["edit", "confirm"]);
+export const ATTENTION_KINDS = list(["device_fault", "robot_recovery", "job_recovery"]);
+export const FAULT_SOURCES = list(["robot", "dock"]);
+// A robot's neutral phase from its latest observation (`activity.phase`).
+export const ROBOT_PHASES = list(["cleaning", "returning", "station", "docked", "idle", "paused", "error", "offline", "other", "unknown"]);
+export const REACH_STATUSES = list(["reachable", "no_area", "area_excluded", "area_not_mapped", "map_unknown", "not_on_current_map", "binding_invalid", "overlap"]);
+export const NAME_SOURCES = list(["home_assistant", "custom"]);
+// Whether some robot could take a waiting job now (`waiting.robots.state`).
+export const ROBOTS_STATES = list(["ready", "no_robot_configured", "no_capable_robot", "no_robot_ready"]);
+export const SETUP_STEPS = list(["robots", "rooms", "defaults", "queue"]);
 export const MOVE_DIRECTIONS = list(["up", "down", "top", "bottom"]);
 export const READINESS_STATES = list(["ready", "blocked", "unknown"]);
 export const REQUIREMENT_STATES = list(["ready", "blocked", "unknown", "stale"]);
@@ -110,6 +122,8 @@ export const ROBOT_TIMEOUT_FIELDS = Object.freeze({
   settle_seconds: 30,
   settings_timeout_seconds: 45,
   return_timeout_seconds: 900,
+  fault_timeout_seconds: 900,
+  connection_timeout_seconds: 600,
 });
 // Option maps: which semantic keys each map may carry; `map_options` keys are free. `off`
 // names the robot option that switches suction or water off for a single-operation phase.
@@ -171,3 +185,11 @@ export const isCompletionQuality = (value) => member(COMPLETION_QUALITIES, value
 export const isRunSource = (value) => member(RUN_SOURCES, value);
 export const isAttemptState = (value) => member(ATTEMPT_STATES, value);
 export const isRobotRole = (value) => member(ROBOT_ROLES, value);
+export const isRunPhase = (value) => member(RUN_PHASES, value);
+export const isHoldPurpose = (value) => member(HOLD_PURPOSES, value);
+export const isAttentionKind = (value) => member(ATTENTION_KINDS, value);
+export const isFaultSource = (value) => member(FAULT_SOURCES, value);
+export const isRobotPhase = (value) => member(ROBOT_PHASES, value);
+export const isReachStatus = (value) => member(REACH_STATUSES, value);
+export const isNameSource = (value) => member(NAME_SOURCES, value);
+export const isRobotsState = (value) => member(ROBOTS_STATES, value);

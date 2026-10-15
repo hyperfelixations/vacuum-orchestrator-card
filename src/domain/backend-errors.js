@@ -44,12 +44,16 @@ export const FAILURE_CODES = Object.freeze([
   "observation_timeout",
   "robot_reported_error",
   "robot_connection_lost",
-  "observed_mode_mismatch",
-  "completion_scope_mismatch",
+  "observation_source_mismatch",
+  "start_not_observed",
+  "robot_fault_timeout",
   "external_run_interrupted",
-  "physical_run_ownership_uncertain",
   "operator_assumed_stopped",
   "dispatch_failed",
+  "runtime_interrupted",
+  "run_correlation_uncertain",
+  "recovery_abandoned",
+  "reported_failed",
 ]);
 
 export const READINESS_REASONS = Object.freeze(["room_not_released", "requirement_not_satisfied", "requirement_unknown", "requirement_stale"]);

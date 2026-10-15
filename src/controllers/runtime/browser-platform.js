@@ -10,6 +10,8 @@ export function createBrowserPlatform(getDocument) {
   const viewOf = () => currentDocument()?.defaultView || null;
   return {
     now: () => Date.now(),
+    // Never jumps with the wall clock: carries the integration's time forward between answers.
+    monotonicNow: () => viewOf()?.performance?.now?.() ?? Date.now(),
     setTimeout(fn, ms) {
       const view = viewOf();
       if (!view?.setTimeout) return null;

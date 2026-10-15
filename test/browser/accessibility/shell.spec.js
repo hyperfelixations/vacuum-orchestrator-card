@@ -2,10 +2,10 @@
 // its keyboard, names that survive a narrow card, and status that does not depend on colour.
 
 const { test, expect } = require("../../helpers/playwright.js");
-const { mountCard, setCardWidth } = require("../../helpers/browser-helpers.js");
+const { BUSY, mountCard, named, setCardWidth } = require("../../helpers/browser-helpers.js");
 
 test("exposes a focusable root, a tab panel and a polite live region", async ({ page }) => {
-  const card = await mountCard(page);
+  const card = await mountCard(page, BUSY);
   await expect(card.locator(".voc-root")).toHaveAttribute("tabindex", "-1");
   await expect(card.locator(".voc-body")).toHaveAttribute("role", "tabpanel");
   await expect(card.locator(".voc-body")).toHaveAttribute("aria-labelledby", "voc-tab-queue");
@@ -13,7 +13,7 @@ test("exposes a focusable root, a tab panel and a polite live region", async ({ 
 });
 
 test("the tab strip is a roving tablist operable with the arrow keys", async ({ page }) => {
-  const card = await mountCard(page);
+  const card = await mountCard(page, BUSY);
   const tabs = card.locator("[role=tab]");
   await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
   await expect(tabs.nth(1)).toHaveAttribute("tabindex", "-1");
@@ -26,7 +26,7 @@ test("the tab strip is a roving tablist operable with the arrow keys", async ({ 
 });
 
 test("on a narrow card inactive tabs show icons yet keep their names", async ({ page }) => {
-  const card = await mountCard(page);
+  const card = await mountCard(page, BUSY);
   await setCardWidth(page, 380);
   const rooms = card.locator('[role=tab][data-view="rooms"]');
   await expect(rooms).toHaveAccessibleName("Rooms");
@@ -38,15 +38,15 @@ test("on a narrow card inactive tabs show icons yet keep their names", async ({ 
 });
 
 test("status and readiness are readable without colour", async ({ page }) => {
-  const card = await mountCard(page);
+  const card = await mountCard(page, BUSY);
   await expect(card.locator(".voc-status-pill")).toHaveText("Cleaning");
-  await expect(card.locator('[data-key="job:job-bathroom"] .voc-job-readiness')).toContainText("Not released");
-  await expect(card.locator('[data-key="job:job-running"] .voc-pill')).toHaveText("Cleaning");
+  await expect(named(card, ".voc-job", "Conservatory", ".voc-job-readiness")).toContainText("Not released");
+  await expect(named(card, ".voc-job", "Studio", ".voc-pill")).toHaveText("Cleaning");
 });
 
 test("a control the user may not use keeps its explanation and stays reachable", async ({ page }) => {
-  const card = await mountCard(page, { admin: false });
-  const edit = card.locator('[data-key="job:job-kitchen"] [data-action="edit-job"]');
+  const card = await mountCard(page, { ...BUSY, admin: false });
+  const edit = named(card, ".voc-job", "Conservatory", '[data-action="edit-job"]');
   await expect(edit).toHaveAttribute("aria-disabled", "true");
   await expect(edit).toHaveAttribute("title", /administrator/i);
   await edit.focus();
@@ -63,7 +63,7 @@ const tabInView = (card, view) => card.evaluate((element, key) => {
 }, view);
 
 test("long labels give way step by step, alike in every view", async ({ page }) => {
-  const card = await mountCard(page, { width: 900, config: { language: "de" } });
+  const card = await mountCard(page, { ...BUSY, width: 900, config: { language: "de" } });
   const row = card.locator(".voc-tab-row");
   await expect(row).not.toHaveAttribute("data-compact");
   await setCardWidth(page, 640);
@@ -86,7 +86,7 @@ test.describe("with more tabs than fit even as icons", () => {
   const VIEWS = ["setup", "queue", "rooms", "robots", "templates", "history", "diagnostics", "settings"];
 
   test("the strip fades where more tabs follow and keeps the active tab in view", async ({ page }) => {
-    const card = await mountCard(page, { width: 320, config: { views: VIEWS, start_view: "queue" } });
+    const card = await mountCard(page, { ...BUSY, width: 320, config: { views: VIEWS, start_view: "queue" } });
     const strip = card.locator(".voc-tabs");
     await expect(strip).toHaveAttribute("data-overflow-end", "");
     await expect(strip).not.toHaveAttribute("data-overflow-start");
@@ -101,7 +101,7 @@ test.describe("with more tabs than fit even as icons", () => {
   });
 
   test("a start view beyond the visible strip is in view from the first render", async ({ page }) => {
-    const card = await mountCard(page, { width: 320, config: { views: VIEWS, start_view: "settings" } });
+    const card = await mountCard(page, { ...BUSY, width: 320, config: { views: VIEWS, start_view: "settings" } });
     expect(await tabInView(card, "settings")).toBe(true);
   });
 });

@@ -5,8 +5,21 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { modelFor } = require("../../../helpers/model.js");
 
-async function shell(scenario = "typical", options = {}) {
-  const built = await modelFor(scenario, options);
+// Card states at marks of the integration's recordings.
+const BUSY = ["showcase", { from: "A busy afternoon" }];
+const QUIET = ["showcase", { from: "A quiet afternoon" }];
+const WAITING_FOR_WORK = ["queue_end", { from: "The queue waits for work" }];
+const ENDING = ["queue_controls", { from: "The queue ends after the started job" }];
+const STATION = ["attention", { from: "The station needs attention" }];
+const RECOVERY = ["recovery", { from: "The job needs clarification" }];
+const ASSISTANT = ["setup", { from: "The assistant opens" }];
+const NOT_INSTALLED = ["not_installed", {}];
+const NOT_SET_UP = ["setup", { from: "Vacuum Orchestrator is installed but not set up" }];
+const UNLOADED = ["unloaded", { from: "The integration is not loaded" }];
+const at = ([name, options], extra = {}) => modelFor(name, { ...options, ...extra });
+
+async function shell(state = BUSY, options = {}) {
+  const built = await at(state, options);
   const { VIEWS, VIEW_TYPES, optionSchemaForView } = await import("../../../../src/views/registry.js");
   const { normalizeConfig } = await import("../../../../src/config/normalize-config.js");
   const config = (raw = {}) => normalizeConfig(raw, { viewTypes: VIEW_TYPES, optionSchemaForView });
@@ -16,12 +29,13 @@ async function shell(scenario = "typical", options = {}) {
 const statusOf = async (model) => (await import("../../../../src/presentation/shell/status.js")).cardStatus(model);
 
 test("status precedence: phase, attention, work in progress, queue mode, unfinished setup", async () => {
-  assert.equal(await statusOf((await modelFor("typical")).model), "cleaning");
-  assert.equal(await statusOf((await modelFor("attention")).model), "attention");
-  assert.equal(await statusOf((await modelFor("windingDown")).model), "running");
-  assert.equal(await statusOf((await modelFor("empty")).model), "idle");
-  assert.equal(await statusOf((await modelFor("fresh")).model), "setup");
-  assert.equal(await statusOf((await modelFor("typical", { fake: { installed: false, setUp: false } })).model), "notInstalled");
+  assert.equal(await statusOf((await at(BUSY)).model), "cleaning");
+  assert.equal(await statusOf((await at(STATION)).model), "attention", "attention outranks the pending assistant");
+  assert.equal(await statusOf((await at(WAITING_FOR_WORK)).model), "running");
+  assert.equal(await statusOf((await at(QUIET)).model), "idle");
+  assert.equal(await statusOf((await at(ASSISTANT)).model), "setup");
+  assert.equal(await statusOf((await at(NOT_INSTALLED)).model), "notInstalled");
+  assert.equal(await statusOf((await at(UNLOADED)).model), "loadFailed");
   assert.equal(await statusOf({ phase: "ready", slots: {} }), "connecting");
 });
 
@@ -32,7 +46,7 @@ test("the integration's counts mark attention and work before the open jobs are 
   const texts = textService("en");
   const queue = (fields) => ({ phase: "ready", slots: { queue: { data: { mode: "idle", needsAttention: false, recoveryTargets: [], total: 0, activeCount: 0, attentionCount: 0, ...fields } } } });
   assert.equal(cardStatus(queue({ attentionCount: 2 })), "attention");
-  assert.equal(automaticSubtitle(queue({ attentionCount: 2 }), "attention", texts), texts.t("subtitle.attentionJobs", { count: 2 }));
+  assert.equal(automaticSubtitle(queue({ attentionCount: 2 }), "attention", texts), texts.t("subtitle.attention"), "attention items are not jobs");
   assert.equal(cardStatus(queue({ activeCount: 1 })), "cleaning");
   assert.equal(cardStatus({ ...queue({}), live: { mode: "idle", attentionCount: 1, activeCount: 0 } }), "attention", "a live event is newer than the queue read");
 });
@@ -48,14 +62,16 @@ test("each status has a tone in the RCC token derivation", async () => {
 
 test("the automatic subtitle names what the card is doing", async () => {
   const { automaticSubtitle } = await import("../../../../src/presentation/shell/header.js");
-  const typical = await modelFor("typical");
-  assert.equal(automaticSubtitle(typical.model, "cleaning", typical.texts), typical.texts.t("subtitle.activeJob", { job: "Living room", state: typical.texts.t("job.state.running") }));
-  const attention = await modelFor("attention");
-  assert.equal(automaticSubtitle(attention.model, "attention", attention.texts), attention.texts.t("subtitle.recoveryOne", { robot: "Rocky" }));
-  const winding = await modelFor("windingDown");
-  assert.match(automaticSubtitle(winding.model, "running", winding.texts), /12/);
-  const fresh = await modelFor("fresh");
-  assert.equal(automaticSubtitle(fresh.model, "setup", fresh.texts), fresh.texts.t("subtitle.setupIncomplete"));
+  const busy = await at(BUSY);
+  assert.equal(automaticSubtitle(busy.model, "cleaning", busy.texts), busy.texts.t("subtitle.activeJob", { job: "Studio", state: busy.texts.t("job.state.running") }));
+  const recovery = await at(RECOVERY);
+  assert.equal(automaticSubtitle(recovery.model, "attention", recovery.texts), recovery.texts.t("subtitle.recoveryOne", { robot: "Rocky" }));
+  const station = await at(STATION);
+  assert.equal(automaticSubtitle(station.model, "attention", station.texts), station.texts.t("subtitle.attention"), "a station fault is no job");
+  const waiting = await at(WAITING_FOR_WORK);
+  assert.match(automaticSubtitle(waiting.model, "running", waiting.texts), /14/, "the run ends 14 minutes from now");
+  const assistant = await at(ASSISTANT);
+  assert.equal(automaticSubtitle(assistant.model, "setup", assistant.texts), assistant.texts.t("subtitle.setupIncomplete"));
 });
 
 test("the header honours title, subtitle, icon and the show switches", async () => {
@@ -72,19 +88,21 @@ test("the panel shows the waiting count, the run line, up to three robots and th
   const { buildPanel } = await import("../../../../src/presentation/shell/panel.js");
   const panel = buildPanel({ model, config: config(), texts, context });
   assert.deepEqual([panel.value, panel.mode, panel.runLine], ["3", "running", texts.t("panel.running")]);
-  assert.equal(panel.robots.length, 2);
+  assert.equal(panel.robots.length, 1);
+  const both = await at(["robot_choice", { from: "Either robot can start the dining room" }]);
+  assert.equal(buildPanel({ model: both.model, config: config(), texts: both.texts, context: both.context }).robots.length, 2);
   assert.deepEqual([panel.control.command, panel.control.label, panel.control.decision.state], ["pause_queue", texts.t("panel.control.pause"), "enabled"]);
   assert.deepEqual([panel.end.action, panel.end.label, panel.end.decision.state], ["end-queue", texts.t("panel.control.end"), "enabled"]);
   const hidden = buildPanel({ model, config: config({ show: { queue_controls: false } }), texts, context });
   assert.deepEqual([hidden.control, hidden.end], [null, null]);
-  const ending = await modelFor("ending");
+  const ending = await at(ENDING);
   const ended = buildPanel({ model: ending.model, config: config(), texts: ending.texts, context: ending.context });
   assert.deepEqual([ended.runLine, ended.control.command, ended.end], [ending.texts.t("panel.ending"), "resume_queue", null], "an ending queue offers resuming, which takes the end back");
-  const empty = await modelFor("empty");
-  assert.equal(buildPanel({ model: empty.model, config: config(), texts: empty.texts, context: empty.context }).end, null);
+  const quiet = await at(QUIET);
+  assert.equal(buildPanel({ model: quiet.model, config: config(), texts: quiet.texts, context: quiet.context }).end, null);
   assert.equal(buildPanel({ model, config: config({ show: { panel: false } }), texts, context }).visible, false);
-  const winding = await modelFor("windingDown");
-  assert.match(buildPanel({ model: winding.model, config: config(), texts: winding.texts, context: winding.context }).runLine, /12/);
+  const waiting = await at(WAITING_FOR_WORK);
+  assert.match(buildPanel({ model: waiting.model, config: config(), texts: waiting.texts, context: waiting.context }).runLine, /14/);
 });
 
 test("by default the five everyday views show; settings for administrators, diagnostics and setup only when needed", async () => {
@@ -92,15 +110,15 @@ test("by default the five everyday views show; settings for administrators, diag
   const { buildTabs } = await import("../../../../src/presentation/shell/tabs.js");
   const tabs = buildTabs({ definitions: VIEWS, model, config: config(), ui: {}, texts });
   assert.deepEqual(tabs.tabs.map((tab) => tab.key), ["queue", "rooms", "robots", "templates", "history", "settings"]);
-  const reader = await shell("typical", { admin: false });
+  const reader = await shell(BUSY, { admin: false });
   const readerTabs = buildTabs({ definitions: VIEWS, model: reader.model, config: config(), ui: {}, texts });
   assert.deepEqual(readerTabs.tabs.map((tab) => tab.key), ["queue", "rooms", "robots", "templates", "history"], "who may change nothing sees no settings");
   const forced = buildTabs({ definitions: VIEWS, model: reader.model, config: config({ views: ["queue", { type: "settings", enabled: true }] }), ui: {}, texts });
   assert.deepEqual(forced.tabs.map((tab) => tab.key), ["queue", "settings"]);
   assert.equal(tabs.active, "queue");
   assert.equal(tabs.visible, true);
-  const fresh = await shell("fresh");
-  const setupTabs = buildTabs({ definitions: VIEWS, model: fresh.model, config: config(), ui: {}, texts });
+  const assistant = await shell(ASSISTANT);
+  const setupTabs = buildTabs({ definitions: VIEWS, model: assistant.model, config: config(), ui: {}, texts });
   assert.equal(setupTabs.tabs[0].key, "setup");
   assert.equal(setupTabs.active, "setup", "an unfinished setup is where the card starts");
 });
@@ -147,27 +165,28 @@ test("onboarding explains each unusable phase and offers Home Assistant's own pa
   const { buildOnboarding } = await import("../../../../src/presentation/shell/onboarding.js");
   const { HACS_INTEGRATION_URL, INTEGRATION_URL, SET_UP_PATH, INTEGRATION_PAGE_PATH } = await import("../../../../src/presentation/common/links.js");
   assert.equal(HACS_INTEGRATION_URL, "https://my.home-assistant.io/redirect/hacs_repository/?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration");
-  const missing = await modelFor("typical", { fake: { installed: false, setUp: false } });
+  const missing = await at(NOT_INSTALLED);
   const notInstalled = buildOnboarding({ model: missing.model, texts: missing.texts });
   assert.equal(notInstalled.steps.length, 3);
   assert.match(notInstalled.steps[0], /HACS/);
   assert.deepEqual(notInstalled.actions.map((action) => [action.kind, action.href]), [["link", HACS_INTEGRATION_URL], ["link", INTEGRATION_URL]]);
   assert.equal(notInstalled.note, null);
-  const missingAsUser = await modelFor("typical", { fake: { installed: false, setUp: false }, admin: false });
+  const missingAsUser = await at(NOT_INSTALLED, { admin: false });
   const notInstalledAsUser = buildOnboarding({ model: missingAsUser.model, texts: missingAsUser.texts });
   assert.deepEqual(notInstalledAsUser.actions.map((action) => action.href), [INTEGRATION_URL]);
   assert.equal(notInstalledAsUser.note, missingAsUser.texts.t("onboarding.adminInstall"));
-  const unset = await modelFor("typical", { fake: { setUp: false } });
+  const unset = await at(NOT_SET_UP);
   assert.deepEqual(buildOnboarding({ model: unset.model, texts: unset.texts }).actions.map((action) => action.path), [SET_UP_PATH]);
-  const nonAdmin = await modelFor("typical", { fake: { setUp: false }, admin: false });
+  const nonAdmin = await at(NOT_SET_UP, { admin: false });
   const asUser = buildOnboarding({ model: nonAdmin.model, texts: nonAdmin.texts });
   assert.deepEqual(asUser.actions, []);
   assert.equal(asUser.note, nonAdmin.texts.t("onboarding.adminRequired"));
-  const failed = await modelFor("typical", { fake: { runtimeLoaded: false } });
-  assert.deepEqual(buildOnboarding({ model: failed.model, texts: failed.texts }).actions.map((action) => action.path), [INTEGRATION_PAGE_PATH]);
-  const newer = await modelFor("typical", { fake: { apiVersion: 4 } });
-  assert.equal(buildOnboarding({ model: newer.model, texts: newer.texts }).text, newer.texts.t("onboarding.api_incompatible.text", { version: "4", supported: "3" }));
-  assert.equal(buildOnboarding({ model: (await modelFor("typical")).model, texts: failed.texts }), null);
+  const unloaded = await at(UNLOADED);
+  assert.deepEqual(buildOnboarding({ model: unloaded.model, texts: unloaded.texts }).actions.map((action) => action.path), [INTEGRATION_PAGE_PATH]);
+  // A newer integration than this card speaks; the recordings are all of the supported version.
+  const newer = { phase: "api_incompatible", phaseFailure: { ok: false, code: "api_incompatible", detail: "5" }, supportedApiVersions: [4], permissions: { isAdmin: true } };
+  assert.equal(buildOnboarding({ model: newer, texts: unloaded.texts }).text, unloaded.texts.t("onboarding.api_incompatible.text", { version: "5", supported: "4" }));
+  assert.equal(buildOnboarding({ model: (await at(BUSY)).model, texts: unloaded.texts }), null);
 });
 
 test("a failed check names its failure and is not shown as a lost connection", async () => {

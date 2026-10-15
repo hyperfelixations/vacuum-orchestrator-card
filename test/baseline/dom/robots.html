@@ -8,7 +8,7 @@
 </div>
 <div class="voc-title-block">
 <div class="voc-title">Cleaning</div>
-<div class="voc-subtitle">Living room · Cleaning</div>
+<div class="voc-subtitle">Studio · Cleaning</div>
 </div>
 <div class="voc-status-pill">Cleaning</div>
 </div>
@@ -24,12 +24,9 @@
 <span>Queue running</span>
 </div>
 <div class="voc-panel-robots">
-<span class="voc-panel-robot" data-key="robot:robot-rocky" data-tone="running">
+<span class="voc-panel-robot" data-key="robot:01J00000000000000000000003" data-tone="running">
 <span class="voc-dot" aria-hidden="true">
-</span>Rocky · Cleaning · 76 %</span>
-<span class="voc-panel-robot" data-key="robot:robot-dusty" data-tone="ready">
-<span class="voc-dot" aria-hidden="true">
-</span>Dusty · Docked · 100 %</span>
+</span>Rocky · Cleaning · 100 %</span>
 </div>
 </div>
 <div class="voc-panel-control">
@@ -87,7 +84,7 @@
 <div class="voc-body" id="voc-panel" data-body="view:robots" data-scroll="" role="tabpanel" aria-labelledby="voc-tab-robots" tabindex="0">
 <div class="voc-view voc-robots" data-key="view:robots">
 <div class="voc-robot-grid">
-<article class="voc-robot" data-key="robot:robot-rocky" data-tone="running">
+<article class="voc-robot" data-key="robot:01J00000000000000000000003" data-tone="running">
 <header class="voc-robot-head">
 <span class="voc-robot-icon" aria-hidden="true">
 <ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
@@ -99,10 +96,10 @@
 <span class="voc-pill voc-pill--running">Cleaning</span>
 <span class="voc-robot-battery">
 <ha-icon icon="mdi:battery-outline" aria-hidden="true">
-</ha-icon>76 %</span>
+</ha-icon>100 %</span>
 </div>
 </div>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-robot" data-args="{&quot;robotId&quot;:&quot;robot-rocky&quot;}" aria-label="Settings for Rocky" disabled="" title="The robot is working on a job.">
+<button type="button" class="voc-button voc-button--icon" data-action="edit-robot" data-args="{&quot;robotId&quot;:&quot;01J00000000000000000000003&quot;}" aria-label="Settings for Rocky" disabled="" title="The robot is busy">
 <ha-icon icon="mdi:cog-outline" aria-hidden="true">
 </ha-icon>
 </button>
@@ -111,7 +108,7 @@
 <span class="voc-robot-fact" data-key="fact:room" title="Current room">
 <ha-icon icon="mdi:map-marker-outline" aria-hidden="true">
 </ha-icon>
-<span class="voc-sr-only">Current room: </span>Living room</span>
+<span class="voc-sr-only">Current room: </span>Studio</span>
 <span class="voc-robot-fact" data-key="fact:status" title="Status">
 <ha-icon icon="mdi:information-outline" aria-hidden="true">
 </ha-icon>
@@ -119,11 +116,7 @@
 <span class="voc-robot-fact" data-key="fact:map" title="Selected map">
 <ha-icon icon="mdi:map-outline" aria-hidden="true">
 </ha-icon>
-<span class="voc-sr-only">Selected map: </span>Ground floor</span>
-<span class="voc-robot-fact" data-key="fact:minimum" title="Minimum battery">
-<ha-icon icon="mdi:battery-low" aria-hidden="true">
-</ha-icon>
-<span class="voc-sr-only">Minimum battery: </span>min. 20 %</span>
+<span class="voc-sr-only">Selected map: </span>Main Floor</span>
 </div>
 <div class="voc-robot-note" data-key="active" data-tone="running">
 <ha-icon icon="mdi:progress-clock" aria-hidden="true">
@@ -144,51 +137,25 @@
 <div class="voc-robot-line" data-key="rooms">
 <ha-icon icon="mdi:floor-plan" aria-hidden="true">
 </ha-icon>
-<span>Kitchen, Hall, Living room, Bathroom</span>
+<span>Dining Room, Studio, Library</span>
 </div>
 <div class="voc-robot-levels" data-key="levels">
 <span>Up to 3 passes</span>
-<span>Suction: Quiet, Standard, High, Max</span>
+<span>Suction: Quiet, Standard, High, Max, Max+</span>
 <span>Water: Low, Medium, High</span>
-<span>Mop route: Standard, Deep</span>
+<span>Mop route: Fast, Standard, Deep, Deep+</span>
 </div>
 <figure class="voc-robot-map" data-key="map">
-<img src="/test/fixtures/map.svg" alt="Rocky: Rocky Ground floor" loading="lazy">
-</figure>
-</article>
-<article class="voc-robot" data-key="robot:robot-dusty" data-tone="ready">
-<header class="voc-robot-head">
-<span class="voc-robot-icon" aria-hidden="true">
-<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
-</ha-icon>
-</span>
-<div class="voc-robot-title">
-<h3 class="voc-robot-name">Dusty</h3>
-<div class="voc-robot-state">
-<span class="voc-pill voc-pill--ready">Docked</span>
-<span class="voc-robot-battery">
-<ha-icon icon="mdi:battery-outline" aria-hidden="true">
-</ha-icon>100 %</span>
-</div>
-</div>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-robot" data-args="{&quot;robotId&quot;:&quot;robot-dusty&quot;}" aria-label="Settings for Dusty" title="Settings for Dusty">
-<ha-icon icon="mdi:cog-outline" aria-hidden="true">
-</ha-icon>
+<img src="http://homeassistant.local:8123/api/image_proxy/image.rocky_main_floor?token=synthetic-map-token" alt="Rocky: Rocky Main Floor" loading="lazy">
+<div class="voc-chips" data-key="map-choices">
+<button type="button" class="voc-button voc-button--quiet" data-action="choose" data-args="{&quot;key&quot;:&quot;map:01J00000000000000000000003&quot;,&quot;value&quot;:&quot;image.rocky_main_floor&quot;}" data-key="map:image.rocky_main_floor" aria-pressed="true">
+<span class="voc-button-label">Rocky Main Floor</span>
 </button>
-</header>
-<div class="voc-robot-chips" data-key="operations">
-<span class="voc-chip">
-<span>Vacuuming</span>
-</span>
+<button type="button" class="voc-button voc-button--quiet" data-action="choose" data-args="{&quot;key&quot;:&quot;map:01J00000000000000000000003&quot;,&quot;value&quot;:&quot;image.rocky_lower_floor&quot;}" data-key="map:image.rocky_lower_floor" aria-pressed="false">
+<span class="voc-button-label">Rocky Lower Floor</span>
+</button>
 </div>
-<div class="voc-robot-line" data-key="rooms">
-<ha-icon icon="mdi:floor-plan" aria-hidden="true">
-</ha-icon>
-<span>Kitchen, Hall</span>
-</div>
-<div class="voc-robot-levels" data-key="levels">
-<span>Up to 1 passes</span>
-</div>
+</figure>
 </article>
 </div>
 </div>

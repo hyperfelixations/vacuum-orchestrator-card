@@ -4,7 +4,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { VirtualClock } = require("../../helpers/fake-orchestrator.js");
+const { VirtualClock } = require("../../helpers/virtual-clock.js");
 
 async function registry() {
   const module = await import("../../../src/backend/session-registry.js");

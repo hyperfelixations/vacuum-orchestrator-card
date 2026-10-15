@@ -8,7 +8,7 @@
 </div>
 <div class="voc-title-block">
 <div class="voc-title">Reinigung</div>
-<div class="voc-subtitle">Living room · Reinigt</div>
+<div class="voc-subtitle">Studio · Reinigt</div>
 </div>
 <div class="voc-status-pill">Reinigt</div>
 </div>
@@ -24,12 +24,9 @@
 <span>Warteschlange läuft</span>
 </div>
 <div class="voc-panel-robots">
-<span class="voc-panel-robot" data-key="robot:robot-rocky" data-tone="running">
+<span class="voc-panel-robot" data-key="robot:01J00000000000000000000003" data-tone="running">
 <span class="voc-dot" aria-hidden="true">
-</span>Rocky · Reinigt · 76 %</span>
-<span class="voc-panel-robot" data-key="robot:robot-dusty" data-tone="ready">
-<span class="voc-dot" aria-hidden="true">
-</span>Dusty · Angedockt · 100 %</span>
+</span>Rocky · Reinigt · 100 %</span>
 </div>
 </div>
 <div class="voc-panel-control">
@@ -88,28 +85,22 @@
 <div class="voc-view voc-queue" data-key="view:queue">
 <section class="voc-group" data-key="active">
 <h3 class="voc-group-title">In Arbeit</h3>
-<article class="voc-job" data-key="job:job-running" data-state="running" data-tone="running" data-actions="one">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000042" data-state="running" data-tone="running" data-actions="one">
 <div class="voc-job-lead" aria-hidden="true">
 <ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
 </ha-icon>
 </div>
-<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;job-running&quot;}" aria-label="Living room öffnen">
+<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000042&quot;}" aria-label="Studio öffnen">
 <span class="voc-job-title-line">
-<span class="voc-job-title">Living room</span>
+<span class="voc-job-title">Studio</span>
 <span class="voc-pill voc-pill--running">Reinigt</span>
 </span>
 <span class="voc-job-meta">
 <span class="voc-job-mode">Saugen</span>
-<span class="voc-chip" title="Saugkraft: Hoch">
-<ha-icon icon="mdi:fan" aria-hidden="true">
-</ha-icon>
-<span class="voc-sr-only">Saugkraft: </span>
-<span>Hoch</span>
-</span>
 </span>
 </button>
 <div class="voc-job-actions">
-<button type="button" class="voc-button voc-button--icon" data-action="cancel-job" data-args="{&quot;jobId&quot;:&quot;job-running&quot;}" aria-label="Auftrag abbrechen" title="Auftrag abbrechen">
+<button type="button" class="voc-button voc-button--icon" data-action="cancel-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000042&quot;}" aria-label="Auftrag abbrechen" title="Auftrag abbrechen">
 <ha-icon icon="mdi:stop-circle-outline" aria-hidden="true">
 </ha-icon>
 </button>
@@ -119,18 +110,53 @@
 <section class="voc-group" data-key="waiting">
 <h3 class="voc-group-title">Wartend<span class="voc-group-count">· 3</span>
 </h3>
-<article class="voc-job" data-key="job:job-kitchen" data-state="queued" data-tone="neutral" data-actions="several">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000062" data-state="queued" data-tone="neutral" data-actions="several">
 <div class="voc-job-lead" aria-hidden="true">
 <span class="voc-job-position">1</span>
 </div>
-<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;job-kitchen&quot;}" aria-label="Kitchen and hall öffnen">
+<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;}" aria-label="Conservatory öffnen">
 <span class="voc-job-title-line">
-<span class="voc-job-title">Kitchen and hall</span>
+<span class="voc-job-title">Conservatory</span>
 </span>
 <span class="voc-job-meta">
 <span class="voc-job-mode">
-<ha-icon icon="mdi:transfer-right" aria-hidden="true">
-</ha-icon>Erst saugen, dann wischen</span>
+<ha-icon icon="mdi:water-outline" aria-hidden="true">
+</ha-icon>Wischen</span>
+</span>
+<span class="voc-job-readiness" data-readiness="blocked">
+<ha-icon icon="mdi:lock-outline" aria-hidden="true">
+</ha-icon>
+<span>Nicht freigegeben: Conservatory</span>
+<span class="voc-job-more">+1</span>
+</span>
+</button>
+<div class="voc-job-actions">
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Nach oben" disabled="" title="Der Auftrag steht bereits an erster Stelle">
+<ha-icon icon="mdi:arrow-up" aria-hidden="true">
+</ha-icon>
+</button>
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Nach unten" title="Nach unten">
+<ha-icon icon="mdi:arrow-down" aria-hidden="true">
+</ha-icon>
+</button>
+<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;}" aria-label="Bearbeiten" title="Bearbeiten">
+<ha-icon icon="mdi:pencil-outline" aria-hidden="true">
+</ha-icon>
+</button>
+</div>
+</article>
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000082" data-state="queued" data-tone="neutral" data-actions="several">
+<div class="voc-job-lead" aria-hidden="true">
+<span class="voc-job-position">2</span>
+</div>
+<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000082&quot;}" aria-label="Library, thoroughly öffnen">
+<span class="voc-job-title-line">
+<span class="voc-job-title">Library, thoroughly</span>
+</span>
+<span class="voc-job-meta">
+<span class="voc-job-mode">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>Saugen</span>
 <span class="voc-chip" title="Durchgänge: 2×">
 <span class="voc-sr-only">Durchgänge: </span>
 <span>2×</span>
@@ -143,120 +169,50 @@
 </span>
 </button>
 <div class="voc-job-actions">
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;job-kitchen&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Nach oben" disabled="" title="Bereits am Ende.">
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000082&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Nach oben" title="Nach oben">
 <ha-icon icon="mdi:arrow-up" aria-hidden="true">
 </ha-icon>
 </button>
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;job-kitchen&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Nach unten" title="Nach unten">
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000082&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Nach unten" title="Nach unten">
 <ha-icon icon="mdi:arrow-down" aria-hidden="true">
 </ha-icon>
 </button>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;job-kitchen&quot;}" aria-label="Bearbeiten" title="Bearbeiten">
+<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000082&quot;}" aria-label="Bearbeiten" title="Bearbeiten">
 <ha-icon icon="mdi:pencil-outline" aria-hidden="true">
-</ha-icon>
-</button>
-<span class="voc-job-actions-gap" aria-hidden="true">
-</span>
-<button type="button" class="voc-button voc-button--icon" data-action="start-job" data-args="{&quot;jobId&quot;:&quot;job-kitchen&quot;}" aria-label="Jetzt starten" title="Jetzt starten">
-<ha-icon icon="mdi:play" aria-hidden="true">
 </ha-icon>
 </button>
 </div>
 </article>
-<article class="voc-job" data-key="job:job-bathroom" data-state="queued" data-tone="neutral" data-actions="several">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000110" data-state="queued" data-tone="neutral" data-actions="several">
 <div class="voc-job-lead" aria-hidden="true">
-<span class="voc-job-position">2</span>
+<span class="voc-job-position">3</span>
 </div>
-<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;}" aria-label="Bathroom öffnen">
+<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000110&quot;}" aria-label="Dining Room öffnen">
 <span class="voc-job-title-line">
-<span class="voc-job-title">Bathroom</span>
+<span class="voc-job-title">Dining Room</span>
 </span>
 <span class="voc-job-meta">
 <span class="voc-job-mode">
 <ha-icon icon="mdi:water-outline" aria-hidden="true">
 </ha-icon>Wischen</span>
-<span class="voc-chip" title="Wasser: Viel">
-<ha-icon icon="mdi:water" aria-hidden="true">
-</ha-icon>
-<span class="voc-sr-only">Wasser: </span>
-<span>Viel</span>
 </span>
-<span class="voc-chip" title="Wischroute: Gründlich">
-<ha-icon icon="mdi:map-marker-path" aria-hidden="true">
+<span class="voc-job-readiness" data-readiness="ready">
+<ha-icon icon="mdi:check-circle-outline" aria-hidden="true">
 </ha-icon>
-<span class="voc-sr-only">Wischroute: </span>
-<span>Gründlich</span>
-</span>
-<span class="voc-chip">
-<ha-icon icon="mdi:lock-outline" aria-hidden="true">
-</ha-icon>
-<span>Strikt</span>
-</span>
-</span>
-<span class="voc-job-readiness" data-readiness="blocked">
-<ha-icon icon="mdi:lock-outline" aria-hidden="true">
-</ha-icon>
-<span>Nicht freigegeben: Bathroom</span>
-<span class="voc-job-more">+1</span>
+<span>Bereit</span>
 </span>
 </button>
 <div class="voc-job-actions">
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Nach oben" title="Nach oben">
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000110&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Nach oben" title="Nach oben">
 <ha-icon icon="mdi:arrow-up" aria-hidden="true">
 </ha-icon>
 </button>
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Nach unten" title="Nach unten">
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000110&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Nach unten" disabled="" title="Der Auftrag steht bereits an letzter Stelle">
 <ha-icon icon="mdi:arrow-down" aria-hidden="true">
 </ha-icon>
 </button>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;}" aria-label="Bearbeiten" title="Bearbeiten">
+<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000110&quot;}" aria-label="Bearbeiten" title="Bearbeiten">
 <ha-icon icon="mdi:pencil-outline" aria-hidden="true">
-</ha-icon>
-</button>
-<span class="voc-job-actions-gap" aria-hidden="true">
-</span>
-<button type="button" class="voc-button voc-button--icon" data-action="start-job" data-args="{&quot;jobId&quot;:&quot;job-bathroom&quot;}" aria-label="Jetzt starten" title="Jetzt starten">
-<ha-icon icon="mdi:play" aria-hidden="true">
-</ha-icon>
-</button>
-</div>
-</article>
-<article class="voc-job" data-key="job:job-bedroom" data-state="queued" data-tone="neutral" data-actions="several">
-<div class="voc-job-lead" aria-hidden="true">
-<span class="voc-job-position">3</span>
-</div>
-<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;job-bedroom&quot;}" aria-label="Bedroom öffnen">
-<span class="voc-job-title-line">
-<span class="voc-job-title">Bedroom</span>
-</span>
-<span class="voc-job-meta">
-<span class="voc-job-mode">
-<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
-</ha-icon>Saugen</span>
-</span>
-<span class="voc-job-readiness" data-readiness="unknown">
-<ha-icon icon="mdi:help-circle-outline" aria-hidden="true">
-</ha-icon>
-<span>Bedroom window lässt sich nicht lesen</span>
-</span>
-</button>
-<div class="voc-job-actions">
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;job-bedroom&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Nach oben" title="Nach oben">
-<ha-icon icon="mdi:arrow-up" aria-hidden="true">
-</ha-icon>
-</button>
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;job-bedroom&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Nach unten" disabled="" title="Bereits am Ende.">
-<ha-icon icon="mdi:arrow-down" aria-hidden="true">
-</ha-icon>
-</button>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;job-bedroom&quot;}" aria-label="Bearbeiten" title="Bearbeiten">
-<ha-icon icon="mdi:pencil-outline" aria-hidden="true">
-</ha-icon>
-</button>
-<span class="voc-job-actions-gap" aria-hidden="true">
-</span>
-<button type="button" class="voc-button voc-button--icon" data-action="start-job" data-args="{&quot;jobId&quot;:&quot;job-bedroom&quot;}" aria-label="Jetzt starten" title="Jetzt starten">
-<ha-icon icon="mdi:play" aria-hidden="true">
 </ha-icon>
 </button>
 </div>
@@ -264,15 +220,15 @@
 </section>
 <div class="voc-quick" data-key="quick">
 <span class="voc-quick-label">Aus Vorlage</span>
-<button type="button" class="voc-button voc-button--text" data-action="create-from-template" data-args="{&quot;templateId&quot;:&quot;template-daily&quot;}" data-key="template:template-daily">
+<button type="button" class="voc-button voc-button--text" data-action="create-from-template" data-args="{&quot;templateId&quot;:&quot;00000000-0000-4000-8000-000000000008&quot;}" data-key="template:00000000-0000-4000-8000-000000000008">
 <ha-icon icon="mdi:content-copy" aria-hidden="true">
 </ha-icon>
-<span class="voc-button-label">Daily vacuum</span>
+<span class="voc-button-label">Weekly clean</span>
 </button>
-<button type="button" class="voc-button voc-button--text" data-action="create-from-template" data-args="{&quot;templateId&quot;:&quot;template-weekly&quot;}" data-key="template:template-weekly">
+<button type="button" class="voc-button voc-button--text" data-action="create-from-template" data-args="{&quot;templateId&quot;:&quot;00000000-0000-4000-8000-000000000010&quot;}" data-key="template:00000000-0000-4000-8000-000000000010">
 <ha-icon icon="mdi:content-copy" aria-hidden="true">
 </ha-icon>
-<span class="voc-button-label">Weekly mop</span>
+<span class="voc-button-label">Mop the dining room</span>
 </button>
 </div>
 </div>

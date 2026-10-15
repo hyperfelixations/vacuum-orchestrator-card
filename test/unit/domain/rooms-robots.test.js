@@ -4,7 +4,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const W = require("../../fixtures/voi/wire.js");
+const W = require("../../helpers/voi-records.js");
 
 const rooms = () => import("../../../src/domain/rooms.js");
 const robots = () => import("../../../src/domain/robots.js");
@@ -12,9 +12,9 @@ const robots = () => import("../../../src/domain/robots.js");
 test("a room keeps identity, grant, policy, stamps and the due verdict per operation", async () => {
   const { normalizeRoom } = await rooms();
   const room = normalizeRoom(W.wireRoom({
-    room_id: "room-kitchen",
-    name: "Kitchen",
-    area_id: "kitchen",
+    room_id: "room-library",
+    name: "Library",
+    area_id: "library",
     release: W.wireRelease({ kind: "timed", expires_at: "2026-09-17T14:00:00+00:00" }),
     released: true,
     due: { vacuum: W.wireDue({ state: "due", reason: "calendar_interval", elapsed_seconds: 200000 }), mop: W.wireDue({ state: "fresh", remaining_seconds: 3600 }) },
@@ -61,16 +61,19 @@ test("a robot keeps its stored configuration, an untouched wire copy and its cap
   assert.deepEqual({ ...robot.configuration.roles }, { battery: "reg-b", status: null });
   assert.deepEqual({ ...robot.configuration.optionMaps.mode_options }, { vacuum: "Vac" });
   assert.equal(robot.configuration.wire.roles.nonsense, "x", "the wire copy is untouched");
-  assert.deepEqual(reachableRoomIds(robot), ["room-kitchen", "room-hall"]);
+  const reach = W.wireRobot().reach;
+  assert.deepEqual(reachableRoomIds(robot), reach.filter((item) => item.status === "reachable").map((item) => item.room_id), "the rooms the integration reports reachable");
+  assert.ok(reach.some((item) => item.status === "not_on_current_map"), "a room on another map is not reachable now");
   assert.equal(robot.capabilities.maximumPasses, 3);
   assert.deepEqual(robot.capabilities.operations, ["mop", "vacuum", "vacuum_and_mop"]);
 });
 
-test("a robot without resolved capabilities reaches no room", async () => {
+test("a robot reaches only what the integration reports, whatever its capabilities", async () => {
   const { normalizeRobot, reachableRoomIds } = await robots();
-  const robot = normalizeRobot(W.wireRobot({ capabilities: null }));
+  const robot = normalizeRobot(W.wireRobot({ capabilities: null, reach: [] }));
   assert.equal(robot.capabilities, null);
   assert.deepEqual(reachableRoomIds(robot), []);
+  assert.equal(reachableRoomIds(normalizeRobot(W.wireRobot({ capabilities: null }))).length, 3, "reach stands without capabilities");
   assert.equal(normalizeRobot({ name: "no id" }), null);
 });
 
@@ -86,8 +89,8 @@ test("capability lists keep only known values", async () => {
 
 test("a candidate keeps discovered and ambiguous roles; configured is decided by registry id", async () => {
   const { normalizeCandidate, normalizeRobot, isConfiguredCandidate } = await robots();
-  const candidate = normalizeCandidate(W.wireCandidate({ ambiguous_roles: ["selected_map", "unknown_role"] }));
-  assert.deepEqual({ ...candidate.roles }, { battery: "reg-rocky-battery", status: "reg-rocky-status" });
+  const candidate = normalizeCandidate(W.wireCandidate({ roles: { battery: "reg-rocky-battery", status: "reg-rocky-status", wings: "reg-x" }, ambiguous_roles: ["selected_map", "unknown_role"] }));
+  assert.deepEqual({ ...candidate.roles }, { battery: "reg-rocky-battery", status: "reg-rocky-status" }, "only roles the card knows");
   assert.deepEqual(candidate.ambiguousRoles, ["selected_map"]);
   const mapped = normalizeCandidate(W.wireCandidate({ ambiguous_roles: { selected_map: ["a", "b"] } }));
   assert.deepEqual(mapped.ambiguousRoles, ["selected_map"]);

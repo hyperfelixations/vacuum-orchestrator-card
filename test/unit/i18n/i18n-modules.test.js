@@ -37,6 +37,7 @@ test("Intl formatters support plurals, dates, relative values and durations", as
   const t = (key, vars) => translate("en", key, vars);
   assert.equal(formatters.formatDuration("en", 90 * 60000, t), "1 h 30 min");
   assert.equal(formatters.formatDuration("en", 45 * 60000, t), "45 min");
+  assert.equal(formatters.formatDuration("en", 5000, t), "5 s");
   assert.equal(formatters.formatDuration("en", null, t), "");
 });
 

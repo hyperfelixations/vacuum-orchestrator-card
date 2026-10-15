@@ -4,7 +4,7 @@
 // "Einstellungen".
 
 import { CARD_VERSION } from "../../core/card-metadata.js";
-import { QUEUE_TARGET, decide, queueAffordances } from "../../domain/affordances.js";
+import { QUEUE_TARGET, decide } from "../../domain/affordances.js";
 import { MODE_SETTINGS } from "../../domain/job-schema.js";
 import { INTEGRATION_PAGE_PATH } from "../common/links.js";
 import { slotData } from "../common/lookups.js";
@@ -37,7 +37,7 @@ export function buildSettingsView({ model, texts, context }) {
         }
       : null,
     grace: Number.isFinite(graceSeconds)
-      ? { value: graceSeconds > 0 ? seconds(texts, graceSeconds) : t(texts, "settings.graceOff"), decision: queueAffordances(queue.mode, context).configure }
+      ? { value: graceSeconds > 0 ? seconds(texts, graceSeconds) : t(texts, "settings.graceOff"), decision: decide(context, { operation: "configure_queue", target: QUEUE_TARGET }) }
       : null,
     integration: {
       facts: [
@@ -45,7 +45,7 @@ export function buildSettingsView({ model, texts, context }) {
         { label: t(texts, "settings.apiVersion"), value: Number.isInteger(model.apiVersion) ? number(texts, model.apiVersion) : null },
       ],
       open: model.permissions?.isAdmin ? { path: INTEGRATION_PAGE_PATH } : null,
-      setup: model.setup?.known ? { action: "open-setup" } : null,
+      setup: model.setup ? { action: "open-setup" } : null,
     },
     card: { facts: [{ label: t(texts, "settings.version"), value: CARD_VERSION }] },
   };

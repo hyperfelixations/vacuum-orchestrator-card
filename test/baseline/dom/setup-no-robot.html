@@ -75,170 +75,79 @@
 </div>
 <div class="voc-body" id="voc-panel" data-body="view:setup" data-scroll="" role="tabpanel" aria-labelledby="voc-tab-setup" tabindex="0">
 <div class="voc-view voc-setup" data-key="view:setup">
-<p class="voc-setup-lead" data-key="lead">A few steps and Vacuum Orchestrator is ready to clean. Each step shows what is already in place.</p>
+<p class="voc-setup-lead" data-key="lead">Vacuum Orchestrator has taken over your robots and areas. Check each step; none of them is mandatory. Rooms stay locked until you release them.</p>
 <ol class="voc-setup-steps">
-<li class="voc-setup-step" data-key="step:robots" data-done="false" data-current="true" aria-current="step">
+<li class="voc-setup-step" data-key="step:robots" data-current="true" aria-current="step">
 <span class="voc-setup-marker" aria-hidden="true">
 <span>1</span>
 </span>
 <div class="voc-setup-main">
 <div class="voc-setup-head">
-<h3 class="voc-setup-title">Add a robot</h3>
+<h3 class="voc-setup-title">Robots</h3>
 </div>
 <div class="voc-setup-body">
 <p class="voc-setup-text">Vacuum Orchestrator works with the robot vacuums Home Assistant already knows. Add one to get started; adding starts nothing.</p>
-<ul class="voc-setup-items">
-<li data-key="candidate:reg-vacuum-rocky">
-<div class="voc-setup-item-text">
-<strong>Rocky</strong>
-<span>vacuum.rocky · Roborock</span>
-</div>
-<button type="button" class="voc-button voc-button--primary" data-action="add-candidate" data-args="{&quot;entityId&quot;:&quot;vacuum.rocky&quot;}">
-<ha-icon icon="mdi:plus" aria-hidden="true">
+<p class="voc-setup-note">
+<ha-icon icon="mdi:information-outline" aria-hidden="true">
 </ha-icon>
-<span class="voc-button-label">Add robot</span>
-</button>
-</li>
-<li data-key="candidate:reg-vacuum-dusty">
-<div class="voc-setup-item-text">
-<strong>Dusty</strong>
-<span>vacuum.dusty · Home Assistant vacuum</span>
-</div>
-<button type="button" class="voc-button voc-button--primary" data-action="add-candidate" data-args="{&quot;entityId&quot;:&quot;vacuum.dusty&quot;}">
-<ha-icon icon="mdi:plus" aria-hidden="true">
-</ha-icon>
-<span class="voc-button-label">Add robot</span>
-</button>
-</li>
-</ul>
+<span>Home Assistant has no robot vacuum yet. Set up your robot's own integration in Home Assistant first.</span>
+</p>
 </div>
 </div>
 </li>
-<li class="voc-setup-step" data-key="step:rooms" data-done="false" data-current="false">
+<li class="voc-setup-step" data-key="step:rooms" data-current="false">
 <span class="voc-setup-marker" aria-hidden="true">
 <span>2</span>
 </span>
 <div class="voc-setup-main">
 <div class="voc-setup-head">
 <h3 class="voc-setup-title">
-<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;rooms&quot;}" aria-expanded="false">Assign rooms to a robot</button>
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;rooms&quot;}" aria-expanded="false">Rooms and reach</button>
 </h3>
 <span class="voc-setup-summary">
-<span>0 of 5 rooms reached by a robot</span>
+<span>0 of 4 rooms reachable</span>
 </span>
 </div>
 </div>
 </li>
-<li class="voc-setup-step" data-key="step:defaults" data-done="false" data-current="false">
+<li class="voc-setup-step" data-key="step:defaults" data-current="false">
 <span class="voc-setup-marker" aria-hidden="true">
 <span>3</span>
 </span>
 <div class="voc-setup-main">
 <div class="voc-setup-head">
 <h3 class="voc-setup-title">
-<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;defaults&quot;}" aria-expanded="false">Check the job defaults</button>
+<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;defaults&quot;}" aria-expanded="false">Default cleaning</button>
 </h3>
 <span class="voc-setup-summary">
-<span class="voc-setup-mark">Optional</span>
 <span class="voc-setup-mark" data-tone="default">Built-in defaults</span>
 </span>
 </div>
 </div>
 </li>
-<li class="voc-setup-step" data-key="step:conditions" data-done="false" data-current="false">
+<li class="voc-setup-step" data-key="step:queue" data-current="false">
 <span class="voc-setup-marker" aria-hidden="true">
 <span>4</span>
 </span>
 <div class="voc-setup-main">
 <div class="voc-setup-head">
 <h3 class="voc-setup-title">
-<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;conditions&quot;}" aria-expanded="false">Doors and conditions</button>
-</h3>
-<span class="voc-setup-summary">
-<span class="voc-setup-mark">Optional</span>
-</span>
-</div>
-</div>
-</li>
-<li class="voc-setup-step" data-key="step:release" data-done="false" data-current="false">
-<span class="voc-setup-marker" aria-hidden="true">
-<span>5</span>
-</span>
-<div class="voc-setup-main">
-<div class="voc-setup-head">
-<h3 class="voc-setup-title">
-<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;release&quot;}" aria-expanded="false">Release rooms for cleaning</button>
-</h3>
-<span class="voc-setup-summary">
-<span class="voc-setup-mark">Optional</span>
-</span>
-</div>
-</div>
-</li>
-<li class="voc-setup-step" data-key="step:due" data-done="false" data-current="false">
-<span class="voc-setup-marker" aria-hidden="true">
-<span>6</span>
-</span>
-<div class="voc-setup-main">
-<div class="voc-setup-head">
-<h3 class="voc-setup-title">
-<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;due&quot;}" aria-expanded="false">Due dates and presence</button>
-</h3>
-<span class="voc-setup-summary">
-<span class="voc-setup-mark">Optional</span>
-</span>
-</div>
-</div>
-</li>
-<li class="voc-setup-step" data-key="step:templates" data-done="false" data-current="false">
-<span class="voc-setup-marker" aria-hidden="true">
-<span>7</span>
-</span>
-<div class="voc-setup-main">
-<div class="voc-setup-head">
-<h3 class="voc-setup-title">
-<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;templates&quot;}" aria-expanded="false">Templates</button>
-</h3>
-<span class="voc-setup-summary">
-<span class="voc-setup-mark">Optional</span>
-</span>
-</div>
-</div>
-</li>
-<li class="voc-setup-step" data-key="step:queue" data-done="true" data-current="false">
-<span class="voc-setup-marker" aria-hidden="true">
-<ha-icon icon="mdi:check" aria-hidden="true">
-</ha-icon>
-</span>
-<div class="voc-setup-main">
-<div class="voc-setup-head">
-<h3 class="voc-setup-title">
 <button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;queue&quot;}" aria-expanded="false">Queue</button>
 </h3>
-<span class="voc-sr-only">Done</span>
 <span class="voc-setup-summary">
-<span class="voc-setup-mark">Optional</span>
-<span>Wait time: 15 min</span>
-</span>
-</div>
-</div>
-</li>
-<li class="voc-setup-step" data-key="step:firstJob" data-done="false" data-current="false">
-<span class="voc-setup-marker" aria-hidden="true">
-<span>9</span>
-</span>
-<div class="voc-setup-main">
-<div class="voc-setup-head">
-<h3 class="voc-setup-title">
-<button type="button" class="voc-setup-open" data-action="choose" data-args="{&quot;key&quot;:&quot;setup:step&quot;,&quot;value&quot;:&quot;firstJob&quot;}" aria-expanded="false">Create the first job</button>
-</h3>
-<span class="voc-setup-summary">
-<span class="voc-setup-mark">Optional</span>
+<span>Wait time: 15 min · start delay: 5 s</span>
 </span>
 </div>
 </div>
 </li>
 </ol>
+<div class="voc-inline-actions" data-key="finish">
+<button type="button" class="voc-button voc-button--primary" data-action="complete-setup">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Done</span>
+</button>
+</div>
 </div>
 </div>
 <div class="voc-live-region" aria-live="polite" aria-atomic="true">

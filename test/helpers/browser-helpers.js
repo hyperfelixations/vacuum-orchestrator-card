@@ -1,20 +1,36 @@
 "use strict";
-// Mounts the real card in a real browser on the production-faithful harness: the fake
-// integration and a named household are loaded as page scripts, so a browser test exercises
-// the whole shipped bundle against the integration's contract.
+// Mounts the real card in a real browser on the production-faithful harness against a recording
+// of the integration, so a browser test exercises the whole shipped bundle against what the real
+// integration answered.
 
+const path = require("node:path");
 const { expect } = require("@playwright/test");
-const { FIXED_NOW } = require("../fixtures/scenarios.js");
+
+// The picture Home Assistant's image proxy serves for a robot's map entity.
+const MAP_PICTURE = path.join(__dirname, "..", "fixtures", "map.svg");
 
 const MOUNT_WIDTH = 640;
 
-// The card reads the clock through its platform adapter, so the page keeps a fixed one: the
-// households are dated against it and a golden must not change with the day it is recorded. A
-// recording sets `window.__vocNow` to its own time and moves it as it plays.
+// Where the integration's everyday home is shown: Rocky cleans the studio, three jobs wait.
+const BUSY = Object.freeze({ recording: "showcase", from: "A busy afternoon" });
+
+// Where a job, room, robot or template shows its name.
+const NAMES = ".voc-job-title, .voc-room-name, .voc-robot-name, .voc-template-name";
+const exactly = (text) => new RegExp(`^${text.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&")}$`);
+
+// The list item matching `selector` shown under `name`, or `inner` inside it.
+function named(card, selector, name, inner = null) {
+  const item = card.locator(selector).filter({ has: card.page().locator(NAMES, { hasText: exactly(name) }) });
+  return inner ? item.locator(inner) : item;
+}
+
+// The card reads the clocks through its platform adapter, so the page reads the recording's
+// time: the recording sets `window.__vocNow` and moves it as it plays, and a golden does not
+// change with the day it is recorded.
 async function gotoHarness(page) {
-  await page.addInitScript((fixed) => {
+  await page.addInitScript(() => {
     const RealDate = Date;
-    const now = () => window.__vocNow ?? fixed;
+    const now = () => window.__vocNow ?? RealDate.now();
     function FixedDate(...args) {
       return args.length ? new RealDate(...args) : new RealDate(now());
     }
@@ -23,12 +39,14 @@ async function gotoHarness(page) {
     FixedDate.parse = RealDate.parse;
     FixedDate.UTC = RealDate.UTC;
     window.Date = FixedDate;
-  }, FIXED_NOW);
+    performance.now = now;
+  });
+  await page.route("**/api/image_proxy/**", (route) => route.fulfill({ path: MAP_PICTURE, contentType: "image/svg+xml" }));
   await page.goto("/test/fixtures/harness.html");
 }
 
-// options: recording, from, scenario, config, configs, count, width, language, admin, installed, setUp,
-// runtimeLoaded, apiVersion, failNext, layout, rows (see test/fixtures/harness-mount.js). Resolves
+// options: recording, from, config, configs, count, width, language, admin, failNext, themes,
+// layout, rows (see test/fixtures/harness-mount.js). Resolves
 // once every card has left the connecting phase and laid itself out.
 async function mountCard(page, options = {}) {
   const width = options.width ?? MOUNT_WIDTH;
@@ -83,15 +101,11 @@ async function act(page, locator) {
 }
 
 function serviceCalls(page, service) {
-  return page.evaluate((name) => {
-    const { backend, fake } = window.vocHarness;
-    if (backend) return backend.calls.filter((message) => message.type === "call_service" && message.service === name).map((message) => message.service_data);
-    return fake.calls.services.filter((call) => call.service === name).map((call) => call.data);
-  }, service);
+  return page.evaluate((name) => window.vocHarness.backend.calls.filter((message) => message.type === "call_service" && message.service === name).map((message) => message.service_data), service);
 }
 
 function commands(page, command) {
-  return page.evaluate((name) => (window.vocHarness.backend?.calls ?? window.vocHarness.fake.calls.ws).filter((message) => message.command === name).map((message) => message.parameters), command);
+  return page.evaluate((name) => window.vocHarness.backend.calls.filter((message) => message.command === name).map((message) => message.parameters), command);
 }
 
-module.exports = { mountCard, gotoHarness, waitForStableLayout, setCardWidth, act, serviceCalls, commands, FIXED_NOW, MOUNT_WIDTH };
+module.exports = { BUSY, named, mountCard, gotoHarness, waitForStableLayout, setCardWidth, act, serviceCalls, commands, MOUNT_WIDTH };

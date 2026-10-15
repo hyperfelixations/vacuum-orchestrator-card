@@ -4,7 +4,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { VirtualClock } = require("../../helpers/fake-orchestrator.js");
+const { VirtualClock } = require("../../helpers/virtual-clock.js");
 
 async function timer(options = {}) {
   const { createInvalidationTimer, QUIET_MS, MAX_WAIT_MS } = await import("../../../src/backend/subscription.js");

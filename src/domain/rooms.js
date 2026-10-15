@@ -2,6 +2,7 @@
 // cleaning stamps. Due state, release admission and quality are backend verdicts; the card
 // presents them and computes nothing. See internal dev doc §7 "Raummodell".
 
+import { normalizeActions } from "./availability.js";
 import { isCompletionQuality, isDueBasis, isDueState, isOperation, isReleaseKind } from "./job-schema.js";
 import { bool, enumerated, finite, instant, integer, isRecord, records, strings, text, unknownFields } from "./wire-values.js";
 
@@ -22,6 +23,8 @@ const ROOM_FIELDS = new Set([
   "last_cleaning",
   "last_confirmed",
   "released",
+  "waiting_job_ids",
+  "actions",
   "due",
 ]);
 
@@ -134,6 +137,9 @@ export function normalizeRoom(wire) {
     requirements: Object.freeze(records(wire.requirements).map(normalizeRequirement).filter(Boolean)),
     release: release(wire.release),
     released: wire.released === true,
+    // Waiting jobs that name this room among their reasons.
+    waitingJobIds: strings(wire.waiting_job_ids),
+    actions: normalizeActions(wire.actions),
     duePolicy: duePolicy(wire.due_policy),
     occupancy: occupancy(wire.occupancy),
     lastCleaning: stamps(wire.last_cleaning),

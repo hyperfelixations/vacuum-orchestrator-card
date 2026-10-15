@@ -69,6 +69,7 @@ export function formatRelative(language, nowMs, thenMs) {
 export function formatDuration(language, durationMs, t) {
   const parts = durationParts(durationMs);
   if (!parts) return "";
+  if (parts.seconds !== null) return t("time.durationSeconds", { seconds: formatNumber(language, parts.seconds, 0) });
   const hours = formatNumber(language, parts.hours, 0);
   const minutes = formatNumber(language, parts.minutes, 0);
   if (parts.hours && parts.minutes) return t("time.durationHoursMinutes", { hours, minutes });

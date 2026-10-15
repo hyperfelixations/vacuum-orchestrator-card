@@ -8,7 +8,9 @@ function attentionSentence(model, texts) {
   const targets = list(slotData(model, "queue")?.recoveryTargets);
   if (targets.length === 1) return t(texts, "subtitle.recoveryOne", { robot: robotName(targets[0].robotId, model) });
   if (targets.length > 1) return t(texts, "subtitle.recoveryMany", { count: targets.length });
-  const count = list(slotData(model, "openJobs")?.jobs).filter((job) => job.state === "needs_attention").length || model.live?.attentionCount || slotData(model, "queue")?.attentionCount || 0;
+  // The integration's attention items are faults and recoveries, not jobs; only jobs that need
+  // clarification are counted as jobs.
+  const count = list(slotData(model, "openJobs")?.jobs).filter((job) => job.state === "needs_attention").length;
   return count ? t(texts, "subtitle.attentionJobs", { count }) : t(texts, "subtitle.attention");
 }
 
@@ -23,7 +25,7 @@ export function automaticSubtitle(model, status, texts) {
       return t(texts, "subtitle.activeJob", { job: jobTitle(job, roomIndex(model), model), state: jobStateLabel(texts, job?.state) });
     }
     case "running":
-      if (queue?.run?.active && queue.run.deadline !== null) return t(texts, "subtitle.runEnding", { when: relative(texts, queue.run.deadline, model.nowMs) });
+      if (queue?.run?.phase === "standby" && queue.run.endsAt !== null) return t(texts, "subtitle.runEnding", { when: relative(texts, queue.run.endsAt, model.nowMs) });
       return waiting ? t(texts, "subtitle.waitingRunning", { count: waiting }) : t(texts, "subtitle.running");
     case "paused":
       return t(texts, "subtitle.waitingPaused", { count: waiting });

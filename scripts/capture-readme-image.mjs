@@ -1,5 +1,5 @@
-// Records the README picture: the queue of the showcase household (everyday use, no special
-// case) in light and dark, side by side, on the test harness with its fixed clock. Run with
+// Records the README picture: the queue of the integration's busy afternoon (everyday use, no
+// special case) in light and dark, side by side, on the test harness with the recording's clock. Run with
 // `npm run readme:image`; no test compares it.
 
 import { spawn } from "node:child_process";
@@ -15,7 +15,7 @@ const CARD_WIDTH = 640;
 
 const require = createRequire(import.meta.url);
 const { chromium } = require("@playwright/test");
-const { mountCard } = require("../test/helpers/browser-helpers.js");
+const { BUSY, mountCard } = require("../test/helpers/browser-helpers.js");
 
 async function waitForServer(attempts = 50) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -36,7 +36,7 @@ async function main() {
     await waitForServer();
     const context = await browser.newContext({ baseURL: BASE_URL, timezoneId: "UTC", locale: "en-US", viewport: { width: 2 * CARD_WIDTH + 200, height: 1200 }, deviceScaleFactor: 2 });
     const page = await context.newPage();
-    await mountCard(page, { scenario: "showcase", themes: ["light", "dark"], width: CARD_WIDTH, config: { time_format: "absolute" } });
+    await mountCard(page, { ...BUSY, themes: ["light", "dark"], width: CARD_WIDTH, config: { time_format: "absolute" } });
     // Whole pixels on every edge: a fractional panel height lets the page background show as
     // a line under the picture.
     const stage = await page.evaluate(() => {

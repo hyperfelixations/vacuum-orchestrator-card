@@ -10,7 +10,7 @@ const CARD_TAG = "vacuum-orchestrator-card";
 const CARD_SOURCE_PATH = path.join(__dirname, "..", "..", "dist", "vacuum-orchestrator-card.js");
 const CARD_SOURCE = fs.existsSync(CARD_SOURCE_PATH) ? fs.readFileSync(CARD_SOURCE_PATH, "utf8") : null;
 
-// `now`: the instant the card's clock reads, so relative times are the same on every run; a
+// `now`: the instant the card's clocks read, so relative times are the same on every run; a
 // function for a clock that moves, such as a recording's.
 function createTestEnvironment({ now = null } = {}) {
   if (!CARD_SOURCE) throw new Error(`Missing build artifact ${CARD_SOURCE_PATH}. Run npm run build first.`);
@@ -19,8 +19,12 @@ function createTestEnvironment({ now = null } = {}) {
   window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
   window.ResizeObserver = class { observe() {} disconnect() {} };
   window.document.fonts = { ready: Promise.resolve() };
-  if (typeof now === "function") window.Date.now = now;
-  else if (Number.isFinite(now)) window.Date.now = () => now;
+  // The monotonic clock follows the same instant, so the card's time anchor moves with it.
+  const clock = typeof now === "function" ? now : Number.isFinite(now) ? () => now : null;
+  if (clock) {
+    window.Date.now = clock;
+    window.performance.now = clock;
+  }
   vm.runInContext(CARD_SOURCE, dom.getInternalVMContext(), { filename: CARD_SOURCE_PATH });
   const live = new Set();
   // Home Assistant calls setConfig before it hands over hass; the harness does the same, so a

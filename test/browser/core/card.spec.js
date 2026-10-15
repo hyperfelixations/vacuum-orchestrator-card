@@ -3,7 +3,7 @@
 // these check that each engine builds the same card from the shipped bundle.
 
 const { test, expect } = require("../../helpers/playwright.js");
-const { gotoHarness, mountCard } = require("../../helpers/browser-helpers.js");
+const { BUSY, gotoHarness, mountCard } = require("../../helpers/browser-helpers.js");
 
 test("publishes one card registration and the production version identity", async ({ page }) => {
   await gotoHarness(page);
@@ -17,9 +17,11 @@ test("publishes one card registration and the production version identity", asyn
   expect(registration.version).toBe("0.1.0");
 });
 
-test("the null configuration renders the connected queue", async ({ page }) => {
-  const card = await mountCard(page);
+test("the null configuration renders the connected queue on the recording's clock", async ({ page }) => {
+  const card = await mountCard(page, BUSY);
   await expect(card.locator(".voc-root")).toHaveAttribute("data-state", "view");
+  // The page clock reads the recording's time at the mark.
+  expect(await page.evaluate(() => Date.now() === window.vocHarness.backend.nowMs && new Date().getTime() === Date.now())).toBe(true);
   await expect(card.locator(".voc-title")).toHaveText("Cleaning");
   await expect(card.locator(".voc-status-pill")).toHaveText("Cleaning");
   await expect(card.locator('[data-key="active"] .voc-job')).toHaveCount(1);
@@ -32,7 +34,7 @@ test("every view renders without a console error", async ({ page }) => {
     if (message.type() === "error") errors.push(message.text());
   });
   page.on("pageerror", (error) => errors.push(error.message));
-  const card = await mountCard(page, { config: { views: ["queue", "rooms", "robots", "templates", "history", "diagnostics", "setup"] } });
+  const card = await mountCard(page, { ...BUSY, config: { views: ["queue", "rooms", "robots", "templates", "history", "diagnostics", "setup"] } });
   for (const view of ["rooms", "robots", "templates", "history", "diagnostics", "setup", "queue"]) {
     await card.locator(`[role=tab][data-view="${view}"]`).click();
     await expect(card.locator(`[data-key="view:${view}"]`)).toBeVisible();
@@ -41,7 +43,7 @@ test("every view renders without a console error", async ({ page }) => {
 });
 
 test("a missing integration shows how to install it", async ({ page }) => {
-  const card = await mountCard(page, { installed: false, setUp: false });
+  const card = await mountCard(page, { recording: "not_installed" });
   await expect(card.locator(".voc-status-pill")).toHaveText("Not installed");
   await expect(card.locator(".voc-onboarding")).toHaveAttribute("data-phase", "not_installed");
   const links = card.locator(".voc-onboarding a");
@@ -49,16 +51,9 @@ test("a missing integration shows how to install it", async ({ page }) => {
   for (const link of await links.all()) await expect(link).toHaveAttribute("rel", "noopener noreferrer");
 });
 
-test("against the integration's own recordings the card reports an API version it cannot read", async ({ page }) => {
-  const card = await mountCard(page, { recording: "showcase", from: "A busy afternoon" });
-  await expect(card.locator(".voc-onboarding")).toHaveAttribute("data-phase", "api_incompatible");
-  // The page clock reads the recording's time at the mark.
-  expect(await page.evaluate(() => Date.now() === window.vocHarness.backend.nowMs && new Date().getTime() === Date.now())).toBe(true);
-});
-
 test("configured header text stays text", async ({ page }) => {
   const value = '<img src=x onerror="window.__vocXss = true">';
-  const card = await mountCard(page, { config: { title: value } });
+  const card = await mountCard(page, { ...BUSY, config: { title: value } });
   await expect(card.locator(".voc-title")).toHaveText(value);
   expect(await page.evaluate(() => window.__vocXss || false)).toBe(false);
   expect(await card.locator(".voc-title img").count()).toBe(0);

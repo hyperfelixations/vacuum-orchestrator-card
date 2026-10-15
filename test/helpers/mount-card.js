@@ -1,40 +1,27 @@
 "use strict";
-// Mounts the built card in jsdom, in Home Assistant's call order, and gives a test the
-// interactions it needs. With `recording` the card runs against a recording of the integration
-// (see internal dev doc §10), opened at the mark `from`, on the recording's clock; otherwise
-// against the fake integration for a named household on FIXED_NOW.
+// Mounts the built card in jsdom, in Home Assistant's call order, against a recording of the
+// integration (see internal dev doc §10): opened at the mark `from` (else the recording's first),
+// on the recording's clock, in an environment of its own. Gives a test the interactions it needs.
 
 const { createTestEnvironment, settle } = require("./load-card.jsdom.js");
-const { createFakeOrchestrator, VirtualClock } = require("./fake-orchestrator.js");
 const { createRecordedBackend } = require("./recorded-backend.js");
 const { loadRecording } = require("./recordings.js");
-const { FIXED_NOW, SCENARIOS, hassFor } = require("../fixtures/scenarios.js");
 
-// The card follows a recording: every recorded change hands it a new hass, as Home Assistant does.
-function recorded({ recording, from, language, admin }) {
+// Where a job, room, robot or template shows its name.
+const NAMES = ".voc-job-title, .voc-room-name, .voc-robot-name, .voc-template-name";
+
+// `admin`: overrides the recorded user's flag. `failNext`: [match, error] pairs Home Assistant
+// refuses before the card opens (see the player's `failNext`).
+async function mountCard({ recording, from, config = {}, language = "en", admin, failNext = [] } = {}) {
+  if (!recording) throw new Error("mountCard needs a recording of the integration");
+  const played = loadRecording(recording);
   const clock = { time: 0, now: () => clock.time, advance: (ms) => (clock.time += ms) };
-  const backend = createRecordedBackend(loadRecording(recording), { from, language, admin, clock });
+  const backend = createRecordedBackend(played, { from: from ?? played.steps.find((step) => step.mark !== undefined)?.mark, language, admin, clock });
   clock.time = backend.nowMs;
-  return { backend, clock };
-}
-
-// `fake`: options for the fake integration (installed, setUp, runtimeLoaded, apiVersion).
-async function mountCard({ env = null, recording = null, from, scenario = "typical", config = {}, language = "en", admin = true, fake: fakeOptions = {}, attach = true } = {}) {
-  const replay = recording ? recorded({ recording, from, language, admin }) : null;
-  const ownEnv = !env;
-  env ??= createTestEnvironment({ now: replay ? () => replay.clock.now() : FIXED_NOW });
-  let fake = null;
-  let hass;
-  if (replay) {
-    hass = replay.backend.hass;
-  } else {
-    const household = SCENARIOS[scenario]();
-    fake = createFakeOrchestrator({ seed: household.seed, clock: new VirtualClock(FIXED_NOW), admin, ...fakeOptions });
-    const base = hassFor(household, { language, admin });
-    hass = attach ? fake.attachTo(base) : base;
-  }
-  const card = env.createCard({ type: "custom:vacuum-orchestrator-card", ...config }, hass);
-  replay?.backend.onChange((next) => (card.hass = next));
+  for (const [match, error] of failNext) backend.failNext(match, error);
+  const env = createTestEnvironment({ now: () => clock.now() });
+  const card = env.createCard({ type: "custom:vacuum-orchestrator-card", ...config }, backend.hass);
+  backend.onChange((next) => (card.hass = next));
   await settle(24);
   const root = card.shadowRoot;
 
@@ -69,29 +56,36 @@ async function mountCard({ env = null, recording = null, from, scenario = "typic
 
   // A new hass object, as Home Assistant hands one over on every state change.
   async function updateHass(patch = {}) {
-    const next = { ...card.hass, ...patch };
-    card.hass = attach && fake ? fake.attachTo(next) : next;
+    card.hass = { ...card.hass, ...patch };
     await settle(16);
     return card.hass;
   }
 
   // Plays the recording through a change in the home and lets the card follow.
   async function until(change) {
-    replay.backend.until(change);
-    await settle(16);
+    backend.until(change);
+    await settle(24);
   }
 
-  const calls = () => (replay ? replay.backend.calls : fake.calls.ws);
-  const serviceCalls = () => (replay ? replay.backend.calls.filter((message) => message.type === "call_service").map((message) => ({ service: message.service, data: message.service_data })) : fake.calls.services);
+  // The list item matching `selector` that is shown under `name`.
+  function named(selector, name) {
+    const items = [...root.querySelectorAll(selector)];
+    const node = items.find((item) => item.querySelector(NAMES)?.textContent.trim() === name);
+    if (!node) throw new Error(`no ${selector} named ${name} among ${items.map((item) => item.querySelector(NAMES)?.textContent.trim())}`);
+    return node;
+  }
+
+  const sent = (type) => backend.calls.filter((message) => message.type === type);
 
   return {
     env,
     card,
     root,
-    fake,
-    backend: replay?.backend ?? null,
+    backend,
     until,
-    hass,
+    get hass() {
+      return card.hass;
+    },
     click,
     press,
     type,
@@ -99,15 +93,17 @@ async function mountCard({ env = null, recording = null, from, scenario = "typic
     settle: (rounds = 16) => settle(rounds),
     text: (selector) => root.querySelector(selector)?.textContent?.replace(/\s+/g, " ").trim() ?? null,
     all: (selector) => [...root.querySelectorAll(selector)],
-    services: (name) => serviceCalls().filter((call) => call.service === name),
-    commands: (name) => calls().filter((message) => message.type === "vacuum_orchestrator/configuration/command" && message.command === name),
-    queries: (name) => calls().filter((message) => message.type === "vacuum_orchestrator/configuration/get" && message.query === name),
+    named,
+    services: (name) => sent("call_service").filter((message) => message.service === name).map((message) => ({ service: message.service, data: message.service_data })),
+    commands: (name) => sent("vacuum_orchestrator/configuration/command").filter((message) => message.command === name),
+    queries: (name) => sent("vacuum_orchestrator/configuration/get").filter((message) => message.query === name),
+    // A request the recording does not hold fails the test, even where the card caught it.
     unmount() {
-      env.cleanup(card);
-      // An environment of its own goes with the card, timers included.
-      if (ownEnv) env.window.close();
+      env.cleanupAll();
+      env.window.close();
+      if (backend.failures.length) throw backend.failures[0];
     },
   };
 }
 
-module.exports = { mountCard, settle, FIXED_NOW };
+module.exports = { mountCard, settle };

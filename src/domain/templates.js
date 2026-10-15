@@ -1,16 +1,15 @@
 // Stored job templates. A template's intent uses the same field set as a job intent; manual
 // instantiation creates an independent job. See internal dev doc §7 "Vorlagen".
 
+import { normalizeActions } from "./availability.js";
 import { PASS_MAX, PASS_MIN, canonicalizeMode, isMopRoute, isSettingsPolicy, isVacuumLevel, isWaterLevel } from "./job-schema.js";
 import { enumerated, instant, integer, isRecord, strings, text } from "./wire-values.js";
 
-// The integration's token for "every room a robot can clean when the job is created".
-const ALL_ROOMS = "all";
-
+// `allRooms`: every active room when a job is created from it, whichever robot cleans them.
 export function normalizeIntent(wire) {
   if (!isRecord(wire)) return null;
   const mode = canonicalizeMode(wire.mode);
-  const allRooms = wire.areas === ALL_ROOMS || (Array.isArray(wire.areas) && wire.areas.length === 1 && wire.areas[0] === ALL_ROOMS);
+  const allRooms = wire.all_rooms === true;
   const areas = allRooms ? Object.freeze([]) : strings(wire.areas);
   if (!mode || (!allRooms && areas.length === 0)) return null;
   const passes = integer(wire.passes);
@@ -45,5 +44,6 @@ export function normalizeTemplate(wire) {
     automatic: wire.automatic === true,
     updatedAt: instant(wire.updated_at),
     suppressedRoomIds: strings(wire.suppressed_room_ids),
+    actions: normalizeActions(wire.actions),
   });
 }

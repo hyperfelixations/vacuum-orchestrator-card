@@ -3,7 +3,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const W = require("../../fixtures/voi/wire.js");
+const W = require("../../helpers/voi-records.js");
 
 async function load() {
   const draftModule = await import("../../../src/domain/room-draft.js");
@@ -23,7 +23,7 @@ test("intervals are edited in hours, lists as comma-separated text", async () =>
   assert.equal(draft.mopHours, null);
   assert.equal(draft.requirements[0].acceptedStates, "on");
   assert.equal(draft.bindings[0].targetIds, "16, 17");
-  assert.equal(draft.meta.roomId, "room-kitchen");
+  assert.equal(draft.meta.roomId, room.roomId);
 });
 
 test("an unchanged draft makes an empty patch", async () => {
@@ -35,9 +35,9 @@ test("an unchanged draft makes an empty patch", async () => {
 
 test("renaming stops following the area name, and the patch says so", async () => {
   const { createRoomDraft, updateRoomDraft, roomDraftToPatch, room } = await load();
-  const draft = updateRoomDraft(createRoomDraft(room), "name", "  Kitchen corner ");
+  const draft = updateRoomDraft(createRoomDraft(room), "name", "  Dining nook ");
   assert.equal(draft.followAreaName, false);
-  assert.deepEqual({ ...roomDraftToPatch(draft) }, { name: "Kitchen corner", follow_area_name: false });
+  assert.deepEqual({ ...roomDraftToPatch(draft) }, { name: "Dining nook", follow_area_name: false });
 });
 
 test("due policy changes merge field by field, in seconds", async () => {
@@ -46,8 +46,8 @@ test("due policy changes merge field by field, in seconds", async () => {
   draft = updateRoomDraft(draft, "vacuumHours", null);
   draft = updateRoomDraft(draft, "mopHours", 168);
   draft = updateRoomDraft(draft, "basis", "occupied");
-  draft = updateRoomDraft(draft, "occupancyEntityId", "binary_sensor.kitchen_occupancy");
-  assert.deepEqual(JSON.parse(JSON.stringify(roomDraftToPatch(draft))), { due_policy: { basis: "occupied", vacuum_seconds: null, mop_seconds: 604800, occupancy_entity_id: "binary_sensor.kitchen_occupancy" } });
+  draft = updateRoomDraft(draft, "occupancyEntityId", "binary_sensor.dining_room_occupancy");
+  assert.deepEqual(JSON.parse(JSON.stringify(roomDraftToPatch(draft))), { due_policy: { basis: "occupied", vacuum_seconds: null, mop_seconds: 604800, occupancy_entity_id: "binary_sensor.dining_room_occupancy" } });
 });
 
 test("conditions and bindings replace their whole list on the wire", async () => {
@@ -55,13 +55,13 @@ test("conditions and bindings replace their whole list on the wire", async () =>
   let draft = createRoomDraft(room);
   draft = updateRoomDraft(draft, "requirements", [...draft.requirements, newRequirement("binary_sensor.window")]);
   draft = updateRoomDraft(draft, "requirements.1.maxAgeMinutes", 10);
-  draft = updateRoomDraft(draft, "bindings", [...draft.bindings, { ...newBinding("robot-dusty"), targetIds: "kitchen" }]);
+  draft = updateRoomDraft(draft, "bindings", [...draft.bindings, { ...newBinding("robot-dusty"), targetIds: "dining_room" }]);
   const patch = JSON.parse(JSON.stringify(roomDraftToPatch(draft)));
   assert.deepEqual(patch.requirements, [
-    { entity_id: "binary_sensor.hall_door", accepted_states: ["on"], entity_registry_id: "reg-hall-door" },
+    { entity_id: "binary_sensor.conservatory_door", accepted_states: ["on"] },
     { entity_id: "binary_sensor.window", accepted_states: ["on"], max_age_seconds: 600 },
   ]);
-  assert.deepEqual(patch.bindings, [{ robot_id: "robot-rocky", target_ids: ["16", "17"], map_id: "map-0" }, { robot_id: "robot-dusty", target_ids: ["kitchen"] }]);
+  assert.deepEqual(patch.bindings, [{ robot_id: "robot-rocky", target_ids: ["16", "17"], map_id: "map-0" }, { robot_id: "robot-dusty", target_ids: ["dining_room"] }]);
 });
 
 test("paths that do not exist or reach into meta change nothing", async () => {

@@ -1,12 +1,12 @@
-// The setup assistant: the nine setup steps in order, each with what the integration reports and
-// the action that completes it. The open step is the one the user picked, else the first one
-// not done; the others collapse to one line. Optional steps say so, and the job defaults say
-// while the built-in ones apply. See internal dev doc §8 "Einrichtung".
+// The setup assistant: the integration's four setup steps in order, each with what the
+// integration reports and where it is changed. No step is mandatory; the open step is the one
+// the user picked, else the first. "Done" records the end of the assistant in the integration.
+// See internal dev doc §8 "Einrichtung".
 
-import { REQUIRED_STEPS, SETUP_STEPS } from "../../application/setup-status.js";
-import { CREATE_TARGET, QUEUE_TARGET, candidateAffordance, decide, queueAffordances, roomAffordances } from "../../domain/affordances.js";
+import { SETUP_STEPS } from "../../domain/setup.js";
+import { QUEUE_TARGET, SETUP_TARGET, candidateAffordance, decide, roomAffordances } from "../../domain/affordances.js";
 import { isConfiguredCandidate } from "../../domain/robots.js";
-import { list, robotsOf, roomIndex, roomName, roomsOf, slotData } from "../common/lookups.js";
+import { list, robotsOf, roomIndex, roomName, slotData } from "../common/lookups.js";
 import { adapterLabel, number, seconds, t } from "../common/texts.js";
 
 // The UI choice naming the step the user opened.
@@ -15,111 +15,72 @@ export const SETUP_STEP_CHOICE = "setup:step";
 export const SETUP_ROOM_LIMIT = 6;
 
 export function setupNeeded(model) {
-  return model.setup?.known === true && model.setup.complete === false;
+  return model.setup?.assistantPending === true;
 }
 
-function robotsStep(model, texts, context) {
+function robotsStep(model, texts, context, step) {
   const robots = robotsOf(model);
+  const names = step.robotIds.map((robotId) => robots.find((robot) => robot.robotId === robotId)?.name ?? robotId);
   const candidates = list(slotData(model, "candidates")?.items).filter((candidate) => !isConfiguredCandidate(candidate, robots));
   const decision = candidateAffordance(context);
   return {
-    summary: robots.length ? t(texts, "setup.step.robots.done", { robots: robots.map((robot) => robot.name).join(", ") }) : null,
-    text: t(texts, robots.length ? "setup.step.robots.more" : "setup.step.robots.text"),
-    note: candidates.length || robots.length ? null : t(texts, "setup.step.robots.none"),
+    summary: names.length ? t(texts, "setup.step.robots.done", { robots: names.join(", ") }) : null,
+    text: t(texts, names.length ? "setup.step.robots.more" : "setup.step.robots.text"),
+    note: candidates.length || names.length ? null : t(texts, "setup.step.robots.none"),
     candidates: candidates.map((candidate) => ({ key: candidate.registryId, entityId: candidate.entityId, name: candidate.name, detail: [candidate.entityId, adapterLabel(texts, candidate.adapter)].join(" · "), decision })),
   };
 }
 
 function roomsStep(model, texts, context, step) {
   const index = roomIndex(model);
-  const usable = roomsOf(model).filter((room) => room.enabled && !room.areaMissing);
-  const uncovered = step.uncovered.slice(0, SETUP_ROOM_LIMIT).map((roomId) => {
-    const room = index.byId.get(roomId);
-    return { key: roomId, roomId, name: roomName(roomId, index, model), decision: roomAffordances(room, context).edit };
-  });
+  const total = step.roomIds.length;
+  const uncovered = step.unreachableRoomIds.slice(0, SETUP_ROOM_LIMIT).map((roomId) => ({ key: roomId, roomId, name: roomName(roomId, index, model), decision: roomAffordances(index.byId.get(roomId), context).edit }));
   return {
-    summary: usable.length ? t(texts, "setup.step.rooms.done", { count: number(texts, step.count), total: number(texts, usable.length) }) : null,
+    summary: total ? t(texts, "setup.step.rooms.done", { count: number(texts, total - step.unreachableRoomIds.length), total: number(texts, total) }) : null,
     text: t(texts, "setup.step.rooms.text"),
-    note: usable.length ? null : t(texts, "setup.step.rooms.none"),
+    note: total ? null : t(texts, "setup.step.rooms.none"),
     uncovered,
-    more: Math.max(0, step.uncovered.length - uncovered.length),
+    more: Math.max(0, step.unreachableRoomIds.length - uncovered.length),
   };
 }
 
-function releaseStep(model, texts, context, step) {
-  const covered = new Set(robotsOf(model).flatMap((robot) => Object.keys(robot.capabilities?.targets || {})));
-  const candidates = roomsOf(model).filter((room) => room.enabled && !room.areaMissing && covered.has(room.roomId) && !room.released && !room.release);
-  const rooms = candidates.slice(0, SETUP_ROOM_LIMIT).map((room) => ({ key: room.roomId, roomId: room.roomId, name: room.name, decision: roomAffordances(room, context).release }));
+function defaultsStep(model, texts, context, step) {
   return {
-    summary: step.count ? t(texts, "setup.step.release.done", { count: number(texts, step.count) }) : null,
-    text: t(texts, "setup.step.release.text"),
-    rooms,
-    more: Math.max(0, candidates.length - rooms.length),
+    summary: step.configured ? t(texts, "setup.step.defaults.done") : null,
+    builtIn: !step.configured,
+    text: t(texts, "setup.step.defaults.text"),
+    link: { action: "open-job-defaults", args: {}, icon: "mdi:tune-variant", label: t(texts, "setup.step.defaults.action"), decision: decide(context, { operation: "configure_job_defaults", target: QUEUE_TARGET }) },
   };
 }
-
-// The optional steps beyond the release each explain themselves and lead to where they are set.
-function linkStep(key, action) {
-  return (model, texts, context, step) => ({
-    summary: step.done && step.count !== undefined ? t(texts, `setup.step.${key}.done`, { count: step.count }) : step.done ? t(texts, `setup.step.${key}.done`) : null,
-    text: t(texts, `setup.step.${key}.text`),
-    link: { ...action(model, context), label: t(texts, `setup.step.${key}.action`) },
-  });
-}
-
-const ROOMS_LINK = () => ({ action: "show-view", args: { view: "rooms" }, icon: "mdi:floor-plan", decision: null });
 
 function queueStep(model, texts, context, step) {
-  const queue = slotData(model, "queue");
+  const grace = step.graceSeconds === null ? null : step.graceSeconds > 0 ? seconds(texts, step.graceSeconds) : t(texts, "settings.graceOff");
   return {
-    summary: step.done ? t(texts, "setup.step.queue.done", { value: step.graceSeconds > 0 ? seconds(texts, step.graceSeconds) : t(texts, "settings.graceOff") }) : null,
+    summary: grace !== null && step.startDelaySeconds !== null ? t(texts, "setup.step.queue.done", { value: grace, delay: seconds(texts, step.startDelaySeconds) }) : null,
     text: t(texts, "setup.step.queue.text"),
-    link: { action: "open-queue-settings", args: {}, icon: "mdi:timer-sand", label: t(texts, "setup.step.queue.action"), decision: queueAffordances(queue?.mode ?? "idle", context).configure },
+    link: { action: "open-queue-settings", args: {}, icon: "mdi:timer-sand", label: t(texts, "setup.step.queue.action"), decision: decide(context, { operation: "configure_queue", target: QUEUE_TARGET }) },
   };
 }
 
-function firstJobStep(model, texts, context, step) {
-  return {
-    summary: step.done ? t(texts, "setup.step.firstJob.done") : null,
-    text: t(texts, "setup.step.firstJob.text"),
-    create: decide(context, { operation: "create_job", target: CREATE_TARGET }),
-  };
-}
-
-const BUILDERS = Object.freeze({
-  robots: robotsStep,
-  rooms: roomsStep,
-  defaults: linkStep("defaults", (model, context) => ({ action: "open-job-defaults", args: {}, icon: "mdi:tune-variant", decision: decide(context, { operation: "configure_job_defaults", target: QUEUE_TARGET }) })),
-  conditions: linkStep("conditions", ROOMS_LINK),
-  release: releaseStep,
-  due: linkStep("due", ROOMS_LINK),
-  templates: linkStep("templates", (model, context) => ({ action: "create-template", args: {}, icon: "mdi:plus", decision: decide(context, { operation: "save_template", target: CREATE_TARGET }) })),
-  queue: queueStep,
-  firstJob: firstJobStep,
-});
+const BUILDERS = Object.freeze({ robots: robotsStep, rooms: roomsStep, defaults: defaultsStep, queue: queueStep });
 
 export function buildSetupView({ model, texts, context, ui = {} }) {
   const setup = model.setup;
-  if (!setup?.known) return { key: "setup", loading: true, steps: [] };
+  if (!setup) return { key: "setup", loading: true, steps: [] };
   const chosen = ui.choices?.[SETUP_STEP_CHOICE];
-  const current = SETUP_STEPS.includes(chosen) ? chosen : setup.next;
+  const current = SETUP_STEPS.includes(chosen) ? chosen : SETUP_STEPS[0];
   return {
     key: "setup",
     loading: false,
-    complete: setup.complete,
-    allDone: SETUP_STEPS.every((step) => setup.steps[step].done),
-    steps: SETUP_STEPS.map((key, position) => {
-      const state = setup.steps[key];
-      return {
-        key,
-        number: position + 1,
-        title: t(texts, `setup.step.${key}.title`),
-        done: state.done,
-        current: key === current,
-        optional: !REQUIRED_STEPS.includes(key),
-        builtIn: state.builtIn === true,
-        ...BUILDERS[key](model, texts, context, state),
-      };
-    }),
+    pending: setup.assistantPending,
+    finish: setup.assistantPending ? decide(context, { operation: "complete_setup", target: SETUP_TARGET }) : null,
+    steps: SETUP_STEPS.map((key, position) => ({
+      key,
+      number: position + 1,
+      title: t(texts, `setup.step.${key}.title`),
+      current: key === current,
+      builtIn: false,
+      ...BUILDERS[key](model, texts, context, setup.steps[key]),
+    })),
   };
 }

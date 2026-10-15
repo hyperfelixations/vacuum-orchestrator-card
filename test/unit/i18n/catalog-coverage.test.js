@@ -26,7 +26,7 @@ async function catalogs() {
   const { TRANSLATIONS } = await import("../../../src/i18n/registry.js");
   const errors = await import("../../../src/domain/backend-errors.js");
   const schema = await import("../../../src/domain/job-schema.js");
-  const { SETUP_STEPS } = await import("../../../src/application/setup-status.js");
+  const { SETUP_STEPS } = await import("../../../src/domain/setup.js");
   return { TRANSLATIONS, errors, schema, SETUP_STEPS };
 }
 
@@ -55,7 +55,7 @@ test("every outcome, readiness reason and due reason is worded", async () => {
   assert.deepEqual(missing(TRANSLATIONS, errors.DUE_REASONS.map((code) => `due.reason.${code}`)), []);
 });
 
-test("every job state, attempt state, mode, setting rung, origin and role is worded", async () => {
+test("every job state, attempt state, mode, setting rung, origin, role, release kind, policy and quality is worded", async () => {
   const { TRANSLATIONS, schema } = await catalogs();
   const keys = [
     ...schema.JOB_STATES.map((state) => `job.state.${camel(state)}`),
@@ -70,6 +70,11 @@ test("every job state, attempt state, mode, setting rung, origin and role is wor
     ...Object.keys(schema.ROBOT_OPTION_MAPS).map((map) => `robotEditor.optionMap.${map}`),
     ...Object.keys(schema.ROBOT_TIMEOUT_FIELDS).map((field) => `robotEditor.timeout.${field}`),
     ...schema.QUEUE_MODES.map((mode) => `queue.mode.${mode}`),
+    ...schema.RELEASE_KINDS.flatMap((kind) => [`release.kind.${camel(kind)}`, `release.explain.${camel(kind)}`]),
+    ...schema.SETTINGS_POLICIES.map((policy) => `policy.${camel(policy)}`),
+    ...schema.COMPLETION_QUALITIES.map((quality) => `quality.${quality}`),
+    ...schema.READINESS_STATES.map((state) => `readiness.${state}`),
+    ...schema.DUE_BASES.map((basis) => `room.basis.${basis}`),
   ];
   assert.deepEqual(missing(TRANSLATIONS, keys), []);
 });

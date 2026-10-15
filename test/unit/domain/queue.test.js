@@ -1,9 +1,16 @@
 // The pending-queue page: positions from the page offset, the queue run, recovery targets and
-// the quiet period, all as reported. The run phase is read from the integration's fields.
+// the quiet period, all as reported. The run phase is the integration's.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const W = require("../../fixtures/voi/wire.js");
+const W = require("../../helpers/voi-records.js");
+const { loadRecording } = require("../../helpers/recordings.js");
+
+// One queue run per phase the recordings reach: waiting for work, cleaning, paused, ending, ended.
+function recordedRuns() {
+  const runs = ["queue_end", "queue_controls"].flatMap((name) => loadRecording(name).steps.map((step) => step.receive?.result?.queue_run).filter(Boolean));
+  return [...new Map(runs.map((run) => [run.phase, run])).values()];
+}
 
 const load = () => import("../../../src/domain/queue.js");
 
@@ -29,12 +36,12 @@ test("queue facts are kept as reported", async () => {
     needs_attention: true,
     recovery_targets: [{ robot_id: "legacy:unscoped", reason: "physical_run_ownership_uncertain" }, { reason: "no robot" }],
     queue_grace_seconds: 0,
-    queue_run: W.wireQueueRun({ idle_since: "2026-09-17T00:10:00+00:00", deadline: "2026-09-17T00:25:00+00:00" }),
+    queue_run: W.wireQueueRun({ phase: "standby", ends_at: "2026-03-14T11:25:00+00:00" }),
   }));
   assert.equal(page.mode, "paused");
   assert.deepEqual([page.commitId, page.queueRevision, page.needsAttention, page.graceSeconds], [7, 3, true, 0]);
   assert.deepEqual(page.recoveryTargets.map((target) => ({ ...target })), [{ robotId: "legacy:unscoped", reason: "physical_run_ownership_uncertain" }]);
-  assert.equal(page.run.deadline, Date.parse("2026-09-17T00:25:00Z"));
+  assert.deepEqual([page.run.phase, page.run.endsAt], ["standby", Date.parse("2026-03-14T11:25:00Z")]);
 });
 
 test("an unknown mode reads idle and missing paging falls back to the page's own content", async () => {
@@ -46,12 +53,11 @@ test("an unknown mode reads idle and missing paging falls back to the page's own
   assert.equal(normalizeQueuePage(null), null);
 });
 
-test("the run phase is read from active and deadline", async () => {
+test("the run phase is the integration's, off without a run", async () => {
   const { normalizeQueuePage, queueRunPhase } = await load();
   const phaseOf = (run) => queueRunPhase(normalizeQueuePage(W.wireQueuePage([], { queue_run: run })).run);
-  assert.equal(phaseOf(null), "none");
-  assert.equal(phaseOf(W.wireQueueRun()), "active");
-  assert.equal(phaseOf(W.wireQueueRun({ deadline: "2026-09-17T00:25:00+00:00" })), "winding_down");
-  assert.equal(phaseOf(W.wireQueueRun({ active: false, completed_at: "2026-09-17T00:30:00+00:00" })), "finished");
-  assert.equal(phaseOf({ started_at: "2026-09-17T00:00:00+00:00" }), "none");
+  assert.deepEqual(recordedRuns().map(phaseOf).sort(), ["active", "ending", "off", "paused", "standby"]);
+  assert.equal(phaseOf(null), "off");
+  assert.equal(phaseOf(W.wireQueueRun({ phase: "sprinting" })), "off", "an unknown phase reads as no run");
+  assert.equal(phaseOf({ started_at: "2026-03-14T11:00:00+00:00" }), "off", "a run without identity is none");
 });
