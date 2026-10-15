@@ -1,8 +1,8 @@
 // Target sizes, spacing and positions of row and card actions: inline with room between them on
 // wider cards, equal tiles across the row on narrow cards, a single action beside the title, the
 // run action always in the trailing slot, room cards that keep their own height and end with their
-// actions, panel controls that keep their labels beside or below the run state, and 44 px
-// targets 8 px apart under a coarse pointer.
+// actions, waiting rows alike in height, panel controls that keep their labels beside or below
+// the run state, and 44 px targets 8 px apart under a coarse pointer.
 
 const { test, expect } = require("../../helpers/playwright.js");
 const { BUSY, mountCard, named, setCardWidth } = require("../../helpers/browser-helpers.js");
@@ -108,6 +108,23 @@ test.describe("with a mouse", () => {
     expect([...seen].sort()).toEqual([false, true]);
   });
 });
+
+// LAY-21: waiting rows with title, details and readiness are alike in height, with or without a
+// chip among the details.
+for (const width of [900, 380]) {
+  test(`waiting rows of the same kind are equally tall at ${width} px`, async ({ page }) => {
+    const card = await mountCard(page, { ...BUSY, width });
+    const rows = await card.evaluate((element) => [...element.shadowRoot.querySelectorAll('.voc-job[data-state="queued"]')].map((row) => ({
+      title: row.querySelector(".voc-job-title").textContent.trim(),
+      chips: row.querySelectorAll(".voc-job-meta .voc-chip").length,
+      height: row.getBoundingClientRect().height,
+    })));
+    expect(rows.length).toBeGreaterThan(2);
+    expect(rows.some((row) => row.chips > 0) && rows.some((row) => row.chips === 0), "rows with and without a chip").toBe(true);
+    const heights = rows.map((row) => row.height);
+    expect(Math.max(...heights) - Math.min(...heights), JSON.stringify(rows)).toBeLessThanOrEqual(1);
+  });
+}
 
 // LAY-10, LAY-21, UI-24: on every tier the queue controls keep their labels and stay inside the
 // panel, and neither they nor the figure cover the run state.

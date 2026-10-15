@@ -651,7 +651,8 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 
 .voc-job-title-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .voc-job-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 850; line-height: 1.2; }
-.voc-job-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; font-size: 11.5px; font-weight: 700; color: var(--voc-muted); }
+.voc-job-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; font-size: 11.5px; font-weight: 700; line-height: 16px; color: var(--voc-muted); }
+.voc-job-meta .voc-chip { padding: 0 6px; line-height: 14px; }
 .voc-job-mode { display: inline-flex; align-items: center; gap: 3px; }
 .voc-job-mode ha-icon { --mdc-icon-size: 14px; }
 .voc-job-rooms { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

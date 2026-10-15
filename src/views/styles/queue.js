@@ -1,6 +1,7 @@
 // Queue view: job rows, recovery alerts, template quick starts and pagination. The job row is
 // shared with the history view. Below 560 px a row with several actions spreads them as equal
-// tiles over its full width; a single action stays beside the title.
+// tiles over its full width; a single action stays beside the title. The details line has one
+// line height, chips included, so rows of the same kind are equally tall (LAY-21).
 
 const JOB_ACTION_BAR = [
   '.voc-job[data-actions="several"] .voc-job-actions { grid-column: 1 / -1; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; padding-top: 2px; }',
@@ -61,7 +62,8 @@ export const QUEUE_CSS = `
 
 .voc-job-title-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .voc-job-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 850; line-height: 1.2; }
-.voc-job-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; font-size: 11.5px; font-weight: 700; color: var(--voc-muted); }
+.voc-job-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; font-size: 11.5px; font-weight: 700; line-height: 16px; color: var(--voc-muted); }
+.voc-job-meta .voc-chip { padding: 0 6px; line-height: 14px; }
 .voc-job-mode { display: inline-flex; align-items: center; gap: 3px; }
 .voc-job-mode ha-icon { --mdc-icon-size: 14px; }
 .voc-job-rooms { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
