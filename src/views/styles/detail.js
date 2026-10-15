@@ -6,7 +6,7 @@ export const DETAIL_CSS = `
 .voc-detail-position { display: flex; align-items: center; gap: var(--voc-target-gap); font-size: 12px; font-weight: 700; color: var(--voc-muted); }
 .voc-detail-position > span { margin-right: 4px; }
 .voc-detail-ok { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; font-weight: 700; color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); }
-.voc-detail-ok ha-icon { --mdc-icon-size: 16px; width: 16px; height: 16px; }
+.voc-detail-ok ha-icon { --mdc-icon-size: 16px; }
 .voc-inline-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .voc-phase { display: grid; gap: 4px; }
@@ -14,7 +14,7 @@ export const DETAIL_CSS = `
 .voc-phase-title { font-size: 12px; font-weight: 850; }
 .voc-phase-robots { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .voc-phase-robots li { display: grid; grid-template-columns: 16px auto 1fr; align-items: center; gap: 6px; font-size: 12px; line-height: 1.3; }
-.voc-phase-robots ha-icon { --mdc-icon-size: 16px; width: 16px; height: 16px; }
+.voc-phase-robots ha-icon { --mdc-icon-size: 16px; }
 .voc-phase-robots li[data-eligible="true"] ha-icon { color: var(--voc-success); }
 .voc-phase-robots li[data-eligible="false"] ha-icon { color: var(--voc-faint); }
 .voc-phase-robot { font-weight: 850; }

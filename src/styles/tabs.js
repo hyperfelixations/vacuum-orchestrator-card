@@ -33,7 +33,7 @@ export const TABS_CSS = `
   font-weight: 800;
 }
 
-.voc-tab ha-icon { --mdc-icon-size: 17px; width: 17px; height: 17px; }
+.voc-tab ha-icon { --mdc-icon-size: 17px; }
 .voc-tab:hover { background: var(--voc-chip-bg); color: var(--primary-text-color); }
 .voc-tab[aria-selected="true"] { border-color: var(--tone-border); background: var(--tone-soft); color: var(--tone-ink); }
 .voc-tab[data-unavailable="true"] { opacity: .6; }

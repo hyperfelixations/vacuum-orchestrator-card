@@ -12,7 +12,7 @@ export const DIALOGS_CSS = `
 .voc-choices { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .voc-choices li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .voc-choice-note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 650; color: var(--voc-muted); }
-.voc-choice-note ha-icon { --mdc-icon-size: 15px; width: 15px; height: 15px; }
+.voc-choice-note ha-icon { --mdc-icon-size: 15px; }
 .voc-choice-note[data-eligible="true"] { color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); }
 `;
 

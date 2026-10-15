@@ -7,7 +7,7 @@ export const ROOMS_CSS = `
 .voc-room[data-excluded="true"] { opacity: .65; }
 .voc-room-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .voc-room-icon { display: flex; flex: none; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 10px; background: var(--voc-panel); color: var(--voc-muted); }
-.voc-room-icon ha-icon { --mdc-icon-size: 17px; width: 17px; height: 17px; }
+.voc-room-icon ha-icon { --mdc-icon-size: 17px; }
 .voc-room-name { flex: 1; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 900; }
 .voc-room-head .voc-button--icon { margin: -4px -4px -4px 0; }
 .voc-room-status { display: flex; flex-wrap: wrap; gap: 4px; margin-top: -2px; }
@@ -15,7 +15,7 @@ export const ROOMS_CSS = `
 .voc-room-due { display: grid; gap: 6px; }
 .voc-due { display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; align-items: center; }
 .voc-due-label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 850; letter-spacing: .03em; color: var(--voc-faint); text-transform: uppercase; }
-.voc-due-label ha-icon { --mdc-icon-size: 14px; width: 14px; height: 14px; }
+.voc-due-label ha-icon { --mdc-icon-size: 14px; }
 .voc-due-status { justify-self: end; font-size: 12px; font-weight: 800; }
 .voc-due-bar { grid-column: 1 / -1; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--primary-text-color) 9%, transparent); overflow: hidden; }
 .voc-due-bar span { display: block; height: 100%; border-radius: inherit; background: color-mix(in srgb, var(--voc-success) 75%, transparent); }
@@ -28,7 +28,7 @@ export const ROOMS_CSS = `
 
 .voc-room-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; font-weight: 650; color: var(--voc-muted); }
 .voc-room-meta-item { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
-.voc-room-meta-item ha-icon { --mdc-icon-size: 14px; width: 14px; height: 14px; flex: none; }
+.voc-room-meta-item ha-icon { --mdc-icon-size: 14px; }
 .voc-room-warning { color: var(--voc-warning-ink); font-weight: 750; }
 .voc-room-actions { display: flex; flex-wrap: wrap; gap: var(--voc-target-gap); margin: auto -4px 0; }
 .voc-room-toggle { margin-left: auto; }

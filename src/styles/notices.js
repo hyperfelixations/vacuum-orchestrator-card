@@ -12,7 +12,7 @@ export const NOTICES_CSS = `
   line-height: 1.3;
 }
 
-.voc-notice ha-icon { --mdc-icon-size: 18px; width: 18px; height: 18px; flex: none; }
+.voc-notice ha-icon { --mdc-icon-size: 18px; }
 .voc-notice-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .voc-notice--error { background: color-mix(in srgb, var(--voc-error) 12%, transparent); border: 1px solid color-mix(in srgb, var(--voc-error) 40%, transparent); }
 .voc-notice--error ha-icon { color: var(--voc-error); }

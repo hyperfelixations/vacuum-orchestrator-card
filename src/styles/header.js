@@ -23,8 +23,6 @@ export const HEADER_CSS = `
 
 .voc-icon-badge ha-icon {
   --mdc-icon-size: 22px;
-  width: 22px;
-  height: 22px;
   color: var(--tone-ink);
 }
 

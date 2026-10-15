@@ -1,7 +1,8 @@
 "use strict";
 
-// The two Home Assistant elements the card puts in its own shadow root. Real Home Assistant
-// registers them through its frontend bundle; this offline harness loads none, so without
+// The two Home Assistant elements the card puts in its own shadow root, `ha-card` and `ha-icon`
+// (with the `ha-svg-icon` it draws through). Real Home Assistant registers them through its
+// frontend bundle; this offline harness loads none, so without
 // stubs they stay undefined elements with observable consequences for layout. They are
 // registered as custom elements rather than styled from this document, because
 // customElements.define() upgrades matching tags inside any shadow root while a light-DOM
@@ -39,9 +40,30 @@
     live.forEach((icon) => icon._render());
   });
 
+  // As in Home Assistant's frontend: `ha-icon` is an unstyled host apart from `fill`, its shadow
+  // root holds one `ha-svg-icon`, and that element carries the box (`--ha-icon-display`,
+  // `vertical-align: middle`, `--mdc-icon-size` with 24 px by default) around a block SVG.
+  const SVG_ICON_CSS = ":host { display: var(--ha-icon-display, inline-flex); align-items: center; justify-content: center; position: relative; vertical-align: middle; fill: var(--icon-primary-color, currentcolor); width: var(--mdc-icon-size, 24px); height: var(--mdc-icon-size, 24px); } svg { width: 100%; height: 100%; pointer-events: none; display: block; }";
+
+  class HaSvgIconStub extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+    }
+
+    set path(value) {
+      this.shadowRoot.innerHTML = `<style>${SVG_ICON_CSS}</style><svg viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" focusable="false" role="img" aria-hidden="true"><g><path class="primary-path" d="${value}"></path></g></svg>`;
+    }
+  }
+
   class HaIconStub extends HTMLElement {
     static get observedAttributes() {
       return ["icon"];
+    }
+
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" }).innerHTML = "<style>:host { fill: currentcolor; }</style><ha-svg-icon></ha-svg-icon>";
     }
 
     connectedCallback() {
@@ -59,14 +81,13 @@
 
     _render() {
       const name = String(this.getAttribute("icon") || "").replace(/^mdi:/u, "");
-      const path = (paths && paths[exportName(name)]) || DOT;
-      this.innerHTML = `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" focusable="false" aria-hidden="true"><path d="${path}"></path></svg>`;
-      this.style.display = "inline-flex";
-      this.style.alignItems = "center";
-      this.style.justifyContent = "center";
+      this.shadowRoot.querySelector("ha-svg-icon").path = (paths && paths[exportName(name)]) || DOT;
     }
   }
 
+  if (!customElements.get("ha-svg-icon")) {
+    customElements.define("ha-svg-icon", HaSvgIconStub);
+  }
   if (!customElements.get("ha-icon")) {
     customElements.define("ha-icon", HaIconStub);
   }

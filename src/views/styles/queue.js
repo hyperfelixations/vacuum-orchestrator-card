@@ -43,7 +43,7 @@ export const QUEUE_CSS = `
 @keyframes voc-progress { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
 .voc-job-lead { display: flex; justify-content: center; color: var(--voc-faint); }
-.voc-job-lead ha-icon { --mdc-icon-size: 18px; width: 18px; height: 18px; }
+.voc-job-lead ha-icon { --mdc-icon-size: 18px; }
 .voc-job-position { font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--voc-faint); }
 
 .voc-job-main {
@@ -63,11 +63,11 @@ export const QUEUE_CSS = `
 .voc-job-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 850; line-height: 1.2; }
 .voc-job-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; font-size: 11.5px; font-weight: 700; color: var(--voc-muted); }
 .voc-job-mode { display: inline-flex; align-items: center; gap: 3px; }
-.voc-job-mode ha-icon { --mdc-icon-size: 14px; width: 14px; height: 14px; }
+.voc-job-mode ha-icon { --mdc-icon-size: 14px; }
 .voc-job-rooms { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .voc-job-readiness, .voc-job-outcome { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 11.5px; font-weight: 750; line-height: 1.25; }
 .voc-job-readiness span:first-of-type, .voc-job-outcome span { min-width: 0; overflow-wrap: anywhere; }
-.voc-job-readiness ha-icon, .voc-job-outcome ha-icon { --mdc-icon-size: 14px; width: 14px; height: 14px; flex: none; }
+.voc-job-readiness ha-icon, .voc-job-outcome ha-icon { --mdc-icon-size: 14px; }
 .voc-job-readiness[data-readiness="ready"] { color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); }
 .voc-job-readiness[data-readiness="blocked"] { color: var(--voc-warning-ink); }
 .voc-job-readiness[data-readiness="unknown"] { color: var(--voc-muted); }
@@ -88,7 +88,7 @@ export const QUEUE_CSS = `
   background: color-mix(in srgb, var(--voc-error) 9%, transparent);
   border: 1px solid color-mix(in srgb, var(--voc-error) 38%, transparent);
 }
-.voc-alert > ha-icon { --mdc-icon-size: 22px; width: 22px; height: 22px; flex: none; color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
+.voc-alert > ha-icon { --mdc-icon-size: 22px; color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
 .voc-alert-text { display: grid; gap: 2px; flex: 1; min-width: 0; font-size: 12px; font-weight: 650; line-height: 1.3; color: var(--voc-muted); }
 .voc-alert-text strong { color: var(--primary-text-color); font-size: 13px; font-weight: 850; }
 

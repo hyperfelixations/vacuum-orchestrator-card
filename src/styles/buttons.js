@@ -25,7 +25,7 @@ button { font: inherit; color: inherit; }
   white-space: nowrap;
 }
 
-.voc-button ha-icon { --mdc-icon-size: 17px; width: 17px; height: 17px; flex: none; }
+.voc-button ha-icon { --mdc-icon-size: 17px; }
 .voc-button:hover { background: color-mix(in srgb, var(--primary-text-color) 7%, transparent); }
 .voc-button--primary { border-color: var(--tone-border); background: var(--tone-soft); color: var(--tone-ink); }
 .voc-button--primary:hover { background: color-mix(in srgb, var(--tone-color) 28%, transparent); }
@@ -55,7 +55,7 @@ button { font: inherit; color: inherit; }
   border: 1px solid transparent;
 }
 
-.voc-pill ha-icon { --mdc-icon-size: 13px; width: 13px; height: 13px; }
+.voc-pill ha-icon { --mdc-icon-size: 13px; }
 .voc-pill--neutral { background: var(--voc-chip-bg); border-color: var(--voc-hairline); color: var(--voc-muted); }
 .voc-pill--ready { background: color-mix(in srgb, var(--voc-success) 16%, transparent); color: color-mix(in srgb, var(--voc-success) 78%, var(--primary-text-color)); }
 .voc-pill--running { background: color-mix(in srgb, var(--voc-info) 16%, transparent); color: color-mix(in srgb, var(--voc-info) 78%, var(--primary-text-color)); }
@@ -79,5 +79,5 @@ button { font: inherit; color: inherit; }
 }
 
 .voc-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.voc-chip ha-icon { --mdc-icon-size: 13px; width: 13px; height: 13px; flex: none; }
+.voc-chip ha-icon { --mdc-icon-size: 13px; }
 `;

@@ -39,6 +39,32 @@ test("no view overflows horizontally at narrow, medium and wide widths", async (
   }
 });
 
+// UI-11: an icon is as large as its `--mdc-icon-size`, and in a row that centres its items the
+// icon's middle is the middle of the text beside it, within half a pixel.
+test("icons have their set size and stand centred on the text beside them in every view", async ({ page }) => {
+  const card = await mountCard(page, { ...BUSY, config: { views: VIEWS } });
+  let measured = 0;
+  for (const view of VIEWS) {
+    await card.locator(`[role=tab][data-view="${view}"]`).click();
+    const icons = await card.evaluate((element) => [...element.shadowRoot.querySelectorAll("ha-icon")].filter((icon) => icon.getClientRects().length).map((icon) => {
+      const box = icon.getBoundingClientRect();
+      const size = parseFloat(getComputedStyle(icon).getPropertyValue("--mdc-icon-size")) || 24;
+      const row = getComputedStyle(icon.parentElement);
+      const centred = row.display.endsWith("flex") && row.flexDirection === "row" && row.alignItems === "center";
+      const text = [icon.previousElementSibling, icon.nextElementSibling].find((node) => node && node.tagName === "SPAN" && node.textContent.trim() && node.getClientRects().length);
+      const line = text?.getBoundingClientRect();
+      return { name: `${icon.parentElement.className} ${icon.getAttribute("icon")}`, size, width: box.width, height: box.height, offset: centred && line ? box.top + box.height / 2 - (line.top + line.height / 2) : 0 };
+    }));
+    for (const icon of icons) {
+      expect(Math.abs(icon.width - icon.size), `${view}: width of ${icon.name}`).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(icon.height - icon.size), `${view}: height of ${icon.name}`).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(icon.offset), `${view}: ${icon.name} centred on its text`).toBeLessThanOrEqual(0.5);
+    }
+    measured += icons.length;
+  }
+  expect(measured).toBeGreaterThan(40);
+});
+
 test("two cards side by side keep their own width and share one subscription", async ({ page }) => {
   await mountCard(page, { ...BUSY, width: 420, configs: [{ views: ["queue", "rooms"] }, { views: ["robots", "history"], start_view: "history" }] });
   const widths = await page.evaluate(() => window.vocHarness.cards.map((card) => Math.round(card.getBoundingClientRect().width)));

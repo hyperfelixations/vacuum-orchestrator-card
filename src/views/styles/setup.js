@@ -22,7 +22,7 @@ export const SETUP_CSS = `
 .voc-setup-body { display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); }
 .voc-setup-text { margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.4; }
 .voc-setup-note { display: flex; gap: 6px; margin: 0; font-size: 12px; font-weight: 650; line-height: 1.35; color: var(--voc-muted); }
-.voc-setup-note ha-icon { --mdc-icon-size: 15px; width: 15px; height: 15px; flex: none; }
+.voc-setup-note ha-icon { --mdc-icon-size: 15px; }
 .voc-setup-label { margin: 0; font-size: 10px; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; color: var(--voc-faint); }
 .voc-setup-items { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .voc-setup-items li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 7px 8px 7px 10px; border-radius: 12px; background: var(--voc-panel); }

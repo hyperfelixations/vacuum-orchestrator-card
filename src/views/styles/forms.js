@@ -15,7 +15,7 @@ export const FORMS_CSS = `
 .voc-segmented, .voc-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .voc-radios { display: grid; gap: 8px; min-width: 0; }
 .voc-radio { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: var(--voc-icon-target); padding: 10px 12px; border: 1px solid var(--divider-color); border-radius: 12px; background: transparent; color: var(--primary-text-color); font: inherit; text-align: start; cursor: pointer; }
-.voc-radio ha-icon { --mdc-icon-size: 20px; width: 20px; height: 20px; flex: none; color: var(--voc-muted); }
+.voc-radio ha-icon { --mdc-icon-size: 20px; color: var(--voc-muted); }
 .voc-radio.is-selected { border-color: var(--tone-border); background: var(--tone-soft); }
 .voc-radio.is-selected ha-icon { color: var(--tone-ink); }
 .voc-radio:focus-visible { outline: 2px solid var(--tone-ink); outline-offset: 2px; }
@@ -37,13 +37,13 @@ export const FORMS_CSS = `
   font-size: 12px;
   font-weight: 800;
 }
-.voc-option ha-icon { --mdc-icon-size: 16px; width: 16px; height: 16px; }
+.voc-option ha-icon { --mdc-icon-size: 16px; }
 .voc-option:hover { color: var(--primary-text-color); }
 .voc-option.is-selected { border-color: var(--tone-border); background: var(--tone-soft); color: var(--tone-ink); }
 .voc-option[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 .voc-option.is-muted { opacity: .55; }
 .voc-option-badge { display: inline-flex; color: var(--voc-warning-ink); }
-.voc-option-badge ha-icon { --mdc-icon-size: 14px; width: 14px; height: 14px; }
+.voc-option-badge ha-icon { --mdc-icon-size: 14px; }
 .voc-field.is-invalid .voc-segmented, .voc-field.is-invalid .voc-chips { padding: 4px; margin: -4px; border-radius: 14px; outline: 1px solid color-mix(in srgb, var(--voc-error) 55%, transparent); }
 
 .voc-input {
@@ -87,7 +87,7 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-entity-id { font-size: 11px; font-weight: 600; color: var(--voc-muted); }
 
 .voc-disclosure { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--voc-faint); cursor: pointer; font: inherit; font-size: 10px; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; }
-.voc-disclosure ha-icon { --mdc-icon-size: 16px; width: 16px; height: 16px; }
+.voc-disclosure ha-icon { --mdc-icon-size: 16px; }
 
 .voc-list-item { display: grid; gap: 8px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--voc-hairline); background: var(--voc-chip-bg); }
 .voc-list-head { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12.5px; }

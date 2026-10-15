@@ -1,5 +1,7 @@
 // Card surface, content root and accent line (RCC card slice). The surface is selected by type,
-// so an `ha-card` rule card-mod appends after this sheet wins at equal specificity.
+// so an `ha-card` rule card-mod appends after this sheet wins at equal specificity. Every icon is
+// a centred box exactly as large as its `--mdc-icon-size`, the only way its size is set; Home
+// Assistant's `ha-svg-icon` inside becomes a block, so no icon sits on a text baseline (UI-11).
 
 export const CARD_CSS = `
 ha-card {
@@ -23,6 +25,15 @@ ha-card {
   padding: var(--voc-pad-top) var(--voc-pad-x) var(--voc-pad-bottom);
   color: var(--primary-text-color);
   outline: none;
+}
+
+ha-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  line-height: 0;
+  --ha-icon-display: block;
 }
 
 .voc-top-line {
