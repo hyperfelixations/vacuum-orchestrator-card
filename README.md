@@ -303,14 +303,16 @@ views:
     enabled: auto
 ```
 
-### Size in a sections view
+### Size
 
-Set the card's size with Home Assistant's `grid_options`:
+Set the card's size with Home Assistant's `grid_options`. In a sections view they size the
+card's cell; in other views (masonry, stacks) the card applies the same rows itself, so it
+keeps one height in every tab, page and dialog:
 
 | Option | Default | What it does |
 | --- | --- | --- |
 | `grid_options.columns` | `full` | `full` fills the section. A number sets the width in grid columns, 12 per column the section spans; the smallest value is `12`. |
-| `grid_options.rows` | `10` | Sets the height in rows of 56 px with 8 px between them; the smallest value is `7`. `auto` lets the card take the height of the view it shows. |
+| `grid_options.rows` | `10` | Sets the height in rows of 56 px with 8 px between them (10 rows are 632 px); the smallest value is `7`. `auto` lets the card grow with the view it shows, at least 7 rows high. |
 
 Choose enough rows for the view you use most; whatever does not fit scrolls
 inside the card.

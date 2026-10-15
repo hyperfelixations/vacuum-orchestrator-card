@@ -7,8 +7,9 @@ const { BUSY, mountCard, named, setCardWidth } = require("../../helpers/browser-
 
 const VIEWS = ["queue", "rooms", "robots", "templates", "history", "diagnostics", "setup", "settings"];
 
+// Without a frame the card's own rules leave `ha-card` as its shadow root lays it out.
 test("Roboto, Home Assistant's elements and the size container are active", async ({ page }) => {
-  const card = await mountCard(page, BUSY);
+  const card = await mountCard(page, { ...BUSY, rows: "auto" });
   const host = await card.evaluate(async (element) => {
     await document.fonts.ready;
     const haCard = element.shadowRoot.querySelector("ha-card");

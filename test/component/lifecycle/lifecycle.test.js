@@ -125,24 +125,28 @@ test("the card offers no form editor and starts from an empty stub; the grid and
   card.unmount();
 });
 
-test("in a sections grid with fixed rows and in a panel the card takes the dashboard's height", async () => {
+test("in a sections grid with fixed rows and in a panel the card takes the dashboard's height; elsewhere its standard height", async () => {
   const card = await mountCard(BUSY);
   const surface = () => card.root.querySelector("ha-card");
-  assert.deepEqual([card.card.hasAttribute("data-voc-frame"), surface().hasAttribute("data-frame")], [false, false]);
+  const height = () => surface().style.getPropertyValue("--voc-frame-height");
+  assert.deepEqual([card.card.hasAttribute("data-voc-frame"), surface().dataset.frame, height()], [false, "lock", "632px"], "ten rows without a dashboard height");
+  card.card.setConfig({ type: "custom:vacuum-orchestrator-card", grid_options: { rows: 8 } });
+  await settle();
+  assert.equal(height(), "504px", "the card's rows set its standard height");
   card.card.layout = "grid";
   await settle();
-  assert.deepEqual([card.card.hasAttribute("data-voc-frame"), surface().dataset.frame], [true, "fill"]);
+  assert.deepEqual([card.card.hasAttribute("data-voc-frame"), surface().dataset.frame, height()], [true, "fill", ""]);
   card.card.setConfig({ type: "custom:vacuum-orchestrator-card", grid_options: { rows: "auto" } });
   await settle();
-  assert.deepEqual([card.card.hasAttribute("data-voc-frame"), surface().hasAttribute("data-frame")], [false, false]);
+  assert.deepEqual([card.card.hasAttribute("data-voc-frame"), surface().hasAttribute("data-frame"), surface().style.getPropertyValue("--voc-frame-min")], [false, false, "440px"], "rows: auto grows with the content above the floor");
   card.card.layout = "panel";
   await settle();
   assert.equal(surface().dataset.frame, "fill");
   card.unmount();
 });
 
-test("with its own height an open overlay keeps the card's height until the last one closes", async () => {
-  const card = await mountCard(BUSY);
+test("with rows: auto an open page keeps the card's height until the last one closes", async () => {
+  const card = await mountCard({ ...BUSY, config: { grid_options: { rows: "auto" } } });
   const surface = () => card.root.querySelector("ha-card");
   await card.click('[data-key="waiting"] .voc-job .voc-job-main');
   assert.equal(card.root.querySelector(".voc-root").dataset.state, "overlay");

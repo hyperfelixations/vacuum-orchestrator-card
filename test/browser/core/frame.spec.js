@@ -1,5 +1,6 @@
 // The frame in each real engine: in a sections grid cell the card keeps the cell's height in every
-// view and overlay, and a card with its own height keeps it while an overlay is open.
+// view and overlay, without a dashboard height it keeps its standard height, and with rows: auto
+// it is at least the floor high and keeps its height while a page or dialog is open.
 
 const { test, expect } = require("../../helpers/playwright.js");
 const { BUSY, act, mountCard, named } = require("../../helpers/browser-helpers.js");
@@ -75,8 +76,39 @@ test("a panel view gives the card its full height", async ({ page }) => {
   await expectHeight(card, 800, "the panel's height");
 });
 
-test("with its own height the card keeps it while an overlay is open and lets it go after", async ({ page }) => {
-  const card = await mountCard(page, BUSY);
+// LAY-17: masonry, stacks and the editor preview set no height; the card keeps ten rows.
+test("without a dashboard height the card keeps its standard height in every view, page and dialog", async ({ page }) => {
+  const card = await mountCard(page, { ...BUSY, config: ALL_VIEWS });
+  await expect(card.locator("ha-card")).toHaveAttribute("data-frame", "lock");
+  for (const key of ALL_VIEWS.views) {
+    await view(page, card, key);
+    await expectHeight(card, TEN_ROWS_PX, `${key} keeps the standard height`);
+  }
+  await view(page, card, "queue");
+  await act(page, card.locator(".voc-primary-action"));
+  await expectHeight(card, TEN_ROWS_PX, "the editor keeps it");
+  await act(page, card.locator(".voc-back"));
+  await act(page, card.locator(".voc-queue-end"));
+  await expectHeight(card, TEN_ROWS_PX, "a dialog keeps it");
+});
+
+// LAY-01: a short view is already as high as the floor, so nothing opened over it moves the card.
+test("with rows: auto a short card is at least the floor high, also with a page or dialog open", async ({ page }) => {
+  const card = await mountCard(page, { recording: "robot_choice", from: "Either robot can start the dining room", rows: "auto" });
+  await expect(card.locator("ha-card")).not.toHaveAttribute("data-frame", /.*/);
+  await expectHeight(card, 440, "the short queue stands on the floor");
+  await act(page, named(card, ".voc-job", "Dining Room", '[data-action="start-job"]'));
+  await expectHeight(card, 440, "the robot choice keeps it");
+  await act(page, card.locator('.voc-dialog-actions [data-action="back"]'));
+  await act(page, named(card, ".voc-job", "Dining Room", ".voc-job-main"));
+  await expect(card.locator('[data-key="overlay:job-detail"]')).toBeVisible();
+  await expectHeight(card, 440, "the detail page keeps it");
+  await act(page, card.locator(".voc-back"));
+  await expectHeight(card, 440, "the queue again");
+});
+
+test("with rows: auto a tall card keeps its height while a page or dialog is open and lets it go after", async ({ page }) => {
+  const card = await mountCard(page, { ...BUSY, rows: "auto" });
   const natural = await cardHeight(card);
   expect(natural, "the queue is taller than the frame's floor").toBeGreaterThan(440);
   await act(page, named(card, ".voc-job", "Studio", '[data-action="cancel-job"]'));

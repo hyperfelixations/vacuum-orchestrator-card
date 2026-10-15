@@ -1,5 +1,6 @@
 // The frame: a card with a fixed height (`data-frame` on `ha-card`: "fill" takes the dashboard's
-// height, "lock" keeps `--voc-frame-height` while an overlay is open). Header, notices, panel and
+// height, "lock" keeps `--voc-frame-height`: the standard height, or the height a page opened
+// in). Without a frame the card is at least `--voc-frame-min` high. Header, notices, panel and
 // tab row keep their place and the body scrolls; an overlay keeps its heading and actions and
 // scrolls its content between them; while content continues below, a hairline separates it from
 // the actions without moving them. Regions reach the card's edges, so their scrollbar sits at
@@ -8,6 +9,7 @@
 export const FRAME_CSS = `
 :host([data-voc-frame]) { height: 100%; }
 
+ha-card:not([data-frame]) { min-height: var(--voc-frame-min, 0px); }
 ha-card[data-frame] { display: flex; flex-direction: column; box-sizing: border-box; height: 100%; }
 ha-card[data-frame="lock"] { height: var(--voc-frame-height); }
 ha-card[data-frame] > .voc-root { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }

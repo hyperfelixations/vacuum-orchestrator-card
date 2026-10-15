@@ -1,7 +1,8 @@
 // Owns exactly two nodes of the shadow root — the stylesheet and `ha-card` — and inside the
 // card exactly one, `.voc-root`. Everything else in the shadow root or the card belongs to
 // someone else (card-mod) and is never touched. Updates morph `.voc-root` in place. The card
-// carries the frame: `data-frame` and, for "lock", `--voc-frame-height`.
+// carries the frame: `data-frame` and, for "lock", `--voc-frame-height`; in "auto" its floor
+// `--voc-frame-min`.
 
 import { morphElement } from "../primitives/morph.js";
 
@@ -10,7 +11,7 @@ export function createShadowMount(root) {
   let surface = null;
   let cardRoot = null;
   let fallbackText = null;
-  let frame = { mode: "auto", heightPx: null };
+  let frame = { mode: "auto", heightPx: null, minPx: null };
 
   function applyFrame() {
     if (!surface) return;
@@ -18,6 +19,8 @@ export function createShadowMount(root) {
     else surface.setAttribute("data-frame", frame.mode);
     if (frame.mode === "lock") surface.style.setProperty("--voc-frame-height", `${frame.heightPx}px`);
     else surface.style.removeProperty("--voc-frame-height");
+    if (frame.mode === "auto" && frame.minPx !== null) surface.style.setProperty("--voc-frame-min", `${frame.minPx}px`);
+    else surface.style.removeProperty("--voc-frame-min");
   }
 
   const mounted = () => Boolean(style && surface && style.parentNode === root && surface.parentNode === root);
@@ -51,9 +54,10 @@ export function createShadowMount(root) {
       }
       morphElement(cardRoot, next, root.activeElement ?? null);
     },
-    // mode: "auto" (the content's height), "fill" (the host's height) or "lock" (heightPx).
-    setFrame({ mode = "auto", heightPx = null } = {}) {
-      frame = { mode, heightPx };
+    // mode: "auto" (the content's height, at least minPx), "fill" (the host's height) or "lock"
+    // (heightPx).
+    setFrame({ mode = "auto", heightPx = null, minPx = null } = {}) {
+      frame = { mode, heightPx, minPx };
       applyFrame();
     },
     // The last resort when even the failure markup cannot be built.

@@ -526,6 +526,7 @@ button { font: inherit; color: inherit; }
 
 :host([data-voc-frame]) { height: 100%; }
 
+ha-card:not([data-frame]) { min-height: var(--voc-frame-min, 0px); }
 ha-card[data-frame] { display: flex; flex-direction: column; box-sizing: border-box; height: 100%; }
 ha-card[data-frame="lock"] { height: var(--voc-frame-height); }
 ha-card[data-frame] > .voc-root { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }

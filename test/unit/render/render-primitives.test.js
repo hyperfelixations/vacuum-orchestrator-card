@@ -177,6 +177,8 @@ test("the shadow mount puts the frame on its card, also on one it creates later"
   mount.showText("broken");
   mount.mount(context, { css: "", html });
   assert.deepEqual([card().getAttribute("data-frame"), card().style.getPropertyValue("--voc-frame-height")], ["lock", "612px"], "a new card gets the frame");
-  mount.setFrame({ mode: "auto" });
-  assert.deepEqual([card().hasAttribute("data-frame"), card().style.getPropertyValue("--voc-frame-height")], [false, ""]);
+  mount.setFrame({ mode: "auto", minPx: 440 });
+  assert.deepEqual([card().hasAttribute("data-frame"), card().style.getPropertyValue("--voc-frame-height"), card().style.getPropertyValue("--voc-frame-min")], [false, "", "440px"]);
+  mount.setFrame({ mode: "fill" });
+  assert.equal(card().style.getPropertyValue("--voc-frame-min"), "", "a floor only for a card of its own height");
 });

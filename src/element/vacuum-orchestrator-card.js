@@ -10,7 +10,7 @@ import { textService } from "../i18n/text-service.js";
 import { DEFAULT_LANGUAGE } from "../i18n/locales.js";
 import { affordanceContext } from "../domain/affordances.js";
 import { acquireSession } from "../backend/session-registry.js";
-import { FRAME_MIN_PX, GRID_OPTIONS, frameMode } from "./card-layout.js";
+import { FRAME_MIN_PX, GRID_OPTIONS, frameMode, standardHeightPx } from "./card-layout.js";
 import { buildCardDomainModel } from "../application/card-domain-model.js";
 import { readHomeAssistant } from "../backend/home-assistant.js";
 import { buildCardViewModel } from "../presentation/shell/card-view-model.js";
@@ -164,15 +164,17 @@ export class VacuumOrchestratorCard extends HTMLElement {
     return { ...GRID_OPTIONS };
   }
 
-  // "fill" takes the dashboard's height. Otherwise an overlay keeps the height the card had when
-  // the first one opened ("lock"). See internal dev doc §9 "Rahmen und Höhe".
-  _applyFrame(overlaid) {
+  // "fill" takes the dashboard's height, "standard" keeps the card's own. With rows set to "auto"
+  // the card is at least FRAME_MIN_PX high, and a page keeps the height the card had when the
+  // first one opened ("lock"). See internal dev doc §9 "Rahmen und Höhe".
+  _applyFrame(paged) {
     const mode = frameMode({ layout: this._layout, config: this._lovelaceConfig });
-    if (mode === "fill" || !overlaid) this._lockPx = null;
+    if (mode !== "auto" || !paged) this._lockPx = null;
     else if (this._lockPx === null) this._lockPx = Math.max(this.shadowRoot.querySelector("ha-card")?.getBoundingClientRect().height ?? 0, FRAME_MIN_PX);
     this.toggleAttribute("data-voc-frame", mode === "fill");
     if (mode === "fill") this._mount.setFrame({ mode });
-    else this._mount.setFrame(this._lockPx === null ? { mode: "auto" } : { mode: "lock", heightPx: this._lockPx });
+    else if (mode === "standard") this._mount.setFrame({ mode: "lock", heightPx: standardHeightPx(this._lovelaceConfig) });
+    else this._mount.setFrame(this._lockPx === null ? { mode: "auto", minPx: FRAME_MIN_PX } : { mode: "lock", heightPx: this._lockPx });
   }
 
   // Scroll regions by what they show: the view with its pages, then each open page. A dialog
