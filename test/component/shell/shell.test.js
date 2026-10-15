@@ -1,6 +1,6 @@
 // The card shell through the built card: language, header options, the warning block and
-// subtitle hints, the show switches, the tab strip and its keyboard, unavailable views, the
-// command notice and the card dialog above a live view.
+// subtitle hints, the show switches, the tab strip and its keyboard, the primary action without
+// tabs, unavailable views, the command notice and the card dialog above a live view.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -89,6 +89,17 @@ test("show switches remove the panel, the tab strip and the queue control", asyn
   await card.settle();
   assert.ok(card.root.querySelector(".voc-panel"));
   assert.equal(card.root.querySelector(".voc-queue-control"), null);
+  card.unmount();
+});
+
+test("without tabs the view's primary action stands in the header; without a header it keeps a row of its own", async () => {
+  const card = await mountCard({ ...BUSY, config: { views: ["queue"] } });
+  assert.ok(card.root.querySelector(".voc-header > .voc-header-action > .voc-primary-action"));
+  assert.equal(card.root.querySelector(".voc-tab-row"), null);
+  card.card.setConfig({ type: "custom:vacuum-orchestrator-card", views: ["queue"], show: { icon: false, title: false, subtitle: false, pill: false } });
+  await card.settle();
+  assert.equal(card.root.querySelector(".voc-header"), null);
+  assert.ok(card.root.querySelector(".voc-tab-row > .voc-primary-action"));
   card.unmount();
 });
 

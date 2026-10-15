@@ -1,6 +1,7 @@
 // Target sizes, spacing and positions of row and card actions: inline with room between them on
 // wider cards, equal tiles across the row on narrow cards, a single action beside the title, the
-// run action always in the trailing slot, room actions on one line across a card row, and 44 px
+// run action always in the trailing slot, room cards that keep their own height and end with their
+// actions, panel controls that keep their labels beside or below the run state, and 44 px
 // targets 8 px apart under a coarse pointer.
 
 const { test, expect } = require("../../helpers/playwright.js");
@@ -11,6 +12,9 @@ const { BUSY, mountCard, named, setCardWidth } = require("../../helpers/browser-
 const TWO_ROBOTS = Object.freeze({ recording: "robot_choice", from: "Rocky could start the studio while Dusty cleans" });
 const WAITING = "Studio";
 const RUNNING = "Dining Room";
+
+// Rocky cleans the studio with the queue running: the panel offers pause and end.
+const QUEUE_RUNNING = Object.freeze({ recording: "queue_controls", from: "The library job is next" });
 
 // Boxes of the row shown under `name`, its main button and its action buttons in card
 // coordinates.
@@ -76,22 +80,21 @@ test.describe("with a mouse", () => {
     expect(running.actions[0].width).toBeGreaterThanOrEqual(40);
   });
 
-  // Release and lock toggle in one place: cards side by side put their action rows on one line.
-  test("room cards side by side keep their actions on one line", async ({ page }) => {
+  // LAY-15: a card side by side with a taller one is not stretched; it ends with its actions.
+  test("room cards keep their own height and end with their actions", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, width: 680, config: { start_view: "rooms" } });
-    const bottoms = await card.evaluate((element) => [...element.shadowRoot.querySelectorAll(".voc-room")].map((room) => ({
-      top: room.getBoundingClientRect().top,
-      toggle: room.querySelector(".voc-room-toggle").getBoundingClientRect().bottom,
-    })));
-    const rows = Map.groupBy(bottoms, (room) => Math.round(room.top));
-    expect([...rows.values()].some((row) => row.length > 1)).toBe(true);
-    for (const row of rows.values()) {
-      expect(Math.max(...row.map((room) => room.toggle)) - Math.min(...row.map((room) => room.toggle))).toBeLessThanOrEqual(1);
-    }
+    const rooms = await card.evaluate((element) => [...element.shadowRoot.querySelectorAll(".voc-room")].map((room) => {
+      const box = room.getBoundingClientRect();
+      const padding = Number.parseFloat(getComputedStyle(room).paddingBottom);
+      return { top: box.top, height: box.height, end: box.bottom - padding - room.querySelector(".voc-room-actions").getBoundingClientRect().bottom };
+    }));
+    const rows = [...Map.groupBy(rooms, (room) => Math.round(room.top)).values()];
+    expect(rows.some((row) => row.length > 1 && new Set(row.map((room) => Math.round(room.height))).size > 1), "a row with cards of different heights").toBe(true);
+    for (const room of rooms) expect(Math.abs(room.end), "the actions end the card").toBeLessThanOrEqual(1);
   });
 
-  // The bar belongs to the narrow tier: it switches exactly where the primary action drops its
-  // label. A single view has no tab strip, so only the tier can hide that label.
+  // The bar belongs to the narrow tier: it appears exactly where the card's inner width (inside its
+  // border, the width the container queries see) falls below 560 px.
   test("the bar switches with the narrow tier", async ({ page }) => {
     const card = await mountCard(page, { ...TWO_ROBOTS, width: 600, config: { views: ["queue"] } });
     const seen = new Set();
@@ -99,13 +102,47 @@ test.describe("with a mouse", () => {
       await setCardWidth(page, width);
       const { main, actions } = await rowGeometry(card, WAITING);
       const bar = actions[0].top >= main.bottom - 1;
-      const narrowTier = await card.locator(".voc-primary-action .voc-button-label").evaluate((node) => node.getBoundingClientRect().width <= 1);
-      expect(bar, `at ${width}px`).toBe(narrowTier);
+      expect(bar, `at ${width}px`).toBe(await card.locator("ha-card").evaluate((node) => node.clientWidth < 560));
       seen.add(bar);
     }
     expect([...seen].sort()).toEqual([false, true]);
   });
 });
+
+// LAY-10, LAY-21, UI-24: on every tier the queue controls keep their labels and stay inside the
+// panel, and neither they nor the figure cover the run state.
+for (const language of ["en", "de"]) {
+  test(`the panel's queue controls keep their labels and leave the run state free (${language})`, async ({ page }) => {
+    const card = await mountCard(page, { ...QUEUE_RUNNING, width: 900, config: { language } });
+    for (const width of [900, 640, 420, 380, 320]) {
+      await setCardWidth(page, width);
+      const at = await card.evaluate((element) => {
+        const box = (node) => {
+          const rect = node.getBoundingClientRect();
+          return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+        };
+        const root = element.shadowRoot;
+        return {
+          panel: box(root.querySelector(".voc-panel")),
+          figure: box(root.querySelector(".voc-panel-headline")),
+          status: [...root.querySelectorAll(".voc-panel-status > *")].map(box),
+          controls: [...root.querySelectorAll(".voc-panel-control .voc-button")].map((node) => ({ ...box(node), label: node.querySelector(".voc-button-label").getBoundingClientRect().width })),
+        };
+      });
+      const apart = (a, b) => a.right <= b.left + 0.5 || b.right <= a.left + 0.5 || a.bottom <= b.top + 0.5 || b.bottom <= a.top + 0.5;
+      expect(at.controls.length, `at ${width}px`).toBe(2);
+      expect(at.status.length).toBeGreaterThan(0);
+      for (const control of at.controls) {
+        expect(control.label, `a labelled control at ${width}px`).toBeGreaterThan(20);
+        expect(control.left, `inside the panel at ${width}px`).toBeGreaterThanOrEqual(at.panel.left);
+        expect(control.right, `inside the panel at ${width}px`).toBeLessThanOrEqual(at.panel.right);
+        expect(apart(control, at.figure), `beside the figure at ${width}px`).toBe(true);
+        for (const line of at.status) expect(apart(control, line), `clear of the run state at ${width}px`).toBe(true);
+      }
+      for (const line of at.status) expect(apart(at.figure, line), `figure and run state at ${width}px`).toBe(true);
+    }
+  });
+}
 
 test.describe("with touch", () => {
   test.use({ hasTouch: true });

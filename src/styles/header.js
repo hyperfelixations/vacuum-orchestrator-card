@@ -1,5 +1,6 @@
 // Header parts and the warning block (RCC header slice). Absent header columns are removed
-// through `data-parts` on the root, never through `:has()`.
+// through `data-parts` on the root, never through `:has()`. A card without tabs carries its
+// primary action at the end of the header row, in an implicit column after the present parts.
 
 export const HEADER_CSS = `
 .voc-header {
@@ -36,6 +37,7 @@ export const HEADER_CSS = `
 .voc-root[data-parts="pill"] .voc-status-pill { justify-self: end; }
 
 .voc-title-block { min-width: 0; }
+.voc-header-action { grid-row: 1; grid-column: -1; display: flex; }
 
 .voc-title {
   font-size: 21px;

@@ -1,7 +1,7 @@
 // Robots view: robot cards with live state, notes, capabilities and map picture.
 
 export const ROBOTS_CSS = `
-.voc-robot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 8px; }
+.voc-robot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); align-items: start; gap: 8px; }
 .voc-robot { display: grid; gap: 8px; align-content: start; min-width: 0; padding: 10px 10px 10px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); }
 .voc-robot-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .voc-robot-icon { display: flex; flex: none; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 12px; background: var(--voc-panel); border: 1px solid var(--voc-hairline); color: var(--voc-muted); }

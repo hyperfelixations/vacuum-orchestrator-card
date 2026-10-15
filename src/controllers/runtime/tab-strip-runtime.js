@@ -1,13 +1,15 @@
-// Keeps every view reachable when the tab row does not fit. Step by step the primary action, the
-// inactive tabs and then all tabs drop their visible labels (`data-compact` "action", "labels",
-// "icons" on the row; names stay for assistive technology); if it still does not fit the strip
+// Keeps every view reachable when the tab row does not fit. Step by step the inactive tabs and
+// then the primary action drop their visible labels (`data-compact` "labels", "action" on the row;
+// names stay for assistive technology). The active tab keeps its label, the only place the card
+// names the view on screen. The action's slot holds the widest primary action of the shown views
+// (card shell), so every view gives way at the same width. If the row still does not fit the strip
 // scrolls (Material's scrollable tabs): an edge fades where more tabs lie beyond it, and the active
-// tab is brought into view when it changes or the card resizes. The page itself never scrolls.
-// See internal dev doc §9 "Reiterleiste".
+// tab is brought into view when it changes or the card resizes. The page itself never scrolls. See
+// internal dev doc §9 "Reiterleiste".
 
 const EDGE_PX = 1;
 const REVEAL_PAD_PX = 28;
-const COMPACT_LEVELS = Object.freeze(["action", "labels", "icons"]);
+const COMPACT_LEVELS = Object.freeze(["labels", "action"]);
 
 export function stripOverflow({ scrollLeft, clientWidth, scrollWidth }) {
   return { start: scrollLeft > EDGE_PX, end: scrollLeft + clientWidth < scrollWidth - EDGE_PX };

@@ -18,6 +18,13 @@ function primaryAction(tabs, definitions, model, texts, context) {
   return { action: spec.action, icon: spec.icon, label: t(texts, spec.labelKey), decision: decide(context, { operation: spec.operation, target: spec.target ?? null }) };
 }
 
+// Icon and label of the primary action of every shown view: the tab row reserves the widest, so
+// every view gives way at the same width.
+function primaryReserve(tabs, definitions, texts) {
+  const keys = new Set((tabs.tabs || []).filter((tab) => tab.available).map((tab) => tab.key));
+  return definitions.filter((entry) => keys.has(entry.key) && entry.primary).map((entry) => ({ icon: entry.primary.icon, label: t(texts, entry.primary.labelKey) }));
+}
+
 function noticeFor(ui, texts) {
   const notice = ui?.notice;
   if (!notice) return null;
@@ -52,6 +59,7 @@ export function buildCardViewModel({ model = {}, config = {}, texts, ui = {}, ta
     panel: ready && !page ? buildPanel({ model, config, texts, context }) : { visible: false },
     tabs: { ...tabs, visible: ready && !page && tabs.visible },
     primary: ready && !page ? primaryAction(tabs, definitions, model, texts, context) : null,
+    primaryReserve: ready && !page && tabs.visible ? primaryReserve(tabs, definitions, texts) : [],
     body,
     dialog: ready && dialog ? { kind: "overlay", key: dialog.key, content: dialog.content } : null,
     scheme: scheme === "dark" ? "dark" : "light",

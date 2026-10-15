@@ -1,8 +1,8 @@
-// Rooms view: room cards with due bars, release state, robots and conditions; the actions sit
-// on the card floor, so cards side by side keep them on one line.
+// Rooms view: room cards with due bars, release state, robots and conditions. Each card keeps
+// its own height and ends with its actions (LAY-15).
 
 export const ROOMS_CSS = `
-.voc-room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.voc-room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); align-items: start; gap: 8px; }
 .voc-room { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 10px 10px 8px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); }
 .voc-room[data-excluded="true"] { opacity: .65; }
 .voc-room-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -30,7 +30,7 @@ export const ROOMS_CSS = `
 .voc-room-meta-item { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
 .voc-room-meta-item ha-icon { --mdc-icon-size: 14px; }
 .voc-room-warning { color: var(--voc-warning-ink); font-weight: 750; }
-.voc-room-actions { display: flex; flex-wrap: wrap; gap: var(--voc-target-gap); margin: auto -4px 0; }
+.voc-room-actions { display: flex; flex-wrap: wrap; gap: var(--voc-target-gap); margin: 0 -4px; }
 .voc-room-toggle { margin-left: auto; }
 .voc-room-actions .voc-button { padding: 4px 10px; }
 .voc-view-footer { display: flex; justify-content: center; }

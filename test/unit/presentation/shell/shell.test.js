@@ -212,9 +212,10 @@ test("the card view model puts onboarding, a page or the active view into the bo
   const view = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: { key: "queue" } });
   assert.equal(view.body.kind, "view");
   assert.equal(view.primary.action, "create-job");
+  assert.deepEqual(view.primaryReserve.map((entry) => entry.label), ["Add job", "Add room", "Add robot", "New template"], "the tab row reserves the action of every shown view");
   const page = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: {}, page: { key: "job-editor", content: {} } });
   assert.equal(page.body.kind, "overlay");
-  assert.equal(page.primary, null, "a page has its own actions");
+  assert.deepEqual([page.primary, page.primaryReserve], [null, []], "a page has its own actions");
   assert.deepEqual([page.panel.visible, page.tabs.visible, page.dialog], [false, false, null]);
   const dialog = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: { key: "queue" }, dialog: { key: "confirm", content: {} }, scheme: "dark" });
   assert.deepEqual([dialog.body.kind, dialog.panel.visible, dialog.tabs.visible, dialog.primary.action], ["view", true, true, "create-job"], "the view stays below a dialog");

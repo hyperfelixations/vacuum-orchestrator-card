@@ -1,7 +1,7 @@
 // Templates view: one card per template with intent, state badges and its create action.
 
 export const TEMPLATES_CSS = `
-.voc-template-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 8px; }
+.voc-template-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); align-items: start; gap: 8px; }
 .voc-template { display: grid; gap: 8px; align-content: start; min-width: 0; padding: 10px 10px 10px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); }
 .voc-template[data-tone="muted"] { opacity: .72; }
 .voc-template-head { display: flex; align-items: center; gap: 10px; min-width: 0; }

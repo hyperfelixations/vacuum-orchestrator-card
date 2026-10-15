@@ -501,6 +501,9 @@ test.describe("shell variants", () => {
     const card = await mountCard(page, { ...BUSY, config: { ...BASE, views: ["rooms"], title: "Downstairs", icon: "mdi:home-floor-0", show: { panel: false } } });
     await expect(card.locator(".voc-tabs")).toHaveCount(0);
     await expect(card.locator(".voc-title")).toHaveText("Downstairs");
+    const [pill, action] = [await card.locator(".voc-status-pill").boundingBox(), await card.locator(".voc-header-action").boundingBox()];
+    expect(Math.abs(pill.y + pill.height / 2 - (action.y + action.height / 2)), "the primary action ends the header row").toBeLessThanOrEqual(1);
+    expect(action.x).toBeGreaterThan(pill.x + pill.width);
     await shot(page, "single-view-medium-light.png", MEDIUM);
   });
 

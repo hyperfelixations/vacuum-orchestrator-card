@@ -247,28 +247,28 @@ test("the tab strip runtime marks overflow after a render and on scroll, and obs
   assert.equal(observing, 0);
 });
 
-test("the tab row drops the action label, then inactive labels, then all labels, measuring from the labelled row each time", async () => {
+test("the tab row drops the inactive labels, then the action label, keeps the active label and scrolls, measuring from the labelled row each time", async () => {
   const { createTabStripRuntime } = await import("../../../src/controllers/runtime/tab-strip-runtime.js");
   const dom = new JSDOM('<!doctype html><div id="host"></div>');
   const root = dom.window.document.getElementById("host").attachShadow({ mode: "open" });
   root.innerHTML = '<div class="voc-tab-row"><div class="voc-tabs"><button role="tab" data-view="queue" aria-selected="true"></button></div></div>';
   const row = root.querySelector(".voc-tab-row");
   const strip = root.querySelector(".voc-tabs");
-  const widths = { labelled: 460, action: 420, labels: 340, icons: 280 };
+  const widths = { labelled: 460, labels: 400, action: 340 };
   let clientWidth = 300;
   Object.defineProperty(strip, "clientWidth", { get: () => clientWidth });
   Object.defineProperty(strip, "scrollWidth", { get: () => Math.max(clientWidth, widths[row.getAttribute("data-compact") || "labelled"]) });
   Object.defineProperty(strip, "scrollLeft", { get: () => 0, set: () => {} });
   const runtime = createTabStripRuntime({ root, platform: { observeResize: () => () => {} } });
   const level = () => row.getAttribute("data-compact");
-  for (const [width, expected] of [[300, "icons"], [350, "labels"], [430, "action"], [500, null]]) {
+  for (const [width, expected] of [[350, "action"], [420, "labels"], [500, null]]) {
     clientWidth = width;
     runtime.sync();
     assert.equal(level(), expected, `at ${width}`);
   }
   clientWidth = 200;
   runtime.sync();
-  assert.deepEqual([level(), strip.hasAttribute("data-overflow-end")], ["icons", true]);
+  assert.deepEqual([level(), strip.hasAttribute("data-overflow-end")], ["action", true], "the active tab keeps its label; the strip scrolls");
 });
 
 test("the tab row is measured again once a web font has loaded, until it disconnects", async () => {
@@ -287,7 +287,7 @@ test("the tab row is measured again once a web font has loaded, until it disconn
   const runtime = createTabStripRuntime({ root, platform: { observeResize: () => () => {} } });
   runtime.connect();
   runtime.sync();
-  assert.equal(row.getAttribute("data-compact"), "action", "the fallback font is wider");
+  assert.equal(row.getAttribute("data-compact"), "labels", "the fallback font is wider");
   labelled = 470;
   fonts.dispatchEvent(new dom.window.Event("loadingdone"));
   assert.equal(row.hasAttribute("data-compact"), false, "the loaded font fits");

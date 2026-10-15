@@ -53,9 +53,10 @@ test("a control the user may not use keeps its explanation and stays reachable",
   await expect(edit).toBeFocused();
 });
 
-// A strip that does not fit first drops the inactive labels, then the active one, and only then
-// scrolls (Material's scrollable tabs): an edge fades where more tabs lie, and the active tab is
-// always brought fully into view, whether chosen by key, by start view or by narrowing.
+// A row that does not fit first drops the inactive labels, then the primary action's label; the
+// active tab keeps its label and the strip scrolls (Material's scrollable tabs): an edge fades
+// where more tabs lie, and the active tab is always brought fully into view, whether chosen by
+// key, by start view or by narrowing.
 const tabInView = (card, view) => card.evaluate((element, key) => {
   const list = element.shadowRoot.querySelector(".voc-tabs").getBoundingClientRect();
   const tab = element.shadowRoot.querySelector(`[role=tab][data-view="${key}"]`).getBoundingClientRect();
@@ -74,11 +75,32 @@ test("long labels give way step by step, alike in every view", async ({ page }) 
   await card.locator('[role=tab][data-view="history"]').click();
   await expect(card.locator(".voc-primary-action")).toHaveCount(0);
   await expect(row, "a view without a primary action keeps the same tabs").toHaveAttribute("data-compact", "labels");
+  await card.locator('[role=tab][data-view="queue"]').click();
+  await setCardWidth(page, 440);
+  await expect(row).toHaveAttribute("data-compact", "action");
+  expect(await card.locator(".voc-primary-action .voc-button-label").evaluate((node) => node.getBoundingClientRect().width), "the action shows only its icon").toBeLessThanOrEqual(1);
+  await expect(card.locator(".voc-primary-action")).toHaveAccessibleName("Auftrag anlegen");
+  await card.locator('[role=tab][data-view="history"]').click();
   await setCardWidth(page, 320);
-  await expect(row).toHaveAttribute("data-compact", "icons");
+  await expect(card.locator('[role=tab][aria-selected="true"] .voc-tab-label'), "the active tab keeps its label").toBeVisible();
   await expect(card.locator('[role=tab][aria-selected="true"]')).toHaveAccessibleName("Verlauf");
-  await expect(card.locator(".voc-tabs")).not.toHaveAttribute("data-overflow-end");
-  for (const view of ["queue", "settings"]) expect(await tabInView(card, view), view).toBe(true);
+  await expect(card.locator(".voc-tabs"), "beyond that the strip scrolls").toHaveAttribute("data-overflow-end", "");
+  await expect.poll(() => tabInView(card, "history")).toBe(true);
+});
+
+// The action's slot holds the widest primary action of the shown views, so a view without an
+// action gives way at the same width as one with it: switching views never brings back or drops
+// the inactive labels.
+test("every view gives way at the same width, with or without an action", async ({ page }) => {
+  const card = await mountCard(page, { ...BUSY, width: 700 });
+  const row = card.locator(".voc-tab-row");
+  await expect(row).toHaveAttribute("data-compact", "labels");
+  await expect(card.locator(".voc-primary-action .voc-button-label")).toHaveText("Add job");
+  for (const view of ["history", "rooms", "settings", "queue"]) {
+    await card.locator(`[role=tab][data-view="${view}"]`).click();
+    await expect(row, view).toHaveAttribute("data-compact", "labels");
+    await expect(card.locator('[role=tab][aria-selected="true"] .voc-tab-label'), view).toBeVisible();
+  }
 });
 
 test.describe("with more tabs than fit even as icons", () => {

@@ -157,7 +157,7 @@ show:
 | `warnings` | `true` | The block under the header that names a problem with the configuration or the integration. |
 | `panel` | `true` | The block with the number of waiting jobs, the queue run and the robots. |
 | `queue_controls` | `true` | The start, pause or resume button and the end button in that block. |
-| `tabs` | `auto` | The tab row. `auto` shows it when there are at least two views; `true` always shows it; `false` never does. |
+| `tabs` | `auto` | The tab row. `auto` shows it when there are at least two views; `true` always shows it; `false` never does. Without it, the view's main action, such as **Add job**, sits at the end of the header. |
 | `unavailable_views` | `true` | Shows views the installed integration does not offer as dimmed tabs. |
 
 ### Views
