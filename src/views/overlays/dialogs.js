@@ -22,14 +22,14 @@ export const confirmOverlay = Object.freeze({
   build: ({ model, texts, overlay }) => buildConfirm({ model, texts, overlay }),
   render(context, vm) {
     const actions = `${button({ action: "back", label: context.t("action.keep"), variant: "quiet", extra: " data-autofocus" })}${button({ action: "confirm-command", label: vm.confirmLabel, iconName: vm.confirmIcon, variant: vm.tone === "danger" ? "danger" : "primary", decision: vm.pending ? { state: "disabled", reason: "command_pending" } : null })}`;
-    return dialog({ key: "confirm", title: vm.title, lead: vm.text, actions });
+    return dialog(context, { key: "confirm", title: vm.title, lead: vm.text, actions });
   },
 });
 
 // A choice before a command: going back on the left, the confirming action on the right.
 function choiceDialog(context, vm, { action, iconName, variant }) {
   const actions = `${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${button({ action, label: vm.confirmLabel, iconName, variant, decision: vm.pending ? { state: "disabled", reason: "command_pending" } : null })}`;
-  return dialog({ key: vm.key, title: vm.title, lead: vm.lead, content: `<div class="voc-form">${renderField(context, vm.field)}</div>`, actions });
+  return dialog(context, { key: vm.key, title: vm.title, lead: vm.lead, content: `<div class="voc-form">${renderField(context, vm.field)}</div>`, actions });
 }
 
 export const cancelJobOverlay = Object.freeze({
@@ -59,7 +59,7 @@ export const startJobOverlay = Object.freeze({
       .map((robot) => `<li data-key="robot:${e(robot.key)}">${button({ action: "start-job", args: { jobId: vm.jobId, robotId: robot.robotId, choose: false }, label: robot.name, iconName: "mdi:robot-vacuum", decision: vm.decision, reasonText: context.reason(vm.decision) })}${robot.note ? `<span class="voc-choice-note" data-eligible="${robot.eligible}">${icon(robot.eligible ? "mdi:check-circle-outline" : "mdi:information-outline")}${e(robot.note)}</span>` : ""}</li>`)
       .join("");
     const content = `${vm.loading ? loadingState(context) : ""}<ul class="voc-choices">${automatic}${robots}</ul>`;
-    return dialog({ key: "start-job", title: vm.title, lead: vm.lead, content, actions: button({ action: "back", label: context.t("action.back"), variant: "quiet" }) });
+    return dialog(context, { key: "start-job", title: vm.title, lead: vm.lead, content, actions: button({ action: "back", label: context.t("action.back"), variant: "quiet" }) });
   },
   css: DIALOGS_CSS,
 });
@@ -70,7 +70,7 @@ export const queueSettingsOverlay = Object.freeze({
   build: ({ texts, context, overlay }) => buildQueueSettings({ texts, context, overlay }),
   render(context, vm) {
     const actions = `${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-queue-settings", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
-    return dialog({ key: "queue-settings", title: vm.title, lead: context.t("queueSettings.lead"), invalid: vm.invalid, content: `<div class="voc-form">${renderField(context, vm.field)}</div>`, actions });
+    return dialog(context, { key: "queue-settings", title: vm.title, lead: context.t("queueSettings.lead"), invalid: vm.invalid, content: `<div class="voc-form">${renderField(context, vm.field)}</div>`, actions });
   },
 });
 
@@ -82,6 +82,6 @@ export const recoveryOverlay = Object.freeze({
     const confirm = renderField(context, { key: "overlay:confirmStopped", label: context.t("recovery.confirmLabel"), control: "switch", value: vm.confirmStopped, switchLabel: context.t("recovery.confirmSwitch"), hint: context.t("recovery.confirmHint") });
     const content = `<div class="voc-block" data-key="recovery-facts"><p class="voc-overlay-lead">${e(vm.reason)}</p><p class="voc-overlay-lead">${e(context.t("recovery.explanation"))}</p>${vm.open ? confirm : ""}</div>`;
     const actions = `${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${vm.open ? button({ action: "resolve-recovery", label: context.t("recovery.resolve"), iconName: "mdi:check", variant: "primary", decision: vm.decision, reasonText: context.reason(vm.decision) }) : ""}`;
-    return dialog({ key: "recovery", title: vm.title, content, actions });
+    return dialog(context, { key: "recovery", title: vm.title, content, actions });
   },
 });

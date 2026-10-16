@@ -69,6 +69,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
       getModel: () => this._model,
       getConfig: () => this._config,
       platform: this._platform,
+      isDialog,
     });
     this._interaction = createInteractionRuntime({ root: this.shadowRoot, onAction: (event) => this._onInteraction(event) });
     this._keyboard = createKeyboardRuntime({
@@ -317,7 +318,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     const build = (entry) => {
       const overlayDefinition = entry ? overlayFor(entry.kind) : null;
       if (!overlayDefinition || model.phase !== "ready") return null;
-      return { key: overlayDefinition.key, content: overlayDefinition.build({ model, texts, context, overlay: entry, config, ui: this._ui.snapshot }) };
+      return { key: overlayDefinition.key, content: overlayDefinition.build({ model, texts, context, overlay: entry, config, ui: this._ui.snapshot }), layer: { busy: entry.busy === true, failure: entry.failure ?? null } };
     };
     const { page, dialog } = this._layers();
     const viewModel = buildCardViewModel({ model, config, texts, ui: this._ui.snapshot, tabs, definitions: VIEWS, context, viewContent, page: build(page), dialog: build(dialog), scheme: this._scheme() });

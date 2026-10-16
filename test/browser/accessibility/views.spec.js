@@ -1,8 +1,8 @@
 // Accessibility of the views and pages in a real engine: no interactive element inside another,
 // pages as named regions, fields with label, error and description, focus that moves into a page
 // or card dialog and back to the control that opened it, a dialog that keeps focus while the
-// card below it is inert, an off switch at 3:1 against the card, and controls that never take the
-// error colour.
+// card below it is inert, a confirmation that waits for its answer in place, an off switch at 3:1
+// against the card, and controls that never take the error colour.
 
 const { test, expect } = require("../../helpers/playwright.js");
 const { BUSY, mountCard, named } = require("../../helpers/browser-helpers.js");
@@ -98,9 +98,10 @@ test("a card dialog takes focus over an inert card; Escape leaves it and focus r
   expect(await page.evaluate(() => window.vocHarness.backend.calls.filter((message) => message.type === "call_service").length)).toBe(0);
 });
 
+// Deleting a waiting job holds it while the dialog is open, and leaving gives the hold back.
 test("a confirmation puts focus on its safe answer", async ({ page }) => {
-  const card = await mountCard(page, BUSY);
-  await named(card, ".voc-job", "Conservatory", ".voc-job-main").click();
+  const card = await mountCard(page, { recording: "queue_controls", from: "The library job is a template" });
+  await named(card, ".voc-job", "Dining Room, Studio, Library, Conservatory", ".voc-job-main").click();
   const remove = card.locator('[data-key="overlay:job-detail"] [data-action="delete-job"]');
   await remove.focus();
   await page.keyboard.press("Enter");
@@ -109,6 +110,31 @@ test("a confirmation puts focus on its safe answer", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(card.locator('[data-key="overlay:confirm"]')).toHaveCount(0);
   await expect(remove).toBeFocused();
+  await expect.poll(() => page.evaluate(() => window.vocHarness.backend.calls.filter((message) => message.command === "release_job_hold").length)).toBe(1);
+});
+
+// UI-16: a confirmation waiting for its answer keeps its layout, and every control in it waits.
+test("a confirmation waiting for its answer keeps its place and locks every control", async ({ page }) => {
+  const card = await mountCard(page, { recording: "queue_controls", from: "The job for every room stays" });
+  await named(card, ".voc-job", "Dining Room, Studio, Library, Conservatory", ".voc-job-main").click();
+  await card.locator('[data-key="overlay:job-detail"] [data-action="delete-job"]').click();
+  const dialog = card.locator('[data-key="overlay:confirm"]');
+  const confirm = dialog.locator('[data-action="confirm-command"]');
+  await expect(confirm).toBeEnabled();
+  const boxes = () => dialog.evaluate((node) => [node, ...node.querySelectorAll("h2, .voc-dialog-scroll, .voc-dialog-actions, button")].map((part) => {
+    const box = part.getBoundingClientRect();
+    return [box.x, box.y, box.width, box.height].map(Math.round);
+  }));
+  const before = await boxes();
+  await page.evaluate(() => {
+    window.vocRelease = window.vocHarness.backend.hold();
+  });
+  await confirm.click();
+  await expect(dialog).toHaveAttribute("aria-busy", "true");
+  for (const button of await dialog.locator("button").all()) await expect(button).toBeDisabled();
+  expect(await boxes()).toEqual(before);
+  await page.evaluate(() => window.vocRelease());
+  await expect(dialog).toHaveCount(0);
 });
 
 test("Tab stays inside a dialog", async ({ page }) => {

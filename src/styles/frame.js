@@ -36,8 +36,7 @@ ha-card[data-frame] .voc-body[data-body^="onboarding:"] > .voc-onboarding { flex
 
 ha-card[data-frame] .voc-body[data-body^="overlay:"] { overflow-y: hidden; display: flex; flex-direction: column; }
 ha-card[data-frame] .voc-body[data-body^="overlay:"] > .voc-overlay { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-ha-card[data-frame] .voc-overlay > * { flex: none; }
-ha-card[data-frame] .voc-overlay > .voc-overlay-scroll {
+ha-card[data-frame] .voc-layer > .voc-overlay-scroll {
   flex: 1 1 auto;
   align-content: start;
   margin: -4px calc(-1 * var(--voc-pad-x));

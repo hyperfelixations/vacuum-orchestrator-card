@@ -1,8 +1,10 @@
 // Overlay pages (detail, editors, dialogs) and the content blocks views share: section headings,
-// panels, empty and loading states, onboarding.
+// panels, empty and loading states, onboarding. A page's or dialog's controls sit in one
+// `fieldset` (`.voc-layer`) that adds no box, so they are disabled together while its command waits.
 
 export const OVERLAY_CSS = `
 .voc-overlay { display: grid; gap: 12px; min-width: 0; }
+.voc-layer { display: contents; }
 .voc-overlay-scroll { display: grid; gap: 12px; min-width: 0; }
 .voc-overlay-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .voc-overlay-title:focus { outline: none; }

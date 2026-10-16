@@ -20,7 +20,8 @@ follows your dashboard's light or dark theme.
   waiting jobs, start one right away, retry, edit or delete jobs, or save one as
   a template
 - Cancelling a running job asks whether the robot returns to its dock or stays
-  where it is
+  where it is; a waiting job does not start while you are asked whether to
+  delete it
 - A job editor that shows only the settings the cleaning mode uses and the
   levels your robots offer for the chosen rooms, and starts a new job at once
   when a robot is free

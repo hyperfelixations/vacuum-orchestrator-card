@@ -35,6 +35,28 @@ test("ui state keeps the view, an overlay stack, pages, choices and the notice",
   assert.ok(Object.isFrozen(ui.snapshot));
 });
 
+// UI-16: an open overlay keeps its id, so a command's answer reaches the page or dialog it came
+// from wherever that lies in the stack, and nothing once it is closed.
+test("an open overlay is found and changed by its id, and the top layers close together", async () => {
+  const { createUIState } = await import("../../../src/controllers/runtime/ui-state.js");
+  const ui = createUIState();
+  ui.openOverlay({ kind: "job-detail" });
+  const detail = ui.overlay;
+  ui.openOverlay({ kind: "job-editor" });
+  ui.openOverlay({ kind: "confirm" });
+  assert.deepEqual(ui.snapshot.overlays.map((overlay) => overlay.id), [1, 2, 3]);
+  ui.patchOverlay(detail.id, { busy: true });
+  assert.deepEqual([ui.find(detail.id).busy, ui.overlay.kind], [true, "confirm"], "below the top as well");
+  ui.closeOverlay(2);
+  assert.deepEqual(ui.snapshot.overlays.map((overlay) => overlay.kind), ["job-detail"]);
+  const before = ui.snapshot;
+  assert.equal(ui.patchOverlay(3, { busy: true }), before, "a closed overlay takes nothing");
+  assert.equal(ui.find(3), null);
+  ui.closeOverlay(5);
+  ui.openOverlay({ kind: "job-detail" });
+  assert.equal(ui.overlay.id, 4, "an id is never given twice");
+});
+
 test("a focus request is data for the next render, not a reason for one", async () => {
   const { createUIState } = await import("../../../src/controllers/runtime/ui-state.js");
   const ui = createUIState();

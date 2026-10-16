@@ -7,11 +7,20 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const W = require("../../helpers/voi-records.js");
 
+// An overlay as it shows, without the id it has while open.
+const shown = ({ id: _id, ...overlay }) => overlay;
+// An answer the test gives when it chooses.
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => (resolve = done));
+  return { promise, resolve };
+}
+
 // The integration's verdict as the session hands it on: dotted paths and codes.
 const rejects = (...errors) => ({ valid: false, errors: errors.map(([path, code]) => ({ path, code })) });
 const ACCEPTS = Object.freeze({ valid: true, errors: [] });
 
-async function setup({ config = {}, answer = () => ({ ok: true, data: null }), verdict = () => ACCEPTS, model: extra = {}, slots = {} } = {}) {
+async function setup({ config = {}, answer = () => ({ ok: true, data: null }), verdict = () => ACCEPTS, model: extra = {}, slots = {}, isDialog = (kind) => ["confirm", "cancel-job", "queue-end", "start-job"].includes(kind) } = {}) {
   const { createActionRouter } = await import("../../../src/controllers/runtime/action-router.js");
   const { createUIState } = await import("../../../src/controllers/runtime/ui-state.js");
   const { normalizeJob } = await import("../../../src/domain/job.js");
@@ -47,7 +56,7 @@ async function setup({ config = {}, answer = () => ({ ok: true, data: null }), v
     robotsLive: { "robot-rocky": { roles: { battery: { entityId: "sensor.rocky_battery" } } } },
     ...extra,
   };
-  const router = createActionRouter({ ui, getSession: () => session, getModel: () => model, getConfig: () => config, platform: { navigate: (path) => navigated.push(path) } });
+  const router = createActionRouter({ ui, getSession: () => session, getModel: () => model, getConfig: () => config, platform: { navigate: (path) => navigated.push(path) }, isDialog });
   return { router, ui, commands, checked, navigated };
 }
 
@@ -111,7 +120,7 @@ test("cancelling a started job asks where its robot goes; returning home is the 
   const running = { data: { jobs: [normalizeJob(W.wireJob({ job_id: "job-run", state: "running" }))] } };
   const started = await setup({ slots: { openJobs: running } });
   started.router.handle("cancel-job", { jobId: "job-run" });
-  assert.deepEqual({ ...started.ui.overlay }, { kind: "cancel-job", jobId: "job-run", afterCancel: "return_to_dock" });
+  assert.deepEqual(shown(started.ui.overlay), { kind: "cancel-job", jobId: "job-run", afterCancel: "return_to_dock" });
   started.router.handle("set-field", { field: "overlay:afterCancel", value: "stay" });
   await started.router.handle("confirm-cancel");
   assert.deepEqual(started.commands[0], { operation: "cancel_job", parameters: { job_id: "job-run", after_cancel: "stay" }, target: "job:job-run", invalidates: ["queue", "openJobs", "jobLog", "job", "execution", "trace"] });
@@ -136,7 +145,7 @@ test("ending the queue asks how started jobs end, and only confirms without any"
   assert.deepEqual([idle.commands[0].operation, idle.commands[0].parameters, idle.commands[0].target], ["end_queue", {}, "queue"]);
   const running = await setup({ slots: { openJobs: { data: { jobs: [normalizeJob(W.wireJob({ job_id: "job-run", state: "dispatching" }))] } } } });
   running.router.handle("end-queue");
-  assert.deepEqual({ ...running.ui.overlay }, { kind: "queue-end", choice: "finish" });
+  assert.deepEqual(shown(running.ui.overlay), { kind: "queue-end", choice: "finish" });
   running.router.handle("set-field", { field: "overlay:choice", value: "cancel_later" });
   await running.router.handle("confirm-end-queue");
   assert.equal(running.commands.length, 0, "an unknown choice sends nothing");
@@ -151,7 +160,7 @@ test("ending the queue asks how started jobs end, and only confirms without any"
 test("the setup opens as a page, and a setup step can switch the view", async () => {
   const { router, ui } = await setup();
   router.handle("open-setup");
-  assert.deepEqual({ ...ui.overlay }, { kind: "setup-guide" });
+  assert.deepEqual(shown(ui.overlay), { kind: "setup-guide" });
   router.handle("show-view", { view: "rooms" });
   assert.deepEqual([ui.snapshot.view, ui.overlay], ["rooms", null]);
 });
@@ -170,14 +179,131 @@ test("confirm_destructive: false sends destructive commands at once", async () =
   assert.deepEqual(commands.map((command) => command.operation), ["delete_job"]);
 });
 
+const HELD = (operation) => (operation === "hold_job" ? { ok: true, data: { hold_id: "hold-1" } } : { ok: true, data: null });
+
 test("deleting from the editor opened on the detail page leaves both pages", async () => {
-  const { router, ui } = await setup();
+  const { router, ui, commands } = await setup({ answer: HELD });
   router.handle("open-job", { jobId: "job-1" });
   router.handle("edit-job", { jobId: "job-1" });
-  router.handle("delete-job", { jobId: "job-1" });
+  await router.handle("delete-job", { jobId: "job-1" });
   assert.deepEqual(ui.snapshot.overlays.map((overlay) => overlay.kind), ["job-detail", "job-editor", "confirm"]);
   await router.handle("confirm-command");
   assert.deepEqual(ui.snapshot.overlays, []);
+  assert.deepEqual(commands.at(-1).parameters, { job_id: "job-1", hold_id: "hold-1" });
+});
+
+// JOB-22, QUE-11: the dialog holds a waiting job; leaving it releases the hold, which restarts
+// the start delay, and deleting sends the hold along.
+test("a waiting job is held while its deletion is confirmed", async () => {
+  const { router, ui, commands } = await setup({ answer: HELD });
+  router.handle("open-job", { jobId: "job-1" });
+  await router.handle("delete-job", { jobId: "job-1" });
+  assert.deepEqual(commands.map((command) => [command.operation, command.parameters, command.target]), [["hold_job", { job_id: "job-1", purpose: "confirm" }, "job:job-1"]]);
+  assert.equal(ui.overlay.holdId, "hold-1");
+  router.handle("back");
+  assert.deepEqual(ui.snapshot.overlays.map((overlay) => overlay.kind), ["job-detail"]);
+  assert.deepEqual(commands.at(-1), { operation: "release_job_hold", parameters: { hold_id: "hold-1" }, target: "hold:hold-1", invalidates: ["queue", "openJobs", "jobLog", "job", "execution", "trace"] });
+  await router.handle("delete-job", { jobId: "job-1" });
+  await router.handle("confirm-command");
+  assert.deepEqual(commands.slice(-2).map((command) => [command.operation, command.parameters]), [["hold_job", { job_id: "job-1", purpose: "confirm" }], ["delete_job", { job_id: "job-1", hold_id: "hold-1" }]]);
+  assert.equal(ui.overlay, null);
+});
+
+test("a finished job is deleted without a hold, and a hold that comes after its dialog is given back", async () => {
+  const { normalizeJob } = await import("../../../src/domain/job.js");
+  const done = { data: { jobs: [normalizeJob(W.wireJob({ job_id: "job-done", state: "succeeded" }))] } };
+  const history = await setup({ answer: HELD, slots: { jobLog: done } });
+  await history.router.handle("delete-job", { jobId: "job-done" });
+  await history.router.handle("confirm-command");
+  assert.deepEqual(history.commands.map((command) => [command.operation, command.parameters]), [["delete_job", { job_id: "job-done" }]]);
+  const late = deferred();
+  const slow = await setup({ answer: (operation) => (operation === "hold_job" ? late.promise : { ok: true, data: null }) });
+  const holding = slow.router.handle("delete-job", { jobId: "job-1" });
+  slow.router.handle("back");
+  assert.equal(slow.ui.overlay, null, "the dialog can be left before the hold arrives");
+  late.resolve({ ok: true, data: { hold_id: "hold-late" } });
+  await holding;
+  assert.deepEqual(slow.commands.map((command) => [command.operation, command.parameters]), [["hold_job", { job_id: "job-1", purpose: "confirm" }], ["release_job_hold", { hold_id: "hold-late" }]]);
+});
+
+test("a deletion whose hold lapsed asks again under a new hold, beside the integration's reason", async () => {
+  const expired = { ok: false, code: "hold_expired", detail: null, channel: "service" };
+  let holds = 0;
+  let deletions = 0;
+  const answer = (operation) => {
+    if (operation === "hold_job") return { ok: true, data: { hold_id: `hold-${++holds}` } };
+    return ++deletions === 1 ? expired : { ok: true, data: null };
+  };
+  const { router, ui, commands } = await setup({ answer });
+  router.handle("open-job", { jobId: "job-1" });
+  await router.handle("delete-job", { jobId: "job-1" });
+  await router.handle("confirm-command");
+  assert.deepEqual([ui.overlay.kind, ui.overlay.failure, ui.overlay.holdId, ui.snapshot.notice], ["confirm", expired, "hold-2", null]);
+  await router.handle("confirm-command");
+  assert.deepEqual(commands.map((command) => [command.operation, command.parameters.hold_id]), [["hold_job", undefined], ["delete_job", "hold-1"], ["hold_job", undefined], ["delete_job", "hold-2"]]);
+  assert.equal(ui.overlay, null);
+});
+
+// UI-16: a command belongs to the page or dialog it was sent from; it waits for the answer with
+// every control locked and, on success, leaves only while it is still on top.
+test("a confirmation waits for its answer, locked, and keeps a refusal itself", async () => {
+  const refusal = { ok: false, code: "job_not_deletable", detail: null, channel: "service" };
+  const answers = [deferred(), deferred()];
+  const { router, ui, commands } = await setup({ config: {}, answer: () => answers[commands.length - 1].promise, slots: { jobLog: { data: { jobs: [] } } } });
+  router.handle("open-job", { jobId: "job-run" });
+  router.handle("delete-job", { jobId: "job-run" });
+  const sending = router.handle("confirm-command");
+  assert.deepEqual([ui.overlay.kind, ui.overlay.busy], ["confirm", true]);
+  router.handle("back");
+  router.input("overlay:choice", "x");
+  router.handle("confirm-command");
+  assert.deepEqual([ui.overlay.kind, ui.overlay.choice, commands.length], ["confirm", undefined, 1], "nothing reacts but the answer");
+  router.handle("dismiss-notice");
+  answers[0].resolve(refusal);
+  await sending;
+  assert.deepEqual([ui.overlay.kind, ui.overlay.busy, ui.overlay.failure, ui.snapshot.notice, ui.consumeFocus()], ["confirm", false, refusal, null, "#voc-dialog-title"]);
+  const again = router.handle("confirm-command");
+  assert.equal(ui.overlay.failure, null, "a new attempt starts without the old refusal");
+  answers[1].resolve({ ok: true, data: null });
+  await again;
+  assert.equal(ui.overlay, null);
+});
+
+test("a late answer leaves only the page that sent it, and only while it is on top", async () => {
+  const answer = deferred();
+  const { router, ui } = await setup({ answer: () => answer.promise });
+  router.handle("edit-job", { jobId: "job-1" });
+  router.handle("set-field", { field: "passes", value: 3 });
+  const saving = router.handle("save-draft");
+  await new Promise((resolve) => setImmediate(resolve));
+  const editor = ui.overlay;
+  assert.equal(editor.busy, true);
+  ui.openOverlay({ kind: "confirm" });
+  answer.resolve({ ok: true, data: null });
+  await saving;
+  assert.deepEqual(ui.snapshot.overlays.map((overlay) => [overlay.kind, overlay.busy ?? false]), [["job-editor", false], ["confirm", false]], "the page on top stays");
+  assert.equal(ui.snapshot.notice.messageKey, "notice.jobUpdated");
+});
+
+// UI-17: without an answer the command may have taken effect: the card says so, the session
+// reloads, nothing is sent again and the page with its draft stays.
+test("a command without an answer is reported as unknown and the page stays", async () => {
+  const lost = { ok: false, code: "timeout", detail: "15000 ms", channel: "service" };
+  const page = await setup({ answer: () => lost });
+  page.router.handle("edit-job", { jobId: "job-1" });
+  page.router.handle("set-field", { field: "passes", value: 3 });
+  await page.router.handle("save-draft");
+  assert.deepEqual([page.ui.overlay.kind, page.ui.overlay.busy, page.ui.overlay.draft.passes, page.commands.length], ["job-editor", false, 3, 1]);
+  assert.deepEqual({ ...page.ui.snapshot.notice }, { kind: "warning", messageKey: "notice.outcomeUnknown" });
+  assert.equal(page.ui.consumeFocus(), "#voc-overlay-title");
+  const dialog = await setup({ answer: (operation) => (operation === "hold_job" ? HELD(operation) : { ...lost, code: "connection_lost" }) });
+  dialog.router.handle("open-job", { jobId: "job-1" });
+  await dialog.router.handle("delete-job", { jobId: "job-1" });
+  await dialog.router.handle("confirm-command");
+  assert.deepEqual([dialog.ui.overlay.kind, dialog.ui.overlay.failure.code, dialog.ui.snapshot.notice], ["confirm", "connection_lost", null], "a dialog says it itself");
+  const row = await setup({ answer: () => lost });
+  await row.router.handle("move-job", { jobId: "job-1", direction: "up" });
+  assert.equal(row.ui.snapshot.notice.kind, "warning");
 });
 
 test("leaving a changed editor asks before the draft is dropped", async () => {
@@ -259,7 +385,7 @@ test("the job defaults open with the integration's values and are saved as a who
   const verdict = (_operation, parameters) => (parameters.passes > 10 ? rejects(["passes", "out_of_range"]) : ACCEPTS);
   const { router, ui, commands } = await setup({ verdict });
   router.handle("open-job-defaults");
-  assert.deepEqual({ ...ui.overlay }, { kind: "job-defaults", mode: "vacuum", vacuumPower: "standard", mopIntensity: "medium", mopRoute: "standard", passes: 1, settingsPolicy: "best_effort" });
+  assert.deepEqual(shown(ui.overlay), { kind: "job-defaults", mode: "vacuum", vacuumPower: "standard", mopIntensity: "medium", mopRoute: "standard", passes: 1, settingsPolicy: "best_effort" });
   router.handle("set-field", { field: "overlay:passes", value: 11 });
   await router.handle("save-job-defaults");
   assert.deepEqual([commands.length, { ...ui.overlay.errors }], [0, { "overlay:passes": "out_of_range" }]);

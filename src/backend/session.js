@@ -5,7 +5,7 @@
 // It holds no domain rule. See internal dev doc §6 "Sitzung".
 
 import { parseInstant } from "../core/time.js";
-import { backendFailure, isBackendFailure } from "../domain/backend-errors.js";
+import { backendFailure, isBackendFailure, isTransportFailure } from "../domain/backend-errors.js";
 import { normalizeValidation } from "../domain/validation.js";
 import { ACTIONS, CARD_COMMANDS, CONFIGURATION_COMMANDS, guards, messages } from "./protocol.js";
 import { SCOPE_LOADERS, scopesForChanges } from "./scopes.js";
@@ -31,13 +31,12 @@ const ENTITY_REGISTRY_SCOPES = Object.freeze(["registry", "candidates"]);
 const DRAFT_SCOPES = new Set(["preview"]);
 
 const LOAD_FAILED_CODES = new Set(["orchestrator_not_loaded", "orchestrator_not_initialized", "orchestrator_shutting_down", "multiple_orchestrator_entries_loaded"]);
-const TRANSPORT_CODES = new Set(["connection_lost", "timeout"]);
 
 // The phase a failed probe step leaves, given the codes that step reads as a phase of its own.
 function failurePhase(failure, own = {}) {
   if (Object.hasOwn(own, failure.code)) return own[failure.code];
   if (LOAD_FAILED_CODES.has(failure.code)) return "load_failed";
-  return TRANSPORT_CODES.has(failure.code) ? "offline" : "check_failed";
+  return isTransportFailure(failure) ? "offline" : "check_failed";
 }
 
 function stableJson(value) {
@@ -417,7 +416,8 @@ export function createSession({ transport, platform, getHass } = {}) {
   }
 
   // `invalidates`: scope names reloaded after a confirmed command, unless already read at its
-  // commit; the subscription event of the same commit then finds them current.
+  // commit; the subscription event of the same commit then finds them current. Without an
+  // answer the command may have taken effect, so they are reloaded as well (UI-17).
   async function command(operation, parameters = {}, { target = operation, invalidates = "all" } = {}) {
     const commandId = `voc-${++commandCounter}`;
     if (disposed) return backendFailure("connection_lost", { detail: "disposed" });
@@ -439,6 +439,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     pending.delete(target);
     if (disposed) return result;
     if (result.ok) invalidate(invalidates, { commitId: result.data?.commit_id ?? null });
+    else if (isTransportFailure(result)) invalidate(invalidates);
     else {
       handleFailure(result);
       changed();

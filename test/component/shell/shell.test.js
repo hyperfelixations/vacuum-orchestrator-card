@@ -150,6 +150,20 @@ test("a command's notice is announced and can be dismissed", async () => {
   card.unmount();
 });
 
+// UI-17: without an answer the card says the result is unknown and sends nothing again.
+test("a command without an answer is reported as unknown in the card's language", async () => {
+  const card = await mountCard({ ...RUNNING, config: { language: "de" } });
+  card.backend.hold();
+  await card.click(".voc-queue-control");
+  card.backend.disconnect();
+  await card.settle(32);
+  const notice = card.root.querySelector(".voc-notice--warning");
+  assert.deepEqual([notice.getAttribute("role"), notice.querySelector("ha-icon").getAttribute("icon")], ["alert", "mdi:alert-outline"]);
+  assert.equal(card.text(".voc-notice-text"), "Keine Antwort erhalten – das Ergebnis ist unbekannt. Die Ansicht wird aktualisiert.");
+  assert.equal(card.services("pause_queue").length, 1, "nothing is sent again");
+  card.unmount();
+});
+
 test("a command the integration refuses shows the integration's own text in the card's language", async () => {
   const card = await mountCard({ ...RUNNING, config: { language: "de" } });
   card.backend.failNext({ service: "pause_queue" }, haError.serviceValidation("critical_storage_state_uncertain"));

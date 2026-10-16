@@ -148,6 +148,7 @@ export const de = {
   "notice.jobRetried": "Ein neuer Auftrag wurde angelegt.",
   "notice.templateSaved": "Vorlage gespeichert.",
   "notice.recoveryResolved": "Klärung abgeschlossen.",
+  "notice.outcomeUnknown": "Keine Antwort erhalten – das Ergebnis ist unbekannt. Die Ansicht wird aktualisiert.",
 
   "confirm.cancelJob.title": "Auftrag abbrechen?",
   "confirm.cancelJob.text": (v) => `„${v.job}“ wird abgebrochen. Ein Roboter, der schon reinigt, wird angehalten.`,

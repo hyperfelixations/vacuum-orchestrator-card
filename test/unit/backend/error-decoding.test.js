@@ -78,5 +78,5 @@ test("the integration's recorded refusals decode to their codes on both channels
     return [sent.type === "call_service" ? "service" : "ws", step.receive.error];
   });
   const decoded = refusals.map(([channel, error]) => [channel, decodeError(error, channel).code]);
-  assert.deepEqual(decoded, [["ws", "job_held"], ["service", "job_held"], ["service", "all_rooms_with_selection"], ["ws", "invalid_parameters"]]);
+  assert.deepEqual(decoded, [["ws", "job_held"], ["service", "job_held"], ["service", "all_rooms_with_selection"], ["ws", "invalid_parameters"], ["service", "hold_expired"]]);
 });

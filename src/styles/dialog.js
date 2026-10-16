@@ -36,11 +36,11 @@ export const DIALOG_CSS = `
   color: var(--primary-text-color);
 }
 
-.voc-dialog > * { flex: none; }
+.voc-layer > * { flex: none; }
 .voc-dialog-title { margin: 0; font-size: 17px; font-weight: 900; line-height: 1.15; overflow-wrap: anywhere; }
 .voc-dialog-title:focus { outline: none; }
 
-.voc-dialog > .voc-dialog-scroll {
+.voc-layer > .voc-dialog-scroll {
   flex: 0 1 auto;
   min-height: 0;
   display: grid;

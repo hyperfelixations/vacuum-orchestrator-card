@@ -4,6 +4,7 @@
 // panel and tabs; a dialog leaves what is below it in place. See internal dev doc §8 "Shell".
 
 import { decide } from "../../domain/affordances.js";
+import { isTransportFailure } from "../../domain/backend-errors.js";
 import { failureText, t } from "../common/texts.js";
 import { buildHeader } from "./header.js";
 import { buildNotices, buildWarningBlock, hintText, withHint } from "./notices.js";
@@ -32,6 +33,14 @@ function noticeFor(ui, texts) {
   return { kind: notice.kind, text: t(texts, notice.messageKey, notice.vars) };
 }
 
+// A page or dialog waiting for its command's answer, and the failure a dialog shows itself: a
+// refusal, or an answer that never came (UI-16, UI-17).
+function layerFor(texts, layer) {
+  const failure = layer?.failure ?? null;
+  const shown = failure && (isTransportFailure(failure) ? { kind: "warning", text: t(texts, "notice.outcomeUnknown") } : { kind: "error", text: failureText(texts, failure) });
+  return Object.freeze({ busy: layer?.busy === true, failure: shown || null });
+}
+
 export function buildCardViewModel({ model = {}, config = {}, texts, ui = {}, tabs, definitions = [], context, viewContent = null, page = null, dialog = null, scheme = "light" } = {}) {
   const status = cardStatus(model);
   const tone = toneFor(status);
@@ -42,7 +51,7 @@ export function buildCardViewModel({ model = {}, config = {}, texts, ui = {}, ta
 
   let body;
   if (onboarding) body = { kind: "onboarding", content: onboarding };
-  else if (page) body = { kind: "overlay", key: page.key, content: page.content };
+  else if (page) body = { kind: "overlay", key: page.key, content: page.content, layer: layerFor(texts, page.layer) };
   else if (tabs.activeTab?.available && viewContent) body = { kind: "view", key: tabs.active, content: viewContent };
   else if (tabs.activeTab) body = { kind: "unavailable", key: tabs.active, message: t(texts, "view.unavailable", { view: tabs.activeTab.label }) };
   else body = { kind: "empty", message: t(texts, "view.none") };
@@ -61,7 +70,7 @@ export function buildCardViewModel({ model = {}, config = {}, texts, ui = {}, ta
     primary: ready && !page ? primaryAction(tabs, definitions, model, texts, context) : null,
     primaryReserve: ready && !page && tabs.visible ? primaryReserve(tabs, definitions, texts) : [],
     body,
-    dialog: ready && dialog ? { kind: "overlay", key: dialog.key, content: dialog.content } : null,
+    dialog: ready && dialog ? { kind: "overlay", key: dialog.key, content: dialog.content, layer: layerFor(texts, dialog.layer) } : null,
     scheme: scheme === "dark" ? "dark" : "light",
     notice: noticeFor(ui, texts),
     liveMessage: ui?.notice ? noticeFor(ui, texts).text : "",

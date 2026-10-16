@@ -231,6 +231,8 @@ ha-icon {
 .voc-notice-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .voc-notice--error { background: color-mix(in srgb, var(--voc-error) 12%, transparent); border: 1px solid color-mix(in srgb, var(--voc-error) 40%, transparent); }
 .voc-notice--error ha-icon { color: var(--voc-error); }
+.voc-notice--warning { background: var(--voc-warning-bg); border: 1px solid var(--voc-warning-border); }
+.voc-notice--warning ha-icon { color: var(--voc-warning-ink); }
 .voc-notice--success { background: color-mix(in srgb, var(--voc-success) 12%, transparent); border: 1px solid color-mix(in srgb, var(--voc-success) 38%, transparent); }
 .voc-notice--success ha-icon { color: var(--voc-success); }
 
@@ -418,6 +420,7 @@ button { font: inherit; color: inherit; }
 .voc-chip ha-icon { --mdc-icon-size: 13px; }
 
 .voc-overlay { display: grid; gap: 12px; min-width: 0; }
+.voc-layer { display: contents; }
 .voc-overlay-scroll { display: grid; gap: 12px; min-width: 0; }
 .voc-overlay-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .voc-overlay-title:focus { outline: none; }
@@ -503,11 +506,11 @@ button { font: inherit; color: inherit; }
   color: var(--primary-text-color);
 }
 
-.voc-dialog > * { flex: none; }
+.voc-layer > * { flex: none; }
 .voc-dialog-title { margin: 0; font-size: 17px; font-weight: 900; line-height: 1.15; overflow-wrap: anywhere; }
 .voc-dialog-title:focus { outline: none; }
 
-.voc-dialog > .voc-dialog-scroll {
+.voc-layer > .voc-dialog-scroll {
   flex: 0 1 auto;
   min-height: 0;
   display: grid;
@@ -558,8 +561,7 @@ ha-card[data-frame] .voc-body[data-body^="onboarding:"] > .voc-onboarding { flex
 
 ha-card[data-frame] .voc-body[data-body^="overlay:"] { overflow-y: hidden; display: flex; flex-direction: column; }
 ha-card[data-frame] .voc-body[data-body^="overlay:"] > .voc-overlay { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-ha-card[data-frame] .voc-overlay > * { flex: none; }
-ha-card[data-frame] .voc-overlay > .voc-overlay-scroll {
+ha-card[data-frame] .voc-layer > .voc-overlay-scroll {
   flex: 1 1 auto;
   align-content: start;
   margin: -4px calc(-1 * var(--voc-pad-x));

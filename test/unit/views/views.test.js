@@ -261,8 +261,9 @@ test("every page renders inside the shared frame, every dialog in the dialog fra
       assert.equal(host.querySelector("#voc-dialog-title").getAttribute("tabindex"), "-1");
       assert.equal(host.querySelector(".voc-back"), null, `${overlay.key} has no back control of its own`);
       assert.ok(host.querySelector('.voc-dialog-actions [data-action="back"]'), `${overlay.key} can be left from its actions`);
-      const parts = [...dialog.children].map((child) => child.className);
+      const parts = [...dialog.querySelector(":scope > fieldset.voc-layer").children].map((child) => child.className);
       assert.deepEqual(parts, ["voc-dialog-title", "voc-dialog-scroll", "voc-dialog-actions"], `${overlay.key}: heading, content, actions`);
+      assert.equal(dialog.querySelector(".voc-layer").disabled, false, overlay.key);
       assert.ok(dialog.querySelector(".voc-dialog-scroll").hasAttribute("data-scroll"));
       assertMarkupContract(host, overlay.key);
       continue;
@@ -272,11 +273,34 @@ test("every page renders inside the shared frame, every dialog in the dialog fra
     assert.deepEqual([frame.getAttribute("role"), frame.getAttribute("aria-labelledby")], ["region", "voc-overlay-title"], overlay.key);
     assert.equal(host.querySelector("#voc-overlay-title").getAttribute("tabindex"), "-1");
     assert.ok(host.querySelector('[data-action="back"]'), `${overlay.key} can be left`);
-    const parts = [...frame.children].map((child) => child.className);
+    const parts = [...frame.querySelector(":scope > fieldset.voc-layer").children].map((child) => child.className);
     assert.deepEqual(parts, ["voc-overlay-head", "voc-overlay-scroll", "voc-overlay-actions"], `${overlay.key}: heading, one region that scrolls, the footer`);
+    assert.equal(frame.querySelector(".voc-layer").disabled, false, overlay.key);
     assert.ok(frame.querySelector(".voc-overlay-scroll").hasAttribute("data-scroll"));
     assertMarkupContract(host, overlay.key);
   }
+});
+
+// UI-16, UI-17: while its command waits, a page or dialog is busy and all its controls are
+// disabled together; a dialog shows its command's failure itself, a missing answer as a warning.
+test("a page or dialog waiting for its command disables its controls, and a dialog shows its failure", async () => {
+  const { frame } = await import("../../../src/views/overlays/frame.js");
+  const { dialog } = await import("../../../src/views/overlays/dialog.js");
+  const { document, context } = await renderContext(null);
+  const actions = '<button data-action="back">B</button><button data-action="confirm-command">C</button>';
+  const busy = { ...context, layer: { busy: true, failure: null } };
+  for (const host of [parse(document, frame(busy, { key: "x", title: "X", content: "<input>", actions })), parse(document, dialog(busy, { key: "x", title: "X", lead: "L", actions }))]) {
+    const section = host.querySelector("section");
+    assert.equal(section.getAttribute("aria-busy"), "true");
+    assert.equal(section.querySelector(":scope > fieldset.voc-layer").disabled, true);
+    assert.ok([...section.querySelectorAll("button, input")].every((control) => control.matches(":disabled")), "every control waits");
+  }
+  const refused = parse(document, dialog({ ...context, layer: { busy: false, failure: { kind: "error", text: "Refused" } } }, { key: "x", title: "X", lead: "L", invalid: "Checked", actions }));
+  assert.equal(refused.querySelector("section").hasAttribute("aria-busy"), false);
+  assert.deepEqual([...refused.querySelectorAll(".voc-dialog-scroll > *")].map((node) => [node.className, node.textContent]), [["voc-overlay-lead", "L"], ["voc-notice voc-notice--error", "Refused"]], "the failure, not an earlier verdict");
+  const unknown = parse(document, dialog({ ...context, layer: { busy: false, failure: { kind: "warning", text: "Unknown" } } }, { key: "x", title: "X", actions }));
+  assert.equal(unknown.querySelector('[data-key="invalid"]').className, "voc-notice voc-notice--warning");
+  assert.equal(unknown.querySelector('[data-key="invalid"] ha-icon').getAttribute("icon"), "mdi:alert-outline");
 });
 
 test("a page frame without lead and content has no region to scroll; without actions its footer leads back", async () => {

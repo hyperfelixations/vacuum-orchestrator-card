@@ -3,9 +3,9 @@
 // Integration states such as a robot needing recovery are content of the views, not notices.
 
 import { SEVERITY, createDiagnostic } from "../core/diagnostics.js";
+import { isTransportFailure } from "../domain/backend-errors.js";
 
 const PHASE_CODES = new Set(["orchestrator_not_loaded", "orchestrator_not_initialized", "multiple_orchestrator_entries_loaded", "api_incompatible", "unknown_command"]);
-const TRANSIENT_CODES = new Set(["connection_lost", "timeout"]);
 
 export function collectSourceDiagnostics(model) {
   const warnings = [];
@@ -22,7 +22,7 @@ export function collectSourceDiagnostics(model) {
   let transient = false;
   for (const [slot, value] of Object.entries(model.slots)) {
     if (value.status !== "error" || !value.error) continue;
-    if (TRANSIENT_CODES.has(value.error.code)) transient = true;
+    if (isTransportFailure(value.error)) transient = true;
     else if (!PHASE_CODES.has(value.error.code)) add(createDiagnostic("backend.query_failed", { params: { scope: slot, code: value.error.code } }));
   }
   if (model.subscription === "reconnecting") add(createDiagnostic("hint.reconnecting"));

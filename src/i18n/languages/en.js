@@ -148,6 +148,7 @@ export const en = {
   "notice.jobRetried": "A new job was created.",
   "notice.templateSaved": "Template saved.",
   "notice.recoveryResolved": "Recovery resolved.",
+  "notice.outcomeUnknown": "No answer arrived – the result is unknown. The view is being refreshed.",
 
   "confirm.cancelJob.title": "Cancel job?",
   "confirm.cancelJob.text": (v) => `“${v.job}” is cancelled. A robot already cleaning is stopped.`,

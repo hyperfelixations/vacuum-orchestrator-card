@@ -234,10 +234,18 @@ test("the card view model puts onboarding, a page or the active view into the bo
   assert.deepEqual([page.panel.visible, page.tabs.visible, page.dialog], [false, false, null]);
   const dialog = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: { key: "queue" }, dialog: { key: "confirm", content: {} }, scheme: "dark" });
   assert.deepEqual([dialog.body.kind, dialog.panel.visible, dialog.tabs.visible, dialog.primary.action], ["view", true, true, "create-job"], "the view stays below a dialog");
-  assert.deepEqual(dialog.dialog, { kind: "overlay", key: "confirm", content: {} });
+  assert.deepEqual(dialog.dialog, { kind: "overlay", key: "confirm", content: {}, layer: { busy: false, failure: null } });
   assert.equal(dialog.scheme, "dark");
   const onPage = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: {}, page: { key: "job-editor", content: {} }, dialog: { key: "confirm", content: {} } });
   assert.deepEqual([onPage.body.key, onPage.dialog.key, onPage.panel.visible], ["job-editor", "confirm", false]);
   const notice = buildCardViewModel({ model, config: cfg, texts, ui: { notice: { kind: "error", operation: "run_queue", failure: { code: "unauthorized" } } }, tabs, definitions: VIEWS, context, viewContent: {} });
   assert.equal(notice.notice.text, texts.t("error.code.unauthorized"));
+  // UI-16, UI-17: a page or dialog waiting for its command, and a dialog's failure as it shows.
+  const waiting = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: {}, page: { key: "job-editor", content: {}, layer: { busy: true, failure: null } } });
+  assert.deepEqual(waiting.body.layer, { busy: true, failure: null });
+  const layer = (failure) => buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: {}, dialog: { key: "confirm", content: {}, layer: { busy: false, failure } } }).dialog.layer.failure;
+  assert.deepEqual(layer({ ok: false, code: "unauthorized" }), { kind: "error", text: texts.t("error.code.unauthorized") });
+  assert.deepEqual(layer({ ok: false, code: "timeout" }), { kind: "warning", text: "No answer arrived – the result is unknown. The view is being refreshed." });
+  const unknown = buildCardViewModel({ model, config: cfg, texts, ui: { notice: { kind: "warning", messageKey: "notice.outcomeUnknown" } }, tabs, definitions: VIEWS, context, viewContent: {} });
+  assert.deepEqual([unknown.notice.kind, unknown.notice.text], ["warning", layer({ ok: false, code: "connection_lost" }).text]);
 });

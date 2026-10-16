@@ -1,14 +1,16 @@
 // Every control's `data-action` ends here and becomes UI navigation or one integration command.
-// Destructive commands pass through a confirmation page unless `confirm_destructive: false`.
+// Destructive commands pass through a confirmation dialog unless `confirm_destructive: false`.
 // The router decides nothing about domain rules: the integration checks every form's input
-// (`validate`) and answers every command; a refusal becomes this card's notice. See internal dev
-// doc §9 "Aktionsvertrag".
+// (`validate`) and answers every command; a refusal becomes this card's notice, or the dialog's
+// own message. A command belongs to the page or dialog it was sent from, which waits for the
+// answer. See internal dev doc §9 "Aktionsvertrag" and "Command-Lebenszyklus".
 
 import { CREATE_TARGET, QUEUE_TARGET, SETUP_TARGET, jobTarget, robotTarget, roomTarget, templateTarget, queueControl } from "../../domain/affordances.js";
 import { applyDraftChange, createDraft, draftFieldOf, draftToIntent, draftToTemplate, draftToUpdatePatch, isDirty, toggleRoom } from "../../domain/job-draft.js";
 import { createRoomDraft, isRoomDirty, newBinding, newRequirement, roomDraftToPatch, roomFieldOf, updateRoomDraft } from "../../domain/room-draft.js";
 import { createRobotDraft, isRobotDirty, robotDraftToConfiguration, robotFieldOf, updateRobotDraft } from "../../domain/robot-draft.js";
 import { formErrors, withoutFieldError } from "../../domain/validation.js";
+import { isTransportFailure } from "../../domain/backend-errors.js";
 import { AFTER_CANCEL_CHOICES, queueEndChoices } from "../../presentation/overlays/dialogs.js";
 import { jobTitle, roomIndex } from "../../presentation/common/lookups.js";
 import { SETTING_FIELDS, SETTING_WIRE_NAMES } from "../../domain/job-schema.js";
@@ -45,6 +47,8 @@ const QUEUE_END = Object.freeze({
 const ROOM_SCOPES = Object.freeze(["rooms", "queue", "openJobs", "job", "execution"]);
 const ROBOT_SCOPES = Object.freeze(["robots", "candidates", "rooms", "queue", "openJobs", "execution", "registry"]);
 const ALL = "all";
+// What a person can still do while the page or dialog on top waits for its command's answer.
+const WHILE_BUSY = new Set(["dismiss-notice", "navigate"]);
 
 function findIn(model, slot, idKey, id) {
   const data = model?.slots?.[slot]?.data;
@@ -62,33 +66,68 @@ function findJob(model, jobId) {
   return null;
 }
 
-export function createActionRouter({ ui, getSession, getModel, getConfig, platform }) {
-  // `closeOverlay`: true leaves the top page after success, "all" every page.
+// `isDialog(kind)`: whether an overlay is a card dialog, which shows a failure itself.
+export function createActionRouter({ ui, getSession, getModel, getConfig, platform, isDialog = () => false }) {
+  // A command and its answer (UI-16, UI-17). The page or dialog on top when it is sent is its
+  // origin: it is busy until the answer and, on success, leaves with `closeOverlay` layers (true
+  // one, a number that many, "all" every page) only while it is still on top. A refusal stays in
+  // a dialog origin, else it becomes the card's notice; without an answer the result is unknown,
+  // the session reloads and nothing is sent again.
   async function run(operation, parameters, { target = operation, invalidates = ALL, success = null, closeOverlay = false } = {}) {
     const session = getSession();
     if (!session) return null;
+    const origin = ui.overlay;
     ui.setNotice(null);
+    if (origin) ui.patchOverlay(origin.id, { busy: true, failure: null });
     const result = await session.command(operation, parameters, { target, invalidates });
+    const open = origin ? ui.find(origin.id) : null;
+    if (open) ui.patchOverlay(origin.id, { busy: false });
+    const onTop = Boolean(open) && ui.overlay.id === origin.id;
     if (result?.ok) {
-      if (closeOverlay === "all") ui.closeAllOverlays();
-      else if (closeOverlay) ui.closeOverlay();
+      if (onTop && closeOverlay === ALL) ui.closeAllOverlays();
+      else if (onTop && closeOverlay) ui.closeOverlay(closeOverlay === true ? 1 : closeOverlay);
       if (success) ui.setNotice({ kind: "success", messageKey: success.key, vars: success.vars || null });
     } else if (result) {
-      ui.setNotice({ kind: "error", operation, failure: result });
+      if (open && isDialog(origin.kind)) ui.patchOverlay(origin.id, { failure: result });
+      else if (isTransportFailure(result)) ui.setNotice({ kind: "warning", messageKey: "notice.outcomeUnknown" });
+      else ui.setNotice({ kind: "error", operation, failure: result });
+      if (onTop) ui.requestFocus(isDialog(origin.kind) ? "#voc-dialog-title" : "#voc-overlay-title");
     }
     return result;
   }
 
+  // A waiting job's deletion is confirmed under a hold, so it cannot start meanwhile (JOB-22).
+  // The dialog owns the hold: it sends `hold_id` with the deletion and releases the hold when it
+  // is left without deleting, which restarts the start delay (QUE-11). A hold that arrives after
+  // the dialog is gone is released at once.
+  async function holdForDeletion(dialogId, jobId) {
+    const result = await getSession()?.command("hold_job", { job_id: jobId, purpose: "confirm" }, { target: jobTarget(jobId), invalidates: QUEUE_SCOPES });
+    if (!result) return;
+    if (!ui.find(dialogId)) {
+      if (result.ok) releaseHold(result.data.hold_id);
+    } else if (result.ok) ui.patchOverlay(dialogId, { holdId: result.data.hold_id });
+    else ui.patchOverlay(dialogId, { failure: result });
+  }
+
+  // A release has nothing to show: if it fails, the hold ends with its lease. It has a target of
+  // its own, so the job's controls stay usable meanwhile and focus can return to them.
+  function releaseHold(holdId) {
+    void getSession()?.command("release_job_hold", { hold_id: holdId }, { target: `hold:${holdId}`, invalidates: QUEUE_SCOPES });
+  }
+
   // A form's command: the integration checks the input first; errors stay on the page at their
-  // fields and nothing is sent. `fieldOf(path)` names the page's field for an error path.
+  // fields and nothing is sent. `fieldOf(path)` names the page's field for an error path. The page
+  // is busy from the check on.
   async function submit(operation, parameters, fieldOf, options) {
     const session = getSession();
     if (!session) return null;
     const page = ui.overlay;
     ui.setNotice(null);
+    if (page) ui.patchOverlay(page.id, { busy: true });
     const verdict = await session.validate(operation, parameters);
-    // The page changed meanwhile: what was checked is no longer what it shows.
-    if (ui.overlay !== page) return null;
+    if (page) ui.patchOverlay(page.id, { busy: false });
+    // The page left meanwhile: what was checked is no longer shown.
+    if (ui.overlay?.id !== page?.id) return null;
     if (!verdict?.ok) {
       ui.setNotice({ kind: "error", operation, failure: verdict });
       return verdict;
@@ -183,7 +222,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     navigate: ({ path }) => platform.navigate?.(path),
     "dismiss-notice": () => ui.setNotice(null),
     reload: () => getSession()?.probe(),
-    // Leaving an editor with unsaved changes asks first, like any other destructive step.
+    // Leaving an editor with unsaved changes asks first, like any other destructive step. Leaving
+    // a deletion's dialog gives its hold back.
     back: () => {
       const top = ui.overlay;
       const dirty = DRAFT_DIRTY[top?.kind];
@@ -192,6 +232,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
         return;
       }
       ui.closeOverlay();
+      if (top?.holdId) releaseHold(top.holdId);
     },
     toggle: ({ key }) => ui.toggle(key),
     choose: ({ key, value }) => ui.choose(key, value),
@@ -296,8 +337,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     "confirm-cancel": () => {
       const overlay = ui.overlay;
       if (overlay?.kind !== "cancel-job" || !AFTER_CANCEL_CHOICES.includes(overlay.afterCancel)) return null;
-      ui.closeOverlay();
-      return run("cancel_job", { job_id: overlay.jobId, after_cancel: overlay.afterCancel }, { target: jobTarget(overlay.jobId), invalidates: QUEUE_SCOPES });
+      return run("cancel_job", { job_id: overlay.jobId, after_cancel: overlay.afterCancel }, { target: jobTarget(overlay.jobId), invalidates: QUEUE_SCOPES, closeOverlay: true });
     },
     // Ending asks how started jobs end; without any it only confirms.
     "end-queue": () => {
@@ -312,27 +352,39 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     "confirm-end-queue": () => {
       const overlay = ui.overlay;
       if (overlay?.kind !== "queue-end" || !queueEndChoices(getModel()).includes(overlay.choice)) return null;
-      ui.closeOverlay();
-      return run("end_queue", QUEUE_END[overlay.choice], { target: QUEUE_TARGET, invalidates: QUEUE_SCOPES });
+      return run("end_queue", QUEUE_END[overlay.choice], { target: QUEUE_TARGET, invalidates: QUEUE_SCOPES, closeOverlay: true });
     },
     "return-robot": ({ robotId }) => run("return_robot", { robot_id: robotId }, { target: robotTarget(robotId), invalidates: ["robots"], success: { key: "notice.robotReturning" } }),
-    // Deleting from the detail page or the editor leaves every page: they all showed that job.
-    "delete-job": ({ jobId }) => confirmOr(
-      { operation: "delete_job", parameters: { job_id: jobId }, options: { target: jobTarget(jobId), invalidates: QUEUE_SCOPES, closeOverlay: ["job-detail", "job-editor"].includes(ui.overlay?.kind) ? "all" : false } },
-      { titleKey: "confirm.deleteJob.title", textKey: "confirm.deleteJob.text", confirmKey: "confirm.deleteJob.confirm", icon: "mdi:delete-outline", jobId }
-    ),
+    // Deleting from the detail page or the editor leaves every page: they all showed that job. A
+    // waiting job is held while its deletion is confirmed.
+    "delete-job": ({ jobId }) => {
+      const result = confirmOr(
+        { operation: "delete_job", parameters: { job_id: jobId }, options: { target: jobTarget(jobId), invalidates: QUEUE_SCOPES, closeOverlay: ["job-detail", "job-editor"].includes(ui.overlay?.kind) ? ALL : false } },
+        { titleKey: "confirm.deleteJob.title", textKey: "confirm.deleteJob.text", confirmKey: "confirm.deleteJob.confirm", icon: "mdi:delete-outline", jobId }
+      );
+      if (ui.overlay?.kind === "confirm" && findJob(getModel(), jobId)?.state === "queued") return holdForDeletion(ui.overlay.id, jobId);
+      return result;
+    },
     "retry-job": ({ jobId }) => run("retry_job", { job_id: jobId }, { target: jobTarget(jobId), invalidates: QUEUE_SCOPES, success: { key: "notice.jobRetried" } }),
+    // The confirmation waits for the answer and then leaves with what its command closes (the
+    // page it interrupted, or every page); a discard leaves that page at once. A deletion whose
+    // hold has lapsed asks again under a new hold, beside the integration's reason.
     "confirm-command": async () => {
-      const command = ui.overlay?.command;
+      const dialog = ui.overlay;
+      const command = dialog?.command;
       if (!command) return null;
-      // The confirmation closes first, giving back the page it interrupted; a discard also
-      // leaves that page.
-      ui.closeOverlay();
       if (command.discard) {
-        ui.closeOverlay();
+        ui.closeOverlay(2);
         return null;
       }
-      return run(command.operation, command.parameters, command.options);
+      const closes = command.options?.closeOverlay;
+      const parameters = dialog.holdId ? { ...command.parameters, hold_id: dialog.holdId } : command.parameters;
+      const result = await run(command.operation, parameters, { ...command.options, closeOverlay: closes === ALL ? ALL : closes ? 2 : 1 });
+      if (result?.code === "hold_expired" && ui.find(dialog.id)) {
+        ui.patchOverlay(dialog.id, { holdId: null });
+        await holdForDeletion(dialog.id, dialog.jobId);
+      }
+      return result;
     },
     "create-from-template": ({ templateId }) => run("create_job_from_template", { template_id: templateId }, { target: templateTarget(templateId), invalidates: QUEUE_SCOPES, success: { key: "notice.jobCreated" } }),
     "create-template": () => ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "template", jobDefaults: jobDefaults() }) }),
@@ -447,10 +499,13 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
   return {
     handle(action, args = {}) {
       const handler = handlers[action];
-      return handler ? handler(args) : undefined;
+      if (!handler || (ui.overlay?.busy && !WHILE_BUSY.has(action))) return undefined;
+      return handler(args);
     },
     // Text and number fields report through input events, not actions.
-    input: (field, value) => setValue(field, value),
+    input: (field, value) => {
+      if (!ui.overlay?.busy) setValue(field, value);
+    },
     register(extra) {
       Object.assign(handlers, extra);
     },

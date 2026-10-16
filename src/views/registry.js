@@ -58,6 +58,7 @@ export function optionSchemaForView(key) {
 export function renderBody(context, body) {
   if (body.kind === "onboarding") return renderOnboarding(context, body.content);
   if (body.kind === "view") return viewFor(body.key)?.render(context, body.content) ?? "";
-  if (body.kind === "overlay") return overlayFor(body.key)?.render(context, body.content) ?? "";
+  // A page or dialog renders with its layer: whether it waits for its command, and its failure.
+  if (body.kind === "overlay") return overlayFor(body.key)?.render(body.layer ? Object.freeze({ ...context, layer: body.layer }) : context, body.content) ?? "";
   return `<div class="voc-unavailable" data-key="${e(body.kind)}" role="status">${e(body.message || "")}</div>`;
 }

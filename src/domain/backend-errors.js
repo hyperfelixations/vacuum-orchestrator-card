@@ -35,6 +35,13 @@ export function isBackendFailure(value) {
   return Boolean(value) && typeof value === "object" && value.ok === false && typeof value.code === "string";
 }
 
+// No answer arrived: whether the request reached the integration is unknown.
+const TRANSPORT_CODES = new Set(["connection_lost", "timeout"]);
+
+export function isTransportFailure(failure) {
+  return TRANSPORT_CODES.has(failure?.code);
+}
+
 // Execution outcomes a job or attempt can end with (`failure_code`) that the integration does
 // not translate; the card words them individually.
 export const FAILURE_CODES = Object.freeze([

@@ -549,6 +549,24 @@ test("a confirmed command reloads the scopes it names", async () => {
   env.session.dispose();
 });
 
+// UI-17: without an answer the command may have taken effect, so what it changes is read again.
+test("a command without an answer reloads the scopes it names as well", async () => {
+  const env = await setup();
+  await env.start();
+  env.session.setDemand("card", [{ name: "rooms" }, { name: "templates" }]);
+  await tick();
+  const release = env.backend.hold();
+  const sending = env.send({ target: "room:a", invalidates: ["rooms"] });
+  await env.advance(15_000);
+  const result = await sending;
+  assert.equal(result.code, "timeout");
+  await tick();
+  assert.equal(env.queries("get_rooms"), 2);
+  assert.equal(env.queries("get_templates"), 1);
+  release();
+  env.session.dispose();
+});
+
 test("the integration's error texts load in any phase and ignore integration events", async () => {
   const env = await setup();
   env.failNext(QUEUE_GET, NOT_LOADED());

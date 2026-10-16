@@ -16,6 +16,8 @@ export const NOTICES_CSS = `
 .voc-notice-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .voc-notice--error { background: color-mix(in srgb, var(--voc-error) 12%, transparent); border: 1px solid color-mix(in srgb, var(--voc-error) 40%, transparent); }
 .voc-notice--error ha-icon { color: var(--voc-error); }
+.voc-notice--warning { background: var(--voc-warning-bg); border: 1px solid var(--voc-warning-border); }
+.voc-notice--warning ha-icon { color: var(--voc-warning-ink); }
 .voc-notice--success { background: color-mix(in srgb, var(--voc-success) 12%, transparent); border: 1px solid color-mix(in srgb, var(--voc-success) 38%, transparent); }
 .voc-notice--success ha-icon { color: var(--voc-success); }
 `;

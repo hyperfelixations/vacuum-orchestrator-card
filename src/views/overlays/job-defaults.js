@@ -18,7 +18,7 @@ export const saveTemplateOverlay = Object.freeze({
   build: ({ model, texts, context, overlay }) => buildSaveTemplate({ model, texts, context, overlay }),
   render(context, vm) {
     const content = `<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`;
-    return dialog({ key: "save-template", title: vm.title, lead: vm.lead, invalid: vm.invalid, content, actions: actions(context, vm, "save-job-template") });
+    return dialog(context, { key: "save-template", title: vm.title, lead: vm.lead, invalid: vm.invalid, content, actions: actions(context, vm, "save-job-template") });
   },
   css: FORMS_CSS,
 });

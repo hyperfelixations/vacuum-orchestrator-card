@@ -148,6 +148,28 @@ test("a refusal keeps the editor open with the reason; saving again sends only t
   card.unmount();
 });
 
+// UI-16: the editor waits for its save with every control locked; Back and Escape wait too.
+test("an editor waits for its save, locked, and leaves with the answer", async () => {
+  const card = await at("A job for every room waits");
+  await card.click(inRow(card, "Library", '[data-action="edit-job"]'));
+  await card.click('[data-key="field:passes"] [data-action="step-field"][data-args*=\'"step":1\']');
+  await card.settle(32);
+  const release = card.backend.hold();
+  await card.click('[data-action="save-draft"]');
+  await card.settle(32);
+  const page = card.root.querySelector('[data-key="overlay:job-editor"]');
+  assert.equal(page.getAttribute("aria-busy"), "true");
+  assert.equal(page.querySelector("fieldset.voc-layer").disabled, true);
+  await card.press('[data-key="overlay:job-editor"] .voc-back', "Escape");
+  await card.click('[data-key="overlay:job-editor"] .voc-back');
+  assert.equal(card.root.querySelector(".voc-overlay")?.dataset.key, "overlay:job-editor", "the page waits for its answer");
+  release();
+  await card.settle(32);
+  assert.equal(card.services("update_job").length, 1);
+  assert.equal(card.root.querySelector(".voc-overlay"), null);
+  card.unmount();
+});
+
 test("cancelling the running job asks where the robot goes and sends only after confirming", async () => {
   const card = await at("The queue ends after the started job");
   const studio = jobIdOf(card, "Studio");
@@ -237,20 +259,90 @@ test("a job is saved as a template from its detail page under the name it shows"
   card.unmount();
 });
 
-test("deleting happens on the detail page, after a confirmation, and leaves the page", async () => {
-  const card = await at("The library job is a template");
-  // A job for every room names the rooms the integration resolved it to.
-  const EVERY_ROOM = "Dining Room, Studio, Library, Conservatory";
-  const everywhere = rowOf(card, EVERY_ROOM);
-  assert.equal(everywhere.querySelector('[data-action="delete-job"]'), null, "rows keep delete one step away");
-  await card.click(everywhere.querySelector(".voc-job-main"));
+// A job for every room names the rooms the integration resolved it to.
+const EVERY_ROOM = "Dining Room, Studio, Library, Conservatory";
+
+async function openDeletion(card, name) {
+  await card.click(rowOf(card, name).querySelector(".voc-job-main"));
   await card.settle(32);
   await card.click('[data-action="delete-job"]');
+  await card.settle(32);
+}
+
+// JOB-22, QUE-11: the dialog holds the waiting job; keeping the job gives the hold back, which
+// restarts its start delay, and deleting sends the hold along.
+test("deleting a waiting job is confirmed under a hold; keeping it gives the hold back", async () => {
+  const kept = await at("The library job is a template");
+  const everywhere = jobIdOf(kept, EVERY_ROOM);
+  assert.equal(rowOf(kept, EVERY_ROOM).querySelector('[data-action="delete-job"]'), null, "rows keep delete one step away");
+  await openDeletion(kept, EVERY_ROOM);
+  assert.deepEqual(kept.commands("hold_job").map((message) => message.parameters), [{ job_id: everywhere, purpose: "confirm" }]);
+  await kept.click('.voc-dialog [data-action="back"]');
+  await kept.settle(32);
+  assert.deepEqual(kept.commands("release_job_hold").map((message) => Object.keys(message.parameters)), [["hold_id"]]);
+  assert.equal(kept.root.querySelector(".voc-dialog"), null);
+  assert.equal(kept.root.querySelector(".voc-overlay").dataset.key, "overlay:job-detail", "keeping the job stays on its page");
+  kept.unmount();
+
+  const card = await at("The job for every room stays");
+  await openDeletion(card, EVERY_ROOM);
   await card.click('[data-action="confirm-command"]');
   await card.settle(32);
-  assert.equal(card.services("delete_job").length, 1);
-  assert.equal(card.root.querySelector(".voc-overlay"), null);
+  const [hold] = card.commands("hold_job");
+  assert.deepEqual(card.services("delete_job").map((call) => Object.keys(call.data).sort()), [["hold_id", "job_id"]]);
+  assert.equal(card.services("delete_job")[0].data.job_id, hold.parameters.job_id);
+  assert.equal(card.root.querySelector(".voc-overlay, .voc-dialog"), null, "deleting leaves the page");
   assert.equal(card.all(".voc-job").find((node) => title(node) === EVERY_ROOM), undefined);
+  card.unmount();
+});
+
+// UI-16: the confirmation stays until the answer, locked; Escape waits too.
+test("a confirmation waits for its answer, locked, and leaves with it", async () => {
+  const card = await at("The job for every room stays");
+  await openDeletion(card, EVERY_ROOM);
+  const release = card.backend.hold();
+  await card.click('[data-action="confirm-command"]');
+  const dialog = card.root.querySelector('[data-key="overlay:confirm"]');
+  assert.equal(dialog.getAttribute("aria-busy"), "true");
+  assert.ok([...dialog.querySelectorAll("button")].every((button) => button.matches(":disabled")), "every answer waits");
+  await card.press('[data-key="overlay:confirm"] [data-action="back"]', "Escape");
+  assert.ok(card.root.querySelector('[data-key="overlay:confirm"]'), "Escape waits for the answer");
+  release();
+  await card.settle(32);
+  assert.equal(card.services("delete_job").length, 1);
+  assert.equal(card.root.querySelector(".voc-overlay, .voc-dialog"), null);
+  card.unmount();
+});
+
+// UI-17: a lost answer leaves the dialog with a warning; nothing is sent again.
+test("a confirmation without an answer says the result is unknown and stays", async () => {
+  const card = await at("The job for every room stays");
+  await openDeletion(card, EVERY_ROOM);
+  card.backend.hold();
+  await card.click('[data-action="confirm-command"]');
+  card.backend.disconnect();
+  await card.settle(32);
+  const dialog = card.root.querySelector('[data-key="overlay:confirm"]');
+  assert.equal(dialog.hasAttribute("aria-busy"), false);
+  assert.equal(card.text('.voc-dialog [data-key="invalid"].voc-notice--warning'), "No answer arrived – the result is unknown. The view is being refreshed.");
+  assert.equal(card.services("delete_job").length, 1, "nothing is sent again");
+  card.unmount();
+});
+
+test("a deletion confirmed after its hold lapsed asks again under a new hold", async () => {
+  const card = await mountCard({ recording: "job_hold", from: "The job waits for two rooms" });
+  await openDeletion(card, "Dining Room, Studio");
+  card.backend.play();
+  await card.settle(32);
+  await card.click('[data-action="confirm-command"]');
+  await card.settle(32);
+  assert.equal(card.root.querySelector(".voc-dialog")?.dataset.key, "overlay:confirm", "the dialog asks again");
+  assert.match(card.text('.voc-dialog [data-key="invalid"]'), /protection of this job has ended/);
+  assert.equal(card.commands("hold_job").length, 2, "under a new hold");
+  await card.click('[data-action="confirm-command"]');
+  await card.settle(32);
+  assert.equal(card.services("delete_job").length, 2);
+  assert.equal(card.root.querySelector(".voc-overlay, .voc-dialog"), null);
   card.unmount();
 });
 
