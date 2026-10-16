@@ -77,3 +77,11 @@ test("coverage thresholds reject missing percentages metric by metric", () => {
   assert.throws(() => merge.enforceThresholds(half, { statements: 60 }), /statements: 50% < 60%/);
   assert.doesNotThrow(() => merge.enforceThresholds(half, { statements: 50 }));
 });
+
+test("a script entry without its top-level function over the whole source counts as partial", () => {
+  const source = ["function a() {}", "function b() {}", ""].join("\n");
+  const top = { functionName: "", isBlockCoverage: false, ranges: [{ startOffset: 0, endOffset: source.length, count: 1 }] };
+  const b = { functionName: "b", isBlockCoverage: false, ranges: [{ startOffset: 16, endOffset: 31, count: 2 }] };
+  assert.equal(merge.isWholeScript(source, [top, b]), true);
+  assert.equal(merge.isWholeScript(source, [b]), false);
+});

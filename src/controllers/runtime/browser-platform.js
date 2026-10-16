@@ -20,6 +20,13 @@ export function createBrowserPlatform(getDocument) {
     },
     clearTimeout(handle) { handle?.cancel?.(); },
     isDocumentHidden: () => Boolean(currentDocument()?.hidden),
+    // Calls `fn` whenever the page is hidden or shown again; returns the removal.
+    onVisibilityChange(fn) {
+      const document = currentDocument();
+      if (!document?.addEventListener) return () => {};
+      document.addEventListener("visibilitychange", fn);
+      return () => document.removeEventListener("visibilitychange", fn);
+    },
     // Calls `fn` whenever `element` changes size; returns the disconnect.
     observeResize(element, fn) {
       const Observer = viewOf()?.ResizeObserver;

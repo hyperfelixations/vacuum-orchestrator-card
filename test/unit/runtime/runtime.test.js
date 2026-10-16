@@ -57,6 +57,59 @@ test("an open overlay is found and changed by its id, and the top layers close t
   assert.equal(ui.overlay.id, 4, "an id is never given twice");
 });
 
+// QUE-09: the clock ticks on the second while a shown time counts seconds, else on the minute
+// boundary of the card's clock; never while the page is hidden, and at once when it shows.
+test("the clock ticks each second or on the minute, and not while the page is hidden", async () => {
+  const { createClockRuntime, watchTimes } = await import("../../../src/controllers/runtime/clock-runtime.js");
+  let time = 90_250;
+  let hidden = false;
+  let visibility = null;
+  const timers = [];
+  const platform = {
+    setTimeout: (fn, ms) => {
+      const timer = { fn, ms, cancelled: false };
+      timers.push(timer);
+      return timer;
+    },
+    clearTimeout: (timer) => (timer.cancelled = true),
+    isDocumentHidden: () => hidden,
+    onVisibilityChange: (fn) => {
+      visibility = fn;
+      return () => (visibility = null);
+    },
+  };
+  const live = () => timers.filter((timer) => !timer.cancelled);
+  const fire = (timer) => {
+    timer.cancelled = true;
+    timer.fn();
+  };
+  let ticks = 0;
+  const clock = createClockRuntime({ platform, now: () => time, onTick: () => (ticks += 1) });
+  assert.equal(live().length, 0, "nothing ticks before the card is connected");
+  clock.connect();
+  assert.deepEqual(live().map((timer) => timer.ms), [29_750], "to the next minute");
+  clock.plan("second");
+  assert.deepEqual(live().map((timer) => timer.ms), [750], "to the next second");
+  time += 750;
+  fire(live()[0]);
+  assert.deepEqual([ticks, live().map((timer) => timer.ms)], [1, [1000]]);
+  hidden = true;
+  visibility();
+  assert.deepEqual([ticks, live().length], [1, 0], "a hidden page does not tick");
+  hidden = false;
+  visibility();
+  assert.deepEqual([ticks, live().length], [2, 1], "shown again it ticks at once");
+  clock.disconnect();
+  assert.deepEqual([live().length, visibility], [0, null]);
+
+  const texts = { language: "en", formatRelative: (now, then) => `${then - now}` };
+  const minutes = watchTimes(texts);
+  assert.equal(minutes.texts.formatRelative(0, 90_000), "90000");
+  assert.equal(minutes.mode, "minute");
+  minutes.texts.formatRelative(0, -30_000);
+  assert.deepEqual([minutes.mode, minutes.texts.language], ["second", "en"], "a time under a minute counts seconds");
+});
+
 test("a focus request is data for the next render, not a reason for one", async () => {
   const { createUIState } = await import("../../../src/controllers/runtime/ui-state.js");
   const ui = createUIState();

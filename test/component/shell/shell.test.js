@@ -164,6 +164,39 @@ test("a command without an answer is reported as unknown in the card's language"
   card.unmount();
 });
 
+// QUE-09: shown times follow the clock, on the minute and each second within the last minute,
+// and at once when the page shows again.
+test("the card follows the clock: on the minute, and each second while a time counts seconds", async () => {
+  const card = await mountCard({ recording: "queue_end", from: "The queue waits for work" });
+  const { window } = card.env;
+  const scheduled = [];
+  const original = window.setTimeout;
+  window.setTimeout = (fn, ms) => {
+    scheduled.push({ fn, ms });
+    return original.call(window, () => {}, 0);
+  };
+  const now = () => card.card._now();
+  assert.equal(card.text(".voc-header-subtitle, .voc-subtitle"), "Queue run ends in 14 minutes");
+  window.document.dispatchEvent(new window.Event("visibilitychange"));
+  await card.settle(8);
+  assert.equal(scheduled.at(-1).ms, 60_000 - (now() % 60_000), "the next tick is the minute boundary");
+  const ends = card.text(".voc-header-subtitle, .voc-subtitle");
+  card.clock.advance(scheduled.at(-1).ms + 13 * 60_000);
+  scheduled.at(-1).fn();
+  await card.settle(8);
+  assert.notEqual(card.text(".voc-header-subtitle, .voc-subtitle"), ends);
+  assert.match(card.text(".voc-header-subtitle, .voc-subtitle"), /^Queue run ends in \d+ seconds$/);
+  const tick = scheduled.at(-1);
+  assert.equal(tick.ms, 1000 - (now() % 1000), "within the last minute it ticks each second");
+  const before = card.text(".voc-header-subtitle, .voc-subtitle");
+  card.clock.advance(tick.ms);
+  tick.fn();
+  await card.settle(8);
+  assert.notEqual(card.text(".voc-header-subtitle, .voc-subtitle"), before);
+  window.setTimeout = original;
+  card.unmount();
+});
+
 test("a command the integration refuses shows the integration's own text in the card's language", async () => {
   const card = await mountCard({ ...RUNNING, config: { language: "de" } });
   card.backend.failNext({ service: "pause_queue" }, haError.serviceValidation("critical_storage_state_uncertain"));

@@ -82,6 +82,8 @@ async function mountCard({ recording, from, config = {}, language = "en", admin,
     card,
     root,
     backend,
+    // The card's clock, moved by `advance(ms)`.
+    clock,
     until,
     get hass() {
       return card.hass;

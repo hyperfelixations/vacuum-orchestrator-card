@@ -50,12 +50,20 @@ export function sourceOnly(map, label) {
 }
 
 // One V8 script coverage entry as Istanbul coverage; the bundle is remapped to src/ through its
-// inline source map, a src/ file maps to itself.
+// inline source map, a src/ file maps to itself. A partial entry contributes nothing.
 async function istanbulOf(local, source, functions) {
+  if (!isWholeScript(source, functions)) return {};
   const converter = v8ToIstanbul(local, 0, { source });
   await converter.load();
   converter.applyCoverage(functions);
   return converter.toIstanbul();
+}
+
+// A live script's entry holds its top-level function over the whole source. The script of a page
+// a test navigated away from keeps only the functions still alive, and v8-to-istanbul counts every
+// line outside a range as covered, so such an entry would mark the whole bundle covered.
+export function isWholeScript(source, functions) {
+  return functions.some((fn) => fn.ranges[0]?.startOffset === 0 && fn.ranges[0].endOffset >= source.length);
 }
 
 async function browserMap() {

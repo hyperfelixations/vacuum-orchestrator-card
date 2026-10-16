@@ -22,6 +22,7 @@ import { renderCard, renderFailure } from "../render/composition/card-shell.js";
 import { createShadowMount } from "../render/composition/shadow-mount.js";
 import { buildStyles } from "../styles/index.js";
 import { createBrowserPlatform } from "../controllers/runtime/browser-platform.js";
+import { createClockRuntime, watchTimes } from "../controllers/runtime/clock-runtime.js";
 import { createDiagnosticsReporter } from "../controllers/runtime/diagnostics-reporter.js";
 import { createInteractionRuntime } from "../controllers/runtime/interaction-runtime.js";
 import { createKeyboardRuntime } from "../controllers/runtime/keyboard-runtime.js";
@@ -85,6 +86,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     });
     this._tabStrip = createTabStripRuntime({ root: this.shadowRoot, platform: this._platform });
     this._scroll = createScrollRuntime({ root: this.shadowRoot, platform: this._platform });
+    this._clock = createClockRuntime({ platform: this._platform, now: () => this._now(), onTick: () => this._renderSafely() });
     this._renderer = createRenderController({ computeViewModel: () => this._computeViewModel(), renderView: (viewModel) => this._renderView(viewModel) });
   }
 
@@ -139,6 +141,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._keyboard.connect();
     this._tabStrip.connect();
     this._scroll.connect();
+    this._clock.connect();
     this._syncSession();
     this._renderSafely();
   }
@@ -148,6 +151,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._keyboard.disconnect();
     this._tabStrip.disconnect();
     this._scroll.disconnect();
+    this._clock.disconnect();
     this._releaseSession();
   }
 
@@ -301,13 +305,17 @@ export class VacuumOrchestratorCard extends HTMLElement {
       language: texts.language,
       scheme: this._scheme(),
       minute: Math.floor(model.nowMs / 60000),
+      second: this._clock.mode === "second" ? Math.floor(model.nowMs / 1000) : null,
       ui: this._ui.snapshot,
       hass: [model.robotsLive, model.entityReadings, model.areas, model.operations, model.permissions, model.entityCatalog.length],
     });
   }
 
+  // The texts note whether a shown time counts seconds; the clock ticks accordingly.
   _computeViewModel() {
-    const { model, tabs, texts } = this._pending;
+    const { model, tabs } = this._pending;
+    const times = watchTimes(this._pending.texts);
+    const texts = times.texts;
     const context = affordanceContext({ canCommand: model.permissions.canCommand, connected: model.subscription !== "reconnecting", operations: model.operations, pending: model.pending });
     const config = this._config;
     let viewContent = null;
@@ -322,7 +330,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     };
     const { page, dialog } = this._layers();
     const viewModel = buildCardViewModel({ model, config, texts, ui: this._ui.snapshot, tabs, definitions: VIEWS, context, viewContent, page: build(page), dialog: build(dialog), scheme: this._scheme() });
-    return { viewModel, texts };
+    return { viewModel, texts, times };
   }
 
   // Home Assistant's own light or dark decision for its theme; the scrim below a dialog follows it.
@@ -330,7 +338,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     return this._hass?.themes?.darkMode === true ? "dark" : "light";
   }
 
-  _renderView({ viewModel, texts }) {
+  _renderView({ viewModel, texts, times }) {
     const context = createRenderContext(this.ownerDocument, { texts, resolveUrl: (path) => (typeof this._hass?.hassUrl === "function" ? this._hass.hassUrl(path) : path) });
     const held = captureFocus(this.shadowRoot);
     const ring = { visible: focusRingShown(this.shadowRoot) };
@@ -356,6 +364,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     } else restoreFocus(this.shadowRoot, held, ring);
     this._overlayDepth = depth;
     this._tabStrip.sync();
+    this._clock.plan(times.mode);
     this._diagnostics.reportWarnings(viewModel.notices.warnings);
     this._diagnostics.reportRenderSuccess();
   }
