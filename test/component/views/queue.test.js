@@ -430,7 +430,8 @@ test("a job's release frees each of its locked rooms in its own way with one com
   card.unmount();
 });
 
-// JOB-19, QUE-11: leaving the editor of a waiting job gives its hold back.
+// JOB-19, QUE-11: leaving the editor of a waiting job gives its hold back. The integration says
+// the held job cannot be deleted; the editor holding it still may, with its hold.
 test("leaving a waiting job's editor gives its hold back", async () => {
   const card = await mountCard({ recording: "edit_hold", from: "A dining room job waits" });
   await card.click(inRow(card, "Dining Room", '[data-action="edit-job"]'));
@@ -438,6 +439,8 @@ test("leaving a waiting job's editor gives its hold back", async () => {
   assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:job-editor");
   const [held] = card.commands("hold_job");
   assert.equal(held.parameters.purpose, "edit");
+  const remove = card.root.querySelector('.voc-overlay-actions [data-action="delete-job"]');
+  assert.deepEqual([remove.disabled, remove.getAttribute("aria-disabled")], [false, null], "its own hold does not keep it from deleting");
   await card.click('[data-action="back"]');
   await card.settle(32);
   assert.equal(card.commands("release_job_hold").length, 1);

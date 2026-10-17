@@ -159,7 +159,7 @@ export function buildJobEditor({ model, texts, context, overlay, menu = null }) 
     save: { label: t(texts, kind === "template" || draft.meta.id ? "action.save" : "action.addToQueue"), decision: decide(context, { operation, target }) },
     startNow: newJob && preview?.startableNow === true ? { label: t(texts, "action.startNow"), decision: decide(context, { operation: "create_job", target }) } : null,
     pending: list(model.pending).includes(target),
-    remove: removeControl({ model, texts, context, draft }),
+    remove: removeControl({ model, texts, context, draft, holdId: overlay.holdId ?? null }),
     hold: holdNotice(texts, overlay),
     menuOpen: menu === "editor",
     // JOB-24: what the editor shows, for a new job as for one being edited.
@@ -179,7 +179,8 @@ function holdNotice(texts, overlay) {
 }
 
 // Editing an existing job or template also offers removing it.
-function removeControl({ model, texts, context, draft }) {
+// The integration refuses to delete a held job; an editor holding it deletes with its hold.
+function removeControl({ model, texts, context, draft, holdId }) {
   const { kind, id } = draft.meta;
   if (!id) return null;
   if (kind === "template") {
@@ -187,5 +188,8 @@ function removeControl({ model, texts, context, draft }) {
     return template ? { action: "remove-template", args: { templateId: id }, label: t(texts, "action.deleteTemplate"), decision: templateAffordances(template, context).remove } : null;
   }
   const job = findJob(model, id);
-  return job ? { action: "delete-job", args: { jobId: id }, label: t(texts, "action.deleteJob"), decision: jobAffordances(job, context).delete } : null;
+  if (!job) return null;
+  const verdict = jobAffordances(job, context).delete;
+  const decision = holdId && verdict.reason === "job_held" ? decide(context, { operation: "delete_job", target: jobTarget(id) }) : verdict;
+  return { action: "delete-job", args: { jobId: id }, label: t(texts, "action.deleteJob"), decision };
 }
