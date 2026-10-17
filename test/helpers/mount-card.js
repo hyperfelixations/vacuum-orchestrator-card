@@ -3,9 +3,23 @@
 // integration (see internal dev doc §10): opened at the mark `from` (else the recording's first),
 // on the recording's clock, in an environment of its own. Gives a test the interactions it needs.
 
+const { after } = require("node:test");
 const { createTestEnvironment, settle } = require("./load-card.jsdom.js");
 const { createRecordedBackend } = require("./recorded-backend.js");
 const { loadRecording } = require("./recordings.js");
+
+// Environments still open when a test ends: one that failed before `unmount` left its card's
+// timers running, which would keep the test process from ending and reporting the failure.
+const open = new Set();
+after(() => {
+  for (const env of open) close(env);
+});
+
+function close(env) {
+  open.delete(env);
+  env.cleanupAll();
+  env.window.close();
+}
 
 // Where a job, room, robot or template shows its name.
 const NAMES = ".voc-job-title, .voc-room-name, .voc-robot-name, .voc-template-name";
@@ -20,6 +34,7 @@ async function mountCard({ recording, from, config = {}, language = "en", admin,
   clock.time = backend.nowMs;
   for (const [match, error] of failNext) backend.failNext(match, error);
   const env = createTestEnvironment({ now: () => clock.now() });
+  open.add(env);
   const card = env.createCard({ type: "custom:vacuum-orchestrator-card", ...config }, backend.hass);
   backend.onChange((next) => (card.hass = next));
   await settle(24);
@@ -101,8 +116,7 @@ async function mountCard({ recording, from, config = {}, language = "en", admin,
     queries: (name) => sent("vacuum_orchestrator/configuration/get").filter((message) => message.query === name),
     // A request the recording does not hold fails the test, even where the card caught it.
     unmount() {
-      env.cleanupAll();
-      env.window.close();
+      close(env);
       if (backend.failures.length) throw backend.failures[0];
     },
   };
