@@ -14,29 +14,60 @@ function roomOf(model, roomId) {
   return roomsOf(model).find((room) => room.roomId === roomId) || null;
 }
 
+// Quick choices for a timed release, in minutes (REL-06).
+export const RELEASE_QUICK_MINUTES = Object.freeze([30, 60, 120, 240]);
+
+function quickLabel(texts, minutes) {
+  return minutes < 60 ? t(texts, "release.quickMinutes", { value: minutes }) : t(texts, "release.quickHours", { value: minutes / 60 });
+}
+
+function releaseRow(texts, model, row, index, { error, removable }) {
+  const room = roomOf(model, row.roomId);
+  const kind = row.kind || "queue_run";
+  const key = (name) => `release:${index}:${name}`;
+  const hours = Number(row.hours ?? 2);
+  const minutes = Number(row.minutes ?? 0);
+  const total = hours * 60 + minutes;
+  return {
+    index,
+    roomId: row.roomId,
+    name: room?.name || t(texts, "release.missingRoom"),
+    missing: !room,
+    removable,
+    current: room?.release ? releaseKindLabel(texts, room.release.kind) : null,
+    error: error(key("room")),
+    // Among several rooms the row's heading names the room; its kind is named "Release <room>".
+    kind: field(texts, { key: key("kind"), labelKey: removable ? "release.title" : "release.kind", labelVars: removable ? { room: room?.name || row.roomId } : undefined, control: "segmented", value: kind, options: RELEASE_KINDS.map((value) => ({ value, label: releaseKindLabel(texts, value), icon: KIND_ICONS[value] })), hint: t(texts, `release.explain.${camel(kind)}`), error: error(key("kind")) }),
+    duration:
+      kind === "timed"
+        ? {
+            quick: field(texts, { key: key("quick"), labelKey: "release.quick", control: "segmented", value: RELEASE_QUICK_MINUTES.includes(total) ? total : null, options: RELEASE_QUICK_MINUTES.map((value) => ({ value, label: quickLabel(texts, value), icon: "mdi:timer-outline" })) }),
+            hours: field(texts, { key: key("hours"), labelKey: "release.hours", control: "text", inputType: "number", min: 0, step: 1, value: hours }),
+            minutes: field(texts, { key: key("minutes"), labelKey: "release.minutes", control: "text", inputType: "number", min: 0, max: 59, step: 5, value: minutes, error: error(key("duration")) }),
+          }
+        : null,
+  };
+}
+
+// REL-04, REL-08: one row per room with its own kind; rooms join or leave before the one command.
 export function buildRelease({ model, texts, context, overlay }) {
-  const room = roomOf(model, overlay.roomId);
-  const kind = overlay.releaseKind || "queue_run";
   const { error, invalid } = pageErrors(texts, overlay);
-  const actions = room ? roomAffordances(room, context) : null;
+  const listed = list(overlay.rooms);
+  const rows = listed.map((row, index) => releaseRow(texts, model, row, index, { error, removable: listed.length > 1 }));
+  const single = rows.length === 1 ? roomOf(model, rows[0].roomId) : null;
+  const taken = new Set(rows.map((row) => row.roomId));
+  const addable = roomsOf(model)
+    .filter((room) => !taken.has(room.roomId) && roomAffordances(room, context).release.state === "enabled")
+    .map((room) => ({ roomId: room.roomId, name: room.name }));
   return {
     key: "release",
-    roomId: overlay.roomId,
-    title: t(texts, "release.title", { room: room?.name || overlay.roomId }),
-    missing: !room,
-    fields: [
-      field(texts, { key: "overlay:releaseKind", labelKey: "release.kind", control: "segmented", value: kind, options: RELEASE_KINDS.map((value) => ({ value, label: releaseKindLabel(texts, value), icon: KIND_ICONS[value] })), hint: t(texts, `release.explain.${camel(kind)}`), error: error("overlay:releaseKind") }),
-      ...(kind === "timed"
-        ? [
-            field(texts, { key: "overlay:hours", labelKey: "release.hours", control: "text", inputType: "number", min: 0, step: 1, value: overlay.hours ?? 2 }),
-            field(texts, { key: "overlay:minutes", labelKey: "release.minutes", control: "text", inputType: "number", min: 0, max: 59, step: 5, value: overlay.minutes ?? 0, error: error("overlay:duration") }),
-          ]
-        : []),
-    ],
-    current: room?.release ? releaseKindLabel(texts, room.release.kind) : null,
+    title: rows.length === 1 ? t(texts, "release.title", { room: rows[0].name }) : t(texts, "release.titleMany"),
+    missing: rows.length === 0 || rows.every((row) => row.missing),
+    rows,
+    addable,
     invalid,
-    submit: actions?.release ?? decide(context, { operation: "release_rooms" }),
-    revoke: actions?.revoke ?? null,
+    submit: single ? roomAffordances(single, context).release : decide(context, { operation: "release_rooms" }),
+    revoke: single ? roomAffordances(single, context).revoke : null,
   };
 }
 

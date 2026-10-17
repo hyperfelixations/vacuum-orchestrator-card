@@ -36,9 +36,9 @@ test("a timed release sends its duration; locking sends a revoke", async () => {
   const [library, dining] = [roomId(card, "Library"), roomId(card, "Dining Room")];
   await card.click(room(card, "Library").querySelector('[data-action="open-release"]'));
   assert.equal(card.root.querySelector(".voc-dialog").getAttribute("role"), "dialog");
-  await card.click('[data-key="field:overlay:releaseKind"] [data-value="timed"]');
-  await card.type('[data-field="overlay:hours"]', "1");
-  await card.type('[data-field="overlay:minutes"]', "15");
+  await card.click('[data-key="field:release:0:kind"] [data-value="timed"]');
+  await card.type('[data-field="release:0:hours"]', "1");
+  await card.type('[data-field="release:0:minutes"]', "15");
   await card.click('[data-action="release-room"]');
   await card.settle(32);
   assert.deepEqual(card.commands("release_rooms").map((message) => message.parameters), [{ grants: [{ room: library, kind: "timed", duration_seconds: 4500 }] }]);

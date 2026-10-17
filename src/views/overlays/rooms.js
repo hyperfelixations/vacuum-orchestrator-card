@@ -7,18 +7,38 @@ import { FORMS_CSS } from "../styles/forms.js";
 import { dialog } from "./dialog.js";
 import { block, frame } from "./frame.js";
 
+// One room of a release: its kind, for a timed one a quick choice and hours beside minutes. With
+// several rooms each row is framed, names its room and can be removed (REL-04, REL-06, REL-08).
+function releaseRow(context, vm, row) {
+  const several = vm.rows.length > 1;
+  const remove = row.removable ? button({ action: "remove-release-room", args: { index: row.index }, label: context.t("release.removeRoom", { room: row.name }), iconName: "mdi:close", variant: "icon" }) : "";
+  const head = several ? `<div class="voc-list-head"><strong class="voc-release-room">${e(row.name)}</strong>${remove}</div>` : "";
+  const current = row.current ? `<p class="voc-field-hint">${e(context.t("release.current", { kind: row.current }))}</p>` : "";
+  const duration = row.duration ? `${renderField(context, row.duration.quick)}<div class="voc-release-duration">${renderField(context, row.duration.hours)}${renderField(context, row.duration.minutes)}</div>` : "";
+  const error = row.error ? `<div class="voc-field-error" role="alert">${e(row.error)}</div>` : "";
+  return `<section class="voc-release-row${several ? " voc-list-item" : ""}" data-key="release:${e(row.roomId)}">${head}${current}${renderField(context, row.kind)}${duration}${error}</section>`;
+}
+
 export const releaseOverlay = Object.freeze({
   key: "release",
   dialog: true,
   build: ({ model, texts, context, overlay }) => buildRelease({ model, texts, context, overlay }),
   render(context, vm) {
     if (vm.missing) return dialog(context, { key: "release", title: vm.title, lead: context.t("release.missingRoom"), actions: button({ action: "back", label: context.t("action.back"), variant: "quiet" }) });
-    const current = vm.current ? `<p class="voc-overlay-lead">${e(context.t("release.current", { kind: vm.current }))}</p>` : "";
-    const revoke = vm.revoke ? button({ action: "revoke-room", args: { roomId: vm.roomId, close: true }, label: context.t("rooms.lock"), iconName: "mdi:lock-outline", variant: "quiet", decision: vm.revoke, reasonText: context.reason(vm.revoke), className: "voc-action-start" }) : "";
-    const actions = `${revoke}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "release-room", args: { roomId: vm.roomId }, label: context.t("rooms.release"), iconName: "mdi:lock-open-variant-outline", variant: "primary", decision: vm.submit, reasonText: context.reason(vm.submit) })}`;
-    return dialog(context, { key: "release", title: vm.title, invalid: vm.invalid, content: `${current}<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions });
+    const add = vm.addable.length ? `<div class="voc-release-add" role="group" aria-labelledby="voc-release-add-label"><span class="voc-field-label" id="voc-release-add-label">${e(context.t("release.addRoom"))}</span><div class="voc-chips">${vm.addable.map((room) => button({ action: "add-release-room", args: { roomId: room.roomId }, label: room.name, iconName: "mdi:plus", variant: "text" })).join("")}</div></div>` : "";
+    const revoke = vm.revoke ? button({ action: "revoke-room", args: { roomId: vm.rows[0].roomId, close: true }, label: context.t("rooms.lock"), iconName: "mdi:lock-outline", variant: "quiet", decision: vm.revoke, reasonText: context.reason(vm.revoke), className: "voc-action-start" }) : "";
+    const actions = `${revoke}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "release-room", label: context.t("rooms.release"), iconName: "mdi:lock-open-variant-outline", variant: "primary", decision: vm.submit, reasonText: context.reason(vm.submit) })}`;
+    return dialog(context, { key: "release", title: vm.title, invalid: vm.invalid, content: `<div class="voc-form">${vm.rows.map((row) => releaseRow(context, vm, row)).join("")}${add}</div>`, actions });
   },
-  css: FORMS_CSS,
+  css: `${FORMS_CSS}
+.voc-release-row { display: grid; gap: 10px; min-width: 0; }
+.voc-release-row [data-key$=":kind"] .voc-segmented { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.voc-release-row [data-key$=":kind"] .voc-option { justify-content: flex-start; min-width: 0; }
+.voc-release-row [data-key$=":kind"] .voc-option span { min-width: 0; overflow-wrap: anywhere; text-align: start; }
+.voc-release-row.voc-list-item [data-key$=":kind"] > .voc-field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.voc-release-duration { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 12px; }
+.voc-release-add { display: grid; gap: 6px; min-width: 0; padding-top: 10px; border-top: 1px solid var(--voc-hairline); }
+`,
 });
 
 function requirementRow(context, row) {

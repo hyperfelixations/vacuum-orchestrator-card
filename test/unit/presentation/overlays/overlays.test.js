@@ -262,18 +262,35 @@ test("cancelling a started job and ending the queue offer their choices as radio
   assert.deepEqual(dialogs.queueEndChoices({ slots: {} }), ["finish", "cancel_stay"]);
 });
 
-test("a release offers the four kinds; a timed one asks for its duration", async () => {
+// REL-04, REL-06, REL-08: one row per room with its own kind; a timed one offers quick choices and
+// hours beside minutes; more rooms can be added and, while several are listed, removed again.
+test("a release lists each room with its own kind; a timed one asks for its duration", async () => {
   const { buildRelease } = await overlays("rooms");
   const built = await busy();
-  const locked = buildRelease({ ...built, overlay: { roomId: roomId(built.model, "Conservatory") } });
-  assert.deepEqual(locked.fields[0].options.map((option) => option.value), ["permanent", "once", "timed", "queue_run"]);
-  assert.equal(locked.fields.length, 1);
-  assert.equal(locked.revoke.state, "hidden");
-  const timed = buildRelease({ ...built, overlay: { roomId: roomId(built.model, "Studio"), releaseKind: "timed", hours: 0, minutes: 0, errors: { "overlay:duration": "release_duration_mismatch" } } });
-  assert.equal(timed.fields.length, 3);
-  assert.deepEqual([timed.fields[1].error, timed.fields[2].error], [null, said(built, "release_duration_mismatch")], "the duration's error sits below hours and minutes");
-  assert.equal(timed.revoke.state, "enabled");
-  assert.equal(buildRelease({ ...built, overlay: { roomId: "room-gone" } }).missing, true);
+  const [conservatory, studio] = [roomId(built.model, "Conservatory"), roomId(built.model, "Studio")];
+  const one = buildRelease({ ...built, overlay: { rooms: [{ roomId: conservatory, kind: "queue_run", hours: 2, minutes: 0 }] } });
+  assert.equal(one.title, "Release Conservatory");
+  assert.equal(one.rows.length, 1);
+  assert.deepEqual(one.rows[0].kind.options.map((option) => option.value), ["permanent", "once", "timed", "queue_run"]);
+  assert.deepEqual([one.rows[0].duration, one.rows[0].removable], [null, false], "one room, no duration for a run-long release");
+  assert.equal(one.revoke.state, "hidden");
+  assert.deepEqual(one.addable.map((room) => room.name), ["Dining Room", "Studio", "Library"], "every other room can join");
+  const two = buildRelease({ ...built, overlay: { rooms: [{ roomId: conservatory, kind: "once", hours: 2, minutes: 0 }, { roomId: studio, kind: "timed", hours: 0, minutes: 0 }], errors: { "release:1:duration": "release_duration_mismatch", "release:0:room": "room_unavailable" } } });
+  assert.equal(two.title, "Release rooms");
+  assert.deepEqual(two.rows.map((row) => [row.name, row.kind.value, row.removable]), [["Conservatory", "once", true], ["Studio", "timed", true]]);
+  assert.deepEqual([two.rows[0].kind.key, two.rows[0].kind.label], ["release:0:kind", "Release Conservatory"], "each row has its own kind, named by its room");
+  const duration = two.rows[1].duration;
+  assert.deepEqual(duration.quick.options.map((option) => [option.value, option.label]), [[30, "30 min"], [60, "1 h"], [120, "2 h"], [240, "4 h"]]);
+  assert.equal(duration.quick.value, null, "no quick choice matches no time");
+  assert.deepEqual([duration.hours.key, duration.minutes.key], ["release:1:hours", "release:1:minutes"]);
+  assert.deepEqual([duration.hours.error, duration.minutes.error], [null, said(built, "release_duration_mismatch")], "the duration's error sits below hours and minutes");
+  assert.equal(two.rows[0].error, said(built, "room_unavailable"), "a room the integration refuses names its row");
+  assert.equal(two.rows[1].current, "For a set time", "the release it replaces");
+  assert.equal(two.revoke, null, "locking is for one room");
+  assert.deepEqual(two.addable.map((room) => room.name), ["Dining Room", "Library"]);
+  const quick = buildRelease({ ...built, overlay: { rooms: [{ roomId: studio, kind: "timed", hours: 4, minutes: 0 }] } });
+  assert.equal(quick.rows[0].duration.quick.value, 240);
+  assert.equal(buildRelease({ ...built, overlay: { rooms: [{ roomId: "room-gone", kind: "queue_run" }] } }).missing, true);
 });
 
 test("room settings show detected robot targets and the occupancy fields only for occupied time", async () => {

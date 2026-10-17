@@ -10,6 +10,7 @@ import { applyDraftChange, createDraft, draftFieldOf, draftToIntent, draftToTemp
 import { createRoomDraft, isRoomDirty, newBinding, newRequirement, roomDraftToPatch, roomFieldOf, updateRoomDraft } from "../../domain/room-draft.js";
 import { createRobotDraft, isRobotDirty, robotDraftToConfiguration, robotFieldOf, updateRobotDraft } from "../../domain/robot-draft.js";
 import { formErrors, withoutFieldError } from "../../domain/validation.js";
+import { grantsOf, releaseField, releaseFieldOf, releaseGroupOf, releaseRows, updateReleaseRow, withReleaseRoom, withoutReleaseRow } from "../../domain/release-draft.js";
 import { isTransportFailure } from "../../domain/backend-errors.js";
 import { AFTER_CANCEL_CHOICES, queueEndChoices } from "../../presentation/overlays/dialogs.js";
 import { jobTitle, roomIndex } from "../../presentation/common/lookups.js";
@@ -31,11 +32,6 @@ const DRAFT_DIRTY = Object.freeze({
 // integration names by the command field it starts with.
 const pageFields = (fields) => (path) => fields[String(path).split(".")[0]] ?? null;
 const JOB_DEFAULT_FIELDS = Object.freeze({ mode: "overlay:mode", passes: "overlay:passes", settings_policy: "overlay:settingsPolicy", ...Object.fromEntries(SETTING_FIELDS.map((field) => [SETTING_WIRE_NAMES[field], `overlay:${field}`])) });
-// One release on the page: its kind and its duration, edited as hours and minutes.
-const RELEASE_FIELDS = Object.freeze({ "grants.0.kind": "overlay:releaseKind", "grants.0.duration_seconds": "overlay:duration" });
-const releaseFieldOf = (path) => RELEASE_FIELDS[path] ?? null;
-// Fields whose error belongs to a value they form together with others.
-const FIELD_GROUPS = Object.freeze({ "overlay:hours": "overlay:duration", "overlay:minutes": "overlay:duration" });
 
 const QUEUE_SCOPES = Object.freeze(["queue", "openJobs", "jobLog", "job", "execution", "trace"]);
 const STARTED_STATES = Object.freeze(["dispatching", "running"]);
@@ -146,7 +142,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
   function clearError(field) {
     const errors = ui.overlay?.errors;
     if (!errors) return;
-    const next = [field, FIELD_GROUPS[field]].filter(Boolean).reduce(withoutFieldError, errors);
+    // A field whose error belongs to a value it forms together with others clears that too.
+    const next = [field, releaseGroupOf(field)].filter(Boolean).reduce(withoutFieldError, errors);
     if (next !== errors) ui.updateOverlay({ errors: Object.keys(next).length ? next : null });
   }
 
@@ -169,6 +166,12 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
   // choice) and `query:<field>` the search text of an entity picker.
   function setValue(field, value) {
     if (typeof field !== "string") return;
+    const row = releaseField(field);
+    if (row && ui.overlay?.kind === "release") {
+      ui.updateOverlay({ rooms: updateReleaseRow(ui.overlay.rooms, row.index, row.name, value) });
+      clearError(field);
+      return;
+    }
     if (field.startsWith("overlay:")) {
       ui.updateOverlay({ [field.slice("overlay:".length)]: value });
       clearError(field);
@@ -409,7 +412,14 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       { titleKey: "confirm.removeTemplate.title", textKey: "confirm.removeTemplate.text", confirmKey: "confirm.removeTemplate.confirm", icon: "mdi:delete-outline", vars: { template: findIn(getModel(), "templates", "templateId", templateId)?.name ?? "" } }
     ),
     "reset-template-demand": ({ templateId }) => run("reset_template_demand", { template_id: templateId }, { target: templateTarget(templateId), invalidates: ["templates"], success: { key: "notice.templateDemandReset" } }),
-    "open-release": ({ roomId }) => ui.openOverlay({ kind: "release", roomId, releaseKind: "queue_run", hours: 2, minutes: 0 }),
+    "open-release": ({ roomId, roomIds }) => ui.openOverlay({ kind: "release", rooms: releaseRows(roomIds?.length ? roomIds : [roomId]) }),
+    "add-release-room": ({ roomId }) => {
+      if (ui.overlay?.kind === "release") ui.updateOverlay({ rooms: withReleaseRoom(ui.overlay.rooms, roomId) });
+    },
+    // Rows after the removed one move up, so the errors the integration named by row go.
+    "remove-release-room": ({ index }) => {
+      if (ui.overlay?.kind === "release") ui.updateOverlay({ rooms: withoutReleaseRow(ui.overlay.rooms, index), errors: null, formError: null });
+    },
     "release-room": ({ roomId }) => releaseRoom(roomId, ui.overlay?.kind === "release" ? ui.overlay : null),
     "revoke-room": ({ roomId, close = false }) => run("revoke_rooms", { rooms: [roomId] }, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: close, success: { key: "notice.roomLocked" } }),
     "edit-room": ({ roomId }) => {
@@ -498,14 +508,13 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     },
   };
 
-  // From the release page with its kind and duration; from a room card at once until the queue
-  // run ends, which asks nothing.
+  // From the release dialog every listed room with its own kind in one command; from a room card
+  // at once until the queue run ends, which asks nothing.
   function releaseRoom(roomId, overlay) {
-    const options = { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: Boolean(overlay), success: { key: "notice.roomReleased" } };
-    if (!overlay) return run("release_rooms", { grants: [{ room: roomId, kind: "queue_run" }] }, options);
-    const grant = { room: roomId, kind: overlay.releaseKind || "queue_run" };
-    if (grant.kind === "timed") grant.duration_seconds = (Number(overlay.hours ?? 2) * 60 + Number(overlay.minutes ?? 0)) * 60;
-    return submit("release_rooms", { grants: [grant] }, releaseFieldOf, options);
+    if (!overlay) return run("release_rooms", { grants: [{ room: roomId, kind: "queue_run" }] }, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, success: { key: "notice.roomReleased" } });
+    const rows = overlay.rooms || [];
+    const one = rows.length === 1;
+    return submit("release_rooms", { grants: grantsOf(rows) }, releaseFieldOf, { target: one ? roomTarget(rows[0].roomId) : "release_rooms", invalidates: ROOM_SCOPES, closeOverlay: true, success: { key: one ? "notice.roomReleased" : "notice.roomsReleased" } });
   }
 
   return {

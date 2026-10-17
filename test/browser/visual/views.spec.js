@@ -31,6 +31,7 @@ const NOT_LOADED = { recording: "unloaded", from: "The integration is not loaded
 const NO_ROBOT = { recording: "no_robot" };
 const COUNTDOWN = { recording: "start_delay", from: "The job starts in four seconds" };
 const HALFWAY = { recording: "start_delay", from: "Rocky is halfway through" };
+const TWO_ROOMS = { recording: "start_delay", from: "The job waits for its two rooms" };
 const EDITED_ELSEWHERE = { recording: "job_hold", from: "Another card edits the job" };
 const FAULT = { recording: "device_fault", from: "The job waits for the fix" };
 
@@ -296,9 +297,22 @@ test.describe("rooms", () => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await open(page, card, "rooms");
     await act(page, named(card, ".voc-room", "Conservatory", '[data-action="open-release"]'));
-    await act(page, card.locator('[data-key="field:overlay:releaseKind"] [data-value="timed"]'));
-    await expect(card.locator('[data-field="overlay:hours"]')).toBeVisible();
+    await act(page, card.locator('[data-key="field:release:0:kind"] [data-value="timed"]'));
+    await expect(card.locator('[data-field="release:0:hours"]')).toBeVisible();
     await shot(page, "release-medium-light.png", MEDIUM);
+  });
+
+  // REL-04, REL-06, REL-08: a job's two rooms, each with its own kind; a timed one with its quick
+  // choice and hours beside minutes.
+  test("release dialog for a job's two rooms", async ({ page }) => {
+    const card = await mountCard(page, { ...TWO_ROOMS, config: BASE });
+    await act(page, named(card, ".voc-job", "Dining Room, Studio", '[data-action="open-release"]'));
+    await act(page, card.locator('[data-key="field:release:0:kind"] [data-value="once"]'));
+    await act(page, card.locator('[data-key="field:release:1:kind"] [data-value="timed"]'));
+    await act(page, card.locator('[data-key="field:release:1:quick"] [data-value="240"]'));
+    const [hours, minutes] = [await card.locator('[data-field="release:1:hours"]').boundingBox(), await card.locator('[data-field="release:1:minutes"]').boundingBox()];
+    expect(Math.abs(hours.y - minutes.y), "hours beside minutes").toBeLessThanOrEqual(1);
+    await shot(page, "release-rooms-medium-light.png", MEDIUM);
   });
 
   test("room settings", async ({ page }) => {

@@ -93,10 +93,12 @@ function mainAction(job, actions, { context, index }) {
   if (job.state === "queued") {
     if (code === "start_delayed") return { key: "delete", decision: actions.delete };
     if (code === "room_not_released") {
-      // The release dialog takes one room; a job waiting for several releases them from its page.
+      // One dialog releases every room the job waits for (REL-07); it is offered as far as each is.
       const roomIds = list(job.waiting.roomIds);
-      const room = roomIds.length === 1 ? index.byId.get(roomIds[0]) : null;
-      return room ? { key: "release", roomIds, decision: roomAffordances(room, context).release } : null;
+      const rooms = roomIds.map((roomId) => index.byId.get(roomId)).filter(Boolean);
+      if (!rooms.length || rooms.length !== roomIds.length) return null;
+      const decisions = rooms.map((room) => roomAffordances(room, context).release);
+      return { key: "release", roomIds, decision: decisions.find((decision) => decision.state !== "enabled") ?? decisions[0] };
     }
     if (code === "queue_idle" || code === "queue_paused") return { key: "start", decision: actions.start };
     return null;

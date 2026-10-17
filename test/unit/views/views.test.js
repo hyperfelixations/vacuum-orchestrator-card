@@ -191,7 +191,7 @@ test("locking and excluding a room are not destructive actions", async () => {
   const { document, context } = await renderContext(built.texts);
   const studio = roomId(built.model, "Studio");
   const release = overlayFor("release");
-  const releaseHost = parse(document, release.render(context, release.build({ ...built, overlay: { kind: "release", roomId: studio } })));
+  const releaseHost = parse(document, release.render(context, release.build({ ...built, overlay: { kind: "release", rooms: [{ roomId: studio, kind: "queue_run", hours: 2, minutes: 0 }] } })));
   const lock = releaseHost.querySelector('[data-action="revoke-room"]');
   assert.ok(lock, "a released room can be locked from its release dialog");
   assert.ok(!lock.classList.contains("voc-button--danger"));
@@ -247,7 +247,7 @@ test("every page renders inside the shared frame, every dialog in the dialog fra
     "start-job": { jobId: library },
     recovery: { robotId: robot.robotId, confirmStopped: false },
     "queue-settings": { minutes: 15 },
-    release: { roomId: room.roomId, releaseKind: "timed" },
+    release: { rooms: [{ roomId: room.roomId, kind: "timed", hours: 2, minutes: 0 }] },
     "room-editor": { draft: createRoomDraft(room), bindingsOpen: true },
     "room-create": { name: "" },
     "robot-add": {},

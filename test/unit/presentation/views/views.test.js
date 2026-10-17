@@ -83,6 +83,15 @@ test("a waiting row states the integration's main reason and the action it calls
   assert.deepEqual([conservatory.actions.moveUp.state, conservatory.actions.moveUp.reason, conservatory.actions.moveUp.source], ["disabled", "job_at_top", "integration"]);
 });
 
+// REL-07: a job waiting for several rooms offers to release them all in one step.
+test("a job waiting for two locked rooms offers to release both", async () => {
+  const { buildQueueView } = await view("queue");
+  const built = await modelFor("start_delay", { from: "The job waits for its two rooms" });
+  const [row] = buildQueueView({ ...built, options: {} }).waiting;
+  const names = row.main.roomIds.map((id) => built.model.slots.rooms.data.items.find((room) => room.roomId === id).name);
+  assert.deepEqual([row.status.code, row.main.key, names], ["room_not_released", "release", ["Dining Room", "Studio"]]);
+});
+
 // QUE-08, QUE-09: the start delay counts down while it is the only obstacle, beside Delete; without
 // a connection no countdown runs.
 test("a new job counts down to its start, deletable; offline it shows no countdown", async () => {

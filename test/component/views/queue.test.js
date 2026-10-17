@@ -405,3 +405,22 @@ test("a row's menu holds its managing actions, closes with Escape or a click bes
   assert.equal(card.text("#voc-overlay-title"), "Edit job");
   card.unmount();
 });
+
+// REL-04, REL-06, REL-07, REL-08: the row's release lists both locked rooms; each gets its own kind,
+// the studio four hours by quick choice, and one command releases both.
+test("a job's release frees each of its locked rooms in its own way with one command", async () => {
+  const card = await mountCard({ recording: "start_delay", from: "The job waits for its two rooms" });
+  await card.click(inRow(card, "Dining Room, Studio", '[data-action="open-release"]'));
+  const rows = card.all(".voc-release-row");
+  assert.deepEqual(rows.map((row) => row.querySelector(".voc-release-room").textContent.trim()), ["Dining Room", "Studio"]);
+  const [dining, studio] = rows.map((row) => row.dataset.key.replace(/^release:/, ""));
+  await card.click('[data-key="field:release:0:kind"] [data-value="once"]');
+  await card.click('[data-key="field:release:1:kind"] [data-value="timed"]');
+  await card.click('[data-key="field:release:1:quick"] [data-value="240"]');
+  assert.equal(card.root.querySelector('[data-field="release:1:hours"]').value, "4");
+  await card.click('[data-action="release-room"]');
+  await card.settle(32);
+  assert.deepEqual(card.commands("release_rooms").map((message) => message.parameters), [{ grants: [{ room: dining, kind: "once" }, { room: studio, kind: "timed", duration_seconds: 14400 }] }]);
+  assert.equal(card.root.querySelector(".voc-dialog"), null);
+  card.unmount();
+});

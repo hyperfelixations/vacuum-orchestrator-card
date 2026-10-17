@@ -462,20 +462,32 @@ test("templates are created, edited, used and removed through their commands", a
   assert.equal(ui.overlay, null, "removing from the editor leaves it");
 });
 
-test("a release sends its kind and, for a timed one, the duration in seconds", async () => {
-  const verdict = (_operation, parameters) => (parameters.grants[0].duration_seconds === 0 ? rejects(["grants.0.duration_seconds", "release_duration_mismatch"]) : ACCEPTS);
+// REL-04, REL-06, REL-08: rooms are released in one command, each with its own kind; a quick choice
+// sets hours and minutes; the integration's error names the row it belongs to.
+test("a release sends every listed room with its kind and, for a timed one, the duration in seconds", async () => {
+  const verdict = (_operation, parameters) => (parameters.grants.some((grant) => grant.duration_seconds === 0) ? rejects(["grants.1.duration_seconds", "release_duration_mismatch"]) : ACCEPTS);
   const { router, ui, commands, checked } = await setup({ verdict });
+  router.handle("open-release", { roomIds: ["room-library", "room-studio"] });
+  assert.deepEqual(ui.overlay.rooms, [{ roomId: "room-library", kind: "queue_run", hours: 2, minutes: 0 }, { roomId: "room-studio", kind: "queue_run", hours: 2, minutes: 0 }]);
+  router.handle("set-field", { field: "release:0:kind", value: "once" });
+  router.handle("set-field", { field: "release:1:kind", value: "timed" });
+  router.handle("set-field", { field: "release:1:quick", value: 240 });
+  assert.deepEqual(ui.overlay.rooms[1], { roomId: "room-studio", kind: "timed", hours: 4, minutes: 0 }, "a quick choice sets hours and minutes");
+  await router.handle("release-room");
+  assert.deepEqual(commands[0], { operation: "release_rooms", parameters: { grants: [{ room: "room-library", kind: "once" }, { room: "room-studio", kind: "timed", duration_seconds: 14400 }] }, target: "release_rooms", invalidates: commands[0].invalidates });
   router.handle("open-release", { roomId: "room-library" });
-  assert.equal(ui.overlay.releaseKind, "queue_run");
-  router.handle("set-overlay", { releaseKind: "timed", hours: 1, minutes: 30 });
-  await router.handle("release-room", { roomId: "room-library" });
-  assert.deepEqual(commands[0], { operation: "release_rooms", parameters: { grants: [{ room: "room-library", kind: "timed", duration_seconds: 5400 }] }, target: "room:room-library", invalidates: commands[0].invalidates });
-  router.handle("open-release", { roomId: "room-library" });
-  router.handle("set-overlay", { releaseKind: "timed", hours: 0, minutes: 0 });
-  await router.handle("release-room", { roomId: "room-library" });
-  assert.deepEqual([commands.length, { ...ui.overlay.errors }], [1, { "overlay:duration": "release_duration_mismatch" }]);
-  router.input("overlay:minutes", 30);
+  router.handle("add-release-room", { roomId: "room-studio" });
+  router.handle("set-field", { field: "release:1:kind", value: "timed" });
+  router.input("release:1:hours", 0);
+  router.input("release:1:minutes", 0);
+  await router.handle("release-room");
+  assert.deepEqual([commands.length, { ...ui.overlay.errors }], [1, { "release:1:duration": "release_duration_mismatch" }]);
+  router.input("release:1:minutes", 30);
   assert.equal(ui.overlay.errors, null, "hours and minutes form the duration");
+  router.handle("remove-release-room", { index: 1 });
+  assert.deepEqual(ui.overlay.rooms.map((row) => row.roomId), ["room-library"]);
+  await router.handle("release-room");
+  assert.deepEqual([commands.at(-1).parameters, commands.at(-1).target], [{ grants: [{ room: "room-library", kind: "queue_run" }] }, "room:room-library"]);
   router.handle("back");
   const checks = checked.length;
   await router.handle("release-room", { roomId: "room-library" });

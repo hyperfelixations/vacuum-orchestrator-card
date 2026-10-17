@@ -339,31 +339,53 @@
 <h2 class="voc-dialog-title" id="voc-dialog-title" tabindex="-1">Release Conservatory</h2>
 <div class="voc-dialog-scroll" data-scroll="">
 <div class="voc-form">
-<div class="voc-field" data-key="field:overlay:releaseKind" data-field-control="segmented">
-<div class="voc-field-label" id="voc-field-overlay-releaseKind-label">Release</div>
-<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-overlay-releaseKind-label" aria-describedby="voc-field-overlay-releaseKind-hint" data-control="choice">
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:releaseKind&quot;,&quot;value&quot;:&quot;permanent&quot;}" data-value="permanent" data-key="option:permanent">
+<section class="voc-release-row" data-key="release:00000000-0000-4000-8000-000000000005">
+<div class="voc-field" data-key="field:release:0:kind" data-field-control="segmented">
+<div class="voc-field-label" id="voc-field-release-0-kind-label">Release</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-release-0-kind-label" aria-describedby="voc-field-release-0-kind-hint" data-control="choice">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;release:0:kind&quot;,&quot;value&quot;:&quot;permanent&quot;}" data-value="permanent" data-key="option:permanent">
 <ha-icon icon="mdi:lock-open-variant-outline" aria-hidden="true">
 </ha-icon>
 <span>Until revoked</span>
 </button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:releaseKind&quot;,&quot;value&quot;:&quot;once&quot;}" data-value="once" data-key="option:once">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;release:0:kind&quot;,&quot;value&quot;:&quot;once&quot;}" data-value="once" data-key="option:once">
 <ha-icon icon="mdi:numeric-1-circle-outline" aria-hidden="true">
 </ha-icon>
 <span>For one job</span>
 </button>
-<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:releaseKind&quot;,&quot;value&quot;:&quot;timed&quot;}" data-value="timed" data-key="option:timed">
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;release:0:kind&quot;,&quot;value&quot;:&quot;timed&quot;}" data-value="timed" data-key="option:timed">
 <ha-icon icon="mdi:timer-outline" aria-hidden="true">
 </ha-icon>
 <span>For a set time</span>
 </button>
-<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;overlay:releaseKind&quot;,&quot;value&quot;:&quot;queue_run&quot;}" data-value="queue_run" data-key="option:queue_run">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;release:0:kind&quot;,&quot;value&quot;:&quot;queue_run&quot;}" data-value="queue_run" data-key="option:queue_run">
 <ha-icon icon="mdi:check" aria-hidden="true">
 </ha-icon>
 <span>For this queue run</span>
 </button>
 </div>
-<div class="voc-field-hint" id="voc-field-overlay-releaseKind-hint">The room may be cleaned until the current queue run, or the next one, ends.</div>
+<div class="voc-field-hint" id="voc-field-release-0-kind-hint">The room may be cleaned until the current queue run, or the next one, ends.</div>
+</div>
+</section>
+<div class="voc-release-add" role="group" aria-labelledby="voc-release-add-label">
+<span class="voc-field-label" id="voc-release-add-label">Add room</span>
+<div class="voc-chips">
+<button type="button" class="voc-button voc-button--text" data-action="add-release-room" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000002&quot;}">
+<ha-icon icon="mdi:plus" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Dining Room</span>
+</button>
+<button type="button" class="voc-button voc-button--text" data-action="add-release-room" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000003&quot;}">
+<ha-icon icon="mdi:plus" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Studio</span>
+</button>
+<button type="button" class="voc-button voc-button--text" data-action="add-release-room" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000004&quot;}">
+<ha-icon icon="mdi:plus" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Library</span>
+</button>
+</div>
 </div>
 </div>
 </div>
@@ -371,7 +393,7 @@
 <button type="button" class="voc-button voc-button--quiet" data-action="back">
 <span class="voc-button-label">Cancel</span>
 </button>
-<button type="button" class="voc-button voc-button--primary" data-action="release-room" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000005&quot;}">
+<button type="button" class="voc-button voc-button--primary" data-action="release-room">
 <ha-icon icon="mdi:lock-open-variant-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Release</span>
