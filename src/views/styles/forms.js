@@ -10,6 +10,8 @@ export const FORMS_CSS = `
 .voc-field-label { font-size: 12px; font-weight: 800; color: var(--primary-text-color); }
 .voc-field-optional { font-weight: 650; color: var(--voc-faint); }
 .voc-field-hint { font-size: 11.5px; font-weight: 600; line-height: 1.35; color: var(--voc-muted); }
+.voc-field-warning { display: flex; align-items: flex-start; gap: 6px; font-size: 11.5px; font-weight: 750; line-height: 1.35; color: var(--voc-warning-ink); }
+.voc-field-warning ha-icon { --mdc-icon-size: 15px; flex: none; margin-top: 1px; }
 .voc-field-error { font-size: 11.5px; font-weight: 750; line-height: 1.35; color: color-mix(in srgb, var(--voc-error) 85%, var(--primary-text-color)); }
 
 .voc-segmented, .voc-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }

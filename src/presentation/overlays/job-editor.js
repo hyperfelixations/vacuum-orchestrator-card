@@ -5,19 +5,31 @@
 
 import { CREATE_TARGET, decide, jobAffordances, jobTarget, templateAffordances, templateTarget } from "../../domain/affordances.js";
 import { ALL_ROOMS, settingsForMode } from "../../domain/job-draft.js";
-import { CLEANING_MODES, PASS_MAX, PASS_MIN, SETTING_LADDERS, SETTINGS_POLICIES } from "../../domain/job-schema.js";
+import { CLEANING_MODES, PASS_MAX, PASS_MIN, SETTING_FIELDS, SETTING_LADDERS, SETTINGS_POLICIES, canonicalizeMode } from "../../domain/job-schema.js";
 import { coveredRoomIds } from "../../domain/robots.js";
 import { findJob, list, robotsOf, roomIndex, roomName, roomsOf, slotData } from "../common/lookups.js";
 import { failureText, modeLabel, policyLabel, settingLabel, t } from "../common/texts.js";
 import { MODE_ICONS } from "../views/job-row.js";
 import { entityField, field, pageErrors } from "./editor-fields.js";
 
-// All rooms first; while it is chosen the single rooms stay offered but muted.
-function roomField(model, texts, draft, error) {
+// All rooms first; while it is chosen the single rooms stay offered but muted. The hint says what
+// the choice means; the warning what follows from it before the job waits: chosen rooms no robot
+// reaches yet (for all rooms, those the integration's preview names) and chosen rooms not released.
+function roomField(model, texts, draft, error, preview) {
   const allRooms = draft.allRooms === true;
   const options = [{ value: ALL_ROOMS, label: t(texts, "field.allRooms"), icon: "mdi:select-all" }, ...roomOptions(model, texts, list(draft.roomIds)).map((option) => (allRooms ? { ...option, muted: true } : option))];
-  const hintKey = allRooms ? (draft.meta.kind === "template" ? "editor.allRoomsTemplate" : "editor.allRoomsJob") : roomsOf(model).length ? null : "editor.noRooms";
-  return field(texts, { key: "roomIds", labelKey: "field.rooms", control: "chips", value: allRooms ? [ALL_ROOMS] : list(draft.roomIds), options, error, hintKey });
+  const base = allRooms ? (draft.meta.kind === "template" ? "editor.allRoomsTemplate" : "editor.allRoomsJob") : roomsOf(model).length ? null : "editor.noRooms";
+  const index = roomIndex(model);
+  const names = (ids) => ids.map((roomId) => roomName(roomId, index, model)).join(", ");
+  const covered = coveredRoomIds(robotsOf(model));
+  const chosen = allRooms ? [] : list(draft.roomIds);
+  const unreachable = allRooms ? list(preview?.unreachableRoomIds) : chosen.filter((roomId) => !covered.has(roomId));
+  const locked = chosen.filter((roomId) => index.byId.get(roomId)?.released === false);
+  const warning = [
+    unreachable.length ? t(texts, draft.meta.kind === "template" ? "editor.roomsUnreachableTemplate" : "editor.roomsUnreachable", { rooms: names(unreachable) }) : null,
+    locked.length ? t(texts, "editor.roomsNotReleased", { rooms: names(locked) }) : null,
+  ].filter(Boolean).join(" ");
+  return field(texts, { key: "roomIds", labelKey: "field.rooms", control: "chips", value: allRooms ? [ALL_ROOMS] : chosen, options, error, hintKey: base, warning: warning || null });
 }
 
 function roomOptions(model, texts, selected) {
@@ -45,18 +57,24 @@ function titlePreview(model, texts, draft) {
   return names.length ? names.join(", ") : t(texts, "field.jobNamePlaceholder");
 }
 
-// Per setting the mode uses: the rungs on offer and the wished one, which stays chosen and marked
-// when no robot offers it. Without a preview every rung is offered.
+// Per setting the mode uses (as the integration's preview for this mode names them, the contract's
+// list until it arrives): the rungs on offer and the wished one, which stays chosen when no robot
+// offers it. A rung is marked only where marks tell rungs apart; the chosen rung's note is said in
+// words. Without a preview every rung is offered.
 export function settingChoices(draft, preview) {
-  return settingsForMode(draft.mode).map((name) => {
-    const choice = preview?.settings?.[name] ?? null;
+  const current = preview && preview.mode === canonicalizeMode(draft.mode) ? preview : null;
+  const named = current ? SETTING_FIELDS.filter((name) => current.settings?.[name]) : [];
+  return (named.length ? named : settingsForMode(draft.mode)).map((name) => {
+    const choice = current?.settings?.[name] ?? null;
     const offered = new Map(list(choice?.options).map((option) => [option.value, option]));
     const known = offered.size > 0;
     const value = draft[name];
-    const options = SETTING_LADDERS[name]
+    const noted = SETTING_LADDERS[name]
       .filter((rung) => !known || offered.has(rung) || rung === value)
       .map((rung) => ({ value: rung, note: !known ? null : !offered.has(rung) ? "notOffered" : offered.get(rung).supportedByAll ? null : "notEveryRobot" }));
-    return { name, value, options };
+    const alike = new Set(noted.map((option) => option.note)).size === 1;
+    const chosen = noted.find((option) => option.value === value)?.note ?? null;
+    return { name, value, options: alike ? noted.map((option) => ({ ...option, note: null })) : noted, chosenNote: chosen };
   });
 }
 
@@ -72,6 +90,7 @@ function settingField(texts, choice, error) {
       badge: option.note ? "mdi:information-outline" : null,
       title: option.note ? t(texts, `editor.${option.note}`) : null,
     })),
+    warning: choice.chosenNote ? t(texts, `editor.${choice.chosenNote}`) : null,
     error,
   });
 }
@@ -95,7 +114,7 @@ export function buildJobEditor({ model, texts, context, overlay }) {
 
   // In the order of use: what is cleaned, how, then what is rarely set (see dev doc §8 "Editor").
   const basics = [
-    roomField(model, texts, draft, error("roomIds")),
+    roomField(model, texts, draft, error("roomIds"), preview),
     field(texts, { key: "mode", labelKey: "field.mode", control: "segmented", value: draft.mode, options: CLEANING_MODES.map((mode) => ({ value: mode, label: modeLabel(texts, mode), icon: MODE_ICONS[mode] })), error: error("mode") }),
   ];
 

@@ -11,7 +11,7 @@ export function fieldId(key) {
 
 function describedBy(field) {
   const id = fieldId(field.key);
-  return [field.hint ? `${id}-hint` : null, field.error ? `${id}-error` : null].filter(Boolean).join(" ") || null;
+  return [field.hint ? `${id}-hint` : null, field.warning ? `${id}-warning` : null, field.error ? `${id}-error` : null].filter(Boolean).join(" ") || null;
 }
 
 function choice(field, option, { role, selected, multiple }) {
@@ -97,8 +97,10 @@ export function renderField(context, field) {
   const optional = field.optionalLabel ? ` <span class="voc-field-optional">${e(field.optionalLabel)}</span>` : "";
   const label = `<${labelTag} class="voc-field-label${field.labelHidden ? " voc-sr-only" : ""}" id="${id}-label"${labelTag === "label" ? ` for="${id}"` : ""}>${e(field.label)}${optional}</${labelTag}>`;
   const hint = field.hint ? `<div class="voc-field-hint" id="${id}-hint">${e(field.hint)}</div>` : "";
+  // What follows from the choice, set apart from the hint on what it means.
+  const warning = field.warning ? `<div class="voc-field-warning" id="${id}-warning">${icon("mdi:alert-outline")}<span>${e(field.warning)}</span></div>` : "";
   const error = field.error ? `<div class="voc-field-error" id="${id}-error" role="alert">${e(field.error)}</div>` : "";
   // Inline: label and hint beside the control, which wraps below them when space runs out.
-  if (field.layout === "inline") return `<div class="voc-field voc-field--inline${field.error ? " is-invalid" : ""}" data-key="field:${e(field.key)}" data-field-control="${e(field.control)}"><div class="voc-field-text">${label}${hint}</div>${control}${error}</div>`;
-  return `<div class="voc-field${field.error ? " is-invalid" : ""}" data-key="field:${e(field.key)}" data-field-control="${e(field.control)}">${label}${control}${hint}${error}</div>`;
+  if (field.layout === "inline") return `<div class="voc-field voc-field--inline${field.error ? " is-invalid" : ""}" data-key="field:${e(field.key)}" data-field-control="${e(field.control)}"><div class="voc-field-text">${label}${hint}</div>${control}${warning}${error}</div>`;
+  return `<div class="voc-field${field.error ? " is-invalid" : ""}" data-key="field:${e(field.key)}" data-field-control="${e(field.control)}">${label}${control}${hint}${warning}${error}</div>`;
 }

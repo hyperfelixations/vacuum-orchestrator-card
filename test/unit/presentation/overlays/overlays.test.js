@@ -95,7 +95,8 @@ test("the preview limits the rungs, marks those not every robot offers and allow
   const shared = await modelFor("robot_choice", { from: "Either robot can start the dining room", requests: previewOf(dining) });
   const power = fieldsOf(buildJobEditor({ ...shared, overlay: { draft: dining } }), "settings").vacuumPower;
   assert.equal(power.value, "standard");
-  assert.ok(power.options.every((option) => option.badge === "mdi:information-outline" && option.title === shared.texts.t("editor.notEveryRobot")), "Dusty sets no suction");
+  assert.ok(power.options.every((option) => option.badge === null), "the same mark on every level tells nothing");
+  assert.equal(power.warning, shared.texts.t("editor.notEveryRobot"), "the chosen level says it in words: Dusty sets no suction");
 
   const docked = await modelFor("queue_controls", { from: "Rocky is back at its dock" });
   const studio = await newDraft(docked.model, { roomIds: [roomId(docked.model, "Studio")] });
@@ -389,4 +390,26 @@ test("the editor offers an optional occasion and previews the title the job will
   assert.equal(editor(applyDraftChange(createDraft(), "name", "Before the party")).groups.find((group) => group.key === "more").open, true);
   const template = fieldsOf(buildJobEditor({ ...built, overlay: { draft: createDraft({ kind: "template" }) } }), "more");
   assert.deepEqual(Object.keys(template).includes("reason") || Object.keys(template).includes("name"), false, "a template has its own name and no occasion");
+});
+
+// The editor says in words what a room choice means before the job waits for it: rooms no robot
+// reaches yet and rooms not released. For all rooms the integration's preview names the rooms no
+// robot reaches; which of them are released does not matter to such a job yet.
+test("the room choice names rooms no robot reaches and rooms not released", async () => {
+  const { buildJobEditor } = await overlays("job-editor");
+  const { createDraft, toggleRoom, draftToPreview } = await draftModule();
+  const plain = await busy();
+  const [conservatory, dining] = [roomId(plain.model, "Conservatory"), roomId(plain.model, "Dining Room")];
+  const rooms = (built, draft) => {
+    const field = fieldsOf(buildJobEditor({ ...built, overlay: { draft } }), "basics").roomIds;
+    return [field.hint, field.warning];
+  };
+  assert.deepEqual(rooms(plain, toggleRoom(createDraft(), dining)), [null, null], "a released room Rocky reaches needs no word");
+  assert.deepEqual(rooms(plain, toggleRoom(createDraft(), conservatory)), [null, "No robot reaches Conservatory yet. The job waits until one does. Not released yet: Conservatory."]);
+  const all = toggleRoom(createDraft(), "all");
+  const previewed = await busy({ preview: { name: "preview", params: draftToPreview(all) } });
+  assert.deepEqual(rooms(previewed, all), ["Every active room; the job keeps the rooms active now.", "No robot reaches Conservatory yet. The job waits until one does."], "what the choice means apart from what follows from it");
+  const template = toggleRoom(createDraft({ kind: "template" }), "all");
+  const forTemplate = await busy({ preview: { name: "preview", params: draftToPreview(template) } });
+  assert.equal(rooms(forTemplate, template)[1], "No robot reaches Conservatory yet. Its jobs wait until one does.", "a template is no job; the jobs it makes wait");
 });
