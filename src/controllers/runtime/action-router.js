@@ -13,7 +13,7 @@ import { formErrors, withoutFieldError } from "../../domain/validation.js";
 import { grantsOf, releaseField, releaseFieldOf, releaseGroupOf, releaseRows, updateReleaseRow, withReleaseRoom, withoutReleaseRow } from "../../domain/release-draft.js";
 import { isTransportFailure } from "../../domain/backend-errors.js";
 import { AFTER_CANCEL_CHOICES, queueEndChoices } from "../../presentation/overlays/dialogs.js";
-import { jobTitle, roomIndex } from "../../presentation/common/lookups.js";
+import { jobTitle, roomIndex, roomName } from "../../presentation/common/lookups.js";
 import { SETTING_FIELDS, SETTING_WIRE_NAMES } from "../../domain/job-schema.js";
 import { menuId } from "../../views/controls/menu.js";
 
@@ -339,11 +339,31 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       const job = findJob(model, jobId);
       if (job) ui.openOverlay({ kind: "save-template", jobId, name: jobTitle(job, roomIndex(model), model), automatic: false });
     },
+    // JOB-24: the editor's draft as it is shown, named after its title or rooms; the editor stays
+    // open with it and keeps its hold.
+    "open-save-draft-template": () => {
+      const editor = ui.overlay;
+      if (editor?.kind !== "job-editor" || editor.draft?.meta.kind !== "job") return;
+      const { draft } = editor;
+      const model = getModel();
+      const index = roomIndex(model);
+      const rooms = draft.allRooms ? [] : (draft.roomIds ?? []).map((roomId) => roomName(roomId, index, model));
+      ui.openOverlay({ kind: "save-template", editorId: editor.id, name: String(draft.name ?? "").trim() || rooms.join(", "), automatic: false });
+    },
     "save-job-template": () => {
       const overlay = ui.overlay;
       if (overlay?.kind !== "save-template") return null;
+      const fieldOf = pageFields({ name: "overlay:name", automatic: "overlay:automatic" });
+      if (overlay.editorId) {
+        const draft = ui.find(overlay.editorId)?.draft;
+        if (!draft) return null;
+        // The occasion belongs to the job, not to what it repeats.
+        const { reason: _reason, ...intent } = draftToIntent(draft);
+        const parameters = { name: String(overlay.name ?? "").trim(), intent, enabled: true, automatic: overlay.automatic === true };
+        return submit("save_template", parameters, fieldOf, { target: CREATE_TARGET, invalidates: ["templates"], closeOverlay: true, success: { key: "notice.templateSaved" } });
+      }
       const parameters = { job_id: overlay.jobId, name: String(overlay.name ?? "").trim(), automatic: overlay.automatic === true };
-      return submit("save_job_as_template", parameters, pageFields({ name: "overlay:name", automatic: "overlay:automatic" }), { target: jobTarget(overlay.jobId), invalidates: ["templates"], closeOverlay: true, success: { key: "notice.templateSavedFromJob" } });
+      return submit("save_job_as_template", parameters, fieldOf, { target: jobTarget(overlay.jobId), invalidates: ["templates"], closeOverlay: true, success: { key: "notice.templateSavedFromJob" } });
     },
     "open-job-defaults": () => {
       const defaults = jobDefaults();

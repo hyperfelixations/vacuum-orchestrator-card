@@ -454,7 +454,8 @@ button { font: inherit; color: inherit; }
 .voc-menu-item ha-icon { --mdc-icon-size: 18px; color: var(--voc-muted); }
 .voc-menu-item:hover, .voc-menu-item:focus-visible { background: color-mix(in srgb, var(--primary-text-color) 8%, transparent); }
 .voc-menu-item:focus-visible { outline: 2px solid var(--voc-focus); outline-offset: -2px; }
-.voc-menu-item[aria-disabled="true"] { color: var(--voc-faint); cursor: default; }
+.voc-menu-item[data-tone="danger"], .voc-menu-item[data-tone="danger"] ha-icon { color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
+.voc-menu-item[aria-disabled="true"], .voc-menu-item[aria-disabled="true"] ha-icon { color: var(--voc-faint); cursor: default; }
 .voc-menu-item[aria-disabled="true"] ha-icon { color: var(--voc-faint); }
 
 .voc-overlay { display: grid; gap: 12px; min-width: 0; }
@@ -972,6 +973,20 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-option-row .voc-field { flex: 1; }
 .voc-option-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
 
+.voc-editor-lead, .voc-editor-buttons { display: inline-flex; align-items: center; gap: 8px; }
+.voc-editor-lead .voc-menu-anchor { display: none; }
+.voc-editor-lead .voc-menu { right: auto; left: 0; }
+@container voc-card (max-width: 559px) {
+  .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
+  .voc-editor-lead .voc-editor-buttons { display: none; }
+}
+@supports not (container-type: inline-size) {
+  @media (max-width: 699px) {
+    .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
+    .voc-editor-lead .voc-editor-buttons { display: none; }
+  }
+}
+
 .voc-detail-summary { display: grid; gap: 6px; }
 .voc-detail-line { display: flex; flex-wrap: wrap; gap: 6px; }
 .voc-detail-position { display: flex; align-items: center; gap: var(--voc-target-gap); font-size: 12px; font-weight: 700; color: var(--voc-muted); }
@@ -1124,6 +1139,20 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-option-row .voc-field { flex: 1; }
 .voc-option-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
 
+.voc-editor-lead, .voc-editor-buttons { display: inline-flex; align-items: center; gap: 8px; }
+.voc-editor-lead .voc-menu-anchor { display: none; }
+.voc-editor-lead .voc-menu { right: auto; left: 0; }
+@container voc-card (max-width: 559px) {
+  .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
+  .voc-editor-lead .voc-editor-buttons { display: none; }
+}
+@supports not (container-type: inline-size) {
+  @media (max-width: 699px) {
+    .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
+    .voc-editor-lead .voc-editor-buttons { display: none; }
+  }
+}
+
 .voc-release-row { display: grid; gap: 10px; min-width: 0; }
 .voc-release-row [data-key$=":kind"] .voc-segmented { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .voc-release-row [data-key$=":kind"] .voc-option { justify-content: flex-start; min-width: 0; }
@@ -1233,6 +1262,20 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-option-row { display: flex; align-items: flex-end; gap: 4px; min-width: 0; }
 .voc-option-row .voc-field { flex: 1; }
 .voc-option-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+
+.voc-editor-lead, .voc-editor-buttons { display: inline-flex; align-items: center; gap: 8px; }
+.voc-editor-lead .voc-menu-anchor { display: none; }
+.voc-editor-lead .voc-menu { right: auto; left: 0; }
+@container voc-card (max-width: 559px) {
+  .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
+  .voc-editor-lead .voc-editor-buttons { display: none; }
+}
+@supports not (container-type: inline-size) {
+  @media (max-width: 699px) {
+    .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
+    .voc-editor-lead .voc-editor-buttons { display: none; }
+  }
+}
 
 .voc-roles { display: grid; }
 .voc-role { display: grid; gap: 8px; padding: 9px 0; border-top: 1px solid var(--voc-hairline); }

@@ -205,6 +205,16 @@ test.describe("job pages", () => {
     await shot(page, "template-editor-narrow-light.png", NARROW);
   });
 
+  // The fullest footer: on a narrow card, saving as a template and removing share a menu.
+  test("waiting job editor with its menu, narrow, German", async ({ page }) => {
+    const card = await mountCard(page, { recording: "edit_hold", from: "A dining room job waits", config: { ...BASE, language: "de" } });
+    await act(page, named(card, ".voc-job", "Dining Room", '[data-action="edit-job"]'));
+    await setCardWidth(page, NARROW);
+    await act(page, card.locator('[data-key="menu:editor"] .voc-menu-button'));
+    await expect(card.locator('.voc-menu [data-action="delete-job"]')).toBeVisible();
+    await shot(page, "editor-waiting-german-narrow-light.png", NARROW);
+  });
+
   test("new job editor for mopping, narrow, German", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: { ...BASE, language: "de" } });
     await act(page, card.locator(".voc-primary-action"));

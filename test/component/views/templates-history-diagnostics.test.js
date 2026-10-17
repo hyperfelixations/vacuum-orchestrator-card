@@ -56,6 +56,25 @@ test("a new template needs a name and is saved whole", async () => {
   card.unmount();
 });
 
+// JOB-24: what the editor shows becomes a template; the editor stays with its draft.
+test("a new job's draft is saved as a template from its editor", async () => {
+  const card = await mountCard({ recording: "template_controls", from: "The studio template is gone" });
+  await card.click(".voc-primary-action");
+  const dining = card.all('[data-field-control="chips"] [data-value]').find((node) => node.textContent.trim() === "Dining Room");
+  await card.click(dining);
+  await card.settle(32);
+  await card.click('[data-action="open-save-draft-template"]');
+  assert.equal(card.root.querySelector('[data-field="overlay:name"]').value, "Dining Room");
+  await card.click('[data-action="save-job-template"]');
+  await card.settle(32);
+  const [saved] = card.commands("save_template");
+  assert.deepEqual([saved.parameters.name, saved.parameters.intent.areas, saved.parameters.automatic], ["Dining Room", [dining.dataset.value], false]);
+  assert.equal(card.root.querySelector(".voc-dialog"), null);
+  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:job-editor", "back in the editor");
+  assert.equal(card.services("create_job").length, 0, "nothing joined the queue");
+  card.unmount();
+});
+
 test("a template is removed from its editor after a confirmation", async () => {
   const card = await templates("The studio has a template");
   const weekly = templateId(card, "Studio weekly");

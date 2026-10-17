@@ -4,6 +4,7 @@ import { draftToPreview } from "../../domain/job-draft.js";
 import { buildJobEditor } from "../../presentation/overlays/job-editor.js";
 import { button, e, icon } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
+import { menu } from "../controls/menu.js";
 import { frame } from "./frame.js";
 import { FORMS_CSS } from "../styles/forms.js";
 
@@ -15,14 +16,19 @@ function group(context, entry) {
 }
 
 // Removing stands apart on the left; leaving comes next; the confirming actions end the row,
-// adding to the queue last.
+// adding to the queue last. Removing and saving as a template stand on the left: as buttons on
+// a wide card, in a menu on a narrow one, so the row stays one line (LAY-09). Both are rendered.
 export function renderJobEditor(context, vm) {
   const pending = vm.pending ? { state: "disabled", reason: "command_pending" } : null;
-  const remove = vm.remove ? button({ action: vm.remove.action, args: vm.remove.args, label: vm.remove.label, iconName: "mdi:delete-outline", variant: "danger", decision: vm.remove.decision, reasonText: context.reason(vm.remove.decision), className: "voc-action-start" }) : "";
-  const saveAsTemplate = vm.saveAsTemplate ? button({ action: vm.saveAsTemplate.action, args: vm.saveAsTemplate.args, label: vm.saveAsTemplate.label, iconName: "mdi:content-save-outline", decision: vm.saveAsTemplate.decision, reasonText: context.reason(vm.saveAsTemplate.decision) }) : "";
+  const removal = vm.remove ? { action: vm.remove.action, args: vm.remove.args, label: vm.remove.label, iconName: "mdi:delete-outline", decision: vm.remove.decision, reasonText: context.reason(vm.remove.decision), tone: "danger" } : null;
+  const template = vm.saveAsTemplate ? { action: vm.saveAsTemplate.action, label: vm.saveAsTemplate.label, iconName: "mdi:content-save-outline", decision: vm.saveAsTemplate.decision, reasonText: context.reason(vm.saveAsTemplate.decision) } : null;
+  const items = [template, removal].filter(Boolean);
+  const buttons = [removal && button({ ...removal, variant: "danger" }), template && button(template)].filter(Boolean).join("");
+  const more = menu(context, { key: "editor", label: context.t("action.moreActions"), items, open: vm.menuOpen === true });
+  const lead = items.length ? `<span class="voc-action-start voc-editor-lead"><span class="voc-editor-buttons">${buttons}</span>${more}</span>` : "";
   const startNow = vm.startNow ? button({ action: "start-draft", label: vm.startNow.label, iconName: "mdi:play", decision: pending ?? vm.startNow.decision, reasonText: context.reason(vm.startNow.decision) }) : "";
   const save = button({ action: "save-draft", label: vm.save.label, iconName: "mdi:check", variant: "primary", decision: pending ?? vm.save.decision, reasonText: context.reason(vm.save.decision) });
-  const actions = `${remove}${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${saveAsTemplate}${startNow}${save}`;
+  const actions = `${lead}${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${startNow}${save}`;
   // A lost hold heads the page with what can still be done (JOB-20, JOB-21).
   const hold = vm.hold ? `<div class="voc-notice voc-notice--warning" role="alert" data-key="hold">${icon("mdi:lock-alert-outline")}<span class="voc-notice-text">${e(vm.hold.text)}</span>${button({ action: vm.hold.action, label: vm.hold.label, variant: "text" })}</div>` : "";
   return frame(context, { key: "job-editor", title: vm.title, invalid: vm.invalid, content: `${hold}<form class="voc-form" novalidate>${vm.groups.map((entry) => group(context, entry)).join("")}</form>`, actions });
@@ -33,7 +39,7 @@ export const jobEditorOverlay = Object.freeze({
   needsEntityCatalog: true,
   // What the integration offers for this draft; asked again only when that can change.
   scopes: ({ overlay }) => (overlay.draft ? [{ name: "preview", params: draftToPreview(overlay.draft) }] : []),
-  build: ({ model, texts, context, overlay }) => buildJobEditor({ model, texts, context, overlay }),
+  build: ({ model, texts, context, overlay, ui }) => buildJobEditor({ model, texts, context, overlay, menu: ui?.menu ?? null }),
   render: renderJobEditor,
   css: FORMS_CSS,
 });

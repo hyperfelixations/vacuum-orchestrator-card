@@ -95,7 +95,8 @@ function settingField(texts, choice, error) {
   });
 }
 
-export function buildJobEditor({ model, texts, context, overlay }) {
+// `menu`: the key of the card's open menu, if any.
+export function buildJobEditor({ model, texts, context, overlay, menu = null }) {
   const draft = overlay.draft;
   const kind = draft.meta.kind;
   const { error, invalid } = pageErrors(texts, overlay);
@@ -160,7 +161,9 @@ export function buildJobEditor({ model, texts, context, overlay }) {
     pending: list(model.pending).includes(target),
     remove: removeControl({ model, texts, context, draft }),
     hold: holdNotice(texts, overlay),
-    saveAsTemplate: kind === "job" && draft.meta.id ? { action: "open-save-template", args: { jobId: draft.meta.id }, label: t(texts, "action.saveAsTemplate"), decision: decide(context, { operation: "save_job_as_template", target }) } : null,
+    menuOpen: menu === "editor",
+    // JOB-24: what the editor shows, for a new job as for one being edited.
+    saveAsTemplate: kind === "job" ? { action: "open-save-draft-template", label: t(texts, "action.saveAsTemplate"), decision: decide(context, { operation: "save_template", target: CREATE_TARGET }) } : null,
   };
 }
 

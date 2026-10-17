@@ -397,6 +397,44 @@ test("a job is saved as a template under a name the user may change", async () =
   assert.equal(commands.length, 1, "outside its page the save does nothing");
 });
 
+// JOB-24: the editor saves what it shows, for a new job as for one it edits; the occasion stays
+// with the job, and the editor stays open with its draft.
+test("a job draft is saved as a template as the editor shows it", async () => {
+  const verdict = (_operation, parameters) => (parameters.intent?.areas?.length || parameters.intent?.all_rooms ? ACCEPTS : rejects([["intent", "areas"], "job_requires_area"]));
+  const { router, ui, commands, checked } = await setup({ verdict });
+  router.handle("create-job");
+  router.handle("open-save-draft-template");
+  assert.deepEqual([ui.overlay.kind, ui.overlay.name], ["save-template", ""], "a draft without rooms has no name to suggest");
+  router.handle("set-field", { field: "overlay:name", value: "Somewhere" });
+  await router.handle("save-job-template");
+  assert.deepEqual([commands.length, ui.overlay.formError], [0, "job_requires_area"], "what the draft lacks is said on the dialog");
+  router.handle("back");
+  router.handle("toggle-value", { field: "roomIds", value: "room-library" });
+  router.handle("set-field", { field: "vacuumPower", value: "maximum" });
+  router.handle("set-field", { field: "reason", value: "Guests" });
+  router.handle("open-save-draft-template");
+  assert.deepEqual([ui.overlay.kind, ui.overlay.name, ui.overlay.automatic], ["save-template", "Library", false], "named after its rooms");
+  await router.handle("save-job-template");
+  const intent = { areas: ["room-library"], mode: "vacuum", vacuum_power: "maximum", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort" };
+  assert.deepEqual(commands[0], { operation: "save_template", parameters: { name: "Library", intent, enabled: true, automatic: false }, target: "create", invalidates: ["templates"] });
+  assert.deepEqual(checked.at(-1), { operation: "save_template", parameters: commands[0].parameters }, "the check sees exactly what is sent");
+  assert.deepEqual([ui.overlay.kind, ui.overlay.draft.reason, ui.snapshot.notice.messageKey], ["job-editor", "Guests", "notice.templateSaved"]);
+});
+
+test("a job being edited is saved as a template with its unsaved changes and its title", async () => {
+  const { router, ui, commands } = await setup({ answer: HELD });
+  await router.handle("edit-job", { jobId: "job-1" });
+  router.handle("set-field", { field: "passes", value: 2 });
+  router.handle("open-save-draft-template");
+  assert.equal(ui.overlay.name, "Library", "the title it carries");
+  router.handle("set-field", { field: "overlay:automatic", value: true });
+  await router.handle("save-job-template");
+  const saved = commands.find((command) => command.operation === "save_template").parameters;
+  assert.deepEqual([saved.intent.passes, saved.intent.name, saved.automatic, "template_id" in saved], [2, "Library", true, false]);
+  assert.equal(ui.overlay.kind, "job-editor");
+  assert.equal(commands.some((command) => command.operation === "release_job_hold"), false, "the editor keeps its hold");
+});
+
 test("the job defaults open with the integration's values and are saved as a whole", async () => {
   const verdict = (_operation, parameters) => (parameters.passes > 10 ? rejects(["passes", "out_of_range"]) : ACCEPTS);
   const { router, ui, commands } = await setup({ verdict });

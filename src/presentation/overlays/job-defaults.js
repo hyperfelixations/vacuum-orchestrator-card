@@ -2,28 +2,30 @@
 // defaults for new jobs. Each edits its values on the page itself and sends one command.
 // See internal dev doc §8 "Vorgaben" and "Auftragsdetail".
 
-import { QUEUE_TARGET, decide, jobTarget } from "../../domain/affordances.js";
+import { CREATE_TARGET, QUEUE_TARGET, decide, jobTarget } from "../../domain/affordances.js";
 import { CLEANING_MODES, PASS_MAX, PASS_MIN, SETTING_FIELDS, SETTING_LADDERS, SETTINGS_POLICIES } from "../../domain/job-schema.js";
 import { findJob, list, roomIndex, jobTitle } from "../common/lookups.js";
 import { modeLabel, policyLabel, settingLabel, t } from "../common/texts.js";
 import { MODE_ICONS } from "../views/job-row.js";
 import { field, pageErrors } from "./editor-fields.js";
 
+// From the detail page a stored job; from the editor its draft as shown (`editorId`).
 export function buildSaveTemplate({ model, texts, context, overlay }) {
-  const job = findJob(model, overlay.jobId);
-  const target = jobTarget(overlay.jobId);
+  const drafted = Boolean(overlay.editorId);
+  const job = drafted ? null : findJob(model, overlay.jobId);
+  const target = drafted ? CREATE_TARGET : jobTarget(overlay.jobId);
   const { error, invalid } = pageErrors(texts, overlay);
   return {
     key: "save-template",
     title: t(texts, "saveTemplate.title"),
-    lead: t(texts, "saveTemplate.lead"),
+    lead: t(texts, drafted ? "saveTemplate.leadDraft" : "saveTemplate.lead"),
     job: job ? jobTitle(job, roomIndex(model), model) : null,
     fields: [
       field(texts, { key: "overlay:name", labelKey: "saveTemplate.name", control: "text", value: String(overlay.name ?? ""), required: true, error: error("overlay:name") }),
       field(texts, { key: "overlay:automatic", labelKey: "saveTemplate.automatic", control: "switch", value: overlay.automatic === true, switchLabel: t(texts, "saveTemplate.automaticSwitch"), hintKey: "field.automaticHint", error: error("overlay:automatic") }),
     ],
     invalid,
-    save: decide(context, { operation: "save_job_as_template", target }),
+    save: decide(context, { operation: drafted ? "save_template" : "save_job_as_template", target }),
     pending: list(model.pending).includes(target),
   };
 }

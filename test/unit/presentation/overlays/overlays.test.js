@@ -54,6 +54,7 @@ test("a new job editor offers rooms by name with a mark for unreachable and unre
   assert.equal(vm.title, built.texts.t("editor.newJob"));
   assert.equal(vm.save.label, built.texts.t("action.addToQueue"));
   assert.equal(vm.remove, null);
+  assert.deepEqual([vm.saveAsTemplate.action, vm.saveAsTemplate.decision.state], ["open-save-draft-template", "enabled"], "a new job too may become a template");
   const rooms = fieldsOf(vm, "basics").roomIds.options;
   assert.deepEqual(rooms.map((room) => [room.label, room.badge]), [
     ["All rooms", undefined],
@@ -203,6 +204,8 @@ test("a job is saved as a template under a name; the defaults page offers every 
   const unnamed = buildSaveTemplate({ ...built, overlay: { jobId: library.jobId, name: " ", errors: { "overlay:name": "empty_name" } } });
   assert.deepEqual([unnamed.fields[0].error, unnamed.invalid], [said(built, "empty_name"), built.texts.t("editor.fixErrors")]);
   assert.equal(buildSaveTemplate({ ...built, overlay: { jobId: "job-gone" } }).job, null);
+  const drafted = buildSaveTemplate({ ...built, overlay: { editorId: 1, name: "Library" } });
+  assert.deepEqual([drafted.job, drafted.lead, drafted.save.operation ?? drafted.save.state], [null, built.texts.t("saveTemplate.leadDraft"), "enabled"], "a draft is saved as the editor shows it");
   const defaults = buildJobDefaults({ ...built, overlay: { mode: "mop", vacuumPower: "standard", mopIntensity: "medium", mopRoute: "deep", passes: 1, settingsPolicy: "strict" } });
   const fields = Object.fromEntries(defaults.fields.map((entry) => [entry.key, entry]));
   assert.deepEqual(Object.keys(fields), ["overlay:mode", "overlay:vacuumPower", "overlay:mopIntensity", "overlay:mopRoute", "overlay:passes", "overlay:settingsPolicy"]);

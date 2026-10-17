@@ -9,7 +9,8 @@ const safe = (key) => String(key).replace(/[^a-zA-Z0-9_-]/g, "-");
 
 export const menuId = (key) => `voc-menu-${safe(key)}`;
 
-// `items`: { action, args, label, iconName, decision, reasonText }; a hidden decision is left out.
+// `items`: { action, args, label, iconName, decision, reasonText, tone }; a hidden decision is left
+// out; `tone: "danger"` marks a destructive item.
 export function menu(context, { key, label, items, open }) {
   const shown = items.filter((item) => item.decision?.state !== "hidden");
   if (!shown.length) return "";
@@ -17,7 +18,7 @@ export function menu(context, { key, label, items, open }) {
   const entries = shown
     .map((item) => {
       const off = item.decision?.state === "disabled";
-      return `<button type="button" role="menuitem" tabindex="-1" class="voc-menu-item" data-action="${e(item.action)}"${argsAttr(item.args)}${off ? ` aria-disabled="true"${item.reasonText ? ` title="${e(item.reasonText)}"` : ""}` : ""}>${icon(item.iconName)}<span>${e(item.label)}</span></button>`;
+      return `<button type="button" role="menuitem" tabindex="-1" class="voc-menu-item"${item.tone ? ` data-tone="${e(item.tone)}"` : ""} data-action="${e(item.action)}"${argsAttr(item.args)}${off ? ` aria-disabled="true"${item.reasonText ? ` title="${e(item.reasonText)}"` : ""}` : ""}>${icon(item.iconName)}<span>${e(item.label)}</span></button>`;
     })
     .join("");
   const list = open ? `<div class="voc-menu" role="menu" id="${id}" aria-label="${e(label)}">${entries}</div>` : "";
