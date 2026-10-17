@@ -1,5 +1,5 @@
-// The job and template editor: rooms and mode, a job's optional title and occasion, the settings
-// the mode uses, then the optional policy, note and conditions. Settings offer the rungs the integration's preview
+// The job and template editor in the order of use: rooms and mode, the settings the mode uses and
+// the passes, then, folded away, a job's title and occasion, the note, the policy and conditions. Settings offer the rungs the integration's preview
 // reports for the chosen rooms; a room no robot reaches and an unreleased room are marked, not
 // hidden — the integration decides at dispatch. See internal dev doc §8 "Editor".
 
@@ -93,18 +93,10 @@ export function buildJobEditor({ model, texts, context, overlay }) {
       ]
     : [];
 
-  // What is cleaned comes first. JOB-23: a job's title and occasion are optional and follow; the
-  // title's placeholder is the name it will carry. A template has no occasion: the integration
-  // drops it when a template is saved.
+  // In the order of use: what is cleaned, how, then what is rarely set (see dev doc §8 "Editor").
   const basics = [
     roomField(model, texts, draft, error("roomIds")),
     field(texts, { key: "mode", labelKey: "field.mode", control: "segmented", value: draft.mode, options: CLEANING_MODES.map((mode) => ({ value: mode, label: modeLabel(texts, mode), icon: MODE_ICONS[mode] })), error: error("mode") }),
-    ...(kind === "job"
-      ? [
-          field(texts, { key: "name", labelKey: "field.jobName", control: "text", value: draft.name, optional: true, placeholder: titlePreview(model, texts, draft), error: error("name") }),
-          field(texts, { key: "reason", labelKey: "field.reason", control: "text", value: draft.reason, optional: true, hintKey: "field.reasonHint", error: error("reason") }),
-        ]
-      : []),
   ];
 
   const settings = [
@@ -112,13 +104,21 @@ export function buildJobEditor({ model, texts, context, overlay }) {
     field(texts, { key: "passes", labelKey: "field.passes", control: "stepper", value: draft.passes, min: PASS_MIN, max: PASS_MAX, error: error("passes"), hintKey: "field.passesHint" }),
   ];
 
+  // JOB-23: a job's title and occasion are optional; the title's placeholder is the name it will
+  // carry. A template has its own name and no occasion: the integration drops it when saving one.
   const more = [
-    field(texts, { key: "settingsPolicy", labelKey: "field.settingsPolicy", control: "segmented", value: draft.settingsPolicy, options: SETTINGS_POLICIES.map((policy) => ({ value: policy, label: policyLabel(texts, policy) })), hintKey: `field.settingsPolicyHint.${draft.settingsPolicy === "strict" ? "strict" : "bestEffort"}`, error: error("settingsPolicy") }),
+    ...(kind === "job"
+      ? [
+          field(texts, { key: "name", labelKey: "field.jobName", control: "text", value: draft.name, optional: true, placeholder: titlePreview(model, texts, draft), error: error("name") }),
+          field(texts, { key: "reason", labelKey: "field.reason", control: "text", value: draft.reason, optional: true, hintKey: "field.reasonHint", error: error("reason") }),
+        ]
+      : []),
     field(texts, { key: "note", labelKey: "field.note", control: "textarea", value: draft.note, optional: true, error: error("note") }),
+    field(texts, { key: "settingsPolicy", labelKey: "field.settingsPolicy", control: "segmented", value: draft.settingsPolicy, options: SETTINGS_POLICIES.map((policy) => ({ value: policy, label: policyLabel(texts, policy) })), hintKey: `field.settingsPolicyHint.${draft.settingsPolicy === "strict" ? "strict" : "bestEffort"}`, error: error("settingsPolicy") }),
     entityField(texts, model, { key: "requiredOn", labelKey: "field.requiredOn", value: draft.requiredOn, query: queries.requiredOn, error: error("requiredOn"), hintKey: "field.requiredOnHint" }),
     entityField(texts, model, { key: "requiredOff", labelKey: "field.requiredOff", value: draft.requiredOff, query: queries.requiredOff, error: error("requiredOff"), hintKey: "field.requiredOffHint" }),
   ];
-  const moreOpen = overlay.moreOpen === true || more.some((entry) => entry.error) || Boolean(draft.note) || draft.settingsPolicy === "strict" || list(draft.requiredOn).length > 0 || list(draft.requiredOff).length > 0;
+  const moreOpen = overlay.moreOpen === true || more.some((entry) => entry.error) || Boolean(draft.name) || Boolean(draft.reason) || Boolean(draft.note) || draft.settingsPolicy === "strict" || list(draft.requiredOn).length > 0 || list(draft.requiredOff).length > 0;
 
   const target = kind === "template" ? (draft.meta.id ? templateTarget(draft.meta.id) : CREATE_TARGET) : draft.meta.id ? jobTarget(draft.meta.id) : CREATE_TARGET;
   const operation = kind === "template" ? "save_template" : draft.meta.id ? "update_job" : "create_job";

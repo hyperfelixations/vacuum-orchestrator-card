@@ -37,6 +37,7 @@ export const releaseOverlay = Object.freeze({
 .voc-release-row [data-key$=":kind"] .voc-option span { min-width: 0; overflow-wrap: anywhere; text-align: start; }
 .voc-release-row.voc-list-item [data-key$=":kind"] > .voc-field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .voc-release-duration { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 12px; }
+.voc-release-duration .voc-input[type="number"] { max-width: none; }
 .voc-release-add { display: grid; gap: 6px; min-width: 0; padding-top: 10px; border-top: 1px solid var(--voc-hairline); }
 `,
 });

@@ -507,6 +507,8 @@ test.describe("in a sections grid cell", () => {
     const card = await mountCard(page, { ...BUSY, layout: "grid", config: BASE });
     await act(page, card.locator(".voc-primary-action"));
     expect(await cardHeight(card)).toBe(FRAMED);
+    await expect(card.locator(".voc-overlay-scroll"), "the everyday fields fit the frame").not.toHaveAttribute("data-overflow-bottom", "");
+    await act(page, card.locator('[data-key="group:more"] .voc-disclosure'));
     await expect(card.locator(".voc-overlay-scroll")).toHaveAttribute("data-overflow-bottom", "");
     await expect(card.locator(".voc-overlay-actions")).toBeInViewport({ ratio: 1 });
     await shot(page, "frame-editor-medium-light.png", MEDIUM);

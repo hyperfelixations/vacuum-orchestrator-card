@@ -58,6 +58,8 @@ test("a page's actions stand at one place, short or long, and a hairline does no
   await act(page, card.locator(".voc-back"));
   await act(page, card.locator('[role=tab][data-view="queue"]'));
   await act(page, card.locator(".voc-primary-action"));
+  // The everyday fields fit the frame; the folded options make the page long.
+  await act(page, card.locator('[data-key="group:more"] .voc-disclosure'));
   await expect(card.locator(".voc-overlay-scroll")).toHaveAttribute("data-overflow-bottom", "");
   const long = (await boxes(card, [actions]))[actions];
   expect(long.bottom).toBeCloseTo(short.bottom, 0);
