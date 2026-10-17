@@ -140,9 +140,10 @@ test("every view renders keyed markup with named controls", async () => {
   }
 });
 
-// The row layout keys off `data-actions`: several actions form a bar on narrow cards, a single
-// one stays beside the title, none leaves no empty container.
-test("a job row states how many actions it carries and ends with the action that runs the job", async () => {
+// The row layout keys off `data-actions`. The main action of the job's state comes first, set apart
+// from the managing icons that end the row; on a narrow card the menu holding them takes their place
+// (LAY-09).
+test("a job row states how many actions it carries: its main action, the managing icons, their menu", async () => {
   const { viewFor } = await import("../../../src/views/registry.js");
   const queue = viewFor("queue");
   const options = { show_active: true, show_attention: true, show_templates: true };
@@ -152,15 +153,17 @@ test("a job row states how many actions it carries and ends with the action that
     const host = parse(document, queue.render(context, queue.build({ ...built, options, config: { time_format: "auto" }, ui: { choices: {} } })));
     const rows = Object.fromEntries([...host.querySelectorAll(".voc-job")].map((node) => {
       const actions = node.querySelector(".voc-job-actions");
-      const sequence = actions ? [...actions.children].map((child) => child.dataset.action || child.className) : null;
-      return [node.dataset.key, { layout: node.dataset.actions, sequence }];
+      const sequence = actions ? [...actions.children].map((child) => child.dataset.action || child.className.replace("voc-button voc-button--text ", "").replace("voc-button voc-button--danger ", "")) : null;
+      const manage = [...node.querySelectorAll(".voc-job-manage > button")].map((child) => child.dataset.action);
+      const menu = [...node.querySelectorAll(".voc-menu-anchor > button")].map((child) => [child.dataset.action, child.getAttribute("aria-expanded")]);
+      return [node.dataset.key, { layout: node.dataset.actions, sequence, manage, menu }];
     }));
     return { rows, built };
   };
   const { rows: either, built: choice } = await layoutOf("robot_choice", "Either robot can start the dining room");
-  assert.deepEqual(either[`job:${jobIn(choice.model, "Dining Room").jobId}`], { layout: "several", sequence: ["move-job", "move-job", "edit-job", "voc-job-actions-gap", "start-job"] });
+  assert.deepEqual(either[`job:${jobIn(choice.model, "Dining Room").jobId}`], { layout: "several", sequence: ["start-job", "voc-job-actions-gap", "voc-job-manage", "voc-menu-anchor"], manage: ["move-job", "move-job", "edit-job"], menu: [["toggle-menu", "false"]] });
   const { rows: busyRows, built } = await layoutOf("showcase", BUSY);
-  assert.deepEqual(busyRows[`job:${jobIn(built.model, "Studio").jobId}`], { layout: "one", sequence: ["cancel-job"] });
+  assert.deepEqual(busyRows[`job:${jobIn(built.model, "Studio").jobId}`], { layout: "one", sequence: ["cancel-job"], manage: [], menu: [] });
   const { rows: stuck } = await layoutOf("recovery", "The job needs clarification");
   const attentionRow = Object.entries(stuck).find(([, row]) => row.layout === "none");
   assert.ok(attentionRow, "a job that needs clarification offers no row action");
@@ -201,7 +204,9 @@ test("locking and excluding a room are not destructive actions", async () => {
 
 // The detail footer follows the job row: destructive actions first and set apart, editing in the
 // middle, the action that drives the run (start, cancel of a started job, retry) last.
-test("the detail page keeps the run action last and the reordering beside the position", async () => {
+// LAY-18, JOB-08: the destructive action stands apart on the left — a waiting job is deleted, a
+// started one cancelled, never both — and starting or creating again stays last.
+test("the detail page sets its one destructive action apart, ends with the run action and reorders beside the position", async () => {
   const { overlayFor } = await import("../../../src/views/registry.js");
   const detail = overlayFor("job-detail");
   // The open or finished job of a room at a mark, with its detail as a card reads it.
@@ -220,7 +225,7 @@ test("the detail page keeps the run action last and the reordering beside the po
   assert.deepEqual(footer(waiting), [["delete-job", true], ["open-save-template", false], ["edit-job", false], ["start-job", false]]);
   assert.deepEqual([...waiting.querySelectorAll('[data-key="position"] [data-action="move-job"]')].map((node) => JSON.parse(node.dataset.args).direction), ["top", "bottom"]);
   const running = await pageFor("showcase", BUSY, "Studio");
-  assert.deepEqual(footer(running), [["open-save-template", false], ["cancel-job", false]]);
+  assert.deepEqual(footer(running), [["cancel-job", true], ["open-save-template", false]]);
   assert.equal(running.querySelector('[data-key="position"]'), null);
   const corrected = await pageFor("recovery", "The library job is corrected", "Library", { finished: true });
   assert.deepEqual(footer(corrected), [["delete-job", true], ["open-save-template", false], ["retry-job", false]]);

@@ -3,6 +3,7 @@
 
 import { atEnd, button, chip, e, icon, pill } from "../render/primitives/markup.js";
 import { failureText } from "../presentation/common/texts.js";
+import { menu } from "./controls/menu.js";
 
 export function group(title, content, { count = null, key = null } = {}) {
   if (!content) return "";
@@ -38,51 +39,68 @@ export function pagination(context, vm, scope) {
   return `<nav class="voc-pagination" aria-label="${e(context.t("pagination.label"))}">${previous}<span class="voc-page-status">${e(vm.label)}</span>${next}</nav>`;
 }
 
-// The trailing slot always holds the action that drives the job's run (start, cancel, retry), so
-// start and stop share one place; the managing actions precede it, set apart.
-const ROW_ACTIONS = Object.freeze([
-  { key: "moveUp", group: "manage", action: "move-job", args: { direction: "up" }, iconName: "mdi:arrow-up", labelKey: "action.moveUp" },
-  { key: "moveDown", group: "manage", action: "move-job", args: { direction: "down" }, iconName: "mdi:arrow-down", labelKey: "action.moveDown" },
-  { key: "edit", group: "manage", action: "edit-job", iconName: "mdi:pencil-outline", labelKey: "action.edit" },
-  { key: "start", group: "run", action: "start-job", iconName: "mdi:play", labelKey: "action.startNow" },
-  { key: "cancel", group: "run", action: "cancel-job", iconName: "mdi:stop-circle-outline", labelKey: "action.cancelJob", onlyActive: true },
-  { key: "retry", group: "run", action: "retry-job", iconName: "mdi:restore", labelKey: "action.retry" },
+// Managing a waiting job: icons beside the row, in this order.
+const MANAGE_ACTIONS = Object.freeze([
+  { key: "moveUp", action: "move-job", args: { direction: "up" }, iconName: "mdi:arrow-up", labelKey: "action.moveUp" },
+  { key: "moveDown", action: "move-job", args: { direction: "down" }, iconName: "mdi:arrow-down", labelKey: "action.moveDown" },
+  { key: "edit", action: "edit-job", iconName: "mdi:pencil-outline", labelKey: "action.edit" },
 ]);
+
+// The one action a row offers by the job's state, with its label (UI-06, UI-24); destructive ones
+// in the error colour (UI-20).
+const MAIN_ACTIONS = Object.freeze({
+  delete: { action: "delete-job", iconName: "mdi:delete-outline", labelKey: "action.delete", variant: "danger" },
+  release: { action: "open-release", iconName: "mdi:lock-open-variant-outline", labelKey: "action.release" },
+  start: { action: "start-job", iconName: "mdi:play", labelKey: "action.startNow" },
+  cancel: { action: "cancel-job", iconName: "mdi:stop-circle-outline", labelKey: "action.cancelJob", variant: "danger" },
+  retry: { action: "retry-job", iconName: "mdi:restore", labelKey: "action.retry" },
+});
 
 const ACTION_LAYOUT = Object.freeze(["none", "one"]);
 
-function rowActionBar(context, row, rowActions) {
-  const specs = ROW_ACTIONS.filter((spec) => rowActions.includes(spec.key) && row.actions[spec.key]?.state !== "hidden" && (!spec.onlyActive || row.state !== "queued"));
-  const parts = [];
-  specs.forEach((spec, index) => {
-    if (index > 0 && specs[index - 1].group !== spec.group) parts.push('<span class="voc-job-actions-gap" aria-hidden="true"></span>');
-    parts.push(button({
-      action: spec.action,
-      args: { jobId: row.jobId, ...(spec.args || {}) },
-      label: context.t(spec.labelKey),
-      iconName: spec.iconName,
-      variant: "icon",
-      decision: row.actions[spec.key],
-      reasonText: context.reason(row.actions[spec.key]),
-    }));
-  });
-  return { layout: ACTION_LAYOUT[specs.length] || "several", markup: specs.length ? `<div class="voc-job-actions">${parts.join("")}</div>` : "" };
+function mainButton(context, row) {
+  const main = row.main;
+  const spec = main ? MAIN_ACTIONS[main.key] : null;
+  if (!spec || main.decision?.state === "hidden") return "";
+  const args = main.key === "release" ? { roomId: main.roomIds[0], roomIds: main.roomIds, jobId: row.jobId } : { jobId: row.jobId };
+  return button({ action: spec.action, args, label: context.t(spec.labelKey), iconName: spec.iconName, variant: spec.variant || "text", className: "voc-job-main-action", decision: main.decision, reasonText: context.reason(main.decision) });
 }
 
-const READINESS_ICON = Object.freeze({ ready: "mdi:check-circle-outline", blocked: "mdi:lock-outline", unknown: "mdi:help-circle-outline" });
+// Wide enough, the managing actions stand beside the row as icons; on a narrow card they sit in
+// the row's menu next to its main action (LAY-09). Both are rendered; the card's width decides.
+function rowActionBar(context, row, rowActions) {
+  const specs = MANAGE_ACTIONS.filter((spec) => rowActions.includes(spec.key) && row.actions[spec.key]?.state !== "hidden");
+  const args = (spec) => ({ jobId: row.jobId, ...(spec.args || {}) });
+  const icons = specs.map((spec) => button({ action: spec.action, args: args(spec), label: context.t(spec.labelKey), iconName: spec.iconName, variant: "icon", decision: row.actions[spec.key], reasonText: context.reason(row.actions[spec.key]) }));
+  const items = specs.map((spec) => ({ action: spec.action, args: args(spec), label: context.t(spec.labelKey), iconName: spec.iconName, decision: row.actions[spec.key], reasonText: context.reason(row.actions[spec.key]) }));
+  const main = rowActions.includes("main") ? mainButton(context, row) : "";
+  const count = specs.length + (main ? 1 : 0);
+  const manage = specs.length ? `<span class="voc-job-manage">${icons.join("")}</span>` : "";
+  const more = specs.length ? menu(context, { key: `job:${row.jobId}`, label: context.t("action.moreFor", { job: row.title }), items, open: row.menuOpen === true }) : "";
+  const gap = specs.length && main ? '<span class="voc-job-actions-gap" aria-hidden="true"></span>' : "";
+  // The managing icons end the row, so they line up from row to row whatever main action a row
+  // has; on a narrow card the menu holding them takes their place.
+  return { layout: ACTION_LAYOUT[count] || "several", markup: count ? `<div class="voc-job-actions">${main}${gap}${manage}${more}</div>` : "" };
+}
 
-// `rowActions`: the frequent controls a row shows; destructive ones live on the detail page and
-// in the editor, one step away from an accidental tap. A log row leads with the mode instead of
-// the queue position and names when the job last changed.
-export function jobRow(context, row, { rowActions = ["moveUp", "moveDown", "start", "edit", "cancel", "retry"], log = false } = {}) {
+function progressMarkup(progress) {
+  if (!progress) return "";
+  const bars = progress.bars.map((bar) => `<span class="voc-job-percent" data-key="${e(bar.key)}">${progress.labelled ? `<span>${e(bar.label)}</span>` : ""}<span class="voc-progress" role="progressbar" aria-label="${e(bar.label)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${e(bar.value)}"><span style="width:${e(bar.value)}%"></span></span><span>${e(bar.text)}</span></span>`).join("");
+  const fault = progress.fault ? `<span class="voc-job-status" data-tone="attention">${icon("mdi:wrench-clock")}<span>${e(progress.fault.text)}</span></span>` : "";
+  return `<span class="voc-job-progress"><span class="voc-job-progress-line">${e(progress.line)}</span>${bars ? `<span class="voc-job-percents">${bars}</span>` : ""}</span>${fault}`;
+}
+
+// `rowActions`: the controls a row shows: the managing icons by key and `main`, the action of the
+// job's state. Destructive actions other than that live on the detail page and in the editor, one
+// step away from an accidental tap. A log row leads with the mode instead of the queue position
+// and names when the job last changed.
+export function jobRow(context, row, { rowActions = ["moveUp", "moveDown", "edit", "main"], log = false } = {}) {
   const actions = rowActionBar(context, row, rowActions);
-  const statePill = row.state === "queued" && !log ? "" : pill(row.stateLabel, row.stateTone);
+  const statePill = log || row.showState ? pill(row.stateLabel, row.stateTone) : "";
   // The lead shows the queue position when there is one, else the mode icon.
   const byPosition = Boolean(row.position) && !log;
-  const readiness = row.readiness && row.state === "queued"
-    ? `<span class="voc-job-readiness" data-readiness="${e(row.readiness.state)}">${icon(READINESS_ICON[row.readiness.state])}<span>${e(row.readiness.summary || row.readiness.label)}</span>${row.readiness.more ? `<span class="voc-job-more">+${e(row.readiness.more)}</span>` : ""}</span>`
-    : "";
+  const status = row.status ? `<span class="voc-job-status" data-tone="${e(row.status.tone)}" data-code="${e(row.status.code)}">${icon(row.status.icon)}<span>${e(row.status.text)}</span></span>` : "";
   const outcome = row.outcome ? `<span class="voc-job-outcome">${icon("mdi:alert-outline")}<span>${e(row.outcome)}</span></span>` : "";
   const chips = row.settings.map((setting) => chip(setting.text, { iconName: setting.icon, label: setting.label })).join("");
-  return `<article class="voc-job" data-key="job:${e(row.jobId)}" data-state="${e(row.state)}" data-tone="${e(row.stateTone)}" data-actions="${actions.layout}"${row.pending ? ' data-pending="true"' : ""}><div class="voc-job-lead" aria-hidden="true">${byPosition ? `<span class="voc-job-position">${e(row.position)}</span>` : icon(row.modeIcon)}</div><button type="button" class="voc-job-main" data-action="open-job" data-args="${e(JSON.stringify({ jobId: row.jobId }))}" aria-label="${e(context.t("action.openJob", { job: row.title }))}"><span class="voc-job-title-line"><span class="voc-job-title">${e(row.title)}</span>${statePill}</span><span class="voc-job-meta"><span class="voc-job-mode">${byPosition ? icon(row.modeIcon) : ""}${e(row.modeLabel)}</span>${row.showRooms ? `<span class="voc-job-rooms">${e(row.rooms)}</span>` : ""}${chips}${log && row.time ? `<span class="voc-job-time">${e(row.time)}</span>` : ""}</span>${readiness}${outcome}</button>${actions.markup}</article>`;
+  return `<article class="voc-job" data-key="job:${e(row.jobId)}" data-state="${e(row.state)}" data-tone="${e(row.stateTone)}" data-actions="${actions.layout}"${row.pending ? ' data-pending="true"' : ""}><div class="voc-job-lead" aria-hidden="true">${byPosition ? `<span class="voc-job-position">${e(row.position)}</span>` : icon(row.modeIcon)}</div><button type="button" class="voc-job-main" data-action="open-job" data-args="${e(JSON.stringify({ jobId: row.jobId }))}" aria-label="${e(context.t("action.openJob", { job: row.title }))}"><span class="voc-job-title-line"><span class="voc-job-title">${e(row.title)}</span>${statePill}</span><span class="voc-job-meta"><span class="voc-job-mode">${byPosition ? icon(row.modeIcon) : ""}${e(row.modeLabel)}</span>${row.showRooms ? `<span class="voc-job-rooms">${e(row.rooms)}</span>` : ""}${chips}${log && row.time ? `<span class="voc-job-time">${e(row.time)}</span>` : ""}</span>${status}${progressMarkup(row.progress)}${outcome}</button>${actions.markup}</article>`;
 }

@@ -1,8 +1,8 @@
-// Target sizes, spacing and positions of row and card actions: inline with room between them on
-// wider cards, equal tiles across the row on narrow cards, a single action beside the title, the
-// run action always in the trailing slot, room cards that keep their own height and end with their
-// actions, waiting rows alike in height, panel controls that keep their labels beside or below
-// the run state, and 44 px targets 8 px apart under a coarse pointer.
+// Target sizes, spacing and positions of row and card actions: the managing icons inline with room
+// between them and the main action set apart on wider cards, the main action and the row's menu
+// beside the title on narrow cards (LAY-09), room cards that keep their own height and end with
+// their actions, waiting rows alike in height, panel controls that keep their labels beside or
+// below the run state, and 44 px targets 8 px apart under a coarse pointer.
 
 const { test, expect } = require("../../helpers/playwright.js");
 const { BUSY, mountCard, named, setCardWidth } = require("../../helpers/browser-helpers.js");
@@ -16,8 +16,8 @@ const RUNNING = "Dining Room";
 // Rocky cleans the studio with the queue running: the panel offers pause and end.
 const QUEUE_RUNNING = Object.freeze({ recording: "queue_controls", from: "The library job is next" });
 
-// Boxes of the row shown under `name`, its main button and its action buttons in card
-// coordinates.
+// Boxes of the row shown under `name`, its main button and its visible action buttons in card
+// coordinates, with their actions.
 async function rowGeometry(card, name) {
   return card.evaluate((element, title) => {
     const row = [...element.shadowRoot.querySelectorAll(".voc-job")].find((node) => node.querySelector(".voc-job-title")?.textContent.trim() === title);
@@ -25,7 +25,8 @@ async function rowGeometry(card, name) {
       const rect = node.getBoundingClientRect();
       return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
     };
-    return { row: box(row), main: box(row.querySelector(".voc-job-main")), actions: [...row.querySelectorAll(".voc-job-actions .voc-button")].map(box) };
+    const visible = [...row.querySelectorAll(".voc-job-actions .voc-button")].filter((node) => node.getBoundingClientRect().width > 0);
+    return { row: box(row), main: box(row.querySelector(".voc-job-main")), actions: visible.map(box), names: visible.map((node) => node.dataset.action) };
   }, name);
 }
 
@@ -35,8 +36,8 @@ test.describe("with a mouse", () => {
   test("wide rows keep their actions inline, 36 px each and set apart", async ({ page }) => {
     const card = await mountCard(page, { ...TWO_ROBOTS, width: 900 });
     expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(false);
-    const { main, actions } = await rowGeometry(card, WAITING);
-    expect(actions).toHaveLength(4);
+    const { main, actions, names } = await rowGeometry(card, WAITING);
+    expect(names).toEqual(["start-job", "move-job", "move-job", "edit-job"]);
     for (const action of actions) {
       expect(action.width).toBeGreaterThanOrEqual(36);
       expect(action.height).toBeGreaterThanOrEqual(36);
@@ -44,40 +45,45 @@ test.describe("with a mouse", () => {
     }
     const between = gaps(actions);
     expect(Math.min(...between)).toBeGreaterThanOrEqual(4);
-    expect(between.at(-1), "the run action is set apart").toBeGreaterThan(between[0]);
+    expect(between[0], "the main action is set apart").toBeGreaterThan(between.at(-1));
   });
 
-  // Start and stop share one place: the trailing action of a waiting row lines up with the
-  // cancel button of the running row, on wide and on narrow cards.
-  for (const width of [900, 380]) {
-    test(`start and cancel share the trailing slot at ${width} px`, async ({ page }) => {
-      const card = await mountCard(page, { ...TWO_ROBOTS, width });
-      const start = named(card, ".voc-job", WAITING, ".voc-job-actions .voc-button").last();
-      await expect(start).toHaveAttribute("data-action", "start-job");
-      const cancel = named(card, ".voc-job", RUNNING, ".voc-job-actions .voc-button").last();
-      await expect(cancel).toHaveAttribute("data-action", "cancel-job");
-      const [a, b] = [await start.boundingBox(), await cancel.boundingBox()];
-      expect(Math.abs((a.x + a.width) - (b.x + b.width))).toBeLessThanOrEqual(1);
-    });
-  }
+  // On a wide card the managing icons end every waiting row, so they line up from row to row
+  // whether or not a row has a main action.
+  test("the managing icons line up from row to row on a wide card", async ({ page }) => {
+    const card = await mountCard(page, { ...BUSY, width: 900 });
+    const released = await rowGeometry(card, "Conservatory");
+    const plain = await rowGeometry(card, "Library, thoroughly");
+    expect(released.names).toEqual(["open-release", "move-job", "move-job", "edit-job"]);
+    expect(plain.names).toEqual(["move-job", "move-job", "edit-job"]);
+    for (const offset of [1, 2, 3]) expect(Math.abs(released.actions.at(-offset).left - plain.actions.at(-offset).left)).toBeLessThanOrEqual(1);
+  });
 
-  test("narrow rows spread several actions over the row and keep a single one beside the title", async ({ page }) => {
+  // Beside a main action the texts below the title wrap rather than lose their end, such as the
+  // time a job started.
+  test("on the narrowest card the progress and status lines wrap instead of being cut", async ({ page }) => {
+    const card = await mountCard(page, { ...BUSY, width: 320 });
+    for (const [title, selector] of [["Studio", ".voc-job-progress-line"], ["Conservatory", ".voc-job-status"]]) {
+      const line = named(card, ".voc-job", title, selector);
+      await expect(line).toBeVisible();
+      const cut = await line.evaluate((node) => [...node.querySelectorAll("*"), node].some((part) => part.scrollWidth > part.clientWidth + 1));
+      expect(cut, title).toBe(false);
+    }
+  });
+
+  // LAY-09: on a narrow card a row keeps its main action and its menu beside the title.
+  test("narrow rows keep their main action and the menu beside the title", async ({ page }) => {
     const card = await mountCard(page, { ...TWO_ROBOTS, width: 380 });
     const waiting = await rowGeometry(card, WAITING);
-    expect(waiting.actions).toHaveLength(4);
-    const span = waiting.actions.at(-1).right - waiting.actions[0].left;
-    expect(span / waiting.row.width).toBeGreaterThan(0.9);
+    expect(waiting.names).toEqual(["start-job", "toggle-menu"]);
     for (const action of waiting.actions) {
-      expect(action.height).toBeGreaterThanOrEqual(40);
-      expect(action.top).toBeGreaterThanOrEqual(waiting.main.bottom - 1);
+      expect(action.height).toBeGreaterThanOrEqual(36);
+      expect(action.top).toBeLessThan(waiting.main.bottom);
     }
-    expect(Math.min(...gaps(waiting.actions))).toBeGreaterThanOrEqual(8);
-    const widths = waiting.actions.map((action) => action.width);
-    expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
+    expect(Math.min(...gaps(waiting.actions))).toBeGreaterThanOrEqual(4);
     const running = await rowGeometry(card, RUNNING);
-    expect(running.actions).toHaveLength(1);
+    expect(running.names).toEqual(["cancel-job"]);
     expect(running.actions[0].top).toBeLessThan(running.main.bottom);
-    expect(running.actions[0].width).toBeGreaterThanOrEqual(40);
   });
 
   // LAY-15: a card side by side with a taller one is not stretched; it ends with its actions.
@@ -93,17 +99,17 @@ test.describe("with a mouse", () => {
     for (const room of rooms) expect(Math.abs(room.end), "the actions end the card").toBeLessThanOrEqual(1);
   });
 
-  // The bar belongs to the narrow tier: it appears exactly where the card's inner width (inside its
-  // border, the width the container queries see) falls below 560 px.
-  test("the bar switches with the narrow tier", async ({ page }) => {
+  // The menu belongs to the narrow tier: it replaces the managing icons exactly where the card's
+  // inner width (inside its border, the width the container queries see) falls below 560 px.
+  test("the menu replaces the icons with the narrow tier", async ({ page }) => {
     const card = await mountCard(page, { ...TWO_ROBOTS, width: 600, config: { views: ["queue"] } });
     const seen = new Set();
     for (const width of [600, 563, 562, 561, 560, 559, 520]) {
       await setCardWidth(page, width);
-      const { main, actions } = await rowGeometry(card, WAITING);
-      const bar = actions[0].top >= main.bottom - 1;
-      expect(bar, `at ${width}px`).toBe(await card.locator("ha-card").evaluate((node) => node.clientWidth < 560));
-      seen.add(bar);
+      const { names } = await rowGeometry(card, WAITING);
+      const narrow = await card.locator("ha-card").evaluate((node) => node.clientWidth < 560);
+      expect(names, `at ${width}px`).toEqual(narrow ? ["start-job", "toggle-menu"] : ["start-job", "move-job", "move-job", "edit-job"]);
+      seen.add(narrow);
     }
     expect([...seen].sort()).toEqual([false, true]);
   });

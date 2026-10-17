@@ -55,13 +55,13 @@ test("the queue control follows the queue mode", async () => {
   card.unmount();
 });
 
-test("a row opens its detail page with the execution explanation, and Back returns", async () => {
+test("a row opens its detail page with the waiting reason on three axes, and Back returns", async () => {
   const card = await mountCard(BUSY);
   await card.click(inRow(card, "Conservatory", ".voc-job-main"));
   await card.settle(32);
   assert.equal(card.text("#voc-overlay-title"), "Conservatory");
   assert.ok(card.queries("get_job_execution").length >= 1);
-  assert.match(card.text('[data-key="execution"]'), /Rocky/);
+  assert.equal(card.text('[data-key="axis:robots"] li'), "Rocky does not reach this room");
   assert.equal(card.root.querySelector(".voc-tabs"), null, "a page replaces the tabs");
   await card.click('[data-action="back"]');
   assert.equal(card.root.querySelector(".voc-overlay"), null);
@@ -383,5 +383,25 @@ test("the busy afternoon is everyday use: one job cleaning, three waiting, nothi
   assert.deepEqual(titles(card, "active"), ["Studio"]);
   assert.equal(titles(card, "waiting").length, 3);
   assert.equal(card.root.querySelector('[data-key^="recovery"], [data-key="grace"], .voc-warning'), null);
+  card.unmount();
+});
+
+// LAY-09, WAI-ARIA APG "Menu Button": the row's menu holds its managing actions, Escape or a click
+// beside it closes it, and an item does what its icon does on a wide card. Focus follows in the
+// browser, where the narrow card shows the menu (test/browser/accessibility).
+test("a row's menu holds its managing actions, closes with Escape or a click beside it and runs its item", async () => {
+  const card = await at("A job for every room waits");
+  const button = () => inRow(card, "Library", ".voc-menu-button");
+  await card.click(button());
+  assert.deepEqual([button().getAttribute("aria-expanded"), button().getAttribute("aria-controls")], ["true", card.root.querySelector('[role="menu"]').id]);
+  assert.deepEqual(card.all('[role="menu"] [role="menuitem"]').map((node) => node.textContent.trim()), ["Move up", "Move down", "Edit"]);
+  await card.press('[role="menu"] [role="menuitem"]', "Escape");
+  assert.equal(card.root.querySelector('[role="menu"]'), null);
+  await card.click(button());
+  await card.click(".voc-group-title");
+  assert.equal(card.root.querySelector('[role="menu"]'), null, "a click beside the menu closes it");
+  await card.click(button());
+  await card.click(card.named(".voc-job", "Library").querySelector('[role="menuitem"][data-action="edit-job"]'));
+  assert.equal(card.text("#voc-overlay-title"), "Edit job");
   card.unmount();
 });

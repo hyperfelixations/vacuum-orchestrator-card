@@ -35,6 +35,28 @@ test("ui state keeps the view, an overlay stack, pages, choices and the notice",
   assert.ok(Object.isFrozen(ui.snapshot));
 });
 
+// One menu is open at a time; opening a page or another view closes it.
+test("ui state holds one open menu, closed by a page or another view", async () => {
+  const { createUIState } = await import("../../../src/controllers/runtime/ui-state.js");
+  const ui = createUIState();
+  let published = 0;
+  ui.subscribe(() => {
+    published += 1;
+  });
+  assert.equal(ui.snapshot.menu, null);
+  ui.setMenu("job:a");
+  ui.setMenu("job:a");
+  assert.equal(published, 1, "the same menu again changes nothing");
+  ui.openOverlay({ kind: "job-detail", jobId: "a" });
+  assert.equal(ui.snapshot.menu, null, "a page closes the menu");
+  ui.setMenu("job:b");
+  ui.setView("rooms");
+  assert.equal(ui.snapshot.menu, null, "another view closes it too");
+  ui.setMenu("job:c");
+  ui.setMenu(null);
+  assert.equal(ui.snapshot.menu, null);
+});
+
 // UI-16: an open overlay keeps its id, so a command's answer reaches the page or dialog it came
 // from wherever that lies in the stack, and nothing once it is closed.
 test("an open overlay is found and changed by its id, and the top layers close together", async () => {
@@ -232,9 +254,53 @@ test("choice groups are roving tab stops and the entity search leads into its ma
   assert.equal(handleControlKeydown({}), false);
 });
 
-test("clicks become view or action events with parsed arguments; inert controls stay silent", async () => {
+// WAI-ARIA APG "Menu": arrow keys, Home and End move between the items of an open menu; a disabled
+// item stays reachable.
+test("arrow keys, Home and End move through an open menu", async () => {
+  const { handleControlKeydown } = await import("../../../src/views/controls/keyboard.js");
+  const { window, root } = shadow(`<div role="menu"><button role="menuitem" id="up">Up</button><button role="menuitem" id="down" aria-disabled="true">Down</button><button role="menuitem" id="edit">Edit</button></div>`);
+  const key = (id, name) => {
+    const event = new window.KeyboardEvent("keydown", { key: name, cancelable: true });
+    Object.defineProperty(event, "target", { value: root.querySelector(id) });
+    return handleControlKeydown(event);
+  };
+  root.querySelector("#up").focus();
+  assert.equal(key("#up", "ArrowDown"), true);
+  assert.equal(root.activeElement.id, "down", "a disabled item can be reached and says why");
+  assert.equal(key("#down", "End"), true);
+  assert.equal(root.activeElement.id, "edit");
+  assert.equal(key("#edit", "ArrowDown"), true);
+  assert.equal(root.activeElement.id, "up", "the menu wraps around");
+  assert.equal(key("#up", "ArrowUp"), true);
+  assert.equal(root.activeElement.id, "edit");
+  assert.equal(key("#edit", "Home"), true);
+  assert.equal(root.activeElement.id, "up");
+  assert.equal(key("#up", "Enter"), false, "Enter activates the item as a button");
+});
+
+// An open menu opens upward when below there is less room in its scroll region than it needs
+// and above there is more.
+test("an open menu opens above its button only where below is too short", async () => {
+  const { placeMenus } = await import("../../../src/controllers/runtime/menu-placement.js");
+  const { root } = shadow(`<div data-scroll id="region"><div class="voc-menu-anchor" id="anchor"><div class="voc-menu" id="menu"></div></div></div>`);
+  const rect = (top, bottom) => () => ({ top, bottom, height: bottom - top });
+  root.querySelector("#region").getBoundingClientRect = rect(0, 400);
+  root.querySelector("#menu").getBoundingClientRect = rect(0, 130);
+  root.querySelector("#anchor").getBoundingClientRect = rect(100, 136);
+  placeMenus(root);
+  assert.equal(root.querySelector("#menu").hasAttribute("data-placement"), false, "room below");
+  root.querySelector("#anchor").getBoundingClientRect = rect(330, 366);
+  placeMenus(root);
+  assert.equal(root.querySelector("#menu").getAttribute("data-placement"), "above");
+  root.querySelector("#region").getBoundingClientRect = rect(300, 400);
+  placeMenus(root);
+  assert.equal(root.querySelector("#menu").hasAttribute("data-placement"), false, "no more room above than below");
+  placeMenus(null);
+});
+
+test("clicks become view, action or background events with parsed arguments; inert controls stay silent", async () => {
   const { createInteractionRuntime } = await import("../../../src/controllers/runtime/interaction-runtime.js");
-  const { window, root } = shadow(`<button role="tab" data-view="rooms"><span id="inner">R</span></button><button data-action="move-job" data-args='{"jobId":"a"}' id="go"></button><button data-action="x" data-args="{broken" id="bad"></button><button data-action="y" aria-disabled="true" id="off"></button><input data-field="name" id="field">`);
+  const { window, root } = shadow(`<button role="tab" data-view="rooms"><span id="inner">R</span></button><button data-action="move-job" data-args='{"jobId":"a"}' id="go"></button><button data-action="x" data-args="{broken" id="bad"></button><button data-action="y" aria-disabled="true" id="off"></button><input data-field="name" id="field"><p id="plain">text</p>`);
   const events = [];
   const runtime = createInteractionRuntime({ root, onAction: (event) => events.push([event.type, event.view || event.action || event.field, event.args]) });
   runtime.connect();
@@ -243,11 +309,12 @@ test("clicks become view or action events with parsed arguments; inert controls 
   click("#go");
   click("#bad");
   click("#off");
+  click("#plain");
   root.querySelector("#field").dispatchEvent(new window.Event("input", { bubbles: true }));
-  assert.deepEqual(events, [["view", "rooms", undefined], ["action", "move-job", { jobId: "a" }], ["action", "x", {}], ["input", "name", {}]]);
+  assert.deepEqual(events, [["view", "rooms", undefined], ["action", "move-job", { jobId: "a" }], ["action", "x", {}], ["background", undefined, undefined], ["input", "name", {}]], "a click on nothing the card acts on is a background click");
   runtime.disconnect();
   click("#go");
-  assert.equal(events.length, 4);
+  assert.equal(events.length, 5);
 });
 
 test("the platform navigates inside Home Assistant and refuses foreign targets", async () => {

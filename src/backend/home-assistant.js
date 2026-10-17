@@ -12,6 +12,7 @@ export function readHomeAssistant(hass) {
     areas: hass?.areas || null,
     admin: typeof hass?.user?.is_admin === "boolean" ? hass.user.is_admin : null,
     operations: [...registeredOperations(hass), ...(componentLoaded(hass) ? CARD_COMMANDS : [])].sort(),
-    formatState: typeof hass?.formatEntityState === "function" ? (state) => hass.formatEntityState(state) : null,
+    // Home Assistant's wording of a state object's state, or of another value of that entity.
+    formatState: typeof hass?.formatEntityState === "function" ? (state, value) => (value === undefined ? hass.formatEntityState(state) : hass.formatEntityState(state, value)) : null,
   };
 }

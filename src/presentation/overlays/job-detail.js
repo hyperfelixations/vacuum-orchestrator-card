@@ -1,13 +1,15 @@
-// One job in full: what it asks for, why it waits (readiness), which robot could take each
-// phase (execution explanation), what was tried (attempts) and its trace. Everything is the
-// integration's own statement; see internal dev doc §8 "Auftragsdetail".
+// One job in full: what it asks for, why it waits (the three axes of its waiting reason), what it
+// is doing (progress), which robot could take each phase (execution explanation), what was tried
+// (attempts) and its trace. Everything is the integration's own statement; see internal dev doc §8
+// "Auftragsdetail".
 
 import { decide, jobAffordances, jobTarget, roomAffordances } from "../../domain/affordances.js";
 import { explanationsByOperation } from "../../domain/execution.js";
 import { findJob, list, robotName, roomIndex, roomName, slotData } from "../common/lookups.js";
 import { attemptStateLabel, jobStateLabel, modeLabel, moment, operationLabel, outcomeText, qualityLabel, reasonText, settingLabel, settingName, t } from "../common/texts.js";
 import { traceRows } from "../common/trace.js";
-import { readinessReasons, settingChips, stateTone } from "../views/job-row.js";
+import { progressOf, readinessReasons, settingChips, stateTone } from "../views/job-row.js";
+import { waitingAxes } from "../views/waiting.js";
 
 export const TRACE_LIMIT = 12;
 
@@ -24,12 +26,21 @@ export function settingsNote(texts, settings) {
   return notes.length ? notes.join(", ") : null;
 }
 
-// Why the job exists: how it came into the queue, with its template while that still exists,
-// and its own occasion.
-export function occasionText(texts, job, model) {
-  const template = job.origin?.templateId ? list(slotData(model, "templates")?.items).find((item) => item.templateId === job.origin.templateId) : null;
-  const origin = job.origin ? (template ? t(texts, "origin.withTemplate", { origin: t(texts, `origin.${job.origin.kind}`), template: template.name }) : t(texts, `origin.${job.origin.kind}`)) : null;
-  return [origin, job.reason].filter(Boolean).join(" · ") || null;
+// How the job came into the queue, with its template while that still exists. Its occasion is
+// the person's own word and stands apart.
+export function originText(texts, job, model) {
+  if (!job.origin) return null;
+  const template = job.origin.templateId ? list(slotData(model, "templates")?.items).find((item) => item.templateId === job.origin.templateId) : null;
+  return template ? t(texts, "origin.withTemplate", { origin: t(texts, `origin.${job.origin.kind}`), template: template.name }) : t(texts, `origin.${job.origin.kind}`);
+}
+
+// The execution explanation belongs before a start, and says more than the waiting reason's robot
+// axis only for a job with several phases or with a setting a robot would apply differently. What a
+// started attempt applies stands with the attempts.
+function explains(execution, job, texts) {
+  if (!job.waiting) return false;
+  const groups = explanationsByOperation(execution);
+  return groups.length > 1 || groups.some((group) => group.robots.some((item) => settingsNote(texts, item.settings)));
 }
 
 export function buildJobDetail({ model, texts, context, overlay, config }) {
@@ -42,16 +53,16 @@ export function buildJobDetail({ model, texts, context, overlay, config }) {
   const position = list(slotData(model, "queue")?.jobs).find((entry) => entry.jobId === job.jobId)?.position ?? null;
   const actions = jobAffordances(job, context);
   const execution = slotData(model, "execution");
+  const title = job.name || list(job.roomIds).map((roomId) => roomName(roomId, index, model)).join(", ");
   // The integration explains a start only where one is due (queued, or between phases).
-  const releaseable = job.readiness?.blockedRoomIds?.length
-    ? job.readiness.blockedRoomIds.map((roomId) => ({ roomId, name: roomName(roomId, index, model), decision: roomAffordances(index.byId.get(roomId), context).release }))
-    : [];
+  const unreleased = list(job.waiting?.job?.blockers).filter((blocker) => blocker.code === "room_not_released").flatMap((blocker) => blocker.roomIds);
+  const releaseable = [...new Set(unreleased)].filter((roomId) => index.byId.has(roomId)).map((roomId) => ({ roomId, name: roomName(roomId, index, model), decision: roomAffordances(index.byId.get(roomId), context).release }));
   const trace = traceRows(slotData(model, "trace")?.records, { model, texts, limit: TRACE_LIMIT });
 
   return {
     key: "job-detail",
     jobId: job.jobId,
-    title: job.name || list(job.roomIds).map((roomId) => roomName(roomId, index, model)).join(", "),
+    title,
     state: job.state,
     stateLabel: jobStateLabel(texts, job.state),
     stateTone: stateTone(job.state),
@@ -61,11 +72,10 @@ export function buildJobDetail({ model, texts, context, overlay, config }) {
     position,
     outcome: outcomeText(texts, job.failureCode),
     afterCancel: job.state === "canceling" && job.afterCancel ? t(texts, `detail.afterCancel.${job.afterCancel}`) : null,
-    readiness: job.readiness
-      ? { state: job.readiness.state, reasons: readinessReasons(job.readiness, { index, model, texts }) }
-      : null,
+    waiting: waitingAxes(job, { job, model, texts, index, title }),
+    progress: progressOf(job, { model, texts, timeFormat: "absolute" }),
     releaseable,
-    execution: execution
+    execution: execution && explains(execution, job, texts)
       ? explanationsByOperation(execution).map((group) => ({
           key: group.operation,
           title: operationLabel(texts, group.operation === "unknown" ? null : group.operation),
@@ -92,8 +102,9 @@ export function buildJobDetail({ model, texts, context, overlay, config }) {
     traceOpen: overlay.traceOpen === true,
     facts: [
       { label: t(texts, "detail.created"), value: moment(texts, job.createdAt, config?.time_format, model.nowMs) },
-      { label: t(texts, "detail.updated"), value: moment(texts, job.updatedAt, config?.time_format, model.nowMs) },
-      { label: t(texts, "detail.occasion"), value: occasionText(texts, job, model) },
+      { label: t(texts, "detail.updated"), value: job.updatedAt && job.updatedAt !== job.createdAt ? moment(texts, job.updatedAt, config?.time_format, model.nowMs) : null },
+      { label: t(texts, "detail.origin"), value: originText(texts, job, model) },
+      { label: t(texts, "detail.occasion"), value: job.reason },
       { label: t(texts, "field.note"), value: job.note },
       { label: t(texts, "detail.retryOf"), value: job.retriesJobId },
       { label: t(texts, "detail.jobId"), value: job.jobId },

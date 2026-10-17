@@ -90,19 +90,22 @@ test("rendered queue rows never show a control the decisions hide", async () => 
     name: "rendered rows",
     cases,
     seed: seed ^ 0x6a09e667,
-    generate: (random) => ({ wire: generatedJob(random, notApplicable), state: random.pick(["queued", "running"]), canCommand: random.boolean() }),
-    verify({ wire, state, canCommand }) {
+    // The main action a row's state can call for: a waiting job's start or deletion, a running one's
+    // cancel.
+    generate: (random) => {
+      const state = random.pick(["queued", "running"]);
+      return { wire: generatedJob(random, notApplicable), state, canCommand: random.boolean(), main: state === "queued" ? random.pick([null, "start", "delete"]) : "cancel" };
+    },
+    verify({ wire, state, canCommand, main }) {
       const actions = jobAffordances(normalizeJob(wire), affordanceContext({ canCommand, operations: OPERATIONS }));
-      const row = { jobId: "j", position: state === "queued" ? "2" : "", title: "<Job>", rooms: "", showRooms: false, modeIcon: "mdi:robot-vacuum", modeLabel: "Vacuum", state, stateLabel: state, stateTone: "neutral", readiness: null, settings: [], outcome: null, pending: false, actions, time: "" };
+      const row = { jobId: "j", position: state === "queued" ? "2" : "", title: "<Job>", rooms: "", showRooms: false, modeIcon: "mdi:robot-vacuum", modeLabel: "Vacuum", state, stateLabel: state, stateTone: "neutral", showState: false, status: null, progress: null, settings: [], outcome: null, pending: false, actions, main: main ? { key: main, decision: actions[main] } : null, menuOpen: false, time: "" };
       const host = document.createElement("div");
       host.innerHTML = jobRow(context, row);
       const shown = [...host.querySelectorAll("[data-action]")].map((node) => node.dataset.action).filter((action) => action !== "open-job");
-      const expected = Object.entries({ moveUp: "move-job", moveDown: "move-job", edit: "edit-job", start: "start-job", cancel: "cancel-job", retry: "retry-job" })
-        .filter(([control]) => actions[control].state !== "hidden" && (control !== "cancel" || state !== "queued"))
-        .map(([, action]) => action);
-      assert.deepEqual(shown, expected);
-      const run = shown.filter((action) => ["start-job", "cancel-job", "retry-job"].includes(action));
-      assert.ok(run.length <= 1 && (run.length === 0 || shown.at(-1) === run[0]), "the one run action sits in the trailing slot");
+      const manage = Object.entries({ moveUp: "move-job", moveDown: "move-job", edit: "edit-job" }).filter(([control]) => actions[control].state !== "hidden").map(([, action]) => action);
+      const shownMain = main && actions[main].state !== "hidden" ? [{ start: "start-job", delete: "delete-job", cancel: "cancel-job" }[main]] : [];
+      assert.deepEqual(shown, [...shownMain, ...manage, ...(manage.length ? ["toggle-menu"] : [])], "the main action, the managing icons, the menu holding them on a narrow card");
+      assert.equal(host.querySelectorAll(".voc-job-main-action").length, shownMain.length, "at most one main action");
       assert.equal(host.querySelector(".voc-job-title").textContent, "<Job>");
     },
   });

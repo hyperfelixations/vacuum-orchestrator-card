@@ -1,13 +1,12 @@
-// Queue view: job rows, recovery alerts, template quick starts and pagination. The job row is
-// shared with the history view. Below 560 px a row with several actions spreads them as equal
-// tiles over its full width; a single action stays beside the title. The details line has one
-// line height, chips included, so rows of the same kind are equally tall (LAY-21).
+// Queue view: job rows (status, progress, managing icons and the main action), attention and
+// recovery alerts, template quick starts and pagination. The job row is shared with the history
+// view. Below 560 px the managing icons give way to the row's menu beside its main action
+// (LAY-09). The details line has one line height, chips included, so rows of the same kind are
+// equally tall (LAY-21).
 
-const JOB_ACTION_BAR = [
-  '.voc-job[data-actions="several"] .voc-job-actions { grid-column: 1 / -1; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; padding-top: 2px; }',
-  '.voc-job[data-actions="several"] .voc-job-actions .voc-button--icon { width: auto; min-width: 0; min-height: var(--voc-tile-target); border-radius: 12px; border-color: var(--voc-hairline); background: var(--voc-chip-bg); }',
-  '.voc-job[data-actions="several"] .voc-job-actions .voc-button--icon:hover { background: color-mix(in srgb, var(--primary-text-color) 8%, transparent); }',
-  '.voc-job[data-actions="several"] .voc-job-actions-gap { display: none; }',
+const NARROW_ROW = [
+  ".voc-job .voc-job-manage, .voc-job .voc-job-actions-gap { display: none; }",
+  ".voc-job .voc-menu-anchor { display: inline-flex; }",
 ].join("\n  ");
 
 export const QUEUE_CSS = `
@@ -67,18 +66,29 @@ export const QUEUE_CSS = `
 .voc-job-mode { display: inline-flex; align-items: center; gap: 3px; }
 .voc-job-mode ha-icon { --mdc-icon-size: 14px; }
 .voc-job-rooms { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.voc-job-readiness, .voc-job-outcome { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 11.5px; font-weight: 750; line-height: 1.25; }
-.voc-job-readiness span:first-of-type, .voc-job-outcome span { min-width: 0; overflow-wrap: anywhere; }
-.voc-job-readiness ha-icon, .voc-job-outcome ha-icon { --mdc-icon-size: 14px; }
-.voc-job-readiness[data-readiness="ready"] { color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); }
-.voc-job-readiness[data-readiness="blocked"] { color: var(--voc-warning-ink); }
-.voc-job-readiness[data-readiness="unknown"] { color: var(--voc-muted); }
-.voc-job-outcome { color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
-.voc-job-more { flex: none; padding: 0 5px; border-radius: 999px; background: var(--voc-chip-bg); font-size: 10.5px; }
+.voc-job-status, .voc-job-outcome { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 11.5px; font-weight: 750; line-height: 1.25; }
+.voc-job-status span, .voc-job-outcome span { min-width: 0; overflow-wrap: anywhere; }
+.voc-job-status ha-icon, .voc-job-outcome ha-icon { --mdc-icon-size: 14px; }
+.voc-job-status[data-tone="ready"] { color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); }
+.voc-job-status[data-tone="delay"] { color: color-mix(in srgb, var(--voc-info) 82%, var(--primary-text-color)); }
+.voc-job-status[data-tone="blocked"] { color: var(--voc-warning-ink); }
+.voc-job-status[data-tone="waiting"], .voc-job-status[data-tone="edit"] { color: var(--voc-muted); }
+.voc-job-status[data-tone="muted"] { color: var(--voc-faint); }
+.voc-job-status[data-tone="attention"], .voc-job-outcome { color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
+.voc-job-progress { display: grid; gap: 3px; min-width: 0; font-size: 11.5px; font-weight: 700; line-height: 16px; color: var(--voc-muted); }
+.voc-job-progress-line { min-width: 0; overflow-wrap: anywhere; }
+.voc-job-percents { display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.voc-job-percent { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.voc-progress { position: relative; display: block; width: 72px; height: 4px; border-radius: 2px; overflow: hidden; background: color-mix(in srgb, var(--voc-info) 18%, transparent); }
+.voc-progress > span { display: block; height: 100%; border-radius: 2px; background: var(--voc-info); }
+.voc-job-actions .voc-job-main-action { min-height: var(--voc-row-target); padding-inline: 10px; }
 .voc-job[data-actions="none"] { grid-template-columns: 30px minmax(0, 1fr); }
 .voc-job-actions { display: flex; align-items: center; gap: var(--voc-target-gap); }
 .voc-job-actions .voc-button--icon { width: var(--voc-row-target); min-width: var(--voc-row-target); min-height: var(--voc-row-target); }
 .voc-job-actions-gap { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--voc-hairline); }
+.voc-job-manage { display: contents; }
+.voc-job .voc-menu-anchor { display: none; }
+.voc-job .voc-menu-button { width: var(--voc-row-target); min-width: var(--voc-row-target); min-height: var(--voc-row-target); }
 
 .voc-alerts { display: grid; gap: 6px; }
 .voc-alert {
@@ -101,15 +111,12 @@ export const QUEUE_CSS = `
 
 @container voc-card (max-width: 559px) {
   .voc-job { grid-template-columns: 22px minmax(0, 1fr) auto; }
-  .voc-job[data-actions="none"], .voc-job[data-actions="several"] { grid-template-columns: 22px minmax(0, 1fr); }
-  .voc-job[data-actions="one"] .voc-job-actions .voc-button--icon { width: var(--voc-tile-target); min-width: var(--voc-tile-target); min-height: var(--voc-tile-target); }
-  ${JOB_ACTION_BAR}
+  ${NARROW_ROW}
 }
 
 @supports not (container-type: inline-size) {
   @media (max-width: 699px) {
-    .voc-job[data-actions="several"] { grid-template-columns: 22px minmax(0, 1fr); }
-  ${JOB_ACTION_BAR}
+  ${NARROW_ROW}
   }
 }
 `;

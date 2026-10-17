@@ -26,7 +26,7 @@
 <div class="voc-panel-robots">
 <span class="voc-panel-robot" data-key="robot:01J00000000000000000000003" data-tone="running">
 <span class="voc-dot" aria-hidden="true">
-</span>Rocky · Cleaning · 100 %</span>
+</span>Rocky · Cleaning · Battery 100 %</span>
 </div>
 </div>
 <div class="voc-panel-control">
@@ -125,6 +125,11 @@
 <span class="voc-job-mode">Mop</span>
 <span class="voc-job-time">Mar 14, 2026, 11:14 AM</span>
 </span>
+<span class="voc-job-status" data-tone="waiting" data-code="robot_busy">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+<span>Job ready · Rocky is busy</span>
+</span>
 </button>
 </article>
 <article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000082" data-state="queued" data-tone="neutral" data-actions="none">
@@ -145,9 +150,14 @@
 </span>
 <span class="voc-job-time">Mar 14, 2026, 11:14 AM</span>
 </span>
+<span class="voc-job-status" data-tone="waiting" data-code="robot_busy">
+<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
+</ha-icon>
+<span>Job ready · Rocky is busy</span>
+</span>
 </button>
 </article>
-<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000062" data-state="queued" data-tone="neutral" data-actions="none">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000062" data-state="queued" data-tone="neutral" data-actions="one">
 <div class="voc-job-lead" aria-hidden="true">
 <ha-icon icon="mdi:water-outline" aria-hidden="true">
 </ha-icon>
@@ -161,9 +171,21 @@
 <span class="voc-job-mode">Mop</span>
 <span class="voc-job-time">Mar 14, 2026, 11:14 AM</span>
 </span>
+<span class="voc-job-status" data-tone="blocked" data-code="room_not_released">
+<ha-icon icon="mdi:lock-outline" aria-hidden="true">
+</ha-icon>
+<span>Waiting for release</span>
+</span>
 </button>
+<div class="voc-job-actions">
+<button type="button" class="voc-button voc-button--text voc-job-main-action" data-action="open-release" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000005&quot;,&quot;roomIds&quot;:[&quot;00000000-0000-4000-8000-000000000005&quot;],&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;}">
+<ha-icon icon="mdi:lock-open-variant-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Release…</span>
+</button>
+</div>
 </article>
-<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000042" data-state="running" data-tone="running" data-actions="none">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000042" data-state="running" data-tone="running" data-actions="one">
 <div class="voc-job-lead" aria-hidden="true">
 <ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
 </ha-icon>
@@ -177,7 +199,17 @@
 <span class="voc-job-mode">Vacuum</span>
 <span class="voc-job-time">Mar 14, 2026, 11:14 AM</span>
 </span>
+<span class="voc-job-progress">
+<span class="voc-job-progress-line">Rocky · started at 11:14&nbsp;AM</span>
+</span>
 </button>
+<div class="voc-job-actions">
+<button type="button" class="voc-button voc-button--danger voc-job-main-action" data-action="cancel-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000042&quot;}">
+<ha-icon icon="mdi:stop-circle-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Cancel job</span>
+</button>
+</div>
 </article>
 <article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000032" data-state="failed" data-tone="attention" data-actions="one">
 <div class="voc-job-lead" aria-hidden="true">
@@ -200,9 +232,10 @@
 </span>
 </button>
 <div class="voc-job-actions">
-<button type="button" class="voc-button voc-button--icon" data-action="retry-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000032&quot;}" aria-label="Create again" title="Create again">
+<button type="button" class="voc-button voc-button--text voc-job-main-action" data-action="retry-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000032&quot;}">
 <ha-icon icon="mdi:restore" aria-hidden="true">
 </ha-icon>
+<span class="voc-button-label">Create again</span>
 </button>
 </div>
 </article>
@@ -222,9 +255,10 @@
 </span>
 </button>
 <div class="voc-job-actions">
-<button type="button" class="voc-button voc-button--icon" data-action="retry-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000026&quot;}" aria-label="Create again" title="Create again">
+<button type="button" class="voc-button voc-button--text voc-job-main-action" data-action="retry-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000026&quot;}">
 <ha-icon icon="mdi:restore" aria-hidden="true">
 </ha-icon>
+<span class="voc-button-label">Create again</span>
 </button>
 </div>
 </article>
@@ -244,9 +278,10 @@
 </span>
 </button>
 <div class="voc-job-actions">
-<button type="button" class="voc-button voc-button--icon" data-action="retry-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000020&quot;}" aria-label="Create again" title="Create again">
+<button type="button" class="voc-button voc-button--text voc-job-main-action" data-action="retry-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000020&quot;}">
 <ha-icon icon="mdi:restore" aria-hidden="true">
 </ha-icon>
+<span class="voc-button-label">Create again</span>
 </button>
 </div>
 </article>

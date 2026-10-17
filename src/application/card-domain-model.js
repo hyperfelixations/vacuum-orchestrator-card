@@ -33,37 +33,65 @@ function areaCatalog(areas) {
     .map(([areaId, area]) => ({ areaId, name: typeof area?.name === "string" && area.name.trim() ? area.name.trim() : areaId, icon: area?.icon || null, floorId: area?.floor_id || null }));
 }
 
-// Entity ids the views name: readiness explanations, conditions, occupancy sources.
-function referencedEntityIds(slots) {
-  const ids = new Set();
+// Entity ids the views name (readiness explanations, waiting reasons, conditions, occupancy
+// sources), each with the further states they name: those a condition accepts.
+function referencedEntities(slots) {
+  const entities = new Map();
+  const add = (id, values = []) => {
+    if (!entities.has(id)) entities.set(id, new Set());
+    for (const value of values) entities.get(id).add(value);
+  };
   const addReadiness = (readiness) => {
     if (!readiness) return;
-    for (const id of [...readiness.failedOn, ...readiness.failedOff, ...readiness.unknown]) ids.add(id);
-    for (const item of readiness.requirements) ids.add(item.entityId);
+    for (const id of [...readiness.failedOn, ...readiness.failedOff, ...readiness.unknown]) add(id);
+    for (const item of readiness.requirements) add(item.entityId);
+  };
+  const addBlockers = (blockers) => {
+    for (const blocker of blockers || []) for (const id of blocker.entityIds) add(id);
   };
   const addJob = (job) => {
     if (!job) return;
-    for (const id of [...job.requiredOn, ...job.requiredOff]) ids.add(id);
+    for (const id of job.requiredOn) add(id, ["on"]);
+    for (const id of job.requiredOff) add(id, ["off"]);
     addReadiness(job.readiness);
+    const waiting = job.waiting;
+    if (!waiting) return;
+    addBlockers([waiting, ...(waiting.job?.blockers || []), ...(waiting.queue?.blockers || [])]);
+    for (const robot of [...(waiting.robots?.candidates || []), ...(waiting.robots?.unsuitable || [])]) addBlockers(robot.blockers);
   };
   for (const job of slots.queue?.data?.jobs || []) addJob(job);
   for (const job of slots.openJobs?.data?.jobs || []) addJob(job);
   addJob(slots.job?.data);
   for (const item of slots.execution?.data?.robots || []) addReadiness(item.readiness);
   for (const room of slots.rooms?.data?.items || []) {
-    for (const requirement of room.requirements) ids.add(requirement.entityId);
-    if (room.duePolicy.occupancyEntityId) ids.add(room.duePolicy.occupancyEntityId);
+    for (const requirement of room.requirements) add(requirement.entityId, requirement.acceptedStates);
+    if (room.duePolicy.occupancyEntityId) add(room.duePolicy.occupancyEntityId);
   }
-  for (const robot of slots.robots?.data?.items || []) for (const requirement of robot.configuration.requirements) ids.add(requirement.entityId);
-  return [...ids].sort();
+  for (const robot of slots.robots?.data?.items || []) for (const requirement of robot.configuration.requirements) add(requirement.entityId, requirement.acceptedStates);
+  return new Map([...entities].sort(([one], [other]) => (one < other ? -1 : one > other ? 1 : 0)));
 }
 
-function entityReading(states, entityId) {
+// Home Assistant's wording, or null where it gives none.
+function worded(format, state, value) {
+  if (typeof format !== "function" || !state) return null;
+  try {
+    const text = format(state, value);
+    return typeof text === "string" && text ? text : null;
+  } catch {
+    return null;
+  }
+}
+
+// `values`: further states of the entity a view names, such as those a condition accepts; each
+// is worded as Home Assistant words it.
+function entityReading(states, entityId, format, values) {
   const state = states?.[entityId];
   return {
     state: state?.state ?? null,
+    display: worded(format, state),
     name: state?.attributes?.friendly_name || null,
     available: Boolean(state) && state.state !== "unavailable" && state.state !== "unknown",
+    values: Object.fromEntries([...values].sort().map((value) => [value, worded(format, state, value)])),
   };
 }
 
@@ -85,7 +113,7 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
   const robotsLive = {};
   for (const robot of robots || []) robotsLive[robot.robotId] = robotLive(robot, registry, states, candidates.get(robot.configuration.registryId), home?.formatState ?? null);
   const entityReadings = {};
-  for (const entityId of referencedEntityIds(slots)) entityReadings[entityId] = entityReading(states, entityId);
+  for (const [entityId, values] of referencedEntities(slots)) entityReadings[entityId] = entityReading(states, entityId, home?.formatState ?? null, values);
   const canCommand = home?.admin !== false;
 
   const model = {

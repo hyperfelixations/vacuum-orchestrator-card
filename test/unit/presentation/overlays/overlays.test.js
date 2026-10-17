@@ -142,33 +142,49 @@ test("editing a job or a template offers removing it from the editor", async () 
   assert.deepEqual([editor.remove.action, editor.remove.args], ["remove-template", { templateId: template.templateId }]);
 });
 
-test("the detail page shows readiness, unreleased rooms to release and the execution explanation", async () => {
+// UI-06: the detail page names every reason of the three axes.
+test("the detail page shows the waiting reason on three axes, unreleased rooms to release and the execution explanation", async () => {
   const { buildJobDetail } = await overlays("job-detail");
   const conservatory = jobIn((await busy()).model, "Conservatory");
   const built = await busy(jobRequests(conservatory.jobId));
   const vm = buildJobDetail({ ...built, overlay: { jobId: conservatory.jobId }, config: {} });
   assert.equal(vm.title, "Conservatory");
   assert.equal(vm.position, 1);
-  assert.equal(vm.readiness.state, "blocked");
+  assert.deepEqual(vm.waiting.job.items.map((item) => item.text), ["Waiting for release", "Conservatory Door: off – required: on"], "the room in the title is not repeated; the door names its state and the one required");
+  assert.deepEqual([vm.waiting.job.ready, vm.waiting.robots.ready, vm.waiting.queue.ready], [false, false, true]);
+  assert.deepEqual(vm.waiting.robots.items.map((item) => [item.never, item.text]), [[true, "Rocky does not reach this room"]], "the sentence names the robot");
+  assert.deepEqual(vm.waiting.queue.items, []);
   assert.deepEqual(vm.releaseable.map((room) => [room.roomId, room.decision.state]), [[roomId(built.model, "Conservatory"), "enabled"]]);
-  assert.deepEqual(vm.execution.map((group) => [group.key, group.eligible]), [["mop", false]]);
-  const reasons = built.model.slots.execution.data.robots.map((robot) => built.texts.backend(robot.eligibilityReason));
-  assert.deepEqual(vm.execution[0].robots.map((robot) => [robot.name, robot.reason]), [["Rocky", reasons[0]]], "the integration's own reason");
+  assert.equal(vm.execution, null, "one phase without deviating settings: the robot axis says it all");
   assert.deepEqual([vm.actions.delete.state, vm.actions.retry.state], ["enabled", "hidden"]);
   assert.equal(vm.saveAsTemplate.state, "enabled");
   const facts = Object.fromEntries(vm.facts.map((fact) => [fact.label, fact.value]));
-  assert.equal(facts[built.texts.t("detail.occasion")], "Added by hand · Guests are coming", "the origin with the job's own occasion");
+  assert.deepEqual([facts.Origin, facts[built.texts.t("detail.occasion")]], ["Added by hand", "Guests are coming"], "how the job came and its occasion stand apart");
+  assert.equal(facts[built.texts.t("detail.updated")], null, "a job never changed since it was created names one moment");
 });
 
-test("the occasion names the origin with its template and the job's own reason; settings notes name each deviation", async () => {
-  const { occasionText, settingsNote } = await overlays("job-detail");
+// Before a start, the phases explain what the robot axis does not: here that Dusty, an area vacuum
+// without suction levels, would not set the suction.
+test("the phases explain a robot that would apply a setting differently; the queue axis says what the queue does", async () => {
+  const { buildJobDetail } = await overlays("job-detail");
+  const plain = await modelFor("robot_choice", { from: "Either robot can start the dining room" });
+  const dining = jobIn(plain.model, "Dining Room");
+  const built = await modelFor("robot_choice", { from: "Either robot can start the dining room", requests: jobRequests(dining.jobId) });
+  const vm = buildJobDetail({ ...built, overlay: { jobId: dining.jobId }, config: {} });
+  assert.deepEqual(vm.waiting.robots.items.map((item) => item.text), ["Rocky can take it now", "Dusty can take it now"]);
+  assert.deepEqual(vm.waiting.queue.items.map((item) => item.text), ["The queue is not running", "Start delay ends in 5 seconds"]);
+  assert.deepEqual(vm.execution.map((group) => [group.key, group.robots.map((robot) => [robot.name, robot.reason, robot.settings])]), [["vacuum", [["Rocky", "Can take it now", null], ["Dusty", "Can take it now", "Suction: not adjustable"]]]]);
+});
+
+test("the origin names its template while it exists; settings notes name each deviation", async () => {
+  const { originText, settingsNote } = await overlays("job-detail");
   const { normalizeJob } = await import("../../../../src/domain/job.js");
   const built = await busy(TEMPLATES);
   const template = built.model.slots.templates.data.items[0];
   const fromTemplate = normalizeJob(W.wireJob({ origin: { kind: "automatic", template_id: template.templateId }, reason: "Guests tonight" }));
-  assert.equal(occasionText(built.texts, fromTemplate, built.model), `Created when due “${template.name}” · Guests tonight`);
-  assert.equal(occasionText(built.texts, normalizeJob(W.wireJob({ origin: { kind: "template", template_id: "template-gone" } })), built.model), "From a template", "a removed template is not named");
-  assert.equal(occasionText(built.texts, normalizeJob(W.wireJob({ origin: null })), built.model), null);
+  assert.equal(originText(built.texts, fromTemplate, built.model), `Created when due “${template.name}”`, "the occasion is not part of the origin");
+  assert.equal(originText(built.texts, normalizeJob(W.wireJob({ origin: { kind: "template", template_id: "template-gone" } })), built.model), "From a template", "a removed template is not named");
+  assert.equal(originText(built.texts, normalizeJob(W.wireJob({ origin: null })), built.model), null);
   const note = settingsNote(built.texts, [{ field: "vacuumPower", requested: "maximum_plus", applied: "maximum" }, { field: "mopIntensity", requested: "high", applied: null }, { field: "mopRoute", requested: "deep", applied: "deep" }]);
   assert.equal(note, `${built.texts.t("detail.settingFallback", { setting: "Suction", applied: "Max", requested: "Max+" })}, ${built.texts.t("detail.settingMissing", { setting: "Water" })}`);
   assert.equal(settingsNote(built.texts, []), null);
@@ -193,11 +209,14 @@ test("a job is saved as a template under a name; the defaults page offers every 
   assert.equal(tooMany.fields.find((entry) => entry.key === "overlay:passes").error, said(built, "out_of_range"));
 });
 
-test("a running job is not re-evaluated; a job the integration no longer has is a missing page", async () => {
+test("a running job shows its progress and no waiting reason; a job the integration no longer has is a missing page", async () => {
   const { buildJobDetail } = await overlays("job-detail");
   const studio = jobIn((await busy()).model, "Studio");
   const running = await busy(jobRequests(studio.jobId));
-  assert.equal(buildJobDetail({ ...running, overlay: { jobId: studio.jobId }, config: {} }).readiness, null);
+  const page = buildJobDetail({ ...running, overlay: { jobId: studio.jobId }, config: {} });
+  assert.equal(page.waiting, null);
+  assert.equal(page.execution, null, "a started job is not explained as if it were to start");
+  assert.match(page.progress.line, /^Rocky · started on Mar 14, 2026, \d{1,2}:\d{2} (AM|PM)$/, "the detail page says the start absolute");
   const vm = buildJobDetail({ ...running, overlay: { jobId: "job-gone" }, config: {} });
   assert.equal(vm.jobId, undefined);
   assert.equal(vm.title, running.texts.t("detail.title"));
@@ -239,6 +258,7 @@ test("cancelling a started job and ending the queue offer their choices as radio
   assert.match(cancel.lead, /Studio/);
   const end = dialogs.buildQueueEnd({ ...built, overlay: { choice: "finish" } });
   assert.deepEqual(end.field.options.map((option) => option.value), ["finish", "cancel_return", "cancel_stay"]);
+  assert.deepEqual([cancel.title, end.title], ["Cancel job?", "End queue?"], "a confirmation asks, like every other one");
   assert.deepEqual(dialogs.queueEndChoices({ slots: {} }), ["finish", "cancel_stay"]);
 });
 

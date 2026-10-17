@@ -29,13 +29,13 @@ function actionButton(context, vm, key, className = "") {
 
 const visible = (vm, key) => decisionOf(vm, key) && decisionOf(vm, key).state !== "hidden";
 
-// The footer follows the job row: destructive actions first and set apart (withdrawing a waiting
-// job is one of them), editing and saving as a template next, and last the action that drives the
-// run — start, cancel of a started job, or retry — where the row keeps it too.
+// The footer follows the job row: the destructive action first and set apart — a waiting job is
+// deleted, a started one cancelled, never both side by side (JOB-08) — editing and saving as a
+// template next, and last the action that drives the run, start or retry.
 function footer(context, vm) {
   const queued = vm.state === "queued";
-  const lead = ["delete", ...(queued ? ["cancel"] : [])].filter((key) => visible(vm, key));
-  const run = (queued ? ["start"] : ["cancel", "retry"]).filter((key) => visible(vm, key));
+  const lead = (queued ? ["delete"] : ["cancel", "delete"]).filter((key) => visible(vm, key)).slice(0, 1);
+  const run = (queued ? ["start"] : ["retry"]).filter((key) => visible(vm, key));
   return [
     ...lead.map((key, index) => actionButton(context, vm, key, index === lead.length - 1 ? "voc-action-start" : "")),
     ...["saveAsTemplate", "edit"].filter((key) => visible(vm, key)).map((key) => actionButton(context, vm, key)),
@@ -50,14 +50,28 @@ function position(context, vm) {
   return `<div class="voc-detail-position" data-key="position"><span>${e(context.t("detail.position", { position: vm.position }))}</span>${moves}</div>`;
 }
 
-function readiness(context, vm) {
-  if (!vm.readiness) return "";
-  const icons = { ready: "mdi:check-circle-outline", blocked: "mdi:lock-outline", unknown: "mdi:help-circle-outline" };
-  const reasons = vm.readiness.reasons.length
-    ? `<ul class="voc-reasons">${vm.readiness.reasons.map((reason) => `<li>${icon("mdi:alert-circle-outline")}<span>${e(reason)}</span></li>`).join("")}</ul>`
-    : `<p class="voc-detail-ok">${icon(icons.ready)}<span>${e(context.t("detail.readyText"))}</span></p>`;
+// Why it waits, on the integration's three axes: the job itself, the robots, the queue (UI-06).
+function waiting(context, vm) {
+  if (!vm.waiting) return "";
+  const axis = (key, title, entry) => {
+    if (!entry) return "";
+    const items = entry.items.length
+      ? entry.items.map((item) => `<li data-key="${e(item.key)}"${item.ready === undefined ? "" : ` data-ready="${item.ready}"`}>${icon(item.ready ? "mdi:check-circle-outline" : item.never ? "mdi:close-circle-outline" : "mdi:alert-circle-outline")}<span>${e(item.text)}</span></li>`).join("")
+      : `<li data-ready="true">${icon("mdi:check-circle-outline")}<span>${e(context.t("waiting.axis.ready"))}</span></li>`;
+    return `<div class="voc-axis" data-key="axis:${key}" data-ready="${entry.ready}"><div class="voc-axis-title">${e(title)}</div><ul class="voc-reasons">${items}</ul></div>`;
+  };
   const release = vm.releaseable.map((room) => button({ action: "open-release", args: { roomId: room.roomId }, label: context.t("detail.releaseRoom", { room: room.name }), iconName: "mdi:lock-open-variant-outline", decision: room.decision, reasonText: context.reason(room.decision), key: `release:${room.roomId}` })).join("");
-  return block(context.t("detail.readiness"), `${reasons}${release ? `<div class="voc-inline-actions">${release}</div>` : ""}`, { iconName: icons[vm.readiness.state], key: "readiness" });
+  const content = `${axis("job", context.t("waiting.axis.job"), vm.waiting.job)}${release ? `<div class="voc-inline-actions">${release}</div>` : ""}${axis("robots", context.t("waiting.axis.robots"), vm.waiting.robots)}${axis("queue", context.t("waiting.axis.queue"), vm.waiting.queue)}`;
+  return block(context.t("detail.readiness"), content, { iconName: "mdi:timer-sand", key: "readiness" });
+}
+
+// What a started job is doing.
+function progress(context, vm) {
+  const value = vm.progress;
+  if (!value) return "";
+  const bars = value.bars.map((bar) => `<div class="voc-job-percent" data-key="${e(bar.key)}"><span>${e(bar.label)}</span><span class="voc-progress" role="progressbar" aria-label="${e(bar.label)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${e(bar.value)}"><span style="width:${e(bar.value)}%"></span></span><span>${e(bar.text)}</span></div>`).join("");
+  const fault = value.fault ? `<p class="voc-job-status" data-tone="attention">${icon("mdi:wrench-clock")}<span>${e(value.fault.text)}</span></p>` : "";
+  return block(context.t("detail.progress"), `<p class="voc-overlay-lead">${e(value.line)}</p>${bars}${fault}`, { iconName: "mdi:progress-clock", key: "progress" });
 }
 
 function execution(context, vm) {
@@ -91,7 +105,7 @@ export function renderJobDetail(context, vm) {
   }
   const summary = `<div class="voc-detail-summary" data-key="summary"><div class="voc-detail-line">${chip(vm.mode, { iconName: "mdi:broom" })}${vm.rooms.map((room) => chip(room, { iconName: "mdi:floor-plan" })).join("")}${vm.settings.map((setting) => chip(setting.text, { iconName: setting.icon, label: setting.label })).join("")}</div>${position(context, vm)}${vm.outcome ? `<div class="voc-job-outcome">${icon("mdi:alert-outline")}<span>${e(vm.outcome)}</span></div>` : ""}${vm.afterCancel ? `<div class="voc-job-outcome" data-key="after-cancel">${icon("mdi:home-import-outline")}<span>${e(vm.afterCancel)}</span></div>` : ""}</div>`;
   const actions = footer(context, vm);
-  const content = `${summary}${readiness(context, vm)}${execution(context, vm)}${attempts(context, vm)}${block(context.t("detail.details"), facts(vm.facts), { iconName: "mdi:information-outline", key: "facts" })}${trace(context, vm)}`;
+  const content = `${summary}${progress(context, vm)}${waiting(context, vm)}${execution(context, vm)}${attempts(context, vm)}${block(context.t("detail.details"), facts(vm.facts), { iconName: "mdi:information-outline", key: "facts" })}${trace(context, vm)}`;
   return frame(context, { key: "job-detail", title: vm.title, status: pill(vm.stateLabel, vm.stateTone), content, actions });
 }
 

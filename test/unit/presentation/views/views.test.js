@@ -70,15 +70,84 @@ test("a row names only the settings that differ from the defaults; the detail na
   assert.deepEqual(settingChips(library, built.texts).map((chip) => chip.key), ["passes", "vacuumPower"]);
 });
 
-test("a waiting row explains its readiness in the integration's order", async () => {
+// UI-06, UI-25: a row says the integration's main reason, never "ready" beside a reason, and
+// offers the one action that reason calls for.
+test("a waiting row states the integration's main reason and the action it calls for", async () => {
   const { buildQueueView } = await view("queue");
   const built = await busy();
   const [conservatory, library] = buildQueueView({ ...built, options: {} }).waiting;
-  assert.equal(conservatory.readiness.state, "blocked");
-  assert.equal(conservatory.readiness.summary, built.texts.t("readiness.notReleased", { rooms: "Conservatory" }));
-  assert.equal(conservatory.readiness.more, 1, "the closed door is the second reason");
-  assert.equal(library.readiness.state, "ready");
+  assert.deepEqual([conservatory.status.code, conservatory.status.tone, conservatory.status.text], ["room_not_released", "blocked", "Waiting for release"], "the title already names the room");
+  assert.deepEqual([conservatory.main.key, conservatory.main.roomIds.length], ["release", 1]);
+  assert.deepEqual([library.status.code, library.status.tone, library.status.text], ["robot_busy", "waiting", "Job ready · Rocky is busy"], "the job is ready, the robot is not");
+  assert.equal(library.main, null, "a busy robot calls for nothing");
   assert.deepEqual([conservatory.actions.moveUp.state, conservatory.actions.moveUp.reason, conservatory.actions.moveUp.source], ["disabled", "job_at_top", "integration"]);
+});
+
+// QUE-08, QUE-09: the start delay counts down while it is the only obstacle, beside Delete; without
+// a connection no countdown runs.
+test("a new job counts down to its start, deletable; offline it shows no countdown", async () => {
+  const { buildQueueView } = await view("queue");
+  const built = await modelFor("start_delay", { from: "The job starts in four seconds" });
+  const [row] = buildQueueView({ ...built, options: {} }).waiting;
+  assert.deepEqual([row.status.code, row.status.tone, row.status.text, row.main.key], ["start_delayed", "delay", "Starts in 4 seconds", "delete"]);
+  const [offline] = buildQueueView({ ...built, context: { ...built.context, connected: false }, options: {} }).waiting;
+  assert.deepEqual([offline.status.text, offline.status.until], ["Connection lost – start time unknown", null]);
+});
+
+test("a job ready but for the queue offers to start now", async () => {
+  const { buildQueueView } = await view("queue");
+  const built = await modelFor("robot_choice", { from: "Either robot can start the dining room" });
+  const [row] = buildQueueView({ ...built, options: {} }).waiting;
+  assert.deepEqual([row.status.code, row.status.tone, row.status.text, row.main.key], ["queue_idle", "ready", "Ready · starts once the queue runs", "start"]);
+});
+
+test("a job another card edits says so and cannot be edited here", async () => {
+  const { buildQueueView } = await view("queue");
+  const built = await modelFor("job_hold", { from: "Another card edits the job" });
+  const [row] = buildQueueView({ ...built, options: {} }).waiting;
+  assert.deepEqual([row.status.code, row.status.tone, row.status.text], ["being_edited", "edit", "Being edited"]);
+  assert.deepEqual([row.actions.edit.state, row.actions.edit.reason], ["disabled", "job_held"]);
+});
+
+// JOB-09: a running job names its robot and start and, where the robot reports it, its progress;
+// the state pill stays away while the group says it.
+test("a running job shows robot, start and progress, without a pill its group already states", async () => {
+  const { buildQueueView } = await view("queue");
+  const built = await modelFor("start_delay", { from: "Rocky is halfway through" });
+  const [row] = buildQueueView({ ...built, options: {} }).active;
+  assert.match(row.progress.line, /^Rocky · started \d+ minutes ago$/);
+  assert.deepEqual(row.progress.bars.map((bar) => [bar.key, bar.value, bar.text]), [["total", 50, "50 %"]]);
+  assert.equal(row.progress.labelled, false, "one phase, one bar");
+  assert.equal(row.showState, false);
+  assert.equal(row.main.key, "cancel");
+  const absolute = buildQueueView({ ...built, options: {}, timeFormat: "absolute" }).active[0];
+  assert.match(absolute.progress.line, /^Rocky · started at \d{1,2}:\d{2}\u00a0(AM|PM)$/, "a clock time does not wrap inside");
+});
+
+test("a job waiting for a fault to be fixed says until when; the device attention says what and what waits", async () => {
+  const { buildQueueView } = await view("queue");
+  const built = await modelFor("device_fault", { from: "The job waits for the fix" });
+  const queue = buildQueueView({ ...built, options: {} });
+  assert.match(queue.active[0].progress.fault.text, /^Waiting for the fault to be fixed · fails at \d{1,2}:\d{2}\u00a0(AM|PM)$/);
+  assert.deepEqual(queue.devices.map((item) => [item.title, item.what, item.effect]), [["Rocky needs attention", "The robot reports an error", "Every job waits until then"]], "a fault without Home Assistant's wording is never a raw code");
+  const station = buildQueueView({ ...(await modelFor("attention", { from: "The station needs attention" })), options: {} });
+  assert.deepEqual(station.devices.map((item) => [item.what, item.effect]), [["Dirty water tank full", "Jobs that mop wait until then"]]);
+  assert.equal(station.attentionNeeded, false, "the device says what is wrong");
+  assert.deepEqual(station.waiting.map((row) => row.status.text), ["Job ready · Rocky cannot mop right now"]);
+});
+
+// UI-25: while the run ends no waiting job starts in it, whichever robot becomes free or room the run
+// frees; a reason of the job itself that someone must resolve still comes first.
+test("a queue that is ending says the waiting jobs do not start in this run", async () => {
+  const { buildQueueView } = await view("queue");
+  const built = await modelFor("queue_controls", { from: "The queue ends after the started job" });
+  const waiting = buildQueueView({ ...built, options: {} }).waiting;
+  assert.deepEqual(waiting.map((row) => [row.title, row.status.tone, row.status.text]), [
+    ["Library", "muted", "Does not start in this queue run"],
+    ["Dining Room", "muted", "Does not start in this queue run"],
+    ["Dining Room", "muted", "Does not start in this queue run"],
+    ["Studio", "muted", "Does not start in this queue run"],
+  ]);
 });
 
 test("an empty queue says so and offers templates", async () => {

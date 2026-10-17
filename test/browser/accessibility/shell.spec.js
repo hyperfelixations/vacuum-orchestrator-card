@@ -37,11 +37,34 @@ test("on a narrow card inactive tabs show icons yet keep their names", async ({ 
   await expect(card.locator(".voc-queue-control")).toHaveAccessibleName("Pause queue");
 });
 
-test("status and readiness are readable without colour", async ({ page }) => {
+test("status and waiting reasons are readable without colour", async ({ page }) => {
   const card = await mountCard(page, BUSY);
   await expect(card.locator(".voc-status-pill")).toHaveText("Cleaning");
-  await expect(named(card, ".voc-job", "Conservatory", ".voc-job-readiness")).toContainText("Not released");
-  await expect(named(card, ".voc-job", "Studio", ".voc-pill")).toHaveText("Cleaning");
+  await expect(named(card, ".voc-job", "Conservatory", ".voc-job-status")).toHaveText("Waiting for release");
+  await expect(named(card, ".voc-job", "Library, thoroughly", ".voc-job-status")).toHaveText("Job ready · Rocky is busy");
+  await expect(named(card, ".voc-job", "Studio", ".voc-job-progress-line")).toContainText("Rocky");
+});
+
+// WAI-ARIA APG "Menu Button" on a narrow card, where the row's menu shows: Enter opens it on its
+// first item, the arrow keys move, Escape closes it and returns focus to its button, Tab leaves it.
+test("a row's menu is operated by keyboard", async ({ page }) => {
+  const card = await mountCard(page, { ...BUSY, width: 380 });
+  const button = named(card, ".voc-job", "Library, thoroughly", ".voc-menu-button");
+  await button.focus();
+  await page.keyboard.press("Enter");
+  const items = card.locator('[role="menu"] [role="menuitem"]');
+  await expect(items).toHaveText(["Move up", "Move down", "Edit"]);
+  await expect(items.first()).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await expect(items.last()).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(card.locator('[role="menu"]')).toHaveCount(0);
+  await expect(button).toBeFocused();
+  await expect(button).toHaveAttribute("aria-expanded", "false");
+  await page.keyboard.press("ArrowUp");
+  await expect(items.last()).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(card.locator('[role="menu"]')).toHaveCount(0);
 });
 
 test("a control the user may not use keeps its explanation and stays reachable", async ({ page }) => {

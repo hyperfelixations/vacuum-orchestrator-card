@@ -67,10 +67,10 @@ test("a dialog covers the view, which stays live and inert below it; Escape clos
   assert.equal(card.root.querySelector(".voc-live-region").hasAttribute("inert"), false, "answers are still announced");
   await card.click('[data-key="field:overlay:releaseKind"] [data-value="timed"]');
   await card.type('[data-field="overlay:hours"]', "1");
-  assert.equal(card.text(".voc-panel-robot"), "Rocky · Docked · 100 %");
+  assert.equal(card.text(".voc-panel-robot"), "Rocky · Docked · Battery 100 %");
   const states = card.hass.states;
   await card.updateHass({ states: { ...states, "sensor.rocky_battery": { ...states["sensor.rocky_battery"], state: "80" } } });
-  assert.equal(card.text(".voc-panel-robot"), "Rocky · Docked · 80 %", "the card below follows Home Assistant");
+  assert.equal(card.text(".voc-panel-robot"), "Rocky · Docked · Battery 80 %", "the card below follows Home Assistant");
   assert.equal(card.root.querySelector(".voc-dialog"), dialog, "the dialog stays in place");
   assert.equal(card.root.querySelector('[data-field="overlay:hours"]').value, "1", "and keeps what was typed");
   await card.press('[data-field="overlay:hours"]', "Escape");

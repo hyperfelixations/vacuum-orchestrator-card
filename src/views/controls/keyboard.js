@@ -1,6 +1,7 @@
 // Keyboard behaviour of the card's own controls, by event delegation. Choice groups are roving
 // tab stops: arrow keys move between options, and in a single-choice group also select. From an
-// entity search field, ArrowDown enters the match list.
+// entity search field, ArrowDown enters the match list. In an open menu the arrow keys, Home and
+// End move between its items.
 
 const OPTION = "[role='radio'], [role='option']";
 
@@ -20,6 +21,15 @@ function move(event, options, index, select) {
 export function handleControlKeydown(event) {
   const target = event?.target;
   if (!target?.closest) return false;
+  if (target.matches?.("[role='menuitem']")) {
+    const items = [...target.closest("[role='menu']").querySelectorAll("[role='menuitem']")];
+    const index = items.indexOf(target);
+    if (event.key === "ArrowDown") return move(event, items, index + 1, false);
+    if (event.key === "ArrowUp") return move(event, items, index - 1, false);
+    if (event.key === "Home") return move(event, items, 0, false);
+    if (event.key === "End") return move(event, items, items.length - 1, false);
+    return false;
+  }
   const group = target.closest("[data-control='choice']");
   if (group && target.matches(OPTION)) {
     const options = enabled([...group.querySelectorAll(OPTION)]);

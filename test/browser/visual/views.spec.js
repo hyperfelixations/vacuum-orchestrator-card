@@ -29,6 +29,10 @@ const NOT_SET_UP = { recording: "setup", from: "Vacuum Orchestrator is installed
 const ASSISTANT = { recording: "setup", from: "The assistant opens" };
 const NOT_LOADED = { recording: "unloaded", from: "The integration is not loaded" };
 const NO_ROBOT = { recording: "no_robot" };
+const COUNTDOWN = { recording: "start_delay", from: "The job starts in four seconds" };
+const HALFWAY = { recording: "start_delay", from: "Rocky is halfway through" };
+const EDITED_ELSEWHERE = { recording: "job_hold", from: "Another card edits the job" };
+const FAULT = { recording: "device_fault", from: "The job waits for the fix" };
 
 // The stage carries the page background and the gutter a dashboard card sits in, and it is wide
 // enough to contain the card's own shadow.
@@ -72,7 +76,7 @@ test.describe("the queue", () => {
 
   test("medium", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
-    await expect(named(card, ".voc-job", "Library, thoroughly")).toHaveAttribute("data-actions", "several");
+    await expect(named(card, ".voc-job", "Library, thoroughly", ".voc-job-status")).toHaveText("Job ready · Rocky is busy");
     await expect(card.locator('[data-key="grace"]')).toHaveCount(0);
     await shot(page, "queue-medium-light.png", MEDIUM);
   });
@@ -125,6 +129,41 @@ test.describe("the queue", () => {
     await shot(page, "queue-ending-medium-light.png", MEDIUM);
   });
 
+  test("a new job counting down to its start", async ({ page }) => {
+    const card = await mountCard(page, { ...COUNTDOWN, config: BASE });
+    const row = named(card, ".voc-job", "Dining Room, Studio");
+    await expect(row.locator(".voc-job-status")).toHaveText("Starts in 4 seconds");
+    await expect(row.locator('.voc-job-main-action[data-action="delete-job"]')).toHaveText("Delete");
+    await shot(page, "queue-countdown-medium-light.png", MEDIUM);
+  });
+
+  test("a running job halfway through", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    const card = await mountCard(page, { ...HALFWAY, config: BASE });
+    await expect(card.locator('[data-key="active"] .voc-progress')).toHaveAttribute("aria-valuenow", "50");
+    await shot(page, "queue-progress-narrow-dark.png", NARROW);
+  });
+
+  test("a job edited on another card", async ({ page }) => {
+    const card = await mountCard(page, { ...EDITED_ELSEWHERE, config: BASE });
+    await expect(named(card, ".voc-job", "Dining Room", ".voc-job-status")).toHaveText("Being edited");
+    await shot(page, "queue-held-medium-light.png", MEDIUM);
+  });
+
+  test("a job waiting for a fault to be fixed", async ({ page }) => {
+    const card = await mountCard(page, { ...FAULT, config: BASE });
+    await expect(card.locator('[data-key="active"] .voc-job-status[data-tone="attention"]')).toContainText("fails at");
+    await shot(page, "queue-fault-medium-light.png", MEDIUM);
+  });
+
+  test("narrow, a row's menu open", async ({ page }) => {
+    const card = await mountCard(page, { ...BUSY, config: BASE });
+    await setCardWidth(page, NARROW);
+    await act(page, named(card, ".voc-job", "Library, thoroughly", ".voc-menu-button"));
+    await expect(card.locator('[role="menu"] [role="menuitem"]')).toHaveText(["Move up", "Move down", "Edit"]);
+    await shot(page, "queue-menu-narrow-light.png");
+  });
+
   test("read-only", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, admin: false, config: BASE });
     await expect(named(card, ".voc-job", "Conservatory", '[data-action="edit-job"]')).toHaveAttribute("aria-disabled", "true");
@@ -133,10 +172,10 @@ test.describe("the queue", () => {
 });
 
 test.describe("job pages", () => {
-  test("detail with the execution explanation", async ({ page }) => {
+  test("detail with the waiting reason on three axes", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await act(page, named(card, ".voc-job", "Conservatory", ".voc-job-main"));
-    await expect(card.locator('[data-key="execution"]')).toContainText("Rocky");
+    await expect(card.locator('[data-key="axis:robots"] li')).toHaveText("Rocky does not reach this room");
     await shot(page, "detail-medium-light.png", MEDIUM);
   });
 
@@ -362,8 +401,8 @@ test.describe("on a touch screen", () => {
     await setCardWidth(page, NARROW);
     expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
     await expect(named(card, ".voc-job", "Studio")).toHaveAttribute("data-actions", "one");
-    const tile = await named(card, ".voc-job", "Library, thoroughly", ".voc-job-actions .voc-button").first().boundingBox();
-    expect(tile.height).toBeGreaterThanOrEqual(44);
+    const more = await named(card, ".voc-job", "Library, thoroughly", ".voc-menu-button").boundingBox();
+    expect(more.height).toBeGreaterThanOrEqual(44);
     await shot(page, "queue-narrow-touch-light.png");
   });
 

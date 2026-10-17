@@ -14,6 +14,7 @@ import { isTransportFailure } from "../../domain/backend-errors.js";
 import { AFTER_CANCEL_CHOICES, queueEndChoices } from "../../presentation/overlays/dialogs.js";
 import { jobTitle, roomIndex } from "../../presentation/common/lookups.js";
 import { SETTING_FIELDS, SETTING_WIRE_NAMES } from "../../domain/job-schema.js";
+import { menuId } from "../../views/controls/menu.js";
 
 // Each editor overlay names the reducer of its draft and whether it holds unsaved changes.
 const DRAFT_REDUCERS = Object.freeze({
@@ -235,6 +236,17 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       if (top?.holdId) releaseHold(top.holdId);
     },
     toggle: ({ key }) => ui.toggle(key),
+    // A menu opens with focus on its first item (or its last, from ArrowUp) and closes with focus
+    // back on its button (WAI-ARIA APG "Menu Button").
+    "toggle-menu": ({ key, focus = "first" }) => {
+      if (ui.snapshot.menu === key) {
+        ui.requestFocus(`[data-key="menu:${key}"] .voc-menu-button`);
+        ui.setMenu(null);
+        return;
+      }
+      ui.requestFocus(`#${menuId(key)} [role="menuitem"]${focus === "last" ? ":last-of-type" : ""}`);
+      ui.setMenu(key);
+    },
     choose: ({ key, value }) => ui.choose(key, value),
     "show-view": ({ view }) => ui.setView(view),
     "open-setup": () => ui.openOverlay({ kind: "setup-guide" }),
@@ -500,6 +512,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     handle(action, args = {}) {
       const handler = handlers[action];
       if (!handler || (ui.overlay?.busy && !WHILE_BUSY.has(action))) return undefined;
+      // Choosing anything, a menu item included, closes an open menu.
+      if (action !== "toggle-menu" && ui.snapshot.menu) ui.setMenu(null);
       return handler(args);
     },
     // Text and number fields report through input events, not actions.

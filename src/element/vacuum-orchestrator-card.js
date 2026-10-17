@@ -26,6 +26,7 @@ import { createClockRuntime, watchTimes } from "../controllers/runtime/clock-run
 import { createDiagnosticsReporter } from "../controllers/runtime/diagnostics-reporter.js";
 import { createInteractionRuntime } from "../controllers/runtime/interaction-runtime.js";
 import { createKeyboardRuntime } from "../controllers/runtime/keyboard-runtime.js";
+import { placeMenus } from "../controllers/runtime/menu-placement.js";
 import { createScrollRuntime } from "../controllers/runtime/scroll-runtime.js";
 import { createTabStripRuntime } from "../controllers/runtime/tab-strip-runtime.js";
 import { createUIState } from "../controllers/runtime/ui-state.js";
@@ -76,13 +77,19 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._keyboard = createKeyboardRuntime({
       root: this.shadowRoot,
       onView: (view) => this._ui.setView(view),
-      // Escape is the page's Back control, including its question about unsaved changes.
+      // Escape closes an open menu; else it is the page's Back control, including its question
+      // about unsaved changes.
       onEscape: () => {
+        const menu = this._ui.snapshot.menu;
+        if (menu) {
+          this._router.handle("toggle-menu", { key: menu });
+          return true;
+        }
         if (!this._ui.overlay) return false;
         this._router.handle("back");
         return true;
       },
-      onControlKey: handleControlKeydown,
+      onControlKey: (event) => this._onControlKey(event),
     });
     this._tabStrip = createTabStripRuntime({ root: this.shadowRoot, platform: this._platform });
     this._scroll = createScrollRuntime({ root: this.shadowRoot, platform: this._platform });
@@ -352,6 +359,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._scroll.capture();
     this._mount.mount(context, { css: STYLES, html: renderCard(context, viewModel, renderBody) });
     this._scroll.sync(this._scrollStack(viewModel));
+    placeMenus(this.shadowRoot);
     const requested = this._ui.consumeFocus();
     if (requested) focusSelector(this.shadowRoot, requested, ring);
     else if (depth > previousDepth && held && viewModel.dialog) focusSelector(this.shadowRoot, ".voc-dialog [data-autofocus]", ring) || focusSelector(this.shadowRoot, "#voc-dialog-title", ring);
@@ -416,7 +424,26 @@ export class VacuumOrchestratorCard extends HTMLElement {
     }
   }
 
+  // A menu button opens its menu with ArrowDown or ArrowUp; Tab leaves an open menu and closes it.
+  _onControlKey(event) {
+    const target = event.target;
+    const button = target?.closest?.(".voc-menu-button");
+    if (button && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+      event.preventDefault();
+      const key = JSON.parse(button.dataset.args || "{}").key;
+      if (this._ui.snapshot.menu === key) this._ui.setMenu(null);
+      this._router.handle("toggle-menu", { key, focus: event.key === "ArrowUp" ? "last" : "first" });
+      return true;
+    }
+    if (event.key === "Tab" && target?.closest?.("[role='menu']")) this._ui.setMenu(null);
+    return handleControlKeydown(event);
+  }
+
   _onInteraction(event) {
+    if (event.type === "background") {
+      if (this._ui.snapshot.menu) this._ui.setMenu(null);
+      return;
+    }
     if (event.type === "view") {
       this._ui.requestFocus(`[role="tab"][data-view="${event.view}"]`);
       this._ui.setView(event.view);

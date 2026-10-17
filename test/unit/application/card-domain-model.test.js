@@ -41,7 +41,7 @@ async function fixture({ admin = true } = {}) {
     "binary_sensor.door": { state: "on", attributes: { friendly_name: "Door" } },
     "sensor.voi_mode": { state: "running", attributes: {} },
   };
-  const home = { states, areas: { library: { name: " Library ", floor_id: "ground" }, "": { name: "x" } }, admin, operations: ["create_job", "run_queue"], formatState: (state) => `«${state.state}»` };
+  const home = { states, areas: { library: { name: " Library ", floor_id: "ground" }, "": { name: "x" } }, admin, operations: ["create_job", "run_queue"], formatState: (state, value) => `«${value ?? state.state}»` };
   const snapshot = { version: 3, phase: "ready", phaseFailure: null, apiVersion: 4, runtime: { id: "runtime-1", sequence: 4, commitId: 9 }, live: null, subscription: "live", scopes, pending: { "job:job-1": "move_job" } };
   const robotId = scopes[m.scopeKey("robots", {})].data.items[0].robotId;
   return { ...m, requests, snapshot, home, states, robotId };
@@ -79,10 +79,14 @@ test("robot live state uses the configured roles, else discovery, and never an o
   assert.deepEqual(live.maps.map((map) => [map.entityId, map.picture]), [["image.rocky_main_floor", "/main_floor.png"], ["image.rocky_lower_floor", null]]);
 });
 
-test("entities the views name get a reading; areas become a catalog", async () => {
+// A condition's states read as Home Assistant words them: the current one and those it requires
+// (a job's required on/off, a room's or robot's accepted states).
+test("entities the views name get a reading in Home Assistant's words; areas become a catalog", async () => {
   const { buildCardDomainModel, requests, snapshot, home } = await fixture();
   const model = buildCardDomainModel({ snapshot, requests, home });
-  assert.deepEqual({ ...model.entityReadings["binary_sensor.door"] }, { state: "on", name: "Door", available: true });
+  assert.deepEqual(JSON.parse(JSON.stringify(model.entityReadings["binary_sensor.door"])), { state: "on", display: "«on»", name: "Door", available: true, values: { on: "«on»" } });
+  const unworded = buildCardDomainModel({ snapshot, requests, home: { ...home, formatState: () => { throw new Error("no wording"); } } });
+  assert.deepEqual([unworded.entityReadings["binary_sensor.door"].display, unworded.entityReadings["binary_sensor.door"].values.on], [null, null], "a formatter that fails gives no words");
   assert.deepEqual(model.areas.map((area) => ({ ...area })), [{ areaId: "library", name: "Library", icon: null, floorId: "ground" }]);
   assert.equal("summary" in model, false, "counts come from the queue, not from sensors");
 });

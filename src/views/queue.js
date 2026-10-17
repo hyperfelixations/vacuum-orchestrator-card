@@ -21,6 +21,7 @@ export function renderQueue(context, vm) {
   if (vm.loading) return `<div class="voc-view voc-queue" data-key="view:queue">${loadingState(context)}</div>`;
   const parts = [];
   if (vm.recovery.length) parts.push(`<div class="voc-alerts" data-key="recovery">${vm.recovery.map((item) => recoveryAlert(context, item)).join("")}</div>`);
+  if (vm.devices.length) parts.push(`<div class="voc-alerts" data-key="devices">${vm.devices.map((item) => `<div class="voc-alert" data-key="device:${e(item.key)}" role="status">${icon("mdi:alert-outline")}<div class="voc-alert-text"><strong>${e(item.title)}</strong><span>${e(item.what)}</span>${item.effect ? `<span>${e(item.effect)}</span>` : ""}</div></div>`).join("")}</div>`);
   if (vm.attentionNeeded) parts.push(`<div class="voc-alert" data-key="attention" role="status">${icon("mdi:alert-outline")}<div class="voc-alert-text"><strong>${e(context.t("attention.title"))}</strong><span>${e(context.t("attention.text"))}</span></div></div>`);
   if (vm.active.length) parts.push(group(context.t("queue.active"), vm.active.map((row) => jobRow(context, row)).join(""), { key: "active" }));
   if (vm.attention.length) parts.push(group(context.t("queue.attention"), vm.attention.map((row) => jobRow(context, row, { rowActions: [] })).join(""), { key: "attention-jobs" }));
@@ -43,7 +44,7 @@ export const queueView = Object.freeze({
   optionsSchema: Object.freeze({ show_active: boolOption(true), show_attention: boolOption(true), show_templates: boolOption(true) }),
   primary: Object.freeze({ action: "create-job", icon: "mdi:plus", labelKey: "action.createJob", operation: "create_job", target: "create" }),
   scopes: ({ options }) => (options.show_templates === false ? [] : [{ name: "templates" }]),
-  build: ({ model, texts, context, options, config }) => buildQueueView({ model, texts, context, options, timeFormat: config.time_format }),
+  build: ({ model, texts, context, options, config, ui }) => buildQueueView({ model, texts, context, options, ui, timeFormat: config.time_format }),
   render: renderQueue,
   css: QUEUE_CSS,
 });

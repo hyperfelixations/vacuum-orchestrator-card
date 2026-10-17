@@ -92,11 +92,14 @@ test("a robot's status line joins Home Assistant's state and battery with the le
   const { model } = await modelFor("showcase", { from: BUSY });
   const [rocky] = robotsOf(model).map((robot) => robotStatus(robot, model, en));
   assert.deepEqual([rocky.state, rocky.battery, rocky.tone], [en.t("vacuum.state.cleaning"), 100, "running"]);
-  assert.equal(rocky.summary, `Rocky · ${en.t("vacuum.state.cleaning")} · 100 %`);
+  assert.equal(rocky.summary, `Rocky · ${en.t("vacuum.state.cleaning")} · Battery 100 %`, "a percentage beside a job's progress names what it measures");
   const choice = await modelFor("robot_choice", { from: "Either robot can start the dining room" });
   const [docked, dusty] = robotsOf(choice.model).map((robot) => robotStatus(robot, choice.model, en));
   assert.deepEqual([docked.tone, docked.state, docked.battery], ["ready", en.t("vacuum.state.docked"), 100]);
   assert.deepEqual([dusty.name, dusty.battery], ["Dusty", null], "a robot without a battery reading shows none");
+  const fault = await modelFor("device_fault", { from: "The job waits for the fix" });
+  const [failing] = robotsOf(fault.model).map((robot) => robotStatus(robot, fault.model, en));
+  assert.deepEqual([failing.state, failing.tone], [en.t("vacuum.state.error"), "attention"], "an error outweighs the job the robot holds");
 });
 
 test("trace rows word known events and states and keep unknown ones as reported", async () => {

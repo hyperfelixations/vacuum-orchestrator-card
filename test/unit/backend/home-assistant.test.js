@@ -14,13 +14,15 @@ test("the facts are taken from the hass object without copying its state objects
     areas: { library: { name: "Library" } },
     user: { is_admin: false },
     services: { vacuum_orchestrator: { run_queue: {}, create_job: {} }, light: { turn_on: {} } },
-    formatEntityState: (state) => `formatted ${state.state}`,
+    // Home Assistant words a state object's own state, or another value of that entity.
+    formatEntityState: (...args) => `formatted ${args.length > 1 ? args[1] : args[0].state} (${args.length})`,
   };
   const home = readHomeAssistant(hass);
   assert.equal(home.states, states);
   assert.equal(home.admin, false);
   assert.deepEqual(home.operations, ["create_job", "run_queue"]);
-  assert.equal(home.formatState({ state: "docked" }), "formatted docked");
+  assert.equal(home.formatState({ state: "docked" }), "formatted docked (1)");
+  assert.equal(home.formatState({ state: "docked" }, "cleaning"), "formatted cleaning (2)", "another value of the same entity");
   assert.equal(Object.isFrozen(states), false);
 });
 

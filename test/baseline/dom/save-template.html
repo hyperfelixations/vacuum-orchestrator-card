@@ -63,20 +63,23 @@
 </div>
 <section class="voc-block" data-key="readiness">
 <h3 class="voc-block-title">
-<ha-icon icon="mdi:lock-outline" aria-hidden="true">
+<ha-icon icon="mdi:timer-sand" aria-hidden="true">
 </ha-icon>Can it start?</h3>
+<div class="voc-axis" data-key="axis:job" data-ready="false">
+<div class="voc-axis-title">The job</div>
 <ul class="voc-reasons">
-<li>
+<li data-key="room_not_released:0">
 <ha-icon icon="mdi:alert-circle-outline" aria-hidden="true">
 </ha-icon>
-<span>Not released: Conservatory</span>
+<span>Waiting for release</span>
 </li>
-<li>
+<li data-key="requirement_not_satisfied:1">
 <ha-icon icon="mdi:alert-circle-outline" aria-hidden="true">
 </ha-icon>
-<span>Conservatory Door is not in an allowed state</span>
+<span>Conservatory Door: off – required: on</span>
 </li>
 </ul>
+</div>
 <div class="voc-inline-actions">
 <button type="button" class="voc-button voc-button--text" data-action="open-release" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000005&quot;}" data-key="release:00000000-0000-4000-8000-000000000005">
 <ha-icon icon="mdi:lock-open-variant-outline" aria-hidden="true">
@@ -84,20 +87,23 @@
 <span class="voc-button-label">Release Conservatory…</span>
 </button>
 </div>
-</section>
-<section class="voc-block" data-key="execution">
-<h3 class="voc-block-title">
-<ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
-</ha-icon>Robots</h3>
-<p class="voc-overlay-lead">Per cleaning phase: which robot could take it right now.</p>
-<div class="voc-phase" data-key="phase:mop">
-<div class="voc-phase-title">Mopping</div>
-<ul class="voc-phase-robots">
-<li data-key="mop:01J00000000000000000000003" data-eligible="false">
+<div class="voc-axis" data-key="axis:robots" data-ready="false">
+<div class="voc-axis-title">Robots</div>
+<ul class="voc-reasons">
+<li data-key="unsuitable:01J00000000000000000000003" data-ready="false">
 <ha-icon icon="mdi:close-circle-outline" aria-hidden="true">
 </ha-icon>
-<span class="voc-phase-robot">Rocky</span>
-<span class="voc-phase-reason">The robot has no target for at least one room of this job</span>
+<span>Rocky does not reach this room</span>
+</li>
+</ul>
+</div>
+<div class="voc-axis" data-key="axis:queue" data-ready="true">
+<div class="voc-axis-title">The queue</div>
+<ul class="voc-reasons">
+<li data-ready="true">
+<ha-icon icon="mdi:check-circle-outline" aria-hidden="true">
+</ha-icon>
+<span>Nothing holds it back</span>
 </li>
 </ul>
 </div>
@@ -109,10 +115,10 @@
 <dl class="voc-facts">
 <dt>Created</dt>
 <dd>Mar 14, 2026, 11:14 AM</dd>
-<dt>Changed</dt>
-<dd>Mar 14, 2026, 11:14 AM</dd>
+<dt>Origin</dt>
+<dd>Added by hand</dd>
 <dt>Occasion</dt>
-<dd>Added by hand · Guests are coming</dd>
+<dd>Guests are coming</dd>
 <dt>Job ID</dt>
 <dd>00000000-0000-4000-8000-000000000062</dd>
 </dl>

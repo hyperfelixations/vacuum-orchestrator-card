@@ -24,7 +24,12 @@ export function createInteractionRuntime({ root, onAction = () => {} } = {}) {
 
   function onClick(event) {
     const target = event.target?.closest?.("[data-action], [data-view]");
-    if (!target || inert(target)) return;
+    // A click on nothing the card acts on, such as beside an open menu.
+    if (!target) {
+      onAction({ type: "background", event });
+      return;
+    }
+    if (inert(target)) return;
     if (TEXT_INPUTS.has(target.tagName)) return;
     if (target.dataset.view && target.getAttribute("role") === "tab") {
       onAction({ type: "view", view: target.dataset.view, target, event });

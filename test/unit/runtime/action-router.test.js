@@ -571,3 +571,20 @@ test("navigation, paging and reload reach their owners; an unknown action does n
   assert.equal(router.handle("no-such-action"), undefined);
   assert.equal(router.has("queue-control"), true);
 });
+
+// WAI-ARIA APG "Menu Button": a menu opens with focus on its first item, or its last from ArrowUp,
+// closes again with focus on its button, and choosing anything closes it.
+test("a menu opens with focus on an item, closes with focus on its button, and any choice closes it", async () => {
+  const { router, ui, commands } = await setup();
+  router.handle("toggle-menu", { key: "job:job-1" });
+  assert.equal(ui.snapshot.menu, "job:job-1");
+  assert.equal(ui.consumeFocus(), '#voc-menu-job-job-1 [role="menuitem"]');
+  router.handle("toggle-menu", { key: "job:job-1" });
+  assert.equal(ui.snapshot.menu, null);
+  assert.equal(ui.consumeFocus(), '[data-key="menu:job:job-1"] .voc-menu-button');
+  router.handle("toggle-menu", { key: "job:job-1", focus: "last" });
+  assert.equal(ui.consumeFocus(), '#voc-menu-job-job-1 [role="menuitem"]:last-of-type');
+  await router.handle("move-job", { jobId: "job-1", direction: "up" });
+  assert.equal(ui.snapshot.menu, null, "the chosen item closes its menu");
+  assert.deepEqual(commands.map((command) => command.operation), ["move_job"]);
+});

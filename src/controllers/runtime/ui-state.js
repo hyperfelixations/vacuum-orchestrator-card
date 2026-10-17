@@ -1,11 +1,12 @@
 // One card's own route and transient state: the view on screen, the overlay stack (a dialog
 // can sit on an editor and give it back; each overlay has an `id` for as long as it is open),
-// page offsets, expanded blocks, the last command's notice and the focus the next render owes.
+// page offsets, expanded blocks, the open menu, the last command's notice and the focus the next
+// render owes.
 // Nothing here is shared between cards. See internal dev doc §9 "UI-Zustand".
 
 export function createUIState() {
   let opened = 0;
-  let state = Object.freeze({ view: null, overlays: Object.freeze([]), pages: Object.freeze({}), expanded: Object.freeze([]), choices: Object.freeze({}), notice: null, focus: null });
+  let state = Object.freeze({ view: null, overlays: Object.freeze([]), pages: Object.freeze({}), expanded: Object.freeze([]), menu: null, choices: Object.freeze({}), notice: null, focus: null });
   const listeners = new Set();
   const publish = () => listeners.forEach((listener) => listener(state));
   const update = (patch, { silent = false } = {}) => {
@@ -25,10 +26,10 @@ export function createUIState() {
       return state.overlays[state.overlays.length - 1] ?? null;
     },
     setView(view) {
-      return update({ view, overlays: Object.freeze([]) });
+      return update({ view, overlays: Object.freeze([]), menu: null });
     },
     openOverlay(entry) {
-      return update({ overlays: Object.freeze([...state.overlays, Object.freeze({ ...entry, id: ++opened })]) });
+      return update({ overlays: Object.freeze([...state.overlays, Object.freeze({ ...entry, id: ++opened })]), menu: null });
     },
     // The open overlay with this id, wherever it lies in the stack.
     find(id) {
@@ -62,6 +63,11 @@ export function createUIState() {
     // A per-card display choice, such as which map picture a robot card shows.
     choose(key, value) {
       return update({ choices: Object.freeze({ ...state.choices, [key]: value }) });
+    },
+    // The one open menu, by its key, or null.
+    setMenu(key) {
+      if ((key || null) === state.menu) return state;
+      return update({ menu: key || null });
     },
     setNotice(notice) {
       return update({ notice: notice ? Object.freeze({ ...notice }) : null });

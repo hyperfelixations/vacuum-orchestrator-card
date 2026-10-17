@@ -31,6 +31,13 @@ export function dateTime(texts, value) {
   return typeof texts?.formatDateTime === "function" ? texts.formatDateTime(value) : String(value);
 }
 
+// The time of day alone, for an instant within the next hours ("fails at 14:32").
+export function clockTime(texts, value) {
+  if (value === null || value === undefined) return "—";
+  // A clock time keeps together when its line wraps.
+  return (typeof texts?.formatDateTime === "function" ? texts.formatDateTime(value, { dateStyle: undefined }) : String(value)).replace(/ /g, "\u00a0");
+}
+
 export function relative(texts, value, nowMs) {
   if (value === null || value === undefined) return "—";
   if (!Number.isFinite(nowMs)) return dateTime(texts, value);

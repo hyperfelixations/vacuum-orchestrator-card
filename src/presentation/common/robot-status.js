@@ -15,7 +15,7 @@ export function robotStatus(robot, model, texts) {
   const live = model.robotsLive?.[robot.robotId] ?? null;
   const battery = numericReading(live?.roles?.battery);
   const state = vacuumStateLabel(texts, live?.vacuum);
-  const tone = robot.blockedReason ? "attention" : robot.active ? "running" : live?.vacuum?.state === "error" ? "attention" : live?.vacuum?.available ? "ready" : "muted";
-  const parts = [robot.name, state, battery === null ? null : t(texts, "robot.battery", { value: number(texts, battery) })].filter(Boolean);
+  const tone = robot.blockedReason || live?.vacuum?.state === "error" ? "attention" : robot.active ? "running" : live?.vacuum?.available ? "ready" : "muted";
+  const parts = [robot.name, state, battery === null ? null : t(texts, "robot.batteryLevel", { value: number(texts, battery) })].filter(Boolean);
   return { robotId: robot.robotId, name: robot.name, state, battery, tone, summary: parts.join(" · ") };
 }
