@@ -154,6 +154,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._layoutTier.connect();
     this._clock.connect();
     this._syncSession();
+    void this._router.resumeHolds();
     this._renderSafely();
   }
 
@@ -164,6 +165,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._scroll.disconnect();
     this._layoutTier.disconnect();
     this._clock.disconnect();
+    this._router.pauseHolds();
     this._releaseSession();
   }
 

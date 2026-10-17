@@ -347,3 +347,22 @@ test("a job changed within the minute it was created names one moment", async ()
   const facts = Object.fromEntries(vm.facts.map((fact) => [fact.label, fact.value]));
   assert.equal(facts[full.texts.t("detail.updated")], null);
 });
+
+// JOB-20, JOB-21: an editor whose hold lapsed keeps its draft, says so and offers to hold the job again;
+// once the job no longer waits it offers to add the draft as a new job.
+test("an editor without its hold says why and what can still be done", async () => {
+  const { buildJobEditor } = await overlays("job-editor");
+  const { createDraft } = await draftModule();
+  const built = await busy();
+  const library = jobIn(built.model, "Library");
+  const draft = createDraft({ kind: "job", target: library });
+  assert.equal(buildJobEditor({ ...built, overlay: { draft, holdId: "hold-1" } }).hold, null);
+  const lapsed = buildJobEditor({ ...built, overlay: { draft, holdId: null, holdLost: true } });
+  assert.deepEqual([lapsed.hold.text, lapsed.hold.action, lapsed.hold.label], ["Your edit protection has lapsed. The job may start or be changed elsewhere.", "hold-again", "Protect again"]);
+  assert.equal(lapsed.save.decision.state, "enabled", "without a hold the integration decides whether the change is still possible");
+  const gone = buildJobEditor({ ...built, overlay: { draft, holdId: null, holdLost: true, holdFailure: { ok: false, code: "job_not_waiting", group: "job", detail: null, channel: "command" } } });
+  assert.match(gone.hold.text, /new job/);
+  assert.deepEqual([gone.hold.action, gone.hold.label], ["save-as-new-job", "Add as new job"]);
+  const taken = buildJobEditor({ ...built, overlay: { draft, holdId: null, holdLost: true, holdFailure: { ok: false, code: "job_held", group: "job", detail: "edit", channel: "command" } } });
+  assert.deepEqual([taken.hold.action, taken.hold.label], ["hold-again", "Protect again"], "a job held elsewhere still waits: protecting it again is the way on");
+});

@@ -140,10 +140,13 @@ test("a refusal keeps the editor open with the reason; saving again sends only t
   await card.settle(32);
   assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:job-editor");
   assert.match(card.text(".voc-notice--error"), /./);
-  assert.deepEqual(card.queries("validate").map((message) => message.parameters), [{ command: "update_job", data: { job_id: library, passes: 2 } }], "the integration checks the change first");
+  assert.deepEqual(card.commands("hold_job").map((message) => message.parameters), [{ job_id: library, purpose: "edit" }], "the editor holds the job first (JOB-19)");
+  const hold = card.queries("validate")[0]?.parameters.data.hold_id;
+  assert.ok(hold);
+  assert.deepEqual(card.queries("validate").map((message) => message.parameters), [{ command: "update_job", data: { job_id: library, hold_id: hold, passes: 2 } }], "the integration checks the change first");
   await card.click('[data-action="save-draft"]');
   await card.settle(32);
-  assert.deepEqual(card.services("update_job").at(-1).data, { job_id: library, passes: 2 });
+  assert.deepEqual(card.services("update_job").at(-1).data, { job_id: library, hold_id: hold, passes: 2 });
   assert.equal(card.root.querySelector(".voc-overlay"), null);
   card.unmount();
 });
@@ -424,5 +427,20 @@ test("a job's release frees each of its locked rooms in its own way with one com
   await card.settle(32);
   assert.deepEqual(card.commands("release_rooms").map((message) => message.parameters), [{ grants: [{ room: dining, kind: "once" }, { room: studio, kind: "timed", duration_seconds: 14400 }] }]);
   assert.equal(card.root.querySelector(".voc-dialog"), null);
+  card.unmount();
+});
+
+// JOB-19, QUE-11: leaving the editor of a waiting job gives its hold back.
+test("leaving a waiting job's editor gives its hold back", async () => {
+  const card = await mountCard({ recording: "edit_hold", from: "A dining room job waits" });
+  await card.click(inRow(card, "Dining Room", '[data-action="edit-job"]'));
+  await card.settle(32);
+  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:job-editor");
+  const [held] = card.commands("hold_job");
+  assert.equal(held.parameters.purpose, "edit");
+  await card.click('[data-action="back"]');
+  await card.settle(32);
+  assert.equal(card.commands("release_job_hold").length, 1);
+  assert.equal(card.root.querySelector(".voc-overlay"), null);
   card.unmount();
 });

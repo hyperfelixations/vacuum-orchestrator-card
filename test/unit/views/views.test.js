@@ -317,3 +317,18 @@ test("a page frame without lead and content has no region to scroll; without act
   const lead = parse(document, frame(context, { key: "x", title: "X", lead: "<b>" }));
   assert.equal(lead.querySelector(".voc-overlay-scroll > .voc-overlay-lead").textContent, "<b>");
 });
+
+// JOB-20: an editor that lost its hold heads its page with the reason and the way on.
+test("an editor without its hold says so above its fields with the way on", async () => {
+  const { overlayFor } = await import("../../../src/views/registry.js");
+  const { createDraft } = await import("../../../src/domain/job-draft.js");
+  const built = await busy();
+  const library = built.model.slots.queue.data.jobs.find((job) => job.name === "Library, thoroughly") || built.model.slots.queue.data.jobs[0];
+  const { document, context } = await renderContext(built.texts);
+  const editor = overlayFor("job-editor");
+  const host = parse(document, editor.render(context, editor.build({ ...built, overlay: { kind: "job-editor", draft: createDraft({ kind: "job", target: library }), holdLost: true } })));
+  const notice = host.querySelector('[data-key="hold"]');
+  assert.equal(notice.getAttribute("role"), "alert");
+  assert.equal(notice.querySelector("button").dataset.action, "hold-again");
+  assert.ok(notice.compareDocumentPosition(host.querySelector("form")) & 4, "the notice comes before the fields");
+});

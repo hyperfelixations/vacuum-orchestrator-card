@@ -8,7 +8,7 @@ import { ALL_ROOMS, settingsForMode } from "../../domain/job-draft.js";
 import { CLEANING_MODES, PASS_MAX, PASS_MIN, SETTING_LADDERS, SETTINGS_POLICIES } from "../../domain/job-schema.js";
 import { coveredRoomIds } from "../../domain/robots.js";
 import { findJob, list, robotsOf, roomsOf, slotData } from "../common/lookups.js";
-import { modeLabel, policyLabel, settingLabel, t } from "../common/texts.js";
+import { failureText, modeLabel, policyLabel, settingLabel, t } from "../common/texts.js";
 import { MODE_ICONS } from "../views/job-row.js";
 import { entityField, field, pageErrors } from "./editor-fields.js";
 
@@ -124,8 +124,20 @@ export function buildJobEditor({ model, texts, context, overlay }) {
     startNow: newJob && preview?.startableNow === true ? { label: t(texts, "action.startNow"), decision: decide(context, { operation: "create_job", target }) } : null,
     pending: list(model.pending).includes(target),
     remove: removeControl({ model, texts, context, draft }),
+    hold: holdNotice(texts, overlay),
     saveAsTemplate: kind === "job" && draft.meta.id ? { action: "open-save-template", args: { jobId: draft.meta.id }, label: t(texts, "action.saveAsTemplate"), decision: decide(context, { operation: "save_job_as_template", target }) } : null,
   };
+}
+
+// JOB-20, JOB-21: an editor that lost its hold keeps the draft: it says so and offers to hold the
+// job again, or, once the job no longer waits or is gone, to add the draft as a new job.
+const JOB_GONE = new Set(["job_not_waiting", "unknown_job"]);
+
+function holdNotice(texts, overlay) {
+  if (!overlay?.holdLost) return null;
+  const failure = overlay.holdFailure;
+  if (failure && JOB_GONE.has(failure.code)) return { text: `${failureText(texts, failure)} ${t(texts, "editor.holdGone")}`, action: "save-as-new-job", label: t(texts, "action.addAsNewJob") };
+  return { text: failure ? failureText(texts, failure) : t(texts, "editor.holdLost"), action: "hold-again", label: t(texts, "action.protectAgain") };
 }
 
 // Editing an existing job or template also offers removing it.

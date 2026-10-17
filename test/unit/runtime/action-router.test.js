@@ -56,8 +56,24 @@ async function setup({ config = {}, answer = () => ({ ok: true, data: null }), v
     robotsLive: { "robot-rocky": { roles: { battery: { entityId: "sensor.rocky_battery" } } } },
     ...extra,
   };
-  const router = createActionRouter({ ui, getSession: () => session, getModel: () => model, getConfig: () => config, platform: { navigate: (path) => navigated.push(path) }, isDialog });
-  return { router, ui, commands, checked, navigated };
+  // Timers run only when a test fires them.
+  const timers = [];
+  const platform = {
+    navigate: (path) => navigated.push(path),
+    setTimeout: (fn, ms) => {
+      const timer = { fn, ms, cancelled: false, cancel: () => (timer.cancelled = true) };
+      timers.push(timer);
+      return timer;
+    },
+    clearTimeout: (handle) => handle?.cancel?.(),
+  };
+  const fire = async () => {
+    const due = timers.splice(0).filter((timer) => !timer.cancelled);
+    for (const timer of due) await timer.fn();
+    return due.map((timer) => timer.ms);
+  };
+  const router = createActionRouter({ ui, getSession: () => session, getModel: () => model, getConfig: () => config, platform, isDialog });
+  return { router, ui, commands, checked, navigated, timers, fire };
 }
 
 test("all rooms in the editor excludes single rooms, and a single room ends all rooms", async () => {
@@ -184,7 +200,7 @@ const HELD = (operation) => (operation === "hold_job" ? { ok: true, data: { hold
 test("deleting from the editor opened on the detail page leaves both pages", async () => {
   const { router, ui, commands } = await setup({ answer: HELD });
   router.handle("open-job", { jobId: "job-1" });
-  router.handle("edit-job", { jobId: "job-1" });
+  await router.handle("edit-job", { jobId: "job-1" });
   await router.handle("delete-job", { jobId: "job-1" });
   assert.deepEqual(ui.snapshot.overlays.map((overlay) => overlay.kind), ["job-detail", "job-editor", "confirm"]);
   await router.handle("confirm-command");
@@ -271,8 +287,8 @@ test("a confirmation waits for its answer, locked, and keeps a refusal itself", 
 
 test("a late answer leaves only the page that sent it, and only while it is on top", async () => {
   const answer = deferred();
-  const { router, ui } = await setup({ answer: () => answer.promise });
-  router.handle("edit-job", { jobId: "job-1" });
+  const { router, ui } = await setup({ answer: (operation) => (operation === "hold_job" ? HELD(operation) : answer.promise) });
+  await router.handle("edit-job", { jobId: "job-1" });
   router.handle("set-field", { field: "passes", value: 3 });
   const saving = router.handle("save-draft");
   await new Promise((resolve) => setImmediate(resolve));
@@ -289,11 +305,11 @@ test("a late answer leaves only the page that sent it, and only while it is on t
 // reloads, nothing is sent again and the page with its draft stays.
 test("a command without an answer is reported as unknown and the page stays", async () => {
   const lost = { ok: false, code: "timeout", detail: "15000 ms", channel: "service" };
-  const page = await setup({ answer: () => lost });
-  page.router.handle("edit-job", { jobId: "job-1" });
+  const page = await setup({ answer: (operation) => (operation === "hold_job" ? HELD(operation) : lost) });
+  await page.router.handle("edit-job", { jobId: "job-1" });
   page.router.handle("set-field", { field: "passes", value: 3 });
   await page.router.handle("save-draft");
-  assert.deepEqual([page.ui.overlay.kind, page.ui.overlay.busy, page.ui.overlay.draft.passes, page.commands.length], ["job-editor", false, 3, 1]);
+  assert.deepEqual([page.ui.overlay.kind, page.ui.overlay.busy, page.ui.overlay.draft.passes, page.commands.length], ["job-editor", false, 3, 2]);
   assert.deepEqual({ ...page.ui.snapshot.notice }, { kind: "warning", messageKey: "notice.outcomeUnknown" });
   assert.equal(page.ui.consumeFocus(), "#voc-overlay-title");
   const dialog = await setup({ answer: (operation) => (operation === "hold_job" ? HELD(operation) : { ...lost, code: "connection_lost" }) });
@@ -325,18 +341,18 @@ test("leaving a changed editor asks before the draft is dropped", async () => {
 });
 
 test("a new job is created with the full intent; an edited one sends only the changes", async () => {
-  const { router, ui, commands } = await setup();
+  const { router, ui, commands } = await setup({ answer: HELD });
   router.handle("create-job", { roomIds: ["room-library"] });
   await router.handle("save-draft");
   assert.deepEqual(commands[0], { operation: "create_job", parameters: { areas: ["room-library"], mode: "vacuum", vacuum_power: "standard", passes: 1, required_on: [], required_off: [], settings_policy: "best_effort" }, target: "create", invalidates: ["queue", "openJobs", "jobLog", "job", "execution", "trace"] });
   assert.equal(ui.snapshot.notice.messageKey, "notice.jobCreated");
-  router.handle("edit-job", { jobId: "job-1" });
+  await router.handle("edit-job", { jobId: "job-1" });
   router.handle("set-field", { field: "passes", value: 3 });
   await router.handle("save-draft");
-  assert.deepEqual(commands[1].parameters, { job_id: "job-1", passes: 3 });
-  router.handle("edit-job", { jobId: "job-1" });
+  assert.deepEqual(commands.at(-1).parameters, { job_id: "job-1", hold_id: "hold-1", passes: 3 });
+  await router.handle("edit-job", { jobId: "job-1" });
   await router.handle("save-draft");
-  assert.equal(commands.length, 2, "an unchanged edit sends nothing");
+  assert.deepEqual(commands.slice(-2).map((command) => command.operation), ["hold_job", "release_job_hold"], "an unchanged edit changes nothing");
   assert.equal(ui.overlay, null);
 });
 
@@ -432,8 +448,8 @@ test("without a verdict nothing is sent; a page left meanwhile keeps nothing of 
 
 test("a refusal keeps the page open and becomes the notice", async () => {
   const failure = { ok: false, code: "job_not_editable", group: "job", detail: null, channel: "service" };
-  const { router, ui } = await setup({ answer: () => failure });
-  router.handle("edit-job", { jobId: "job-1" });
+  const { router, ui } = await setup({ answer: (operation) => (operation === "hold_job" ? HELD(operation) : failure) });
+  await router.handle("edit-job", { jobId: "job-1" });
   router.handle("set-field", { field: "passes", value: 3 });
   await router.handle("save-draft");
   assert.equal(ui.overlay.kind, "job-editor");
@@ -615,4 +631,99 @@ test("a row's job opens beside a wide queue and as a page otherwise", async () =
   ui.setWide(false);
   router.handle("open-job", { jobId: "job-c" });
   assert.deepEqual([ui.overlay.kind, ui.overlay.jobId], ["job-detail", "job-c"]);
+});
+
+// JOB-19, JOB-20: a waiting job is edited under its own hold, so it cannot start meanwhile: the editor is
+// busy until the hold arrives, renews it every 30 seconds while it is open and saves with it.
+test("a waiting job is edited under its own hold, renewed while the editor is open", async () => {
+  const { router, ui, commands, fire } = await setup({ answer: HELD });
+  const opening = router.handle("edit-job", { jobId: "job-1" });
+  assert.equal(ui.overlay.busy, true, "nothing can be changed before the hold arrives");
+  await opening;
+  assert.deepEqual([commands[0].operation, commands[0].parameters, ui.overlay.holdId, ui.overlay.busy], ["hold_job", { job_id: "job-1", purpose: "edit" }, "hold-1", false]);
+  assert.deepEqual(await fire(), [30000]);
+  assert.deepEqual([commands[1].operation, commands[1].parameters], ["renew_job_hold", { hold_id: "hold-1" }]);
+  router.handle("set-field", { field: "passes", value: 3 });
+  await router.handle("save-draft");
+  assert.deepEqual([commands[2].operation, commands[2].parameters], ["update_job", { job_id: "job-1", hold_id: "hold-1", passes: 3 }]);
+  assert.equal(ui.overlay, null);
+  await fire();
+  assert.equal(commands.length, 3, "a closed editor renews nothing");
+});
+
+// QUE-11: leaving the editor gives the hold back, which restarts the start delay.
+test("leaving, discarding or saving nothing gives the editor's hold back", async () => {
+  const { router, ui, commands } = await setup({ answer: HELD });
+  const released = () => commands.filter((command) => command.operation === "release_job_hold").length;
+  await router.handle("edit-job", { jobId: "job-1" });
+  router.handle("back");
+  assert.deepEqual([ui.overlay, released()], [null, 1]);
+  await router.handle("edit-job", { jobId: "job-1" });
+  router.handle("set-field", { field: "passes", value: 3 });
+  router.handle("back");
+  assert.equal(released(), 1, "the question keeps the hold");
+  await router.handle("confirm-command");
+  assert.deepEqual([ui.overlay, released()], [null, 2]);
+  await router.handle("edit-job", { jobId: "job-1" });
+  await router.handle("save-draft");
+  assert.deepEqual([ui.overlay, released(), commands.some((command) => command.operation === "update_job")], [null, 3, false], "an unchanged edit sends nothing but gives the hold back");
+});
+
+// A lapsed hold keeps the draft: the editor says so and holds the job again; a job that started
+// meanwhile can be added as a new job from the draft.
+test("a lapsed hold keeps the draft and offers to hold the job again or add it anew", async () => {
+  let renewal = { ok: false, code: "hold_expired", group: "job", detail: null, channel: "command" };
+  let hold = { ok: true, data: { hold_id: "hold-1" } };
+  const { router, ui, commands, fire } = await setup({ answer: (operation) => (operation === "renew_job_hold" ? renewal : operation === "hold_job" ? hold : { ok: true, data: null }) });
+  await router.handle("edit-job", { jobId: "job-1" });
+  router.handle("set-field", { field: "passes", value: 3 });
+  await fire();
+  assert.deepEqual([ui.overlay.holdId, ui.overlay.holdLost, ui.overlay.draft.passes], [null, true, 3]);
+  await fire();
+  assert.equal(commands.filter((command) => command.operation === "renew_job_hold").length, 1, "nothing is renewed without a hold");
+  hold = { ok: true, data: { hold_id: "hold-2" } };
+  await router.handle("hold-again");
+  assert.deepEqual([ui.overlay.holdId, ui.overlay.holdLost], ["hold-2", false]);
+  renewal = { ok: false, code: "hold_expired", group: "job", detail: null, channel: "command" };
+  await fire();
+  hold = { ok: false, code: "job_not_waiting", group: "job", detail: null, channel: "command" };
+  await router.handle("hold-again");
+  assert.deepEqual([ui.overlay.holdLost, ui.overlay.holdFailure.code], [true, "job_not_waiting"]);
+  await router.handle("save-as-new-job");
+  assert.deepEqual([commands.at(-1).operation, commands.at(-1).parameters.passes, ui.overlay], ["create_job", 3, null]);
+});
+
+// The editor's deletion is confirmed under the editor's own hold; leaving the question keeps it.
+test("deleting from the editor uses the editor's hold", async () => {
+  const { router, ui, commands } = await setup({ answer: HELD });
+  await router.handle("edit-job", { jobId: "job-1" });
+  await router.handle("delete-job", { jobId: "job-1" });
+  assert.deepEqual([ui.overlay.kind, ui.overlay.holdId, commands.filter((command) => command.operation === "hold_job").length], ["confirm", "hold-1", 1]);
+  router.handle("back");
+  assert.deepEqual([ui.overlay.kind, ui.overlay.holdId, commands.some((command) => command.operation === "release_job_hold")], ["job-editor", "hold-1", false]);
+  await router.handle("delete-job", { jobId: "job-1" });
+  await router.handle("confirm-command");
+  assert.deepEqual([commands.at(-1).operation, commands.at(-1).parameters, ui.overlay], ["delete_job", { job_id: "job-1", hold_id: "hold-1" }, null]);
+});
+
+// JOB-21: a competing edit is refused visibly: the editor that could not hold its job closes and
+// the card says why.
+test("an editor whose job another card holds closes with the reason", async () => {
+  const held = { ok: false, code: "job_held", group: "job", detail: "edit", channel: "command" };
+  const { router, ui } = await setup({ answer: (operation) => (operation === "hold_job" ? held : { ok: true, data: null }) });
+  await router.handle("edit-job", { jobId: "job-1" });
+  assert.equal(ui.overlay, null);
+  assert.deepEqual({ ...ui.snapshot.notice }, { kind: "error", operation: "hold_job", failure: held });
+});
+
+// JOB-20: only a card on screen keeps its hold alive; detached, it lets the hold lapse, and back on
+// screen it renews at once, so a lapse shows.
+test("a detached card stops renewing its editor's hold and renews at once when back", async () => {
+  const { router, commands, fire } = await setup({ answer: HELD });
+  await router.handle("edit-job", { jobId: "job-1" });
+  router.pauseHolds();
+  assert.deepEqual(await fire(), [], "nothing renews while detached");
+  await router.resumeHolds();
+  assert.deepEqual(commands.map((command) => command.operation), ["hold_job", "renew_job_hold"]);
+  assert.deepEqual(await fire(), [30000], "and the rhythm goes on");
 });

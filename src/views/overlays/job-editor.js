@@ -23,7 +23,9 @@ export function renderJobEditor(context, vm) {
   const startNow = vm.startNow ? button({ action: "start-draft", label: vm.startNow.label, iconName: "mdi:play", decision: pending ?? vm.startNow.decision, reasonText: context.reason(vm.startNow.decision) }) : "";
   const save = button({ action: "save-draft", label: vm.save.label, iconName: "mdi:check", variant: "primary", decision: pending ?? vm.save.decision, reasonText: context.reason(vm.save.decision) });
   const actions = `${remove}${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${saveAsTemplate}${startNow}${save}`;
-  return frame(context, { key: "job-editor", title: vm.title, invalid: vm.invalid, content: `<form class="voc-form" novalidate>${vm.groups.map((entry) => group(context, entry)).join("")}</form>`, actions });
+  // A lost hold heads the page with what can still be done (JOB-20, JOB-21).
+  const hold = vm.hold ? `<div class="voc-notice voc-notice--warning" role="alert" data-key="hold">${icon("mdi:lock-alert-outline")}<span class="voc-notice-text">${e(vm.hold.text)}</span>${button({ action: vm.hold.action, label: vm.hold.label, variant: "text" })}</div>` : "";
+  return frame(context, { key: "job-editor", title: vm.title, invalid: vm.invalid, content: `${hold}<form class="voc-form" novalidate>${vm.groups.map((entry) => group(context, entry)).join("")}</form>`, actions });
 }
 
 export const jobEditorOverlay = Object.freeze({

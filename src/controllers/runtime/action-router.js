@@ -34,6 +34,8 @@ const pageFields = (fields) => (path) => fields[String(path).split(".")[0]] ?? n
 const JOB_DEFAULT_FIELDS = Object.freeze({ mode: "overlay:mode", passes: "overlay:passes", settings_policy: "overlay:settingsPolicy", ...Object.fromEntries(SETTING_FIELDS.map((field) => [SETTING_WIRE_NAMES[field], `overlay:${field}`])) });
 
 const QUEUE_SCOPES = Object.freeze(["queue", "openJobs", "jobLog", "job", "execution", "trace"]);
+// An editor renews its hold well within the integration's 90 s lease.
+export const HOLD_RENEW_MS = 30000;
 const STARTED_STATES = Object.freeze(["dispatching", "running"]);
 // The end of a queue run per choice; finishing is the integration's default.
 const QUEUE_END = Object.freeze({
@@ -111,6 +113,45 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
   // its own, so the job's controls stay usable meanwhile and focus can return to them.
   function releaseHold(holdId) {
     void getSession()?.command("release_job_hold", { hold_id: holdId }, { target: `hold:${holdId}`, invalidates: QUEUE_SCOPES });
+  }
+
+  // JOB-19, JOB-21: an editor holds its waiting job, so it cannot start while someone decides
+  // about it. The editor is busy until the hold arrives; a hold that arrives after the editor is
+  // gone is released at once. An editor refused its first hold closes with the reason; one that
+  // lost its hold stays with its draft and says why.
+  async function holdForEditing(editorId, jobId, { first = false } = {}) {
+    const result = await getSession()?.command("hold_job", { job_id: jobId, purpose: "edit" }, { target: jobTarget(jobId), invalidates: QUEUE_SCOPES });
+    if (!result) return null;
+    if (!ui.find(editorId)) {
+      if (result.ok) releaseHold(result.data.hold_id);
+      return result;
+    }
+    if (result.ok) {
+      ui.patchOverlay(editorId, { busy: false, holdId: result.data.hold_id, holdLost: false, holdFailure: null });
+      keepHolds();
+    } else if (first && ui.overlay?.id === editorId) {
+      ui.closeOverlay();
+      ui.setNotice({ kind: "error", operation: "hold_job", failure: result });
+    } else ui.patchOverlay(editorId, { busy: false, holdId: null, holdLost: true, holdFailure: result });
+    return result;
+  }
+
+  // One timer renews every open editor's hold; it stops once no editor holds a job, and while the
+  // card is detached, so a hold nobody looks at lapses (JOB-20).
+  let renewal = null;
+  let paused = false;
+  const heldEditors = () => ui.snapshot.overlays.filter((overlay) => overlay.kind === "job-editor" && overlay.holdId);
+  function keepHolds() {
+    if (!renewal && !paused && heldEditors().length) renewal = platform?.setTimeout?.(renewHolds, HOLD_RENEW_MS) ?? null;
+  }
+  async function renewHolds() {
+    renewal = null;
+    const editors = heldEditors();
+    keepHolds();
+    for (const editor of editors) {
+      const result = await getSession()?.command("renew_job_hold", { hold_id: editor.holdId }, { target: `hold:${editor.holdId}`, invalidates: [] });
+      if (result && !result.ok && result.code === "hold_expired" && ui.find(editor.id)) ui.patchOverlay(editor.id, { holdId: null, holdLost: true, holdFailure: null });
+    }
   }
 
   // A form's command: the integration checks the input first; errors stay on the page at their
@@ -201,12 +242,16 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     if (kind === "template") {
       await submit("save_template", draftToTemplate(draft), fieldOf, { target: id ? templateTarget(id) : CREATE_TARGET, invalidates: ["templates"], closeOverlay: true, success: { key: "notice.templateSaved" } });
     } else if (id) {
+      // Nothing changed: giving the hold back has the effect saving would have.
       const patch = draftToUpdatePatch(draft);
       if (!Object.keys(patch).length) {
         ui.closeOverlay();
+        if (overlay.holdId) releaseHold(overlay.holdId);
         return;
       }
-      await submit("update_job", { job_id: id, ...patch }, fieldOf, { target: jobTarget(id), invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobUpdated" } });
+      const parameters = { job_id: id, ...(overlay.holdId ? { hold_id: overlay.holdId } : {}), ...patch };
+      const result = await submit("update_job", parameters, fieldOf, { target: jobTarget(id), invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobUpdated" } });
+      if (result?.code === "hold_expired" && ui.find(overlay.id)) ui.patchOverlay(overlay.id, { holdId: null, holdLost: true, holdFailure: null });
     } else if (start) {
       await submit("create_job", { ...draftToIntent(draft), start: true }, fieldOf, { target: CREATE_TARGET, invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobStarted" } });
     } else {
@@ -237,7 +282,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
         return;
       }
       ui.closeOverlay();
-      if (top?.holdId) releaseHold(top.holdId);
+      if (top?.holdId && !top.sharedHold) releaseHold(top.holdId);
     },
     toggle: ({ key }) => ui.toggle(key),
     // A menu opens with focus on its first item (or its last, from ArrowUp) and closes with focus
@@ -272,7 +317,22 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     "create-job": ({ roomIds = null } = {}) => ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "job", defaults: roomIds ? { roomIds } : {}, jobDefaults: jobDefaults() }) }),
     "edit-job": ({ jobId }) => {
       const job = findJob(getModel(), jobId);
-      if (job) ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "job", target: job, jobDefaults: jobDefaults() }) });
+      if (!job) return null;
+      const waiting = job.state === "queued";
+      ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "job", target: job, jobDefaults: jobDefaults() }), busy: waiting });
+      return waiting ? holdForEditing(ui.overlay.id, jobId, { first: true }) : null;
+    },
+    "hold-again": () => {
+      const editor = ui.overlay;
+      if (editor?.kind !== "job-editor" || !editor.draft?.meta.id) return null;
+      ui.patchOverlay(editor.id, { busy: true });
+      return holdForEditing(editor.id, editor.draft.meta.id);
+    },
+    // A job that started or ended while its hold had lapsed: the draft becomes a new job.
+    "save-as-new-job": () => {
+      const editor = ui.overlay;
+      if (editor?.kind !== "job-editor" || !editor.draft) return null;
+      return submit("create_job", draftToIntent(editor.draft), (path) => draftFieldOf(editor.draft, path), { target: CREATE_TARGET, invalidates: QUEUE_SCOPES, closeOverlay: true, success: { key: "notice.jobCreated" } });
     },
     "open-save-template": ({ jobId }) => {
       const model = getModel();
@@ -379,6 +439,12 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
         { operation: "delete_job", parameters: { job_id: jobId }, options: { target: jobTarget(jobId), invalidates: QUEUE_SCOPES, closeOverlay: ["job-detail", "job-editor"].includes(ui.overlay?.kind) ? ALL : false } },
         { titleKey: "confirm.deleteJob.title", textKey: "confirm.deleteJob.text", confirmKey: "confirm.deleteJob.confirm", icon: "mdi:delete-outline", jobId }
       );
+      const below = ui.snapshot.overlays.at(-2);
+      if (ui.overlay?.kind === "confirm" && below?.kind === "job-editor" && below.holdId) {
+        // The editor's hold covers its deletion; leaving the question keeps it with the editor.
+        ui.patchOverlay(ui.overlay.id, { holdId: below.holdId, sharedHold: true });
+        return result;
+      }
       if (ui.overlay?.kind === "confirm" && findJob(getModel(), jobId)?.state === "queued") return holdForDeletion(ui.overlay.id, jobId);
       return result;
     },
@@ -391,7 +457,9 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       const command = dialog?.command;
       if (!command) return null;
       if (command.discard) {
+        const editor = ui.snapshot.overlays.at(-2);
         ui.closeOverlay(2);
+        if (editor?.holdId) releaseHold(editor.holdId);
         return null;
       }
       const closes = command.options?.closeOverlay;
@@ -520,6 +588,16 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
   }
 
   return {
+    pauseHolds() {
+      paused = true;
+      platform?.clearTimeout?.(renewal);
+      renewal = null;
+    },
+    // Back on screen the card renews at once: a hold that lapsed meanwhile shows in its editor.
+    resumeHolds() {
+      paused = false;
+      return heldEditors().length ? renewHolds() : null;
+    },
     handle(action, args = {}) {
       const handler = handlers[action];
       if (!handler || (ui.overlay?.busy && !WHILE_BUSY.has(action))) return undefined;
