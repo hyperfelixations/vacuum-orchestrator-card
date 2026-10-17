@@ -26,11 +26,6 @@
 <form class="voc-form" novalidate="">
 <section class="voc-block voc-form-group" data-key="group:basics">
 <h3 class="voc-block-title">What to clean</h3>
-<div class="voc-field" data-key="field:name" data-field-control="text">
-<label class="voc-field-label" id="voc-field-name-label" for="voc-field-name">Title <span class="voc-field-optional">optional</span>
-</label>
-<input class="voc-input" id="voc-field-name" data-field="name" placeholder="Named after its rooms" type="text" value="" autocomplete="off">
-</div>
 <div class="voc-field" data-key="field:roomIds" data-field-control="chips">
 <div class="voc-field-label" id="voc-field-roomIds-label">Rooms</div>
 <div class="voc-chips" role="listbox" aria-multiselectable="true" aria-labelledby="voc-field-roomIds-label" data-control="choice">
@@ -81,6 +76,17 @@
 <span>Vacuum, then mop</span>
 </button>
 </div>
+</div>
+<div class="voc-field" data-key="field:name" data-field-control="text">
+<label class="voc-field-label" id="voc-field-name-label" for="voc-field-name">Title <span class="voc-field-optional">optional</span>
+</label>
+<input class="voc-input" id="voc-field-name" data-field="name" placeholder="Named after its rooms" type="text" value="" autocomplete="off">
+</div>
+<div class="voc-field" data-key="field:reason" data-field-control="text">
+<label class="voc-field-label" id="voc-field-reason-label" for="voc-field-reason">Occasion <span class="voc-field-optional">optional</span>
+</label>
+<input class="voc-input" id="voc-field-reason" data-field="reason" aria-describedby="voc-field-reason-hint" type="text" value="" autocomplete="off">
+<div class="voc-field-hint" id="voc-field-reason-hint">Why the job is needed, shown with it; for example “Guests are coming”.</div>
 </div>
 </section>
 <section class="voc-block voc-form-group" data-key="group:settings">

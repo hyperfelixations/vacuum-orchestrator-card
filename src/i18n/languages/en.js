@@ -442,6 +442,7 @@ export const en = {
   "field.requiredOff": "Entities that must be off",
   "field.requiredOffHint": "The job waits until each of them is off.",
   "field.reason": "Occasion",
+  "field.reasonHint": "Why the job is needed, shown with it; for example “Guests are coming”.",
   "field.note": "Note",
 
   "action.keep": "Keep",

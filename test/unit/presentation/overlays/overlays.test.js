@@ -74,7 +74,7 @@ test("the editor shows only the settings the mode uses, and the integration's er
   assert.deepEqual(fieldsOf(vacuum, "settings").vacuumPower.options.map((option) => [option.value, option.badge]), ["low", "standard", "high", "maximum", "maximum_plus"].map((value) => [value, null]), "without a preview every rung is offered");
   const mop = buildJobEditor({ ...built, overlay: { draft: applyDraftChange(draft, "mode", "mop") } });
   assert.deepEqual(Object.keys(fieldsOf(mop, "settings")), ["mopIntensity", "mopRoute", "passes"]);
-  assert.deepEqual(Object.keys(fieldsOf(mop, "basics")), ["name", "roomIds", "mode"]);
+  assert.deepEqual(Object.keys(fieldsOf(mop, "basics")), ["roomIds", "mode", "name", "reason"]);
   assert.deepEqual(Object.keys(fieldsOf(mop, "more")), ["settingsPolicy", "note", "requiredOn", "requiredOff"]);
   assert.deepEqual([fieldsOf(vacuum, "basics").roomIds.error, vacuum.invalid], [null, null]);
   const rejected = buildJobEditor({ ...built, overlay: { draft, errors: { roomIds: "unknown_room", note: "empty_note" } } });
@@ -365,4 +365,23 @@ test("an editor without its hold says why and what can still be done", async () 
   assert.deepEqual([gone.hold.action, gone.hold.label], ["save-as-new-job", "Add as new job"]);
   const taken = buildJobEditor({ ...built, overlay: { draft, holdId: null, holdLost: true, holdFailure: { ok: false, code: "job_held", group: "job", detail: "edit", channel: "command" } } });
   assert.deepEqual([taken.hold.action, taken.hold.label], ["hold-again", "Protect again"], "a job held elsewhere still waits: protecting it again is the way on");
+});
+
+// JOB-23, R16: title, occasion and note are optional inputs; the title's placeholder is the name
+// the job will carry, after its rooms. A template has no occasion: saving one drops it.
+test("the editor offers an optional occasion and previews the title the job will carry", async () => {
+  const { buildJobEditor } = await overlays("job-editor");
+  const { createDraft, applyDraftChange, toggleRoom } = await draftModule();
+  const built = await busy();
+  const [dining, studio] = [roomId(built.model, "Dining Room"), roomId(built.model, "Studio")];
+  const basics = (draft) => fieldsOf(buildJobEditor({ ...built, overlay: { draft } }), "basics");
+  const empty = basics(createDraft());
+  assert.deepEqual(Object.keys(empty), ["roomIds", "mode", "name", "reason"], "what is cleaned first, the optional texts after it");
+  assert.equal(empty.reason.optionalLabel, "optional");
+  assert.equal(empty.name.placeholder, "Named after its rooms");
+  const two = basics(toggleRoom(toggleRoom(createDraft(), studio), dining));
+  assert.equal(two.name.placeholder, "Studio, Dining Room", "the rooms in the order chosen");
+  assert.equal(basics(toggleRoom(createDraft(), "all")).name.placeholder, "Named after its rooms", "the integration decides which rooms all rooms takes");
+  assert.equal(basics(applyDraftChange(createDraft(), "reason", "Guests are coming")).reason.value, "Guests are coming");
+  assert.deepEqual(Object.keys(basics(createDraft({ kind: "template" }))), ["roomIds", "mode"]);
 });

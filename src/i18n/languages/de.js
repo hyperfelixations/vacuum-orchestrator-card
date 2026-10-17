@@ -442,6 +442,7 @@ export const de = {
   "field.requiredOff": "Entitäten, die aus sein müssen",
   "field.requiredOffHint": "Der Auftrag wartet, bis jede davon aus ist.",
   "field.reason": "Anlass",
+  "field.reasonHint": "Warum der Auftrag nötig ist, wird mit ihm angezeigt; etwa „Besuch kommt“.",
   "field.note": "Notiz",
 
   "action.keep": "Behalten",

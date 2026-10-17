@@ -1,5 +1,5 @@
-// The job and template editor: title, rooms and mode, the settings the mode uses, then the
-// optional policy, note and conditions. Settings offer the rungs the integration's preview
+// The job and template editor: rooms and mode, a job's optional title and occasion, the settings
+// the mode uses, then the optional policy, note and conditions. Settings offer the rungs the integration's preview
 // reports for the chosen rooms; a room no robot reaches and an unreleased room are marked, not
 // hidden — the integration decides at dispatch. See internal dev doc §8 "Editor".
 
@@ -7,7 +7,7 @@ import { CREATE_TARGET, decide, jobAffordances, jobTarget, templateAffordances, 
 import { ALL_ROOMS, settingsForMode } from "../../domain/job-draft.js";
 import { CLEANING_MODES, PASS_MAX, PASS_MIN, SETTING_LADDERS, SETTINGS_POLICIES } from "../../domain/job-schema.js";
 import { coveredRoomIds } from "../../domain/robots.js";
-import { findJob, list, robotsOf, roomsOf, slotData } from "../common/lookups.js";
+import { findJob, list, robotsOf, roomIndex, roomName, roomsOf, slotData } from "../common/lookups.js";
 import { failureText, modeLabel, policyLabel, settingLabel, t } from "../common/texts.js";
 import { MODE_ICONS } from "../views/job-row.js";
 import { entityField, field, pageErrors } from "./editor-fields.js";
@@ -35,6 +35,14 @@ function roomOptions(model, texts, selected) {
         title: !reachable ? t(texts, "editor.roomUnreachable") : !room.released ? t(texts, "editor.roomNotReleased") : null,
       };
     });
+}
+
+// The name a job without a title carries: its rooms in the order chosen. Which rooms "All rooms"
+// takes is the integration's decision when the job is created, so it names none.
+function titlePreview(model, texts, draft) {
+  const index = roomIndex(model);
+  const names = draft.allRooms ? [] : list(draft.roomIds).map((roomId) => roomName(roomId, index, model));
+  return names.length ? names.join(", ") : t(texts, "field.jobNamePlaceholder");
 }
 
 // Per setting the mode uses: the rungs on offer and the wished one, which stays chosen and marked
@@ -85,10 +93,18 @@ export function buildJobEditor({ model, texts, context, overlay }) {
       ]
     : [];
 
+  // What is cleaned comes first. JOB-23: a job's title and occasion are optional and follow; the
+  // title's placeholder is the name it will carry. A template has no occasion: the integration
+  // drops it when a template is saved.
   const basics = [
-    ...(kind === "job" ? [field(texts, { key: "name", labelKey: "field.jobName", control: "text", value: draft.name, optional: true, placeholder: t(texts, "field.jobNamePlaceholder"), error: error("name") })] : []),
     roomField(model, texts, draft, error("roomIds")),
     field(texts, { key: "mode", labelKey: "field.mode", control: "segmented", value: draft.mode, options: CLEANING_MODES.map((mode) => ({ value: mode, label: modeLabel(texts, mode), icon: MODE_ICONS[mode] })), error: error("mode") }),
+    ...(kind === "job"
+      ? [
+          field(texts, { key: "name", labelKey: "field.jobName", control: "text", value: draft.name, optional: true, placeholder: titlePreview(model, texts, draft), error: error("name") }),
+          field(texts, { key: "reason", labelKey: "field.reason", control: "text", value: draft.reason, optional: true, hintKey: "field.reasonHint", error: error("reason") }),
+        ]
+      : []),
   ];
 
   const settings = [
