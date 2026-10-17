@@ -138,7 +138,10 @@ test("editing a job or a template offers removing it from the editor", async () 
   assert.equal(job.save.label, built.texts.t("action.save"));
   const template = built.model.slots.templates.data.items[0];
   const editor = buildJobEditor({ ...built, overlay: { draft: createDraft({ kind: "template", target: template }) } });
-  assert.equal(editor.groups[0].key, "template");
+  // What a template cleans comes before how it is used, so it shows without scrolling.
+  assert.deepEqual(editor.groups.map((group) => [group.key, group.fields.map((field) => field.key)]).slice(0, 2), [["template", ["templateName"]], ["basics", ["roomIds", "mode"]]]);
+  assert.deepEqual(editor.groups.find((group) => group.key === "use").fields.map((field) => field.key), ["enabled", "automatic"]);
+  assert.deepEqual(editor.groups.map((group) => group.key), ["template", "basics", "settings", "use", "more"]);
   assert.deepEqual([editor.remove.action, editor.remove.args], ["remove-template", { templateId: template.templateId }]);
 });
 
@@ -332,4 +335,15 @@ test("robot discovery marks configured vacuums; the profile explains each role",
   const cleaning = await busy({}, { needsEntityCatalog: true });
   const rocky = cleaning.model.slots.robots.data.items.find((robot) => robot.name === "Rocky");
   assert.equal(buildRobotEditor({ ...cleaning, overlay: { draft: createRobotDraft(rocky), open: [] } }).remove.reason, "robot_busy");
+});
+
+// A change within the same displayed minute reads as no change.
+test("a job changed within the minute it was created names one moment", async () => {
+  const { buildJobDetail } = await overlays("job-detail");
+  const built = await busy();
+  const studio = jobIn(built.model, "Studio");
+  const full = await busy(jobRequests(studio.jobId));
+  const vm = buildJobDetail({ ...full, overlay: { jobId: studio.jobId }, config: { time_format: "absolute" } });
+  const facts = Object.fromEntries(vm.facts.map((fact) => [fact.label, fact.value]));
+  assert.equal(facts[full.texts.t("detail.updated")], null);
 });

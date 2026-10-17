@@ -1,7 +1,7 @@
 // Queue view: job rows (status, progress, managing icons and the main action), attention and
 // recovery alerts, template quick starts and pagination. The job row is shared with the history
-// view. Below 560 px the managing icons give way to the row's menu beside its main action
-// (LAY-09). The details line has one line height, chips included, so rows of the same kind are
+// view. Below 560 px of card, or of the list beside a wide queue's detail, the managing icons give
+// way to the row's menu beside its main action (LAY-09). The details line has one line height, chips included, so rows of the same kind are
 // equally tall (LAY-21).
 
 const NARROW_ROW = [
@@ -119,4 +119,19 @@ export const QUEUE_CSS = `
   ${NARROW_ROW}
   }
 }
+
+/* LAY-03: a wide card shows the chosen job beside the list; the pane stays in view while the list
+   scrolls. */
+.voc-queue--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; gap: 16px; }
+.voc-queue-list { display: grid; gap: 12px; min-width: 0; container: voc-list / inline-size; }
+/* Beside the detail the list is as narrow as a narrow card: rows keep their main action and menu. */
+@container voc-list (max-width: 559px) {
+  ${NARROW_ROW}
+}
+.voc-job[data-selected="true"] { border-color: var(--voc-accent-border); box-shadow: inset 3px 0 0 var(--voc-accent-ink); }
+.voc-detail-pane { position: sticky; top: 0; display: grid; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--voc-hairline); border-radius: 16px; background: var(--ha-card-background, var(--card-background-color, transparent)); }
+.voc-pane-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.voc-pane-title { flex: 1; min-width: 0; margin: 0; font-size: 16px; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+.voc-pane-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding-top: 10px; border-top: 1px solid var(--voc-hairline); }
+.voc-pane-actions .voc-action-start { margin-right: auto; }
 `;

@@ -4,7 +4,7 @@
 
 import { queueAffordances } from "../../domain/affordances.js";
 import { queueRunPhase } from "../../domain/queue.js";
-import { robotsOf, slotData } from "../common/lookups.js";
+import { list, robotsOf, slotData } from "../common/lookups.js";
 import { number, queueModeLabel, relative, t } from "../common/texts.js";
 import { robotStatus } from "../common/robot-status.js";
 
@@ -28,6 +28,7 @@ export function buildPanel({ model = {}, config = {}, texts, context } = {}) {
   const waiting = queue?.total ?? model.live?.pendingJobs ?? null;
   const robots = robotsOf(model).slice(0, PANEL_ROBOTS).map((robot) => robotStatus(robot, model, texts));
   const decisions = queueAffordances(queue, context);
+  const idle = waiting === 0 && list(slotData(model, "openJobs")?.jobs).length === 0;
   return {
     visible: config.show?.panel !== false,
     label: t(texts, "panel.waiting"),
@@ -36,9 +37,11 @@ export function buildPanel({ model = {}, config = {}, texts, context } = {}) {
     modeLabel: queueModeLabel(texts, mode),
     runLine: runLine(queue, model, texts),
     robots: robots.map((robot) => ({ key: robot.robotId, text: robot.summary, tone: robot.tone })),
+    // With nothing waiting or started, adding a job is the next step; the queue control stays quiet
+    // (UI-19).
     control: config.show?.queue_controls === false || decisions.command === null
       ? null
-      : { command: decisions.command, action: "queue-control", icon: CONTROL_ICON[decisions.command], label: t(texts, CONTROL_LABEL[decisions.command]), decision: decisions.control },
+      : { command: decisions.command, action: "queue-control", icon: CONTROL_ICON[decisions.command], label: t(texts, CONTROL_LABEL[decisions.command]), decision: decisions.control, primary: !idle },
     end: config.show?.queue_controls === false || decisions.end.state === "hidden" ? null : { action: "end-queue", icon: "mdi:stop", label: t(texts, "panel.control.end"), decision: decisions.end },
   };
 }

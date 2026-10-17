@@ -7,6 +7,12 @@ import { list, roomIndex, roomName, slotData } from "../common/lookups.js";
 import { modeLabel, t } from "../common/texts.js";
 import { MODE_ICONS, settingChips } from "./job-row.js";
 
+// No template yet: the empty state offers to create one, in place of the tab row (UI-19).
+export function templatesAreEmpty(model) {
+  const data = slotData(model, "templates");
+  return Boolean(data) && list(data.items).length === 0;
+}
+
 export function buildTemplatesView({ model, texts, context }) {
   const status = model.slots?.templates?.status;
   const data = slotData(model, "templates");

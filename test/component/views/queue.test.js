@@ -352,7 +352,9 @@ test("starting directly asks which robot, or lets the integration choose", async
   await card.click(inRow(card, "Dining Room", '[data-action="start-job"]'));
   assert.equal(card.root.querySelector(".voc-dialog").dataset.key, "overlay:start-job");
   assert.deepEqual(card.all(".voc-dialog-actions > button").map((node) => node.dataset.action), ["back"], "the choice can be left from its footer");
-  const dusty = card.all('.voc-dialog [data-action="start-job"]').find((node) => /Dusty/.test(node.textContent));
+  const choices = card.all('.voc-dialog [data-action="start-job"]');
+  assert.deepEqual(choices.map((node) => [node.querySelector(".voc-choice-label").textContent.trim(), node.querySelector(".voc-choice-note").textContent.trim()]), [["Choose automatically", "Vacuum Orchestrator picks a suitable robot."], ["Rocky", "Can take it now"], ["Dusty", "Can take it now"]], "each choice is one row with its reason");
+  const dusty = choices.find((node) => /Dusty/.test(node.textContent));
   await card.click(dusty);
   await card.settle(32);
   assert.deepEqual(card.services("start_job").map((call) => call.data.job_id), [dining]);

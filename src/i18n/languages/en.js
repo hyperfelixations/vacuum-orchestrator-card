@@ -402,6 +402,7 @@ export const en = {
   "editor.group.template": "Template",
   "editor.group.what": "What to clean",
   "editor.group.settings": "Settings",
+  "editor.group.use": "Use",
   "editor.group.more": "More options",
   "editor.roomUnreachable": "No robot reaches this room yet.",
   "editor.roomNotReleased": "This room is not released; the job waits until it is.",

@@ -110,6 +110,15 @@ test("the panel shows the waiting count, the run line, up to three robots and th
   assert.deepEqual([panel.end.action, panel.end.label, panel.end.decision.state], ["end-queue", texts.t("panel.control.end"), "enabled"]);
   const hidden = buildPanel({ model, config: config({ show: { queue_controls: false } }), texts, context });
   assert.deepEqual([hidden.control, hidden.end], [null, null]);
+  assert.equal(panel.control.primary, true, "pausing a running queue is the panel's step");
+  // UI-19: with nothing waiting or started, adding a job is the next step; the queue control stays
+  // quiet.
+  const empty = await at(["queue_end", { from: "The card opens" }]);
+  const idle = buildPanel({ model: empty.model, config: config(), texts: empty.texts, context: empty.context });
+  assert.deepEqual([idle.control.command, idle.control.primary], ["run_queue", false]);
+  const waits = await at(["queue_end", { from: "The queue waits for work" }]);
+  const standby = buildPanel({ model: waits.model, config: config(), texts: waits.texts, context: waits.context });
+  assert.deepEqual([standby.control.command, standby.control.primary], ["pause_queue", false], "a queue waiting for work needs a job, not a pause");
   const ending = await at(ENDING);
   const ended = buildPanel({ model: ending.model, config: config(), texts: ending.texts, context: ending.context });
   assert.deepEqual([ended.runLine, ended.control.command, ended.end], [ending.texts.t("panel.ending"), "resume_queue", null], "an ending queue offers resuming, which takes the end back");
@@ -238,6 +247,13 @@ test("the card view model puts onboarding, a page or the active view into the bo
   assert.equal(dialog.scheme, "dark");
   const onPage = buildCardViewModel({ model, config: cfg, texts, ui: {}, tabs, definitions: VIEWS, context, viewContent: {}, page: { key: "job-editor", content: {} }, dialog: { key: "confirm", content: {} } });
   assert.deepEqual([onPage.body.key, onPage.dialog.key, onPage.panel.visible], ["job-editor", "confirm", false]);
+  // UI-19: an empty queue offers "Add job" in its body, so the tab row does not repeat it; the
+  // reserve stays, so the row keeps its width.
+  const empty = await shell(["queue_end", { from: "The card opens" }]);
+  const emptyTabs = buildTabs({ definitions: VIEWS, model: empty.model, config: cfg, ui: {}, texts: empty.texts });
+  const emptyView = buildCardViewModel({ model: empty.model, config: cfg, texts: empty.texts, ui: {}, tabs: emptyTabs, definitions: VIEWS, context: empty.context, viewContent: { key: "queue" } });
+  assert.equal(emptyView.primary, null, "the empty queue holds the action itself");
+  assert.ok(emptyView.primaryReserve.length > 0);
   const notice = buildCardViewModel({ model, config: cfg, texts, ui: { notice: { kind: "error", operation: "run_queue", failure: { code: "unauthorized" } } }, tabs, definitions: VIEWS, context, viewContent: {} });
   assert.equal(notice.notice.text, texts.t("error.code.unauthorized"));
   // UI-16, UI-17: a page or dialog waiting for its command, and a dialog's failure as it shows.

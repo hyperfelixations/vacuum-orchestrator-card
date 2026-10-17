@@ -1,12 +1,12 @@
 // One card's own route and transient state: the view on screen, the overlay stack (a dialog
 // can sit on an editor and give it back; each overlay has an `id` for as long as it is open),
-// page offsets, expanded blocks, the open menu, the last command's notice and the focus the next
-// render owes.
+// page offsets, expanded blocks, the open menu, whether the card is wide and the job its queue
+// detail shows, the last command's notice and the focus the next render owes.
 // Nothing here is shared between cards. See internal dev doc §9 "UI-Zustand".
 
 export function createUIState() {
   let opened = 0;
-  let state = Object.freeze({ view: null, overlays: Object.freeze([]), pages: Object.freeze({}), expanded: Object.freeze([]), menu: null, choices: Object.freeze({}), notice: null, focus: null });
+  let state = Object.freeze({ view: null, overlays: Object.freeze([]), pages: Object.freeze({}), expanded: Object.freeze([]), menu: null, wide: false, selectedJob: null, choices: Object.freeze({}), notice: null, focus: null });
   const listeners = new Set();
   const publish = () => listeners.forEach((listener) => listener(state));
   const update = (patch, { silent = false } = {}) => {
@@ -68,6 +68,15 @@ export function createUIState() {
     setMenu(key) {
       if ((key || null) === state.menu) return state;
       return update({ menu: key || null });
+    },
+    // The width tier where the queue shows list and detail side by side (LAY-03).
+    setWide(wide) {
+      if (Boolean(wide) === state.wide) return state;
+      return update({ wide: Boolean(wide) });
+    },
+    selectJob(jobId) {
+      if ((jobId || null) === state.selectedJob) return state;
+      return update({ selectedJob: jobId || null });
     },
     setNotice(notice) {
       return update({ notice: notice ? Object.freeze({ ...notice }) : null });

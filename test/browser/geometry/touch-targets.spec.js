@@ -33,8 +33,10 @@ async function rowGeometry(card, name) {
 const gaps = (boxes) => boxes.slice(1).map((box, index) => box.left - boxes[index].right);
 
 test.describe("with a mouse", () => {
-  test("wide rows keep their actions inline, 36 px each and set apart", async ({ page }) => {
-    const card = await mountCard(page, { ...TWO_ROBOTS, width: 900 });
+  // From 560 px of list the managing icons stand inline: on a medium card, and beside the detail
+  // of a wide one once the list is that wide.
+  test("medium rows keep their actions inline, 36 px each and set apart", async ({ page }) => {
+    const card = await mountCard(page, { ...TWO_ROBOTS, width: 700 });
     expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(false);
     const { main, actions, names } = await rowGeometry(card, WAITING);
     expect(names).toEqual(["start-job", "move-job", "move-job", "edit-job"]);
@@ -48,10 +50,10 @@ test.describe("with a mouse", () => {
     expect(between[0], "the main action is set apart").toBeGreaterThan(between.at(-1));
   });
 
-  // On a wide card the managing icons end every waiting row, so they line up from row to row
-  // whether or not a row has a main action.
-  test("the managing icons line up from row to row on a wide card", async ({ page }) => {
-    const card = await mountCard(page, { ...BUSY, width: 900 });
+  // The managing icons end every waiting row, so they line up from row to row whether or not a row
+  // has a main action.
+  test("the managing icons line up from row to row on a medium card", async ({ page }) => {
+    const card = await mountCard(page, { ...BUSY, width: 700 });
     const released = await rowGeometry(card, "Conservatory");
     const plain = await rowGeometry(card, "Library, thoroughly");
     expect(released.names).toEqual(["open-release", "move-job", "move-job", "edit-job"]);

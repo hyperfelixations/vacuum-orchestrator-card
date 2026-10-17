@@ -402,6 +402,7 @@ export const de = {
   "editor.group.template": "Vorlage",
   "editor.group.what": "Was gereinigt wird",
   "editor.group.settings": "Einstellungen",
+  "editor.group.use": "Verwendung",
   "editor.group.more": "Weitere Optionen",
   "editor.roomUnreachable": "Noch kein Roboter erreicht diesen Raum.",
   "editor.roomNotReleased": "Dieser Raum ist nicht freigegeben; der Auftrag wartet bis dahin.",

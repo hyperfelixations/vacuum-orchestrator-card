@@ -93,20 +93,31 @@ function attempts(context, vm) {
 
 function trace(context, vm) {
   if (!vm.trace.length) return "";
-  const toggle = `<button type="button" class="voc-disclosure" data-action="set-overlay" data-args="${e(JSON.stringify({ traceOpen: !vm.traceOpen }))}" aria-expanded="${vm.traceOpen}">${icon(vm.traceOpen ? "mdi:chevron-up" : "mdi:chevron-down")}<span>${e(context.t("detail.trace"))}</span></button>`;
+  const toggle = `<button type="button" class="voc-disclosure" data-action="${e(vm.traceToggle.action)}" data-args="${e(JSON.stringify(vm.traceToggle.args))}" aria-expanded="${vm.traceOpen}">${icon(vm.traceOpen ? "mdi:chevron-up" : "mdi:chevron-down")}<span>${e(context.t("detail.trace"))}</span></button>`;
   const rows = vm.traceOpen ? traceList(vm.trace) : "";
   return `<section class="voc-block" data-key="trace">${toggle}${rows}</section>`;
 }
 
-export function renderJobDetail(context, vm) {
-  if (!vm.jobId) {
-    const content = vm.loading ? loadingState(context) : `<div class="voc-unavailable" data-key="missing">${icon("mdi:file-question-outline")}<div>${e(context.t("detail.missing"))}</div></div>`;
-    return frame(context, { key: "job-detail", title: vm.title, content });
-  }
+function missing(context, vm) {
+  return vm.loading ? loadingState(context) : `<div class="voc-unavailable" data-key="missing">${icon("mdi:file-question-outline")}<div>${e(context.t("detail.missing"))}</div></div>`;
+}
+
+function detailContent(context, vm) {
   const summary = `<div class="voc-detail-summary" data-key="summary"><div class="voc-detail-line">${chip(vm.mode, { iconName: "mdi:broom" })}${vm.rooms.map((room) => chip(room, { iconName: "mdi:floor-plan" })).join("")}${vm.settings.map((setting) => chip(setting.text, { iconName: setting.icon, label: setting.label })).join("")}</div>${position(context, vm)}${vm.outcome ? `<div class="voc-job-outcome">${icon("mdi:alert-outline")}<span>${e(vm.outcome)}</span></div>` : ""}${vm.afterCancel ? `<div class="voc-job-outcome" data-key="after-cancel">${icon("mdi:home-import-outline")}<span>${e(vm.afterCancel)}</span></div>` : ""}</div>`;
-  const actions = footer(context, vm);
-  const content = `${summary}${progress(context, vm)}${waiting(context, vm)}${execution(context, vm)}${attempts(context, vm)}${block(context.t("detail.details"), facts(vm.facts), { iconName: "mdi:information-outline", key: "facts" })}${trace(context, vm)}`;
-  return frame(context, { key: "job-detail", title: vm.title, status: pill(vm.stateLabel, vm.stateTone), content, actions });
+  return `${summary}${progress(context, vm)}${waiting(context, vm)}${execution(context, vm)}${attempts(context, vm)}${block(context.t("detail.details"), facts(vm.facts), { iconName: "mdi:information-outline", key: "facts" })}${trace(context, vm)}`;
+}
+
+export function renderJobDetail(context, vm) {
+  if (!vm.jobId) return frame(context, { key: "job-detail", title: vm.title, content: missing(context, vm) });
+  return frame(context, { key: "job-detail", title: vm.title, status: pill(vm.stateLabel, vm.stateTone), content: detailContent(context, vm), actions: footer(context, vm) });
+}
+
+// The same detail beside a wide queue's list: a region named by its heading, its actions at its end
+// (LAY-03).
+export function renderDetailPane(context, vm) {
+  const head = `<header class="voc-pane-head"><h3 class="voc-pane-title" id="voc-pane-title">${e(vm.title)}</h3>${vm.jobId ? pill(vm.stateLabel, vm.stateTone) : ""}</header>`;
+  const body = vm.jobId ? `${detailContent(context, vm)}<div class="voc-pane-actions">${footer(context, vm)}</div>` : missing(context, vm);
+  return `<section class="voc-detail-pane" data-key="pane:${e(vm.jobId || "missing")}" role="region" aria-labelledby="voc-pane-title">${head}${body}</section>`;
 }
 
 export const jobDetailOverlay = Object.freeze({

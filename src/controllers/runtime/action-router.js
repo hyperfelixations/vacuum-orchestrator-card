@@ -64,7 +64,8 @@ function findJob(model, jobId) {
 }
 
 // `isDialog(kind)`: whether an overlay is a card dialog, which shows a failure itself.
-export function createActionRouter({ ui, getSession, getModel, getConfig, platform, isDialog = () => false }) {
+// `getView`: the view on screen, which the tab row resolves when the card has not chosen one.
+export function createActionRouter({ ui, getSession, getModel, getConfig, platform, isDialog = () => false, getView = () => ui.snapshot.view }) {
   // A command and its answer (UI-16, UI-17). The page or dialog on top when it is sent is its
   // origin: it is busy until the answer and, on success, leaves with `closeOverlay` layers (true
   // one, a number that many, "all" every page) only while it is still on top. A refusal stays in
@@ -266,7 +267,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       const control = queueControl(getModel()?.slots?.queue?.data?.actions);
       return control ? run(control.operation, {}, { target: QUEUE_TARGET, invalidates: ["queue", "openJobs"] }) : null;
     },
-    "open-job": ({ jobId }) => ui.openOverlay({ kind: "job-detail", jobId }),
+    // A wide queue shows the job beside its list (LAY-03); anywhere else the job opens as a page.
+    "open-job": ({ jobId }) => (ui.snapshot.wide && !ui.overlay && getView() === "queue" ? ui.selectJob(jobId) : ui.openOverlay({ kind: "job-detail", jobId })),
     "create-job": ({ roomIds = null } = {}) => ui.openOverlay({ kind: "job-editor", draft: createDraft({ kind: "job", defaults: roomIds ? { roomIds } : {}, jobDefaults: jobDefaults() }) }),
     "edit-job": ({ jobId }) => {
       const job = findJob(getModel(), jobId);

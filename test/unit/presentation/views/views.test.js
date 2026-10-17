@@ -319,3 +319,34 @@ test("settings show the queue run's wait time, the job defaults and who may chan
   const loading = buildSettingsView({ ...built, model: { ...built.model, slots: { ...built.model.slots, queue: { status: "loading" } } } });
   assert.deepEqual([loading.loading, loading.grace], [true, null]);
 });
+
+// UI-19: without templates the empty state offers the first one; while loading nothing is known.
+test("templates are empty only once the integration has answered with none", async () => {
+  const { templatesAreEmpty } = await view("templates");
+  assert.equal(templatesAreEmpty({ slots: {} }), false);
+  assert.equal(templatesAreEmpty({ slots: { templates: { status: "ready", data: { items: [] } } } }), true);
+  assert.equal(templatesAreEmpty({ slots: { templates: { status: "ready", data: { items: [{ templateId: "t" }] } } } }), false);
+});
+
+// LAY-03: a wide queue shows list and detail; the detail shows the chosen job while it is listed,
+// else the first, and the list marks it. A narrow queue has no detail beside it.
+test("a wide queue shows the chosen job's detail beside the list", async () => {
+  const { buildQueueView, detailJobId, buildQueueScopes } = await view("queue");
+  const plain = await busy();
+  const rows = buildQueueView({ ...plain, options: {} });
+  const [studio, conservatory] = [rows.active[0].jobId, rows.waiting[0].jobId];
+  assert.equal(detailJobId(plain.model, {}, null), studio, "the started job comes first");
+  assert.equal(detailJobId(plain.model, {}, conservatory), conservatory);
+  assert.equal(detailJobId(plain.model, {}, "job-gone"), studio, "a job no longer listed gives way to the first");
+  assert.equal(rows.detail, null, "a narrow queue opens the detail as a page");
+  assert.deepEqual(buildQueueScopes({ ui: { wide: true, selectedJob: conservatory }, model: plain.model, options: {} }).map((scope) => [scope.name, scope.params?.jobId ?? null]), [["templates", null], ["job", conservatory], ["execution", conservatory], ["trace", conservatory]]);
+  assert.deepEqual(buildQueueScopes({ ui: { wide: false }, model: plain.model, options: {} }).map((scope) => scope.name), ["templates"]);
+  const built = await busy({ job: { name: "job", params: { jobId: conservatory } }, execution: { name: "execution", params: { jobId: conservatory } }, trace: { name: "trace", params: { jobId: conservatory } } });
+  const wide = buildQueueView({ ...built, options: {}, ui: { wide: true, selectedJob: conservatory, expanded: [`trace:${conservatory}`] } });
+  assert.deepEqual(wide.detail, { jobId: conservatory, traceOpen: true }, "the view builds the detail beside the list");
+  assert.deepEqual([...wide.active, ...wide.waiting].filter((row) => row.selected).map((row) => row.title), ["Conservatory"]);
+  const { queueView } = await import("../../../../src/views/queue.js");
+  const composed = queueView.build({ ...built, options: {}, config: {}, ui: { wide: true, selectedJob: conservatory, expanded: [] } });
+  assert.equal(composed.detail.title, "Conservatory");
+  assert.deepEqual(composed.detail.traceToggle, { action: "toggle", args: { key: `trace:${conservatory}` } }, "beside the list the trace opens as a block of the card");
+});

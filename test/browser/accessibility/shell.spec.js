@@ -150,3 +150,20 @@ test.describe("with more tabs than fit even as icons", () => {
     expect(await tabInView(card, "settings")).toBe(true);
   });
 });
+
+// LAY-03: a wide queue shows the chosen job beside the list; a row's click chooses it there, marked
+// for assistive technology, while a narrow card opens the job as a page.
+test("a wide queue shows the chosen job beside its list", async ({ page }) => {
+  const card = await mountCard(page, { ...BUSY, width: 900 });
+  const pane = card.locator(".voc-detail-pane");
+  await expect(pane.locator(".voc-pane-title")).toHaveText("Studio");
+  await named(card, ".voc-job", "Conservatory", ".voc-job-main").click();
+  await expect(pane.locator(".voc-pane-title")).toHaveText("Conservatory");
+  await expect(pane).toContainText("Waiting for release");
+  await expect(named(card, ".voc-job", "Conservatory", ".voc-job-main")).toHaveAttribute("aria-current", "true");
+  await expect(card.locator(".voc-overlay")).toHaveCount(0);
+  await setCardWidth(page, 600);
+  await expect(pane).toHaveCount(0);
+  await named(card, ".voc-job", "Conservatory", ".voc-job-main").click();
+  await expect(card.locator('[data-key="overlay:job-detail"] .voc-overlay-title')).toHaveText("Conservatory");
+});

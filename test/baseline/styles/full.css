@@ -753,6 +753,22 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
   }
 }
 
+/* LAY-03: a wide card shows the chosen job beside the list; the pane stays in view while the list
+   scrolls. */
+.voc-queue--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; gap: 16px; }
+.voc-queue-list { display: grid; gap: 12px; min-width: 0; container: voc-list / inline-size; }
+/* Beside the detail the list is as narrow as a narrow card: rows keep their main action and menu. */
+@container voc-list (max-width: 559px) {
+  .voc-job .voc-job-manage, .voc-job .voc-job-actions-gap { display: none; }
+  .voc-job .voc-menu-anchor { display: inline-flex; }
+}
+.voc-job[data-selected="true"] { border-color: var(--voc-accent-border); box-shadow: inset 3px 0 0 var(--voc-accent-ink); }
+.voc-detail-pane { position: sticky; top: 0; display: grid; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--voc-hairline); border-radius: 16px; background: var(--ha-card-background, var(--card-background-color, transparent)); }
+.voc-pane-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.voc-pane-title { flex: 1; min-width: 0; margin: 0; font-size: 16px; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+.voc-pane-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding-top: 10px; border-top: 1px solid var(--voc-hairline); }
+.voc-pane-actions .voc-action-start { margin-right: auto; }
+
 .voc-room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); align-items: start; gap: 8px; }
 .voc-room { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 10px 10px 8px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); }
 .voc-room[data-excluded="true"] { opacity: .65; }
@@ -994,7 +1010,15 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 }
 
 .voc-choices { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.voc-choices li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.voc-choice { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--voc-icon-target); padding: 10px 12px; border: 1px solid var(--divider-color); border-radius: 12px; background: transparent; color: var(--primary-text-color); font: inherit; text-align: start; cursor: pointer; }
+.voc-choice > ha-icon { --mdc-icon-size: 22px; color: var(--voc-muted); }
+.voc-choice:hover { background: var(--voc-chip-bg); }
+.voc-choice:focus-visible { outline: 2px solid var(--voc-accent-ink); outline-offset: 2px; }
+.voc-choice:disabled, .voc-choice[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.voc-choice--primary { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); }
+.voc-choice--primary > ha-icon { color: var(--voc-accent-ink); }
+.voc-choice-text { display: grid; gap: 2px; min-width: 0; }
+.voc-choice-label { font-size: 14px; font-weight: 750; line-height: 20px; }
 .voc-choice-note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 650; color: var(--voc-muted); }
 .voc-choice-note ha-icon { --mdc-icon-size: 15px; }
 .voc-choice-note[data-eligible="true"] { color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); }

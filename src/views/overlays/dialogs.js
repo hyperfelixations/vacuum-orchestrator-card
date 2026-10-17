@@ -2,7 +2,7 @@
 // direct start, the queue's waiting time and recovery resolution.
 
 import { buildCancelJob, buildConfirm, buildQueueEnd, buildQueueSettings, buildRecovery, buildStartJob } from "../../presentation/overlays/dialogs.js";
-import { button, e, icon } from "../../render/primitives/markup.js";
+import { argsAttr, button, decisionAttributes, e, icon } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
 import { loadingState } from "../parts.js";
 import { dialog } from "./dialog.js";
@@ -10,7 +10,15 @@ import { FORMS_CSS } from "../styles/forms.js";
 
 export const DIALOGS_CSS = `
 .voc-choices { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.voc-choices li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.voc-choice { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--voc-icon-target); padding: 10px 12px; border: 1px solid var(--divider-color); border-radius: 12px; background: transparent; color: var(--primary-text-color); font: inherit; text-align: start; cursor: pointer; }
+.voc-choice > ha-icon { --mdc-icon-size: 22px; color: var(--voc-muted); }
+.voc-choice:hover { background: var(--voc-chip-bg); }
+.voc-choice:focus-visible { outline: 2px solid var(--voc-accent-ink); outline-offset: 2px; }
+.voc-choice:disabled, .voc-choice[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.voc-choice--primary { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); }
+.voc-choice--primary > ha-icon { color: var(--voc-accent-ink); }
+.voc-choice-text { display: grid; gap: 2px; min-width: 0; }
+.voc-choice-label { font-size: 14px; font-weight: 750; line-height: 20px; }
 .voc-choice-note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 650; color: var(--voc-muted); }
 .voc-choice-note ha-icon { --mdc-icon-size: 15px; }
 .voc-choice-note[data-eligible="true"] { color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); }
@@ -48,16 +56,22 @@ export const queueEndOverlay = Object.freeze({
   css: FORMS_CSS,
 });
 
+// A choice is one row that starts at once: what it is and, below, why it fits or not.
+function choiceRow(context, vm, { key, args, iconName, label, note, eligible = null, primary = false }) {
+  if (vm.decision?.state === "hidden") return "";
+  const mark = eligible === null ? "" : icon(eligible ? "mdi:check-circle-outline" : "mdi:information-outline");
+  const reason = note ? `<span class="voc-choice-note"${eligible === null ? "" : ` data-eligible="${eligible}"`}>${mark}${e(note)}</span>` : "";
+  return `<li data-key="robot:${e(key)}"><button type="button" class="voc-choice${primary ? " voc-choice--primary" : ""}" data-action="start-job"${argsAttr(args)}${decisionAttributes(vm.decision, context.reason(vm.decision))}>${icon(iconName)}<span class="voc-choice-text"><span class="voc-choice-label">${e(label)}</span>${reason}</span></button></li>`;
+}
+
 export const startJobOverlay = Object.freeze({
   key: "start-job",
   dialog: true,
   scopes: ({ overlay }) => [{ name: "execution", params: { jobId: overlay.jobId } }],
   build: ({ model, texts, context, overlay }) => buildStartJob({ model, texts, context, overlay }),
   render(context, vm) {
-    const automatic = `<li data-key="robot:auto">${button({ action: "start-job", args: { jobId: vm.jobId, choose: false }, label: context.t("start.automatic"), iconName: "mdi:auto-fix", variant: "primary", decision: vm.decision, reasonText: context.reason(vm.decision) })}<span class="voc-choice-note">${e(context.t("start.automaticNote"))}</span></li>`;
-    const robots = vm.robots
-      .map((robot) => `<li data-key="robot:${e(robot.key)}">${button({ action: "start-job", args: { jobId: vm.jobId, robotId: robot.robotId, choose: false }, label: robot.name, iconName: "mdi:robot-vacuum", decision: vm.decision, reasonText: context.reason(vm.decision) })}${robot.note ? `<span class="voc-choice-note" data-eligible="${robot.eligible}">${icon(robot.eligible ? "mdi:check-circle-outline" : "mdi:information-outline")}${e(robot.note)}</span>` : ""}</li>`)
-      .join("");
+    const automatic = choiceRow(context, vm, { key: "auto", args: { jobId: vm.jobId, choose: false }, iconName: "mdi:auto-fix", label: context.t("start.automatic"), note: context.t("start.automaticNote"), primary: true });
+    const robots = vm.robots.map((robot) => choiceRow(context, vm, { key: robot.key, args: { jobId: vm.jobId, robotId: robot.robotId, choose: false }, iconName: "mdi:robot-vacuum", label: robot.name, note: robot.note, eligible: robot.eligible })).join("");
     const content = `${vm.loading ? loadingState(context) : ""}<ul class="voc-choices">${automatic}${robots}</ul>`;
     return dialog(context, { key: "start-job", title: vm.title, lead: vm.lead, content, actions: button({ action: "back", label: context.t("action.back"), variant: "quiet" }) });
   },

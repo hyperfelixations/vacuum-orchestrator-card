@@ -36,10 +36,43 @@ function deviceAttention(queue, { model, texts }) {
     });
 }
 
+// The jobs the view lists, in its order: started, needing clarification, waiting.
+function listedJobs(model, options) {
+  const open = list(slotData(model, "openJobs")?.jobs);
+  return {
+    active: options.show_active === false ? [] : open.filter((job) => job.state !== "needs_attention"),
+    attention: options.show_attention === false ? [] : open.filter((job) => job.state === "needs_attention"),
+    waiting: list(slotData(model, "queue")?.jobs),
+  };
+}
+
+// Nothing waits, runs or needs clarification in what the view shows: its empty state offers to add
+// a job, in place of the tab row (UI-19).
+export function queueIsEmpty(model, options = {}) {
+  if (!slotData(model, "queue")) return false;
+  const { active, attention, waiting } = listedJobs(model, options);
+  return active.length + attention.length + waiting.length === 0;
+}
+
+// The job a wide queue's detail shows: the chosen one while it is listed, else the first (LAY-03).
+export function detailJobId(model, options = {}, selected = null) {
+  const { active, attention, waiting } = listedJobs(model, options);
+  const ids = [...active, ...attention, ...waiting].map((job) => job.jobId);
+  return ids.includes(selected) ? selected : (ids[0] ?? null);
+}
+
+// What the view reads beyond the queue: quick-start templates and, on a wide card, the job, its
+// execution and its trace for the detail beside the list.
+export function buildQueueScopes({ ui = {}, model = null, options = {} }) {
+  const scopes = options.show_templates === false ? [] : [{ name: "templates" }];
+  const jobId = ui.wide && model ? detailJobId(model, options, ui.selectedJob) : null;
+  if (jobId) scopes.push({ name: "job", params: { jobId } }, { name: "execution", params: { jobId } }, { name: "trace", params: { jobId } });
+  return scopes;
+}
+
 export function buildQueueView({ model, texts, context, options = {}, ui = {}, timeFormat = "auto" }) {
   const queue = slotData(model, "queue");
   const index = roomIndex(model);
-  const openJobs = list(slotData(model, "openJobs")?.jobs);
   const shared = { model, texts, index, context, timeFormat, menu: ui?.menu ?? null };
   const recovery = list(queue?.recoveryTargets).map((target) => ({
     key: target.robotId,
@@ -48,9 +81,12 @@ export function buildQueueView({ model, texts, context, options = {}, ui = {}, t
     reason: reasonText(texts, target.reason) || t(texts, "recovery.reasonUnknown"),
     decision: recoveryAffordance(target.robotId, context),
   }));
-  const active = options.show_active === false ? [] : openJobs.filter((job) => job.state !== "needs_attention").map((job) => buildJobRow(job, shared));
-  const attention = options.show_attention === false ? [] : openJobs.filter((job) => job.state === "needs_attention").map((job) => buildJobRow(job, shared));
-  const waiting = list(queue?.jobs).map((job) => buildJobRow(job, shared));
+  const shown = ui?.wide ? detailJobId(model, options, ui.selectedJob) : null;
+  const row = (job) => ({ ...buildJobRow(job, shared), selected: job.jobId === shown });
+  const listed = listedJobs(model, options);
+  const [active, attention, waiting] = [listed.active.map(row), listed.attention.map(row), listed.waiting.map(row)];
+  // The detail itself is built beside the list by the view (LAY-03).
+  const detail = shown ? { jobId: shown, traceOpen: list(ui?.expanded).includes(`trace:${shown}`) } : null;
   const templates = options.show_templates === false
     ? []
     : list(slotData(model, "templates")?.items)
@@ -70,7 +106,8 @@ export function buildQueueView({ model, texts, context, options = {}, ui = {}, t
     attention,
     waiting,
     waitingTotal: queue?.total ?? 0,
-    empty: Boolean(queue) && waiting.length === 0 && active.length === 0 && attention.length === 0,
+    empty: queueIsEmpty(model, options),
+    detail,
     templates,
     pagination: pagination(queue, texts),
     offset: queue?.offset ?? 0,

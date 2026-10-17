@@ -28,6 +28,7 @@ import { createInteractionRuntime } from "../controllers/runtime/interaction-run
 import { createKeyboardRuntime } from "../controllers/runtime/keyboard-runtime.js";
 import { placeMenus } from "../controllers/runtime/menu-placement.js";
 import { createScrollRuntime } from "../controllers/runtime/scroll-runtime.js";
+import { createLayoutRuntime } from "../controllers/runtime/layout-runtime.js";
 import { createTabStripRuntime } from "../controllers/runtime/tab-strip-runtime.js";
 import { createUIState } from "../controllers/runtime/ui-state.js";
 import { createActionRouter } from "../controllers/runtime/action-router.js";
@@ -72,6 +73,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
       getConfig: () => this._config,
       platform: this._platform,
       isDialog,
+      getView: () => this._pending?.tabs?.active ?? this._ui.snapshot.view,
     });
     this._interaction = createInteractionRuntime({ root: this.shadowRoot, onAction: (event) => this._onInteraction(event) });
     this._keyboard = createKeyboardRuntime({
@@ -93,6 +95,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     });
     this._tabStrip = createTabStripRuntime({ root: this.shadowRoot, platform: this._platform });
     this._scroll = createScrollRuntime({ root: this.shadowRoot, platform: this._platform });
+    this._layoutTier = createLayoutRuntime({ root: this.shadowRoot, platform: this._platform, onWide: (wide) => this._ui.setWide(wide) });
     this._clock = createClockRuntime({ platform: this._platform, now: () => this._now(), onTick: () => this._renderSafely() });
     this._renderer = createRenderController({ computeViewModel: () => this._computeViewModel(), renderView: (viewModel) => this._renderView(viewModel) });
   }
@@ -148,6 +151,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._keyboard.connect();
     this._tabStrip.connect();
     this._scroll.connect();
+    this._layoutTier.connect();
     this._clock.connect();
     this._syncSession();
     this._renderSafely();
@@ -158,6 +162,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._keyboard.disconnect();
     this._tabStrip.disconnect();
     this._scroll.disconnect();
+    this._layoutTier.disconnect();
     this._clock.disconnect();
     this._releaseSession();
   }
@@ -263,7 +268,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
       for (const request of list || []) requests[request.slot || request.name] = { name: request.name, params: request.params || {} };
     };
     const definition = viewFor(tabs?.active);
-    if (definition?.scopes) add(definition.scopes({ ui, options: resolvedOptions(definition, tabs.activeTab?.options), config: this._config }));
+    if (definition?.scopes) add(definition.scopes({ ui, model: this._model, options: resolvedOptions(definition, tabs.activeTab?.options), config: this._config }));
     for (const overlay of Object.values(this._layers())) {
       const overlayDefinition = overlay ? overlayFor(overlay.kind) : null;
       if (overlayDefinition?.scopes) add(overlayDefinition.scopes({ ui, overlay, config: this._config }));
@@ -372,6 +377,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     } else restoreFocus(this.shadowRoot, held, ring);
     this._overlayDepth = depth;
     this._tabStrip.sync();
+    this._layoutTier.sync();
     this._clock.plan(times.mode);
     this._diagnostics.reportWarnings(viewModel.notices.warnings);
     this._diagnostics.reportRenderSuccess();

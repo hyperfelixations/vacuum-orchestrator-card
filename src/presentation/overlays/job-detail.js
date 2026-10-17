@@ -43,7 +43,9 @@ function explains(execution, job, texts) {
   return groups.length > 1 || groups.some((group) => group.robots.some((item) => settingsNote(texts, item.settings)));
 }
 
-export function buildJobDetail({ model, texts, context, overlay, config }) {
+// `pane`: shown beside a wide queue's list, where the trace opens as a block of the card rather
+// than of a page (LAY-03).
+export function buildJobDetail({ model, texts, context, overlay, config, pane = false }) {
   const job = findJob(model, overlay.jobId);
   const status = model.slots?.job?.status;
   if (!job) {
@@ -59,6 +61,9 @@ export function buildJobDetail({ model, texts, context, overlay, config }) {
   const releaseable = [...new Set(unreleased)].filter((roomId) => index.byId.has(roomId)).map((roomId) => ({ roomId, name: roomName(roomId, index, model), decision: roomAffordances(index.byId.get(roomId), context).release }));
   const trace = traceRows(slotData(model, "trace")?.records, { model, texts, limit: TRACE_LIMIT });
 
+  // A change shown as the moment of creation is no change to the reader.
+  const created = moment(texts, job.createdAt, config?.time_format, model.nowMs);
+  const updated = job.updatedAt ? moment(texts, job.updatedAt, config?.time_format, model.nowMs) : null;
   return {
     key: "job-detail",
     jobId: job.jobId,
@@ -100,9 +105,10 @@ export function buildJobDetail({ model, texts, context, overlay, config }) {
     })),
     trace,
     traceOpen: overlay.traceOpen === true,
+    traceToggle: pane ? { action: "toggle", args: { key: `trace:${job.jobId}` } } : { action: "set-overlay", args: { traceOpen: overlay.traceOpen !== true } },
     facts: [
-      { label: t(texts, "detail.created"), value: moment(texts, job.createdAt, config?.time_format, model.nowMs) },
-      { label: t(texts, "detail.updated"), value: job.updatedAt && job.updatedAt !== job.createdAt ? moment(texts, job.updatedAt, config?.time_format, model.nowMs) : null },
+      { label: t(texts, "detail.created"), value: created },
+      { label: t(texts, "detail.updated"), value: updated === created ? null : updated },
       { label: t(texts, "detail.origin"), value: originText(texts, job, model) },
       { label: t(texts, "detail.occasion"), value: job.reason },
       { label: t(texts, "field.note"), value: job.note },

@@ -75,9 +75,11 @@ export function buildJobEditor({ model, texts, context, overlay }) {
   const queries = overlay.queries || {};
   const preview = slotData(model, "preview");
 
-  const template = kind === "template"
+  // A template names itself first; how it is used follows what it cleans, so the rooms and the
+  // mode show without scrolling.
+  const template = kind === "template" ? [field(texts, { key: "templateName", labelKey: "field.templateName", control: "text", value: draft.templateName, error: error("templateName"), required: true })] : [];
+  const use = kind === "template"
     ? [
-        field(texts, { key: "templateName", labelKey: "field.templateName", control: "text", value: draft.templateName, error: error("templateName"), required: true }),
         field(texts, { key: "enabled", labelKey: "field.templateEnabled", control: "switch", value: draft.enabled, switchLabel: t(texts, "field.templateEnabledSwitch"), error: error("enabled") }),
         field(texts, { key: "automatic", labelKey: "field.automatic", control: "switch", value: draft.automatic, switchLabel: t(texts, "field.automaticSwitch"), hintKey: "field.automaticHint", error: error("automatic") }),
       ]
@@ -114,6 +116,7 @@ export function buildJobEditor({ model, texts, context, overlay }) {
       ...(template.length ? [{ key: "template", title: t(texts, "editor.group.template"), fields: template }] : []),
       { key: "basics", title: t(texts, "editor.group.what"), fields: basics },
       { key: "settings", title: t(texts, "editor.group.settings"), fields: settings },
+      ...(use.length ? [{ key: "use", title: t(texts, "editor.group.use"), fields: use }] : []),
       { key: "more", title: t(texts, "editor.group.more"), fields: more, collapsible: true, open: moreOpen },
     ],
     invalid,

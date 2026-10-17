@@ -1,7 +1,9 @@
 // The queue view. See internal dev doc §8 "Queue".
 
 import { boolOption } from "../config/option-schemas.js";
-import { buildQueueView } from "../presentation/views/queue.js";
+import { buildJobDetail } from "../presentation/overlays/job-detail.js";
+import { renderDetailPane } from "./overlays/job-detail.js";
+import { buildQueueScopes, buildQueueView, queueIsEmpty } from "../presentation/views/queue.js";
 import { button, e, icon } from "../render/primitives/markup.js";
 import { emptyState, errorState, group, jobRow, loadingState, pagination } from "./parts.js";
 import { QUEUE_CSS } from "./styles/queue.js";
@@ -33,6 +35,8 @@ export function renderQueue(context, vm) {
     if (vm.templates.length) parts.push(`<div class="voc-quick" data-key="quick"><span class="voc-quick-label">${e(context.t("queue.fromTemplate"))}</span>${templateButtons(context, vm)}</div>`);
   }
   parts.push(pagination(context, vm.pagination, "queue"));
+  // A wide queue shows the chosen job beside the list (LAY-03).
+  if (vm.detail) return `<div class="voc-view voc-queue voc-queue--split" data-key="view:queue"><div class="voc-queue-list">${parts.join("")}</div>${renderDetailPane(context, vm.detail)}</div>`;
   return `<div class="voc-view voc-queue" data-key="view:queue">${parts.join("")}</div>`;
 }
 
@@ -43,8 +47,13 @@ export const queueView = Object.freeze({
   defaultEnabled: () => true,
   optionsSchema: Object.freeze({ show_active: boolOption(true), show_attention: boolOption(true), show_templates: boolOption(true) }),
   primary: Object.freeze({ action: "create-job", icon: "mdi:plus", labelKey: "action.createJob", operation: "create_job", target: "create" }),
-  scopes: ({ options }) => (options.show_templates === false ? [] : [{ name: "templates" }]),
-  build: ({ model, texts, context, options, config, ui }) => buildQueueView({ model, texts, context, options, ui, timeFormat: config.time_format }),
+  bodyHoldsPrimary: ({ model, options }) => queueIsEmpty(model, options),
+  scopes: ({ ui, model, options }) => buildQueueScopes({ ui, model, options }),
+  build: ({ model, texts, context, options, config, ui }) => {
+    const vm = buildQueueView({ model, texts, context, options, ui, timeFormat: config.time_format });
+    if (!vm.detail) return vm;
+    return { ...vm, detail: buildJobDetail({ model, texts, context, overlay: vm.detail, config, pane: true }) };
+  },
   render: renderQueue,
   css: QUEUE_CSS,
 });

@@ -57,6 +57,26 @@ test("ui state holds one open menu, closed by a page or another view", async () 
   assert.equal(ui.snapshot.menu, null);
 });
 
+// LAY-03: a wide card shows the queue as list and detail; the chosen job is the card's own state.
+test("a card knows whether it is wide and which job its detail shows", async () => {
+  const { createUIState } = await import("../../../src/controllers/runtime/ui-state.js");
+  const ui = createUIState();
+  let published = 0;
+  ui.subscribe(() => {
+    published += 1;
+  });
+  assert.deepEqual([ui.snapshot.wide, ui.snapshot.selectedJob], [false, null]);
+  ui.setWide(true);
+  ui.setWide(true);
+  assert.equal(published, 1, "the same width tier again changes nothing");
+  ui.selectJob("a");
+  assert.equal(ui.snapshot.selectedJob, "a");
+  ui.setView("rooms");
+  assert.equal(ui.snapshot.selectedJob, "a", "the choice outlives a look at another view");
+  ui.selectJob(null);
+  assert.equal(ui.snapshot.selectedJob, null);
+});
+
 // UI-16: an open overlay keeps its id, so a command's answer reaches the page or dialog it came
 // from wherever that lies in the stack, and nothing once it is closed.
 test("an open overlay is found and changed by its id, and the top layers close together", async () => {

@@ -1,6 +1,6 @@
 // The templates view. See internal dev doc §8 "Vorlagen".
 
-import { buildTemplatesView } from "../presentation/views/templates.js";
+import { buildTemplatesView, templatesAreEmpty } from "../presentation/views/templates.js";
 import { button, chip, e, icon, pill } from "../render/primitives/markup.js";
 import { emptyState, errorState, loadingState } from "./parts.js";
 import { TEMPLATES_CSS } from "./styles/templates.js";
@@ -34,6 +34,7 @@ export const templatesView = Object.freeze({
   defaultEnabled: () => true,
   optionsSchema: Object.freeze({}),
   primary: Object.freeze({ action: "create-template", icon: "mdi:plus", labelKey: "action.createTemplate", operation: "save_template", target: "create" }),
+  bodyHoldsPrimary: ({ model }) => templatesAreEmpty(model),
   scopes: () => [{ name: "templates" }],
   build: ({ model, texts, context }) => buildTemplatesView({ model, texts, context }),
   render: renderTemplates,

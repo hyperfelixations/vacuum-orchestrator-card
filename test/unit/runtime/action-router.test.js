@@ -600,3 +600,19 @@ test("a menu opens with focus on an item, closes with focus on its button, and a
   assert.equal(ui.snapshot.menu, null, "the chosen item closes its menu");
   assert.deepEqual(commands.map((command) => command.operation), ["move_job"]);
 });
+
+// LAY-03: on a wide card the queue's row shows its job beside the list; elsewhere it opens the page.
+test("a row's job opens beside a wide queue and as a page otherwise", async () => {
+  const { router, ui } = await setup();
+  ui.setView("queue");
+  ui.setWide(true);
+  router.handle("open-job", { jobId: "job-a" });
+  assert.deepEqual([ui.snapshot.selectedJob, ui.overlay], ["job-a", null]);
+  ui.setView("history");
+  router.handle("open-job", { jobId: "job-b" });
+  assert.deepEqual([ui.snapshot.selectedJob, ui.overlay.kind, ui.overlay.jobId], ["job-a", "job-detail", "job-b"], "the history has no detail beside it");
+  ui.setView("queue");
+  ui.setWide(false);
+  router.handle("open-job", { jobId: "job-c" });
+  assert.deepEqual([ui.overlay.kind, ui.overlay.jobId], ["job-detail", "job-c"]);
+});

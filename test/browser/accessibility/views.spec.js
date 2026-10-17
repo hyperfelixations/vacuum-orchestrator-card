@@ -198,7 +198,7 @@ test("controls never take the error colour of an attention tone", async ({ page 
   await expect(card.locator(".voc-root")).toHaveAttribute("data-tone", "attention");
   const [pill] = await painted(card, ".voc-status-pill", "color");
   expect(reddish(pill.own), "the pill speaks the attention tone").toBe(true);
-  for (const selector of ['[role=tab][aria-selected="true"]', ".voc-panel-control .voc-button--primary", '[data-action="open-recovery"]']) {
+  for (const selector of ['[role=tab][aria-selected="true"]', ".voc-queue-control", '[data-action="open-recovery"]']) {
     await expect(card.locator(selector)).toHaveCount(1);
     for (const part of ["color", "border", "background"]) {
       const [{ own }] = await painted(card, selector, part);

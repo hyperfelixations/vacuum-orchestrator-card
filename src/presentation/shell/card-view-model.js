@@ -12,9 +12,11 @@ import { buildOnboarding } from "./onboarding.js";
 import { buildPanel } from "./panel.js";
 import { cardStatus, toneFor } from "./status.js";
 
-function primaryAction(tabs, definitions, model, texts, context) {
+// A view whose body offers its primary action itself, such as its empty state, has none in the
+// tab row (UI-19).
+function primaryAction(tabs, definitions, model, texts, context, options) {
   const definition = definitions.find((entry) => entry.key === tabs.active);
-  const spec = tabs.activeTab?.available ? definition?.primary : null;
+  const spec = tabs.activeTab?.available && !definition?.bodyHoldsPrimary?.({ model, options }) ? definition?.primary : null;
   if (!spec) return null;
   return { action: spec.action, icon: spec.icon, label: t(texts, spec.labelKey), decision: decide(context, { operation: spec.operation, target: spec.target ?? null }) };
 }
@@ -67,7 +69,7 @@ export function buildCardViewModel({ model = {}, config = {}, texts, ui = {}, ta
     notices,
     panel: ready && !page ? buildPanel({ model, config, texts, context }) : { visible: false },
     tabs: { ...tabs, visible: ready && !page && tabs.visible },
-    primary: ready && !page ? primaryAction(tabs, definitions, model, texts, context) : null,
+    primary: ready && !page ? primaryAction(tabs, definitions, model, texts, context, tabs.activeTab?.options ?? {}) : null,
     primaryReserve: ready && !page && tabs.visible ? primaryReserve(tabs, definitions, texts) : [],
     body,
     dialog: ready && dialog ? { kind: "overlay", key: dialog.key, content: dialog.content, layer: layerFor(texts, dialog.layer) } : null,
