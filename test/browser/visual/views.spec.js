@@ -165,6 +165,13 @@ test.describe("the queue", () => {
     await shot(page, "queue-menu-narrow-light.png");
   });
 
+  test("seven open jobs, the list scrolling in the frame, medium", async ({ page }) => {
+    const card = await mountCard(page, { recording: "showcase", from: "Seven jobs are open", config: BASE });
+    await expect(card.locator('[data-key="waiting"] .voc-job')).toHaveCount(6);
+    await expect(card.locator(".voc-body")).toHaveAttribute("data-overflow-bottom", "");
+    await shot(page, "queue-seven-jobs-medium-light.png", MEDIUM);
+  });
+
   test("a command's notice floats over the foot, medium", async ({ page }) => {
     const card = await mountCard(page, { recording: "queue_controls", from: "The queue runs again", config: BASE });
     await act(page, card.locator(".voc-primary-action"));
