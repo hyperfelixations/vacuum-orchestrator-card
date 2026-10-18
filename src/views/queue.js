@@ -52,7 +52,7 @@ export const queueView = Object.freeze({
   build: ({ model, texts, context, options, config, ui }) => {
     const vm = buildQueueView({ model, texts, context, options, ui, timeFormat: config.time_format });
     if (!vm.detail) return vm;
-    return { ...vm, detail: buildJobDetail({ model, texts, context, overlay: vm.detail, config, pane: true }) };
+    return { ...vm, detail: buildJobDetail({ model, texts, context, overlay: vm.detail, config, pane: true, menu: ui?.menu ?? null }) };
   },
   render: renderQueue,
   css: QUEUE_CSS,

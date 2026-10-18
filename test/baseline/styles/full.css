@@ -467,6 +467,19 @@ button { font: inherit; color: inherit; }
 .voc-overlay-lead { margin: 0; color: var(--voc-muted); font-size: 12.5px; font-weight: 650; line-height: 1.35; }
 .voc-overlay-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding-top: 4px; }
 .voc-overlay-actions .voc-action-start { margin-right: auto; }
+.voc-actions-lead, .voc-actions-buttons { display: inline-flex; align-items: center; gap: 8px; }
+.voc-actions-lead .voc-menu-anchor { display: none; }
+.voc-actions-lead .voc-menu { right: auto; left: 0; }
+@container voc-card (max-width: 559px) {
+  .voc-actions-lead .voc-menu-anchor { display: inline-flex; }
+  .voc-actions-lead .voc-actions-buttons { display: none; }
+}
+@supports not (container-type: inline-size) {
+  @media (max-width: 699px) {
+    .voc-actions-lead .voc-menu-anchor { display: inline-flex; }
+    .voc-actions-lead .voc-actions-buttons { display: none; }
+  }
+}
 
 .voc-block { display: grid; gap: 8px; min-width: 0; padding: 10px 12px; border-radius: 14px; background: var(--voc-panel); border: 1px solid var(--voc-hairline); }
 .voc-block-title { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 10px; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; color: var(--voc-faint); }
@@ -973,19 +986,6 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-option-row .voc-field { flex: 1; }
 .voc-option-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
 
-.voc-editor-lead, .voc-editor-buttons { display: inline-flex; align-items: center; gap: 8px; }
-.voc-editor-lead .voc-menu-anchor { display: none; }
-.voc-editor-lead .voc-menu { right: auto; left: 0; }
-@container voc-card (max-width: 559px) {
-  .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
-  .voc-editor-lead .voc-editor-buttons { display: none; }
-}
-@supports not (container-type: inline-size) {
-  @media (max-width: 699px) {
-    .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
-    .voc-editor-lead .voc-editor-buttons { display: none; }
-  }
-}
 
 .voc-detail-summary { display: grid; gap: 6px; }
 .voc-detail-line { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1144,19 +1144,6 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-option-row .voc-field { flex: 1; }
 .voc-option-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
 
-.voc-editor-lead, .voc-editor-buttons { display: inline-flex; align-items: center; gap: 8px; }
-.voc-editor-lead .voc-menu-anchor { display: none; }
-.voc-editor-lead .voc-menu { right: auto; left: 0; }
-@container voc-card (max-width: 559px) {
-  .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
-  .voc-editor-lead .voc-editor-buttons { display: none; }
-}
-@supports not (container-type: inline-size) {
-  @media (max-width: 699px) {
-    .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
-    .voc-editor-lead .voc-editor-buttons { display: none; }
-  }
-}
 
 .voc-release-row { display: grid; gap: 10px; min-width: 0; }
 .voc-release-row [data-key$=":kind"] .voc-segmented { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1268,19 +1255,6 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-option-row .voc-field { flex: 1; }
 .voc-option-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
 
-.voc-editor-lead, .voc-editor-buttons { display: inline-flex; align-items: center; gap: 8px; }
-.voc-editor-lead .voc-menu-anchor { display: none; }
-.voc-editor-lead .voc-menu { right: auto; left: 0; }
-@container voc-card (max-width: 559px) {
-  .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
-  .voc-editor-lead .voc-editor-buttons { display: none; }
-}
-@supports not (container-type: inline-size) {
-  @media (max-width: 699px) {
-    .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
-    .voc-editor-lead .voc-editor-buttons { display: none; }
-  }
-}
 
 .voc-roles { display: grid; }
 .voc-role { display: grid; gap: 8px; padding: 9px 0; border-top: 1px solid var(--voc-hairline); }

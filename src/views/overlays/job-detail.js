@@ -2,7 +2,7 @@
 
 import { buildJobDetail } from "../../presentation/overlays/job-detail.js";
 import { button, chip, e, icon, pill } from "../../render/primitives/markup.js";
-import { facts, loadingState, traceList } from "../parts.js";
+import { facts, footerLead, loadingState, traceList } from "../parts.js";
 import { block, frame } from "./frame.js";
 import { DETAIL_CSS } from "../styles/detail.js";
 
@@ -30,17 +30,26 @@ function actionButton(context, vm, key, className = "") {
 const visible = (vm, key) => decisionOf(vm, key) && decisionOf(vm, key).state !== "hidden";
 
 // The footer follows the job row: the destructive action first and set apart — a waiting job is
-// deleted, a started one cancelled, never both side by side (JOB-08) — editing and saving as a
-// template next, and last the action that drives the run, start or retry.
+// deleted, a started one cancelled, never both side by side (JOB-08) — with saving as a template;
+// on a narrow card both sit in a menu, a cancel stays in sight. Editing comes next, and last the
+// action that drives the run, start or retry.
 function footer(context, vm) {
   const queued = vm.state === "queued";
-  const lead = (queued ? ["delete"] : ["cancel", "delete"]).filter((key) => visible(vm, key)).slice(0, 1);
+  const [destructive] = (queued ? ["delete"] : ["cancel", "delete"]).filter((key) => visible(vm, key));
   const run = (queued ? ["start"] : ["retry"]).filter((key) => visible(vm, key));
-  return [
-    ...lead.map((key, index) => actionButton(context, vm, key, index === lead.length - 1 ? "voc-action-start" : "")),
-    ...["saveAsTemplate", "edit"].filter((key) => visible(vm, key)).map((key) => actionButton(context, vm, key)),
-    ...run.map((key) => actionButton(context, vm, key)),
-  ].join("");
+  const item = (key, tone) => {
+    const spec = ACTION[key];
+    const decision = decisionOf(vm, key);
+    return { action: spec.action, args: { jobId: vm.jobId, ...(spec.args || {}) }, label: context.t(spec.labelKey), iconName: spec.iconName, decision, reasonText: context.reason(decision), tone };
+  };
+  const lead = footerLead(context, {
+    always: destructive === "cancel" ? actionButton(context, vm, "cancel") : "",
+    items: [destructive === "delete" ? item("delete", "danger") : null, visible(vm, "saveAsTemplate") ? item("saveAsTemplate") : null],
+    key: `detail:${vm.jobId}`,
+    label: context.t("action.moreFor", { job: vm.title }),
+    open: vm.menuOpen === true,
+  });
+  return [lead, ...["edit"].filter((key) => visible(vm, key)).map((key) => actionButton(context, vm, key)), ...run.map((key) => actionButton(context, vm, key))].join("");
 }
 
 // The queue position with the controls that change it.
@@ -141,7 +150,7 @@ export const jobDetailOverlay = Object.freeze({
     { name: "trace", params: { jobId: overlay.jobId } },
     { name: "templates", params: {} },
   ],
-  build: ({ model, texts, context, overlay, config }) => buildJobDetail({ model, texts, context, overlay, config }),
+  build: ({ model, texts, context, overlay, config, ui }) => buildJobDetail({ model, texts, context, overlay, config, menu: ui?.menu ?? null }),
   render: renderJobDetail,
   css: DETAIL_CSS,
 });

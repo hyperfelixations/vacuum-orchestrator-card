@@ -12,6 +12,19 @@ export const OVERLAY_CSS = `
 .voc-overlay-lead { margin: 0; color: var(--voc-muted); font-size: 12.5px; font-weight: 650; line-height: 1.35; }
 .voc-overlay-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding-top: 4px; }
 .voc-overlay-actions .voc-action-start { margin-right: auto; }
+.voc-actions-lead, .voc-actions-buttons { display: inline-flex; align-items: center; gap: 8px; }
+.voc-actions-lead .voc-menu-anchor { display: none; }
+.voc-actions-lead .voc-menu { right: auto; left: 0; }
+@container voc-card (max-width: 559px) {
+  .voc-actions-lead .voc-menu-anchor { display: inline-flex; }
+  .voc-actions-lead .voc-actions-buttons { display: none; }
+}
+@supports not (container-type: inline-size) {
+  @media (max-width: 699px) {
+    .voc-actions-lead .voc-menu-anchor { display: inline-flex; }
+    .voc-actions-lead .voc-actions-buttons { display: none; }
+  }
+}
 
 .voc-block { display: grid; gap: 8px; min-width: 0; padding: 10px 12px; border-radius: 14px; background: var(--voc-panel); border: 1px solid var(--voc-hairline); }
 .voc-block-title { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 10px; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; color: var(--voc-faint); }

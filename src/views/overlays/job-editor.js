@@ -4,7 +4,7 @@ import { draftToPreview } from "../../domain/job-draft.js";
 import { buildJobEditor } from "../../presentation/overlays/job-editor.js";
 import { button, e, icon } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
-import { menu } from "../controls/menu.js";
+import { footerLead } from "../parts.js";
 import { frame } from "./frame.js";
 import { FORMS_CSS } from "../styles/forms.js";
 
@@ -22,10 +22,7 @@ export function renderJobEditor(context, vm) {
   const pending = vm.pending ? { state: "disabled", reason: "command_pending" } : null;
   const removal = vm.remove ? { action: vm.remove.action, args: vm.remove.args, label: vm.remove.label, iconName: "mdi:delete-outline", decision: vm.remove.decision, reasonText: context.reason(vm.remove.decision), tone: "danger" } : null;
   const template = vm.saveAsTemplate ? { action: vm.saveAsTemplate.action, label: vm.saveAsTemplate.label, iconName: "mdi:content-save-outline", decision: vm.saveAsTemplate.decision, reasonText: context.reason(vm.saveAsTemplate.decision) } : null;
-  const items = [template, removal].filter(Boolean);
-  const buttons = [removal && button({ ...removal, variant: "danger" }), template && button(template)].filter(Boolean).join("");
-  const more = menu(context, { key: "editor", label: context.t("action.moreActions"), items, open: vm.menuOpen === true });
-  const lead = items.length ? `<span class="voc-action-start voc-editor-lead"><span class="voc-editor-buttons">${buttons}</span>${more}</span>` : "";
+  const lead = footerLead(context, { items: [removal, template], key: "editor", label: context.t("action.moreActions"), open: vm.menuOpen === true });
   const startNow = vm.startNow ? button({ action: "start-draft", label: vm.startNow.label, iconName: "mdi:play", decision: pending ?? vm.startNow.decision, reasonText: context.reason(vm.startNow.decision) }) : "";
   const save = button({ action: "save-draft", label: vm.save.label, iconName: "mdi:check", variant: "primary", decision: pending ?? vm.save.decision, reasonText: context.reason(vm.save.decision) });
   const actions = `${lead}${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${startNow}${save}`;

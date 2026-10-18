@@ -62,8 +62,8 @@ function resultOf(job, { texts, config, model, actions }) {
 }
 
 // `pane`: shown beside a wide queue's list, where the trace opens as a block of the card rather
-// than of a page (LAY-03).
-export function buildJobDetail({ model, texts, context, overlay, config, pane = false }) {
+// than of a page (LAY-03). `menu`: the key of the card's open menu, if any.
+export function buildJobDetail({ model, texts, context, overlay, config, pane = false, menu = null }) {
   const job = findJob(model, overlay.jobId);
   const status = model.slots?.job?.status;
   if (!job) {
@@ -124,6 +124,7 @@ export function buildJobDetail({ model, texts, context, overlay, config, pane = 
     })),
     trace,
     traceOpen: overlay.traceOpen === true,
+    menuOpen: menu === `detail:${job.jobId}`,
     saveTrace: slotData(model, "trace")?.answer ? { action: "save-trace", args: { jobId: job.jobId } } : null,
     traceToggle: pane ? { action: "toggle", args: { key: `trace:${job.jobId}` } } : { action: "set-overlay", args: { traceOpen: overlay.traceOpen !== true } },
     facts: [

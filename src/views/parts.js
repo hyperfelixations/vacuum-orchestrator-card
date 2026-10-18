@@ -5,6 +5,18 @@ import { atEnd, button, chip, e, icon, pill } from "../render/primitives/markup.
 import { failureText } from "../presentation/common/texts.js";
 import { menu } from "./controls/menu.js";
 
+// The rarer actions of a page's footer stand on its left: as buttons on a wide card, in a menu on
+// a narrow one, destructive ones last, so the footer stays one line (LAY-09). Both are rendered;
+// the card's width decides. `always` stays in sight on any card. `items`: menu items (`menu`), a
+// destructive one with `tone: "danger"`.
+export function footerLead(context, { always = "", items, key, label, open = false }) {
+  const shown = items.filter((item) => item && item.decision?.state !== "hidden");
+  if (!always && !shown.length) return "";
+  const buttons = shown.map((item) => button({ ...item, variant: item.tone === "danger" ? "danger" : "text" })).join("");
+  const ordered = [...shown.filter((item) => item.tone !== "danger"), ...shown.filter((item) => item.tone === "danger")];
+  return `<span class="voc-action-start voc-actions-lead">${always}${buttons ? `<span class="voc-actions-buttons">${buttons}</span>` : ""}${menu(context, { key, label, items: ordered, open })}</span>`;
+}
+
 export function group(title, content, { count = null, key = null } = {}) {
   if (!content) return "";
   return `<section class="voc-group"${key ? ` data-key="${e(key)}"` : ""}><h3 class="voc-group-title">${e(title)}${count === null ? "" : `<span class="voc-group-count">· ${e(count)}</span>`}</h3>${content}</section>`;

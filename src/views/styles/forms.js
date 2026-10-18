@@ -100,17 +100,4 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-option-row .voc-field { flex: 1; }
 .voc-option-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
 
-.voc-editor-lead, .voc-editor-buttons { display: inline-flex; align-items: center; gap: 8px; }
-.voc-editor-lead .voc-menu-anchor { display: none; }
-.voc-editor-lead .voc-menu { right: auto; left: 0; }
-@container voc-card (max-width: 559px) {
-  .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
-  .voc-editor-lead .voc-editor-buttons { display: none; }
-}
-@supports not (container-type: inline-size) {
-  @media (max-width: 699px) {
-    .voc-editor-lead .voc-menu-anchor { display: inline-flex; }
-    .voc-editor-lead .voc-editor-buttons { display: none; }
-  }
-}
 `;

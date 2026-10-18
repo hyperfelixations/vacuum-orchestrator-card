@@ -212,24 +212,28 @@ test("the detail page sets its one destructive action apart, ends with the run a
   const detail = overlayFor("job-detail");
   // The open or finished job of a room at a mark, with its detail as a card reads it.
   // A finished job is found in the job log, which only a recording with history holds.
-  const pageFor = async (name, from, room, { finished = false } = {}) => {
+  const pageFor = async (name, from, room, { finished = false, menuOpen = false } = {}) => {
     const plain = await modelFor(name, { from, requests: finished ? { jobLog: { name: "jobLog", params: { offset: 0, limit: 25 } } } : {} });
     const id = roomId(plain.model, room);
     const jobs = [...plain.model.slots.queue.data.jobs, ...plain.model.slots.openJobs.data.jobs, ...(plain.model.slots.jobLog?.data?.jobs ?? [])];
     const { jobId } = jobs.find((job) => job.roomIds.includes(id));
     const built = await modelFor(name, { from, requests: jobRequests(jobId) });
     const { document, context } = await renderContext(built.texts);
-    return parse(document, detail.render(context, detail.build({ ...built, overlay: { kind: "job-detail", jobId }, config: {}, ui: {} })));
+    return parse(document, detail.render(context, detail.build({ ...built, overlay: { kind: "job-detail", jobId }, config: {}, ui: menuOpen ? { menu: `detail:${jobId}` } : {} })));
   };
-  const footer = (host) => [...host.querySelectorAll(".voc-overlay-actions > button")].map((node) => [node.dataset.action, node.classList.contains("voc-action-start")]);
+  // Where each control stands: on the left as a button only a wide card shows, on the left always,
+  // or at the end. On a narrow card the menu on the left holds the wide-only ones (LAY-09).
+  const footer = (host) => [...host.querySelectorAll(".voc-overlay-actions button:not([role=menuitem])")].map((node) => [node.dataset.action, node.closest(".voc-actions-buttons") ? "wide" : node.closest(".voc-actions-lead") ? "lead" : "end"]);
   const waiting = await pageFor("robot_choice", "Either robot can start the dining room", "Dining Room");
-  assert.deepEqual(footer(waiting), [["delete-job", true], ["open-save-template", false], ["edit-job", false], ["start-job", false]]);
+  assert.deepEqual(footer(waiting), [["delete-job", "wide"], ["open-save-template", "wide"], ["toggle-menu", "lead"], ["edit-job", "end"], ["start-job", "end"]]);
+  const menu = await pageFor("robot_choice", "Either robot can start the dining room", "Dining Room", { menuOpen: true });
+  assert.deepEqual([...menu.querySelectorAll('[role="menuitem"]')].map((node) => [node.dataset.action, node.dataset.tone ?? null]), [["open-save-template", null], ["delete-job", "danger"]]);
   assert.deepEqual([...waiting.querySelectorAll('[data-key="position"] [data-action="move-job"]')].map((node) => JSON.parse(node.dataset.args).direction), ["top", "bottom"]);
   const running = await pageFor("showcase", BUSY, "Studio");
-  assert.deepEqual(footer(running), [["cancel-job", true], ["open-save-template", false]]);
+  assert.deepEqual(footer(running), [["cancel-job", "lead"], ["open-save-template", "wide"], ["toggle-menu", "lead"]], "a running job's cancel stays in sight");
   assert.equal(running.querySelector('[data-key="position"]'), null);
   const corrected = await pageFor("recovery", "The library job is corrected", "Library", { finished: true });
-  assert.deepEqual(footer(corrected), [["delete-job", true], ["open-save-template", false], ["retry-job", false]]);
+  assert.deepEqual(footer(corrected), [["delete-job", "wide"], ["open-save-template", "wide"], ["toggle-menu", "lead"], ["retry-job", "end"]]);
 });
 
 test("every page renders inside the shared frame, every dialog in the dialog frame, each with a heading to focus", async () => {
