@@ -370,6 +370,19 @@ test("the platform navigates inside Home Assistant and refuses foreign targets",
   assert.equal(typeof createBrowserPlatform(() => null).observeResize(null, () => {}), "function", "without an observer there is nothing to stop");
 });
 
+// Home Assistant opens an entity's dialog for the event a card fires (`hass-more-info`).
+test("the platform asks Home Assistant for an entity's dialog from the card", async () => {
+  const { createBrowserPlatform } = await import("../../../src/controllers/runtime/browser-platform.js");
+  const { window } = new JSDOM("<!doctype html><body><voc-host></voc-host></body>");
+  const host = window.document.querySelector("voc-host");
+  const heard = [];
+  window.document.body.addEventListener("hass-more-info", (event) => heard.push([event.detail.entityId, event.composed]));
+  const platform = createBrowserPlatform(() => window.document, () => host);
+  assert.equal(platform.moreInfo("vacuum.rocky"), true);
+  assert.deepEqual(heard, [["vacuum.rocky", true]]);
+  assert.equal(createBrowserPlatform(() => window.document).moreInfo("vacuum.rocky"), false, "without the card nothing to fire from");
+});
+
 test("the platform saves a text as a file the browser downloads", async () => {
   const { createBrowserPlatform } = await import("../../../src/controllers/runtime/browser-platform.js");
   const { window } = new JSDOM("<!doctype html><body></body>", { url: "http://ha.local/lovelace/0" });

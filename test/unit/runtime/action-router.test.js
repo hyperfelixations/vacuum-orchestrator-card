@@ -59,7 +59,9 @@ async function setup({ config = {}, answer = () => ({ ok: true, data: null }), v
   // Timers run only when a test fires them.
   const timers = [];
   const downloads = [];
+  const moreInfo = [];
   const platform = {
+    moreInfo: (entityId) => moreInfo.push(entityId),
     navigate: (path) => navigated.push(path),
     download: (name, text, type) => (downloads.push({ name, type, data: JSON.parse(text) }), true),
     setTimeout: (fn, ms) => {
@@ -75,7 +77,7 @@ async function setup({ config = {}, answer = () => ({ ok: true, data: null }), v
     return due.map((timer) => timer.ms);
   };
   const router = createActionRouter({ ui, getSession: () => session, getModel: () => model, getConfig: () => config, platform, isDialog });
-  return { router, ui, commands, checked, navigated, timers, fire, downloads };
+  return { router, ui, commands, checked, navigated, timers, fire, downloads, moreInfo };
 }
 
 test("all rooms in the editor excludes single rooms, and a single room ends all rooms", async () => {
@@ -632,6 +634,13 @@ test("an entity picker search is overlay state and a pick clears it", async () =
   assert.equal(ui.overlay.queries["roles.error.entity"], "");
   router.handle("toggle-value", { field: "roles.error.entity", value: "sensor.rocky_error" });
   assert.equal(ui.overlay.draft.roles.error.entity, null, "picking it again clears it");
+});
+
+// ROOM-09: Home Assistant's own dialog of a vacuum, where its map segments are assigned to areas.
+test("an entity's Home Assistant dialog opens through the platform", async () => {
+  const { router, moreInfo } = await setup();
+  router.handle("open-more-info", { entityId: "vacuum.rocky" });
+  assert.deepEqual(moreInfo, ["vacuum.rocky"]);
 });
 
 test("a robot's map opens enlarged as a page", async () => {

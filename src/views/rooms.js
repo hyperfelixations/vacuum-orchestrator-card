@@ -28,8 +28,15 @@ function roomCard(context, room) {
     button({ action: "enable-room", args: { roomId: room.roomId }, label: context.t("rooms.enable"), iconName: "mdi:eye-outline", variant: "quiet", decision: room.actions.enable, reasonText: context.reason(room.actions.enable) }),
     releaseToggle(context, room),
   ].join("");
+  const reasons = room.reach ? room.reach.reasons.map((reason) => `<span class="voc-room-meta-item voc-room-reason">${e(reason)}</span>`).join("") : "";
+  const remedies = room.reach
+    ? [
+        room.reach.assign ? button({ action: "open-more-info", args: { entityId: room.reach.assign.entityId }, label: context.t("rooms.assign"), iconName: "mdi:map-marker-plus-outline", variant: "text", className: "voc-room-remedy" }) : "",
+        button({ action: "disable-room", args: { roomId: room.roomId }, label: context.t("rooms.dontClean"), iconName: "mdi:eye-off-outline", variant: "text", className: "voc-room-remedy", decision: room.actions.disable, reasonText: context.reason(room.actions.disable) }),
+      ].join("")
+    : "";
   const robots = room.unreachable
-    ? `<span class="voc-room-meta-item voc-room-warning">${icon("mdi:robot-vacuum-alert")}${e(context.t("rooms.unreachable"))}</span>`
+    ? `<span class="voc-room-meta-item voc-room-warning">${icon("mdi:robot-vacuum-alert")}${e(context.t("rooms.unreachable"))}</span>${reasons}${remedies ? `<span class="voc-room-remedies">${remedies}</span>` : ""}`
     : room.robots.length
       ? `<span class="voc-room-meta-item">${icon("mdi:robot-vacuum")}${e(room.robots.join(", "))}</span>`
       : "";

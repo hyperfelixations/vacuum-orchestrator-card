@@ -5,7 +5,8 @@ function documentOf(getDocument) {
   return () => getDocument?.() || null;
 }
 
-export function createBrowserPlatform(getDocument) {
+// `getHost()`: the card element, from which Home Assistant's own events are fired.
+export function createBrowserPlatform(getDocument, getHost = () => null) {
   const currentDocument = documentOf(getDocument);
   const viewOf = () => currentDocument()?.defaultView || null;
   return {
@@ -36,6 +37,14 @@ export function createBrowserPlatform(getDocument) {
       return () => observer.disconnect();
     },
     log(level, ...args) { viewOf()?.console?.[level]?.(...args); },
+    // Home Assistant's dialog of an entity, as a card asks for it (`hass-more-info`).
+    moreInfo(entityId) {
+      const host = getHost();
+      const view = viewOf();
+      if (!host?.dispatchEvent || !view?.CustomEvent) return false;
+      host.dispatchEvent(new view.CustomEvent("hass-more-info", { detail: { entityId }, bubbles: true, composed: true }));
+      return true;
+    },
     // Offers `text` as a file named `name`; the link is gone at once, its address shortly after.
     download(name, text, type = "text/plain") {
       const document = currentDocument();

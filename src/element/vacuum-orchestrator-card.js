@@ -62,7 +62,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._hold = null;
     this._unsubscribe = null;
     this._model = null;
-    this._platform = createBrowserPlatform(() => this.ownerDocument);
+    this._platform = createBrowserPlatform(() => this.ownerDocument, () => this);
     this._mount = createShadowMount(this.shadowRoot);
     this._ui = createUIState();
     this._ui.subscribe(() => this._scheduleRender());

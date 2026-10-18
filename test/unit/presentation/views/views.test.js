@@ -182,6 +182,10 @@ test("rooms show due verdicts, release, reaching robots and conditions as report
   assert.deepEqual(byName["Dining Room"].robots, [], "with one robot, naming it says nothing");
   assert.equal(byName.Conservatory.release.label, texts.t("rooms.locked"));
   assert.equal(byName.Conservatory.unreachable, true, "the conservatory lies on the other map");
+  // ROOM-09: an unreachable room says why per robot and offers the assignment in Home Assistant.
+  assert.deepEqual(byName.Conservatory.reach, { reasons: [texts.t("reach.not_on_current_map", { robot: "Rocky" })], assign: { entityId: "vacuum.rocky" } });
+  assert.equal(byName.Conservatory.actions.disable.state, "enabled");
+  assert.equal(byName.Studio.reach, null);
   assert.deepEqual(byName.Conservatory.conditions.map((item) => item.text), [texts.t("rooms.condition", { entity: "Conservatory Door", state: "off", allowed: "on" })]);
   assert.match(byName.Conservatory.conditions[0].text, / – required: on$/, "worded as on the detail page");
   assert.equal(byName.Conservatory.due[0].state, "disabled");

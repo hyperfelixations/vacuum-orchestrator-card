@@ -307,6 +307,19 @@
 <span class="voc-room-meta-item voc-room-warning">
 <ha-icon icon="mdi:robot-vacuum-alert" aria-hidden="true">
 </ha-icon>No robot reaches this room</span>
+<span class="voc-room-meta-item voc-room-reason">Rocky: not on the current map</span>
+<span class="voc-room-remedies">
+<button type="button" class="voc-button voc-button--text voc-room-remedy" data-action="open-more-info" data-args="{&quot;entityId&quot;:&quot;vacuum.rocky&quot;}">
+<ha-icon icon="mdi:map-marker-plus-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Assign in Home Assistant</span>
+</button>
+<button type="button" class="voc-button voc-button--text voc-room-remedy" data-action="disable-room" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000005&quot;}">
+<ha-icon icon="mdi:eye-off-outline" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Don't clean</span>
+</button>
+</span>
 <span class="voc-room-meta-item" data-key="condition:binary_sensor.conservatory_door">
 <ha-icon icon="mdi:door" aria-hidden="true">
 </ha-icon>Conservatory Door: off – required: on</span>

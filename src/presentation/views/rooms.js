@@ -35,6 +35,19 @@ function dueLine(room, operation, { texts, model, timeFormat }) {
 }
 
 const STARTED = new Set(["dispatching", "running"]);
+// Reasons Home Assistant's assignment of map segments to areas can resolve.
+const ASSIGNABLE = new Set(["area_not_mapped", "not_on_current_map"]);
+
+// ROOM-09: why no robot reaches a room, per robot as the integration reports it, and the robot
+// whose assignment in Home Assistant would resolve it.
+function reachOf(room, robots, texts) {
+  const verdicts = robots.map((robot) => ({ robot, item: list(robot.reach).find((entry) => entry.roomId === room.roomId) })).filter(({ item }) => item && item.status !== "reachable");
+  const assignable = verdicts.find(({ robot, item }) => ASSIGNABLE.has(item.status) && robot.configuration?.entityId);
+  return {
+    reasons: verdicts.map(({ robot, item }) => t(texts, `reach.${item.status}`, { robot: robot.name })),
+    assign: assignable ? { entityId: assignable.robot.configuration.entityId } : null,
+  };
+}
 
 // What is happening to a room now (UI-07): a started job cleaning it, with its robot, and the
 // queued jobs that wait for it.
@@ -113,6 +126,7 @@ export function buildRoomsView({ model, texts, context, options = {}, ui = {}, t
         // With one robot, naming it says nothing (UI-08).
         robots: robots.length > 1 ? reaching.map((robot) => robot.name) : [],
         unreachable: room.enabled && reaching.length === 0,
+        reach: room.enabled && reaching.length === 0 ? reachOf(room, robots, texts) : null,
         conditions: room.requirements.map((requirement) => condition(requirement, model, texts)),
         work: workOf(room, { texts, model }),
         actions: roomAffordances(room, context),
