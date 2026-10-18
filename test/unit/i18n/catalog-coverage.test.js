@@ -119,3 +119,11 @@ test("template actions say what they do", async () => {
   assert.deepEqual([en["action.resetDemand"], de["action.resetDemand"]], ["Allow another job", "Weiteren Auftrag erlauben"]);
   assert.deepEqual([en["action.createFromTemplate"], de["action.createFromTemplate"]], [en["action.addToQueue"], de["action.addToQueue"]]);
 });
+
+// V6: dialog titles share one form, and a cancel says what will happen, not what is.
+test("dialogs ask in one form and say what will happen", async () => {
+  const { en } = await import("../../../src/i18n/languages/en.js");
+  assert.deepEqual([en["confirm.endQueue.title"], en["queueEnd.title"], en["confirm.cancelJob.title"]], ["End queue?", "End queue?", "Cancel job?"]);
+  assert.equal(en["cancelJob.lead"]({ job: "Studio" }), "“Studio” is running. The robot will stop.");
+  assert.equal(en["confirm.cancelJob.text"]({ job: "Studio" }), "“Studio” will be cancelled. A robot already cleaning will stop.");
+});

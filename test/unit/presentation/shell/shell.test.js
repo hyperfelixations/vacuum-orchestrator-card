@@ -213,7 +213,8 @@ test("one warning is a sentence, several a count; a hint is appended to the subt
   const one = notices.buildNotices({ configDiagnostics: config({ page_size: 1 })._configDiagnostics, diagnostics: [createDiagnostic("hint.reconnecting")] });
   const block = notices.buildWarningBlock({ config: config(), notices: one, texts });
   assert.equal(block.visible, true);
-  assert.match(block.text, /page_size/);
+  // V6: a number out of range names the range it must lie in.
+  assert.equal(block.text, "1 is not a valid value for page_size (5–100). Using 25.");
   const several = notices.buildNotices({ diagnostics: [createDiagnostic("backend.query_failed", { params: { scope: "rooms", code: "x" } }), createDiagnostic("backend.query_failed", { params: { scope: "robots", code: "x" } })] });
   assert.equal(notices.warningText(several.warnings, texts), texts.t("warning.several", { count: 2 }));
   assert.equal(notices.buildWarningBlock({ config: config({ show: { warnings: false } }), notices: one, texts }).visible, false);

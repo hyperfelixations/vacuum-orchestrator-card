@@ -23,8 +23,8 @@ export function assertKnownKeys(object, allowed, path) {
   }
 }
 
-function invalid(diagnostics, path, value, fallback) {
-  diagnostics.push(createDiagnostic("value.invalid", { path, value, fallback }));
+function invalid(diagnostics, path, value, fallback, params = null) {
+  diagnostics.push(createDiagnostic("value.invalid", { path, value, fallback, params }));
 }
 
 export function readBoolean(value, path, diagnostics, fallback) {
@@ -45,7 +45,7 @@ export function readNumber(value, path, diagnostics, { min, max, integer = false
   if (isUnwritten(value)) return fallback;
   const number = parseConfigNumber(value);
   if (number !== null && number >= min && number <= max && (!integer || Number.isInteger(number))) return number;
-  invalid(diagnostics, path, value, instead);
+  invalid(diagnostics, path, value, instead, { min, max });
   return fallback;
 }
 

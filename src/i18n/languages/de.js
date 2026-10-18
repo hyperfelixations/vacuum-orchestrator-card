@@ -354,6 +354,7 @@ export const de = {
   "warning.label": "Warnung",
   "warning.several": (v) => `${v.count} Probleme mit dieser Karte. Details in der Browserkonsole.`,
   "warning.invalidValue": (v) => `${v.value} ist kein gültiger Wert für ${v.key}. ${v.instead}`,
+  "warning.invalidValueRange": (v) => `${v.value} ist kein gültiger Wert für ${v.key} (${v.min}–${v.max}). ${v.instead}`,
   "warning.foreignKey": (v) => `${v.key} ist keine Option dieser Karte und wird ignoriert.`,
   "warning.queryFailed": (v) => `${v.scope} konnte nicht geladen werden (${v.code}).`,
   "fallback.value": (v) => `Verwendet wird ${v.value}.`,

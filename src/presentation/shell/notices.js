@@ -19,7 +19,9 @@ function fallbackMessage(fallback) {
 }
 
 const DIAGNOSTIC_MESSAGES = Object.freeze({
-  "value.invalid": (entry) => message("warning.invalidValue", { value: written(entry.value), key: entry.path, instead: fallbackMessage(entry.fallback) }),
+  "value.invalid": (entry) => (Number.isFinite(entry.params?.min) && Number.isFinite(entry.params?.max)
+    ? message("warning.invalidValueRange", { value: written(entry.value), key: entry.path, min: entry.params.min, max: entry.params.max, instead: fallbackMessage(entry.fallback) })
+    : message("warning.invalidValue", { value: written(entry.value), key: entry.path, instead: fallbackMessage(entry.fallback) })),
   "config.foreign_key": (entry) => message("warning.foreignKey", { key: entry.path }),
   "backend.query_failed": (entry) => message("warning.queryFailed", { scope: message(`scope.${entry.params?.scope || "unknown"}`), code: entry.params?.code || "unknown" }),
   "hint.reconnecting": () => message("hint.reconnecting"),
