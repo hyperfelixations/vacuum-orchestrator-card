@@ -3,7 +3,7 @@
 // Each shows the integration's facts and sends one command.
 
 import { QUEUE_TARGET, decide, jobTarget, recoveryAffordance } from "../../domain/affordances.js";
-import { QUEUE_GRACE_MAX_SECONDS } from "../../domain/job-schema.js";
+import { QUEUE_GRACE_MAX_SECONDS, START_DELAY_MAX_SECONDS } from "../../domain/job-schema.js";
 import { findJob, list, robotName, robotsOf, roomIndex, slotData, jobTitle } from "../common/lookups.js";
 import { reasonText, t } from "../common/texts.js";
 import { pageErrors } from "./editor-fields.js";
@@ -109,23 +109,18 @@ export function buildStartJob({ model, texts, context, overlay }) {
 
 const GRACE_MAX_MINUTES = QUEUE_GRACE_MAX_SECONDS / 60;
 
-// The quiet period after which a queue run without executable work ends, in whole minutes.
+// The start delay of new and changed jobs, in seconds, and the quiet period after which a queue
+// run without executable work ends, in whole minutes.
 export function buildQueueSettings({ texts, context, overlay }) {
-  const minutes = overlay.minutes;
+  const { minutes, delay } = overlay;
   const { error, invalid } = pageErrors(texts, overlay);
   return {
     key: "queue-settings",
     title: t(texts, "queueSettings.title"),
-    field: {
-      key: "overlay:minutes",
-      label: t(texts, "queueSettings.grace"),
-      control: "stepper",
-      value: Number.isFinite(minutes) ? minutes : 0,
-      min: 0,
-      max: GRACE_MAX_MINUTES,
-      hint: t(texts, "queueSettings.graceHint"),
-      error: error("overlay:minutes"),
-    },
+    fields: [
+      { key: "overlay:delay", label: t(texts, "queueSettings.delay"), control: "text", inputType: "number", value: delay ?? "", min: 0, max: START_DELAY_MAX_SECONDS, step: 1, hint: t(texts, "queueSettings.delayHint"), error: error("overlay:delay") },
+      { key: "overlay:minutes", label: t(texts, "queueSettings.grace"), control: "stepper", value: Number.isFinite(minutes) ? minutes : 0, min: 0, max: GRACE_MAX_MINUTES, hint: t(texts, "queueSettings.graceHint"), error: error("overlay:minutes") },
+    ],
     invalid,
     save: decide(context, { operation: "configure_queue", target: QUEUE_TARGET }),
   };

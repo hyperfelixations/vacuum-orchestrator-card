@@ -597,12 +597,23 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       { titleKey: "confirm.removeRobot.title", textKey: "confirm.removeRobot.text", confirmKey: "confirm.removeRobot.confirm", icon: "mdi:delete-outline", vars: { robot: findIn(getModel(), "robots", "robotId", robotId)?.name ?? "" } }
     ),
     "open-queue-settings": () => {
-      const seconds = getModel()?.slots?.queue?.data?.graceSeconds;
-      if (Number.isFinite(seconds)) ui.openOverlay({ kind: "queue-settings", minutes: Math.round(seconds / 60) });
+      const queue = getModel()?.slots?.queue?.data;
+      if (!Number.isFinite(queue?.graceSeconds)) return;
+      const values = { minutes: Math.round(queue.graceSeconds / 60), delay: Number.isFinite(queue.startDelaySeconds) ? queue.startDelaySeconds : null };
+      ui.openOverlay({ kind: "queue-settings", ...values, initial: values });
     },
+    // Only what changed travels; nothing changed closes the dialog.
     "save-queue-settings": () => {
-      if (ui.overlay?.kind !== "queue-settings") return null;
-      return submit("configure_queue", { grace_seconds: Number(ui.overlay.minutes) * 60 }, pageFields({ grace_seconds: "overlay:minutes" }), { target: QUEUE_TARGET, invalidates: ["queue"], closeOverlay: true, success: { key: "notice.queueSettingsSaved" } });
+      const overlay = ui.overlay;
+      if (overlay?.kind !== "queue-settings") return null;
+      const parameters = {};
+      if (String(overlay.minutes) !== String(overlay.initial?.minutes)) parameters.grace_seconds = Number(overlay.minutes) * 60;
+      if (String(overlay.delay ?? "") !== String(overlay.initial?.delay ?? "")) parameters.start_delay_seconds = Number(overlay.delay);
+      if (!Object.keys(parameters).length) {
+        ui.closeOverlay();
+        return null;
+      }
+      return submit("configure_queue", parameters, pageFields({ grace_seconds: "overlay:minutes", start_delay_seconds: "overlay:delay" }), { target: QUEUE_TARGET, invalidates: ["queue"], closeOverlay: true, success: { key: "notice.queueSettingsSaved" } });
     },
     "open-recovery": ({ robotId }) => ui.openOverlay({ kind: "recovery", robotId, confirmStopped: false }),
     "set-overlay": (patch) => ui.updateOverlay(patch),

@@ -37,7 +37,7 @@ export function errorState(context, failure) {
 export function facts(rows) {
   const items = rows.filter((row) => row && row.value !== null && row.value !== undefined && row.value !== "");
   if (!items.length) return "";
-  return `<dl class="voc-facts">${items.map((row) => `<dt>${e(row.label)}</dt><dd>${e(row.value)}</dd>`).join("")}</dl>`;
+  return `<dl class="voc-facts">${items.map((row) => `<dt>${e(row.label)}</dt><dd${row.key ? ` data-key="fact:${e(row.key)}"` : ""}>${e(row.value)}</dd>`).join("")}</dl>`;
 }
 
 export function traceList(rows) {

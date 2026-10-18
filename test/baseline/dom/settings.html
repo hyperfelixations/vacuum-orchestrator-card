@@ -103,21 +103,18 @@
 <div class="voc-body" id="voc-panel" data-body="view:settings" data-scroll="" role="tabpanel" aria-labelledby="voc-tab-settings" tabindex="0">
 <div class="voc-view voc-settings" data-key="view:settings">
 <section class="voc-block" data-key="defaults">
-<h3 class="voc-block-title">
+<div class="voc-block-head">
+<h3 class="voc-block-title" id="voc-settings-defaults">
 <ha-icon icon="mdi:tune-variant" aria-hidden="true">
 </ha-icon>Defaults for new jobs</h3>
-<div class="voc-setting" data-key="setting:defaults">
-<div class="voc-setting-text">
-<strong id="voc-setting-defaults">Defaults for new jobs</strong>
-<span>New jobs, also from automations and templates, start with these values. Changing them does not change existing jobs.</span>
-</div>
-<span class="voc-setting-value" data-key="built-in">Built-in defaults</span>
-<button type="button" class="voc-button voc-button--text" data-action="open-job-defaults" aria-describedby="voc-setting-defaults">
+<button type="button" class="voc-button voc-button--text" data-action="open-job-defaults" aria-describedby="voc-settings-defaults">
 <ha-icon icon="mdi:pencil-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Change</span>
 </button>
 </div>
+<p class="voc-overlay-lead">New jobs, also from automations and templates, start with these values. Changing them does not change existing jobs.</p>
+<p class="voc-settings-note" data-key="built-in">Built-in defaults</p>
 <dl class="voc-facts">
 <dt>Cleaning mode</dt>
 <dd>Vacuum</dd>
@@ -134,32 +131,36 @@
 </dl>
 </section>
 <section class="voc-block" data-key="queue">
-<h3 class="voc-block-title">
+<div class="voc-block-head">
+<h3 class="voc-block-title" id="voc-settings-queue">
 <ha-icon icon="mdi:format-list-numbered" aria-hidden="true">
 </ha-icon>Queue</h3>
-<div class="voc-setting" data-key="setting:grace">
-<div class="voc-setting-text">
-<strong id="voc-setting-grace">Wait before a run ends</strong>
-<span>When no work can start, a queue run waits this long before it ends. New work that can start resets the wait.</span>
-</div>
-<span class="voc-setting-value">15 min</span>
-<button type="button" class="voc-button voc-button--text" data-action="open-queue-settings" aria-describedby="voc-setting-grace">
+<button type="button" class="voc-button voc-button--text" data-action="open-queue-settings" aria-describedby="voc-settings-queue">
 <ha-icon icon="mdi:pencil-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Change</span>
 </button>
 </div>
+<p class="voc-overlay-lead">How long new and changed jobs wait before they start, and how long a run waits for more work before it ends.</p>
+<dl class="voc-facts">
+<dt>Start delay</dt>
+<dd data-key="fact:startDelay">5 s</dd>
+<dt>Wait before a run ends</dt>
+<dd data-key="fact:grace">15 min</dd>
+</dl>
 </section>
-<section class="voc-block" data-key="integration">
-<h3 class="voc-block-title">
-<ha-icon icon="mdi:puzzle-outline" aria-hidden="true">
-</ha-icon>Integration</h3>
+<section class="voc-block" data-key="about">
+<h3 class="voc-block-title" id="voc-settings-about">
+<ha-icon icon="mdi:information-outline" aria-hidden="true">
+</ha-icon>About</h3>
 <p class="voc-overlay-lead">Robots, rooms and templates are set up in their own tabs.</p>
 <dl class="voc-facts">
-<dt>Version</dt>
-<dd>0.1.2</dd>
+<dt>Integration</dt>
+<dd data-key="fact:integration">0.1.2</dd>
 <dt>API version</dt>
-<dd>4</dd>
+<dd data-key="fact:api">4</dd>
+<dt>Card</dt>
+<dd data-key="fact:card">0.1.0</dd>
 </dl>
 <div class="voc-inline-actions">
 <button type="button" class="voc-button voc-button--text" data-action="open-setup">
@@ -173,15 +174,6 @@
 <span class="voc-button-label">Open in Home Assistant</span>
 </button>
 </div>
-</section>
-<section class="voc-block" data-key="card">
-<h3 class="voc-block-title">
-<ha-icon icon="mdi:card-text-outline" aria-hidden="true">
-</ha-icon>Card</h3>
-<dl class="voc-facts">
-<dt>Version</dt>
-<dd>0.1.0</dd>
-</dl>
 </section>
 </div>
 </div>

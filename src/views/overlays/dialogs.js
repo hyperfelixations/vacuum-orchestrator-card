@@ -92,7 +92,7 @@ export const queueSettingsOverlay = Object.freeze({
   build: ({ texts, context, overlay }) => buildQueueSettings({ texts, context, overlay }),
   render(context, vm) {
     const actions = `${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-queue-settings", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
-    return dialog(context, { key: "queue-settings", title: vm.title, lead: context.t("queueSettings.lead"), invalid: vm.invalid, content: `<div class="voc-form">${renderField(context, vm.field)}</div>`, actions });
+    return dialog(context, { key: "queue-settings", title: vm.title, lead: context.t("queueSettings.lead"), invalid: vm.invalid, content: `<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions });
   },
 });
 

@@ -1,7 +1,7 @@
-// The settings view: the integration-wide settings — the defaults for new jobs and the queue
-// run's wait time — where the integration lives in Home Assistant, and the running card
-// version. Robots, rooms and templates keep their own views. See internal dev doc §8
-// "Einstellungen".
+// The settings view: the integration-wide settings — the defaults for new jobs, the queue's start
+// delay and its wait before a run ends — and "About": the integration, where it lives in Home
+// Assistant, and the running card. Robots, rooms and templates keep their own views. See internal
+// dev doc §8 "Einstellungen".
 
 import { CARD_VERSION } from "../../core/card-metadata.js";
 import { QUEUE_TARGET, decide } from "../../domain/affordances.js";
@@ -25,6 +25,7 @@ export function buildSettingsView({ model, texts, context }) {
   const queue = slotData(model, "queue");
   const status = model.slots?.queue?.status ?? "idle";
   const graceSeconds = queue?.graceSeconds;
+  const delaySeconds = queue?.startDelaySeconds;
   return {
     key: "settings",
     loading: !queue && (status === "loading" || status === "idle"),
@@ -36,17 +37,23 @@ export function buildSettingsView({ model, texts, context }) {
           decision: decide(context, { operation: "configure_job_defaults", target: QUEUE_TARGET }),
         }
       : null,
-    grace: Number.isFinite(graceSeconds)
-      ? { value: graceSeconds > 0 ? seconds(texts, graceSeconds) : t(texts, "settings.graceOff"), decision: decide(context, { operation: "configure_queue", target: QUEUE_TARGET }) }
+    queue: Number.isFinite(graceSeconds)
+      ? {
+          facts: [
+            { key: "startDelay", label: t(texts, "settings.startDelay"), value: Number.isFinite(delaySeconds) ? (delaySeconds > 0 ? seconds(texts, delaySeconds) : t(texts, "settings.startDelayOff")) : null },
+            { key: "grace", label: t(texts, "settings.grace"), value: graceSeconds > 0 ? seconds(texts, graceSeconds) : t(texts, "settings.graceOff") },
+          ],
+          decision: decide(context, { operation: "configure_queue", target: QUEUE_TARGET }),
+        }
       : null,
-    integration: {
+    about: {
       facts: [
-        { label: t(texts, "settings.version"), value: model.integrationVersion || null },
-        { label: t(texts, "settings.apiVersion"), value: Number.isInteger(model.apiVersion) ? number(texts, model.apiVersion) : null },
+        { key: "integration", label: t(texts, "settings.integrationVersion"), value: model.integrationVersion || null },
+        { key: "api", label: t(texts, "settings.apiVersion"), value: Number.isInteger(model.apiVersion) ? number(texts, model.apiVersion) : null },
+        { key: "card", label: t(texts, "settings.cardVersion"), value: CARD_VERSION },
       ],
       open: model.permissions?.isAdmin ? { path: INTEGRATION_PAGE_PATH } : null,
       setup: model.setup ? { action: "open-setup" } : null,
     },
-    card: { facts: [{ label: t(texts, "settings.version"), value: CARD_VERSION }] },
   };
 }

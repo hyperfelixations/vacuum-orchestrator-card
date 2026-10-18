@@ -138,6 +138,8 @@ export const ROBOT_OPTION_MAPS = Object.freeze({
 // Bounds of API 4 that steppers show; the integration checks every value.
 export const PASS_MIN = 1;
 export const PASS_MAX = 10;
+// The integration's longest start delay (`configure_queue start_delay_seconds`).
+export const START_DELAY_MAX_SECONDS = 600;
 export const QUEUE_GRACE_MAX_SECONDS = 86400;
 
 // The operations each mode is planned into, in order (`vacuum_then_mop` has two phases).

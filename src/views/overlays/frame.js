@@ -35,7 +35,10 @@ export function frame(context, { key, title, status = "", lead = "", invalid = n
   return `<section class="voc-overlay" data-key="overlay:${e(key)}" role="region" aria-labelledby="voc-overlay-title"${busyAttribute(context)}>${layerControls(context, `${head}${body}<div class="voc-overlay-actions">${footer}</div>`)}</section>`;
 }
 
-export function block(title, content, { iconName = null, key = null } = {}) {
+// `action`: a control beside the heading, such as a section's one "Change" (LAY-08), which `id`
+// lets name the section.
+export function block(title, content, { iconName = null, key = null, action = "", id = null } = {}) {
   if (!content) return "";
-  return `<section class="voc-block"${key ? ` data-key="${e(key)}"` : ""}><h3 class="voc-block-title">${iconName ? `<ha-icon icon="${e(iconName)}" aria-hidden="true"></ha-icon>` : ""}${e(title)}</h3>${content}</section>`;
+  const heading = `<h3 class="voc-block-title"${id ? ` id="${e(id)}"` : ""}>${iconName ? `<ha-icon icon="${e(iconName)}" aria-hidden="true"></ha-icon>` : ""}${e(title)}</h3>`;
+  return `<section class="voc-block"${key ? ` data-key="${e(key)}"` : ""}>${action ? `<div class="voc-block-head">${heading}${action}</div>` : heading}${content}</section>`;
 }

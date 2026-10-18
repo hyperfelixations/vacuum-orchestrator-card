@@ -6,43 +6,48 @@ import { block } from "./overlays/frame.js";
 import { errorState, facts, loadingState } from "./parts.js";
 import { SETTINGS_CSS } from "./styles/settings.js";
 
-// The button keeps its visible name and is described by the setting it changes.
-function graceSetting(context, grace) {
-  const change = button({ action: "open-queue-settings", label: context.t("action.change"), iconName: "mdi:pencil-outline", decision: grace.decision, reasonText: context.reason(grace.decision), extra: ' aria-describedby="voc-setting-grace"' });
-  return `<div class="voc-setting" data-key="setting:grace"><div class="voc-setting-text"><strong id="voc-setting-grace">${e(context.t("settings.grace"))}</strong><span>${e(context.t("settings.graceHint"))}</span></div><span class="voc-setting-value">${e(grace.value)}</span>${change}</div>`;
+// One title per section; its one "Change" stands in the heading, named by the section (LAY-08).
+function change(context, action, decision, section) {
+  return button({ action, label: context.t("action.change"), iconName: "mdi:pencil-outline", variant: "text", decision, reasonText: context.reason(decision), extra: ` aria-describedby="${e(section)}"` });
+}
+
+function section(context, { key, iconName, title, action = "", content }) {
+  const id = `voc-settings-${key}`;
+  return block(title, content, { iconName, key, id, action: action ? action(id) : "" });
 }
 
 function defaultsBlock(context, vm) {
   if (!vm.defaults) return "";
-  const change = button({ action: "open-job-defaults", label: context.t("action.change"), iconName: "mdi:pencil-outline", decision: vm.defaults.decision, reasonText: context.reason(vm.defaults.decision), extra: ' aria-describedby="voc-setting-defaults"' });
-  const builtIn = vm.defaults.builtIn ? `<span class="voc-setting-value" data-key="built-in">${e(vm.defaults.builtIn)}</span>` : "";
-  const head = `<div class="voc-setting" data-key="setting:defaults"><div class="voc-setting-text"><strong id="voc-setting-defaults">${e(context.t("settings.defaults"))}</strong><span>${e(context.t("settings.defaultsHint"))}</span></div>${builtIn}${change}</div>`;
-  return block(context.t("settings.defaults"), `${head}${facts(vm.defaults.facts)}`, { iconName: "mdi:tune-variant", key: "defaults" });
+  const builtIn = vm.defaults.builtIn ? `<p class="voc-settings-note" data-key="built-in">${e(vm.defaults.builtIn)}</p>` : "";
+  return section(context, {
+    key: "defaults",
+    iconName: "mdi:tune-variant",
+    title: context.t("settings.defaults"),
+    action: (id) => change(context, "open-job-defaults", vm.defaults.decision, id),
+    content: `<p class="voc-overlay-lead">${e(context.t("settings.defaultsHint"))}</p>${builtIn}${facts(vm.defaults.facts)}`,
+  });
 }
 
 function queueBlock(context, vm) {
   let content = "";
   if (vm.error) content = errorState(context, vm.error);
   else if (vm.loading) content = loadingState(context);
-  else if (vm.grace) content = graceSetting(context, vm.grace);
-  return block(context.t("settings.queue"), content, { iconName: "mdi:format-list-numbered", key: "queue" });
+  else if (vm.queue) content = `<p class="voc-overlay-lead">${e(context.t("settings.queueHint"))}</p>${facts(vm.queue.facts)}`;
+  return section(context, { key: "queue", iconName: "mdi:format-list-numbered", title: context.t("settings.queue"), action: vm.queue ? (id) => change(context, "open-queue-settings", vm.queue.decision, id) : "", content });
 }
 
-function integrationBlock(context, vm) {
+// "About": the integration and the card, with the ways into the setup and Home Assistant.
+function aboutBlock(context, vm) {
   const actions = [
-    vm.integration.setup ? button({ action: vm.integration.setup.action, label: context.t("settings.openSetup"), iconName: "mdi:clipboard-check-outline" }) : "",
-    vm.integration.open ? button({ action: "navigate", args: { path: vm.integration.open.path }, label: context.t("settings.openIntegration"), iconName: "mdi:open-in-app" }) : "",
+    vm.about.setup ? button({ action: vm.about.setup.action, label: context.t("settings.openSetup"), iconName: "mdi:clipboard-check-outline" }) : "",
+    vm.about.open ? button({ action: "navigate", args: { path: vm.about.open.path }, label: context.t("settings.openIntegration"), iconName: "mdi:open-in-app" }) : "",
   ].join("");
   const open = actions ? `<div class="voc-inline-actions">${actions}</div>` : "";
-  return block(context.t("settings.integration"), `<p class="voc-overlay-lead">${e(context.t("settings.integrationHint"))}</p>${facts(vm.integration.facts)}${open}`, { iconName: "mdi:puzzle-outline", key: "integration" });
-}
-
-function cardBlock(context, vm) {
-  return block(context.t("settings.card"), facts(vm.card.facts), { iconName: "mdi:card-text-outline", key: "card" });
+  return section(context, { key: "about", iconName: "mdi:information-outline", title: context.t("settings.about"), content: `<p class="voc-overlay-lead">${e(context.t("settings.integrationHint"))}</p>${facts(vm.about.facts)}${open}` });
 }
 
 export function renderSettings(context, vm) {
-  return `<div class="voc-view voc-settings" data-key="view:settings">${defaultsBlock(context, vm)}${queueBlock(context, vm)}${integrationBlock(context, vm)}${cardBlock(context, vm)}</div>`;
+  return `<div class="voc-view voc-settings" data-key="view:settings">${defaultsBlock(context, vm)}${queueBlock(context, vm)}${aboutBlock(context, vm)}</div>`;
 }
 
 export const settingsView = Object.freeze({

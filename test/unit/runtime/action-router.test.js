@@ -638,14 +638,21 @@ test("the queue quiet period is edited in minutes and sent in seconds", async ()
   const verdict = (_operation, parameters) => (parameters.grace_seconds > 86400 ? rejects(["grace_seconds", "out_of_range"]) : ACCEPTS);
   const { router, ui, commands } = await setup({ verdict });
   router.handle("open-queue-settings");
-  assert.equal(ui.overlay.minutes, 15);
+  assert.deepEqual([ui.overlay.minutes, ui.overlay.delay], [15, 5]);
   router.handle("step-field", { field: "overlay:minutes", step: 1, min: 0, max: 1440 });
   await router.handle("save-queue-settings");
-  assert.deepEqual(commands[0].parameters, { grace_seconds: 960 });
+  assert.deepEqual(commands[0].parameters, { grace_seconds: 960 }, "only what changed is sent");
+  router.handle("open-queue-settings");
+  router.input("overlay:delay", "30");
+  await router.handle("save-queue-settings");
+  assert.deepEqual(commands[1].parameters, { start_delay_seconds: 30 });
+  router.handle("open-queue-settings");
+  await router.handle("save-queue-settings");
+  assert.deepEqual([commands.length, ui.overlay], [2, null], "nothing changed, nothing sent");
   router.handle("open-queue-settings");
   router.input("overlay:minutes", 2000);
   await router.handle("save-queue-settings");
-  assert.deepEqual([commands.length, { ...ui.overlay.errors }], [1, { "overlay:minutes": "out_of_range" }]);
+  assert.deepEqual([commands.length, { ...ui.overlay.errors }], [2, { "overlay:minutes": "out_of_range" }]);
 });
 
 test("recovery sends the stop confirmation the user gave", async () => {

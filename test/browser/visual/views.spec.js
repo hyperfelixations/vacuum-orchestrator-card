@@ -431,15 +431,15 @@ test.describe("templates, history and diagnostics", () => {
 test.describe("settings", () => {
   test("light", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: { ...BASE, start_view: "settings" } });
-    await expect(card.locator('[data-key="setting:grace"] .voc-setting-value')).toHaveText("15 min");
-    await expect(card.locator('[data-key="integration"]')).toContainText(/\d+\.\d+\.\d+/);
+    await expect(card.locator('[data-key="queue"] [data-key="fact:grace"]')).toHaveText("15 min");
+    await expect(card.locator('[data-key="about"]')).toContainText(/\d+\.\d+\.\d+/);
     await shot(page, "settings-medium-light.png", MEDIUM);
   });
 
   test("dark, narrow, German", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     const card = await mountCard(page, { ...BUSY, config: { ...BASE, language: "de", start_view: "settings" } });
-    await expect(card.locator('[data-key="setting:grace"]')).toContainText("Wartezeit bis zum Laufende");
+    await expect(card.locator('[data-key="queue"]')).toContainText("Wartezeit bis zum Laufende");
     await shot(page, "settings-narrow-dark.png", NARROW);
   });
 });

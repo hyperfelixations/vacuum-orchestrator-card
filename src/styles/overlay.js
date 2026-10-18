@@ -29,6 +29,7 @@ export const OVERLAY_CSS = `
 .voc-block { display: grid; gap: 8px; min-width: 0; padding: 10px 12px; border-radius: 14px; background: var(--voc-panel); border: 1px solid var(--voc-hairline); }
 .voc-block-title { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 10px; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; color: var(--voc-faint); }
 .voc-block-title ha-icon { --mdc-icon-size: 14px; }
+.voc-block-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 
 .voc-group { display: grid; gap: 6px; min-width: 0; }
 .voc-group-title { display: flex; align-items: baseline; gap: 6px; margin: 2px 2px 0; font-size: 10px; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; color: var(--voc-faint); }
