@@ -266,10 +266,13 @@ test("the small dialogs word their command and show the integration's verdict on
   assert.equal(stuck.reason, recovery.texts.t("failure.robot_connection_lost"));
   assert.equal(dialogs.buildRecovery({ ...built, overlay: { robotId: robotId(built.model, "Rocky") } }).open, false);
   const settings = dialogs.buildQueueSettings({ ...built, overlay: { delay: 5, minutes: 2000, errors: { "overlay:minutes": "out_of_range" } } });
-  const [delay, grace] = settings.fields;
+  // The grace period comes first, a quick choice before the exact minutes.
+  const [quick, grace, delay] = settings.fields;
+  assert.deepEqual([quick.key, quick.control, quick.value, quick.options.map((option) => [option.value, option.label])], ["overlay:graceQuick", "segmented", null, [[5, "5 min"], [15, "15 min"], [30, "30 min"], [60, "1 h"]]]);
   assert.deepEqual([delay.key, delay.value, delay.max, grace.key, grace.error, grace.max], ["overlay:delay", 5, 600, "overlay:minutes", said(built, "out_of_range"), 1440]);
   const fine = dialogs.buildQueueSettings({ ...built, overlay: { delay: 5, minutes: 15 } });
-  assert.deepEqual([fine.fields.map((entry) => entry.error), fine.invalid], [[null, null], null]);
+  assert.deepEqual([fine.fields.map((entry) => entry.error ?? null), fine.invalid, fine.fields[0].value], [[null, null, null], null, 15]);
+  assert.equal(dialogs.buildQueueSettings({ ...built, overlay: { delay: 5, minutes: "30" } }).fields[0].value, 30, "typed minutes select their quick choice");
 });
 
 // V4f, JOB-25, EXE-14, EXE-15: a finished job says how it ended and how sure the integration is,

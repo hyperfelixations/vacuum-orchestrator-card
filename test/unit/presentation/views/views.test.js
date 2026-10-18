@@ -384,7 +384,7 @@ test("settings show the queue's start delay and wait time, the job defaults and 
   const built = await busy();
   const settings = buildSettingsView(built);
   assert.equal(settings.loading, false);
-  assert.deepEqual(settings.queue.facts.map((fact) => [fact.key, fact.value]), [["startDelay", "5 s"], ["grace", "15 min"]]);
+  assert.deepEqual(settings.queue.facts.map((fact) => [fact.key, fact.value]), [["grace", "15 min"], ["startDelay", "5 s"]]);
   assert.equal(settings.queue.decision.state, "enabled");
   assert.deepEqual(settings.about.facts.map((fact) => fact.label), [built.texts.t("settings.integrationVersion"), built.texts.t("settings.apiVersion"), built.texts.t("settings.cardVersion")]);
   assert.ok(settings.about.facts.every((fact) => fact.value), "every version is known");
@@ -394,10 +394,10 @@ test("settings show the queue's start delay and wait time, the job defaults and 
   assert.deepEqual(settings.defaults.facts.map((fact) => fact.value), ["Vacuum", "Standard", "Medium", "Standard", "1", "Best effort"]);
   assert.deepEqual([settings.defaults.builtIn, settings.defaults.decision.state], [built.texts.t("settings.defaultsBuiltIn"), "enabled"]);
   const configured = buildSettingsView(await modelFor("settings_controls", { from: "Mopping is the default" }));
-  assert.deepEqual([configured.defaults.facts[0].value, configured.defaults.facts[3].value, configured.defaults.builtIn, configured.queue.facts[1].value], ["Mop", "Deep+", null, "30 min"]);
+  assert.deepEqual([configured.defaults.facts[0].value, configured.defaults.facts[3].value, configured.defaults.builtIn, configured.queue.facts[0].value], ["Mop", "Deep+", null, "30 min"]);
   const queue = built.model.slots.queue;
   const immediate = buildSettingsView({ ...built, model: { ...built.model, slots: { ...built.model.slots, queue: { ...queue, data: { ...queue.data, graceSeconds: 0 } } } } });
-  assert.equal(immediate.queue.facts[1].value, built.texts.t("settings.graceOff"));
+  assert.equal(immediate.queue.facts[0].value, built.texts.t("settings.graceOff"));
   const locked = buildSettingsView(await busy({}, { admin: false }));
   assert.deepEqual([locked.queue.decision.state, locked.queue.decision.reason, locked.about.open], ["hidden", "read_only", null]);
   const missing = buildSettingsView({ ...built, context: affordanceContext({ operations: [] }) });

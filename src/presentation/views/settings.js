@@ -40,8 +40,8 @@ export function buildSettingsView({ model, texts, context }) {
     queue: Number.isFinite(graceSeconds)
       ? {
           facts: [
-            { key: "startDelay", label: t(texts, "settings.startDelay"), value: Number.isFinite(delaySeconds) ? (delaySeconds > 0 ? seconds(texts, delaySeconds) : t(texts, "settings.startDelayOff")) : null },
             { key: "grace", label: t(texts, "settings.grace"), value: graceSeconds > 0 ? seconds(texts, graceSeconds) : t(texts, "settings.graceOff") },
+            { key: "startDelay", label: t(texts, "settings.startDelay"), value: Number.isFinite(delaySeconds) ? (delaySeconds > 0 ? seconds(texts, delaySeconds) : t(texts, "settings.startDelayOff")) : null },
           ],
           decision: decide(context, { operation: "configure_queue", target: QUEUE_TARGET }),
         }

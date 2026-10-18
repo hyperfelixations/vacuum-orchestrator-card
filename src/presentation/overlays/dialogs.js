@@ -5,7 +5,7 @@
 import { QUEUE_TARGET, decide, jobTarget, recoveryAffordance } from "../../domain/affordances.js";
 import { QUEUE_GRACE_MAX_SECONDS, START_DELAY_MAX_SECONDS } from "../../domain/job-schema.js";
 import { findJob, list, robotName, robotsOf, roomIndex, slotData, jobTitle } from "../common/lookups.js";
-import { reasonText, t } from "../common/texts.js";
+import { reasonText, seconds, t } from "../common/texts.js";
 import { pageErrors } from "./editor-fields.js";
 import { readinessReasons } from "../views/job-row.js";
 
@@ -108,6 +108,8 @@ export function buildStartJob({ model, texts, context, overlay }) {
 }
 
 const GRACE_MAX_MINUTES = QUEUE_GRACE_MAX_SECONDS / 60;
+// Quick choices for the grace period, in minutes; the stepper keeps any other value.
+export const GRACE_QUICK_MINUTES = Object.freeze([5, 15, 30, 60]);
 
 // The start delay of new and changed jobs, in seconds, and the quiet period after which a queue
 // run without executable work ends, in whole minutes.
@@ -117,9 +119,11 @@ export function buildQueueSettings({ texts, context, overlay }) {
   return {
     key: "queue-settings",
     title: t(texts, "queueSettings.title"),
+    // The grace period is changed more often than the start delay and comes first.
     fields: [
-      { key: "overlay:delay", label: t(texts, "queueSettings.delay"), control: "text", inputType: "number", value: delay ?? "", min: 0, max: START_DELAY_MAX_SECONDS, step: 1, hint: t(texts, "queueSettings.delayHint"), error: error("overlay:delay") },
+      { key: "overlay:graceQuick", label: t(texts, "settings.grace"), control: "segmented", value: GRACE_QUICK_MINUTES.find((value) => value === Number(minutes)) ?? null, options: GRACE_QUICK_MINUTES.map((value) => ({ value, label: seconds(texts, value * 60), icon: "mdi:timer-outline" })) },
       { key: "overlay:minutes", label: t(texts, "queueSettings.grace"), control: "stepper", value: Number.isFinite(minutes) ? minutes : 0, min: 0, max: GRACE_MAX_MINUTES, hint: t(texts, "queueSettings.graceHint"), error: error("overlay:minutes") },
+      { key: "overlay:delay", label: t(texts, "queueSettings.delay"), control: "text", inputType: "number", value: delay ?? "", min: 0, max: START_DELAY_MAX_SECONDS, step: 1, hint: t(texts, "queueSettings.delayHint"), error: error("overlay:delay") },
     ],
     invalid,
     save: decide(context, { operation: "configure_queue", target: QUEUE_TARGET }),

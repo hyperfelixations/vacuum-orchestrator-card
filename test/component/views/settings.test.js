@@ -1,4 +1,4 @@
-// The settings view driven through the built card: the queue run's wait time is changed in
+// The settings view driven through the built card: the queue run's wait time is chosen in
 // minutes, sent in seconds and shown again from the integration's answer; the queue view does not
 // carry the setting; integration and card name their versions; a user who may not change the
 // setting sees it locked and explained.
@@ -10,14 +10,17 @@ const { mountCard } = require("../../helpers/mount-card.js");
 const BUSY = { recording: "showcase", from: "A busy afternoon" };
 const settings = (from, options = {}) => mountCard({ recording: "settings_controls", from, ...options });
 
-test("the wait time is changed in minutes, sent in seconds, and the dialog returns to settings", async () => {
+test("the wait time is chosen in minutes, sent in seconds, and the dialog returns to settings", async () => {
   const card = await settings("The card opens");
   assert.equal(card.root.querySelector('[data-key="grace"]'), null, "the queue view carries no setting");
   await card.click('[role=tab][data-view="settings"]');
   assert.equal(card.text('[data-key="queue"] [data-key="fact:grace"]'), "15 min");
   await card.click('[data-key="queue"] [data-action="open-queue-settings"]');
   assert.equal(card.root.querySelector(".voc-dialog").dataset.key, "overlay:queue-settings");
-  await card.type('[data-field="overlay:minutes"]', "30");
+  assert.equal(card.root.querySelector('[data-key="field:overlay:graceQuick"] [aria-checked="true"]').dataset.value, "15");
+  await card.click('[data-key="field:overlay:graceQuick"] [data-value="30"]');
+  assert.equal(card.root.querySelector('[data-field="overlay:minutes"]').value, "30", "the quick choice sets the minutes");
+  assert.equal(card.root.querySelector('[data-key="field:overlay:graceQuick"] [aria-checked="true"]').dataset.value, "30");
   await card.click('[data-action="save-queue-settings"]');
   await card.settle(32);
   assert.deepEqual(card.commands("configure_queue").map((message) => message.parameters), [{ grace_seconds: 1800 }]);

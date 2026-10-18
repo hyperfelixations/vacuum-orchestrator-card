@@ -126,7 +126,7 @@ test("the card's words follow the glossary", async () => {
   const { en } = await import("../../../src/i18n/languages/en.js");
   const { de } = await import("../../../src/i18n/languages/de.js");
   assert.deepEqual([en["field.vacuumPower"], en["field.mopIntensity"], de["field.vacuumPower"], de["field.mopIntensity"]], ["Vacuum power", "Water amount", "Saugkraft", "Wassermenge"]);
-  assert.deepEqual([en["settings.grace"], de["settings.grace"], en["queueSettings.grace"], de["queueSettings.grace"]], ["Grace period", "Nachlaufzeit", "Grace period (minutes)", "Nachlaufzeit (Minuten)"]);
+  assert.deepEqual([en["settings.grace"], de["settings.grace"], en["queueSettings.grace"], de["queueSettings.grace"]], ["Grace period", "Nachlaufzeit", "Exact time (minutes)", "Genaue Zeit (Minuten)"], "the dialog names the grace period above its exact minutes");
   assert.deepEqual([en["setup.step.queue.action"], de["setup.step.queue.action"]], [en["trace.command.configure_queue"], de["trace.command.configure_queue"]], "the step opens both queue settings");
   for (const language of [en, de]) {
     assert.equal(language["setup.step.defaults.title"], language["settings.defaults"], "the setup step names the settings it opens");

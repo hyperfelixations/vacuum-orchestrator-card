@@ -214,6 +214,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       clearError(field);
       return;
     }
+    // The grace period's quick choice sets its minutes.
+    if (field === "overlay:graceQuick") return setValue("overlay:minutes", value);
     if (field.startsWith("overlay:")) {
       ui.updateOverlay({ [field.slice("overlay:".length)]: value });
       clearError(field);

@@ -716,6 +716,10 @@ test("the queue quiet period is edited in minutes and sent in seconds", async ()
   router.input("overlay:minutes", 2000);
   await router.handle("save-queue-settings");
   assert.deepEqual([commands.length, { ...ui.overlay.errors }], [2, { "overlay:minutes": "out_of_range" }]);
+  router.handle("set-field", { field: "overlay:graceQuick", value: 30 });
+  assert.deepEqual([ui.overlay.minutes, { ...ui.overlay.errors }], [30, {}], "a quick choice sets the minutes and clears their error");
+  await router.handle("save-queue-settings");
+  assert.deepEqual(commands[2].parameters, { grace_seconds: 1800 });
 });
 
 test("recovery sends the stop confirmation the user gave", async () => {
