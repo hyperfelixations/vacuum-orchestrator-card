@@ -31,6 +31,17 @@ export function dateTime(texts, value) {
   return typeof texts?.formatDateTime === "function" ? texts.formatDateTime(value) : String(value);
 }
 
+// The day alone and the time of day to the second, for a log that names each day once.
+export function dayOf(texts, value) {
+  if (value === null || value === undefined) return "—";
+  return typeof texts?.formatDateTime === "function" ? texts.formatDateTime(value, { timeStyle: undefined }) : String(value);
+}
+
+export function secondOf(texts, value) {
+  if (value === null || value === undefined) return "—";
+  return typeof texts?.formatDateTime === "function" ? texts.formatDateTime(value, { dateStyle: undefined, timeStyle: "medium" }) : String(value);
+}
+
 // The time of day alone, for an instant within the next hours ("fails at 14:32").
 export function clockTime(texts, value) {
   if (value === null || value === undefined) return "—";

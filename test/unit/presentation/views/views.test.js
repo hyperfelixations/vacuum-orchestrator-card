@@ -319,6 +319,12 @@ test("diagnostics show versions, runtime, setup and the trace; the tab turns on 
   assert.ok(facts[built.texts.t("diagnostics.setup")]);
   assert.equal(diagnostics.connection.tone, "ready");
   assert.ok(diagnostics.trace.length > 0);
+  // V6: the newest entries first; the rest on request.
+  const { TRACE_PREVIEW } = await view("diagnostics");
+  assert.ok(diagnostics.trace.length <= TRACE_PREVIEW);
+  const all = buildDiagnosticsView({ ...built, options: {}, ui: { expanded: [diagnostics.traceMore.key] } });
+  assert.ok(all.trace.length > diagnostics.trace.length);
+  assert.deepEqual([diagnostics.traceMore.count, all.traceMore.open], [all.trace.length - diagnostics.trace.length, true]);
   assert.ok(diagnostics.download);
   assert.equal(buildDiagnosticsView({ ...built, options: { show_trace: false } }).trace, null);
   assert.equal(diagnosticsNeeded(built.model), false);

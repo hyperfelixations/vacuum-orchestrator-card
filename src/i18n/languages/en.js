@@ -926,6 +926,8 @@ export const en = {
   "diagnostics.trace": "Recent events",
   "diagnostics.traceLead": "Kept in memory only and cleared when the integration restarts.",
   "diagnostics.traceEmpty": "No event recorded since the last start.",
+  "diagnostics.traceMore": (v) => plural(v.count, "Show 1 more", `Show ${v.count} more`),
+  "diagnostics.traceLess": "Show fewer",
   "diagnostics.downloadHint": "For a complete report, download the diagnostics on the integration page.",
   "setup.step.robots.title": "Robots",
   "setup.step.rooms.title": "Rooms and reach",

@@ -63,6 +63,17 @@ test("the registry declares every view and page once with build and render", asy
   assert.equal(new Set(VIEW_CSS).size, VIEW_CSS.length);
 });
 
+// V6: the event log names a day once, above its first entry.
+test("an event log heads each day once", async () => {
+  const { traceList } = await import("../../../src/views/parts.js");
+  const built = await busy();
+  const { document } = await renderContext(built.texts);
+  const row = (key, day) => ({ key, day, time: "11:18:58 AM", event: "Storage", detail: "saved", tone: "neutral", count: 1 });
+  const list = parse(document, traceList([row("1", "Mar 14, 2026"), row("2", "Mar 14, 2026"), row("3", "Mar 13, 2026")]));
+  assert.deepEqual([...list.querySelectorAll(".voc-trace-day")].map((day) => day.textContent), ["Mar 14, 2026", "Mar 13, 2026"]);
+  assert.equal(list.querySelectorAll("li[data-key]").length, 3);
+});
+
 test("a field ties its label, hint and error to the control", async () => {
   const { renderField, fieldId } = await import("../../../src/views/controls/fields.js");
   const built = await busy();

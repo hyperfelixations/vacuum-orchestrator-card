@@ -38,6 +38,8 @@ export const DETAIL_CSS = `
 .voc-trace { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 11.5px; }
 .voc-trace li { display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; align-items: baseline; }
 .voc-trace-time { color: var(--voc-faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.voc-trace li.voc-trace-day { display: block; margin-top: 6px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--voc-muted); }
+.voc-trace li.voc-trace-day:first-child { margin-top: 0; }
 .voc-trace-event { font-weight: 800; }
 .voc-trace li[data-tone="attention"] .voc-trace-event { color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
 .voc-trace-detail { min-width: 0; color: var(--voc-muted); overflow-wrap: anywhere; }

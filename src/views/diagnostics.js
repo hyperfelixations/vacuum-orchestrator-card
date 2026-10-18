@@ -10,7 +10,7 @@ import { DIAGNOSTICS_CSS } from "./styles/diagnostics.js";
 function traceBlock(context, vm) {
   if (vm.trace === null) return "";
   let content;
-  if (vm.trace.length) content = traceList(vm.trace);
+  if (vm.trace.length) content = `${traceList(vm.trace)}${vm.traceMore ? button({ action: "toggle", args: { key: vm.traceMore.key }, label: vm.traceMore.label, iconName: vm.traceMore.open ? "mdi:chevron-up" : "mdi:chevron-down", variant: "quiet", key: "trace-more" }) : ""}`;
   else if (vm.traceLoading) content = loadingState(context);
   else content = `<p class="voc-overlay-lead">${e(context.t("diagnostics.traceEmpty"))}</p>`;
   return block(context.t("diagnostics.trace"), `<p class="voc-overlay-lead">${e(context.t("diagnostics.traceLead"))}</p>${content}`, { iconName: "mdi:timeline-text-outline", key: "trace" });
@@ -37,7 +37,7 @@ export const diagnosticsView = Object.freeze({
   optionsSchema: Object.freeze({ show_trace: boolOption(true) }),
   primary: null,
   scopes: ({ options }) => [{ name: "diagnostics" }, ...(options.show_trace === false ? [] : [{ name: "trace" }])],
-  build: ({ model, texts, options }) => buildDiagnosticsView({ model, texts, options }),
+  build: ({ model, texts, options, ui }) => buildDiagnosticsView({ model, texts, options, ui }),
   render: renderDiagnostics,
   css: DIAGNOSTICS_CSS,
 });

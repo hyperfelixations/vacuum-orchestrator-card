@@ -3,7 +3,7 @@
 
 import { isAttemptState, isJobState, SETTING_FIELDS, SETTING_WIRE_NAMES } from "../../domain/job-schema.js";
 import { findJob, jobTitle, list, robotName, roomIndex, roomName } from "./lookups.js";
-import { attemptStateLabel, dateTime, jobStateLabel, queueModeLabel, reasonText, settingName, t } from "./texts.js";
+import { attemptStateLabel, dayOf, jobStateLabel, queueModeLabel, reasonText, secondOf, settingName, t } from "./texts.js";
 
 // The integration's trace vocabulary the card words (UI-04): the commands it traces, the stages of
 // its records and the availability it observes of a robot.
@@ -73,7 +73,8 @@ export function traceRows(records, { model, texts, limit = Infinity, withJob = f
       const job = withJob && details.job_id ? findJob(model, details.job_id) : null;
       return {
         key: String(record.sequence),
-        time: dateTime(texts, record.timestamp),
+        day: dayOf(texts, record.timestamp),
+        time: secondOf(texts, record.timestamp),
         event: eventLabel(texts, record.event),
         // A job that may not start yet is no fault; only an internal error is (UI-20).
         tone: record.event === "internal_error" ? "attention" : "neutral",
@@ -89,12 +90,21 @@ export function traceRows(records, { model, texts, limit = Infinity, withJob = f
         ].filter(Boolean).join(" · "),
       };
     });
-  // The same entry again at the shown time is counted rather than repeated.
-  const shown = new Map();
+  // The same entry within the shown second is counted wherever it stands (a dispatcher cycles
+  // through the waiting jobs), and so is a run of it on one day; a row keeps its newest time.
+  const merged = [];
+  const bySecond = new Map();
   for (const row of rows) {
-    const same = `${row.time}|${row.event}|${row.detail}`;
-    if (shown.has(same)) shown.get(same).count += 1;
-    else shown.set(same, { ...row, count: 1 });
+    const entry = `${row.day}|${row.event}|${row.detail}|${row.tone}`;
+    const same = bySecond.get(`${row.time}|${entry}`);
+    const last = merged.at(-1);
+    if (same) same.count += 1;
+    else if (last && `${last.day}|${last.event}|${last.detail}|${last.tone}` === entry) last.count += 1;
+    else {
+      const kept = { ...row, count: 1 };
+      merged.push(kept);
+      bySecond.set(`${row.time}|${entry}`, kept);
+    }
   }
-  return [...shown.values()].slice(0, limit);
+  return merged.slice(0, limit);
 }

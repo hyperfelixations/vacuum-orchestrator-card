@@ -926,6 +926,8 @@ export const de = {
   "diagnostics.trace": "Letzte Ereignisse",
   "diagnostics.traceLead": "Nur im Arbeitsspeicher; beim Neustart der Integration geleert.",
   "diagnostics.traceEmpty": "Seit dem letzten Start wurde kein Ereignis aufgezeichnet.",
+  "diagnostics.traceMore": (v) => plural(v.count, "1 weiteren zeigen", `${v.count} weitere zeigen`),
+  "diagnostics.traceLess": "Weniger zeigen",
   "diagnostics.downloadHint": "Für einen vollständigen Bericht lade die Diagnose auf der Integrationsseite herunter.",
   "setup.step.robots.title": "Roboter",
   "setup.step.rooms.title": "Räume und Erreichbarkeit",

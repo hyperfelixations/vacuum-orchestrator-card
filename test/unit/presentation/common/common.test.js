@@ -134,10 +134,26 @@ test("trace rows word known events and states and keep unknown ones as reported"
   assert.doesNotMatch(blocked.detail, /job_prerequisites/);
   assert.equal(en.t("trace.event.dispatch_blocked"), "Not started yet");
   assert.doesNotMatch(blocked.detail, /blocked/, "the reason says it; the raw state does not");
-  // The same entry again within the shown minute is counted, not repeated.
+  // The same entry within the shown second is counted wherever it stands, as a dispatcher cycling
+  // through waiting jobs records it; a run of it across seconds is counted too.
   const again = { sequence: 4, timestamp: NOW, event: "dispatch_blocked", details: { state: "blocked", reason: "job_prerequisites" } };
-  const counted = traceRows([{ ...again, sequence: 5 }, { sequence: 6, timestamp: NOW, event: "internal_error", details: {} }, again], { model, texts: en });
-  assert.deepEqual(counted.map((row) => [row.event, row.count]), [[en.t("trace.event.dispatch_blocked"), 2], [en.t("trace.event.internal_error"), 1]]);
+  const counted = traceRows([{ ...again, sequence: 5 }, { sequence: 6, timestamp: NOW, event: "internal_error", details: {} }, again, { ...again, sequence: 7, timestamp: NOW - 60_000 }], { model, texts: en });
+  assert.deepEqual(counted.map((row) => [row.event, row.count]), [[en.t("trace.event.dispatch_blocked"), 2], [en.t("trace.event.internal_error"), 1], [en.t("trace.event.dispatch_blocked"), 1]]);
+});
+
+// V6: an event log names the day once and each entry to the second; a run of the same entry is
+// counted rather than repeated.
+test("trace rows carry the day apart from the time to the second and count a run of the same entry", async () => {
+  const { model } = await modelFor("showcase", { from: BUSY });
+  const { traceRows } = await import("../../../../src/presentation/common/trace.js");
+  const en = await texts();
+  const blocked = (sequence, timestamp) => ({ sequence, timestamp, event: "dispatch_blocked", details: { reason: "job_prerequisites" } });
+  const rows = traceRows([blocked(1, NOW), blocked(2, NOW - 7000), { sequence: 3, timestamp: NOW - 9000, event: "storage", details: { stage: "committed" } }, blocked(4, NOW - 11000), blocked(5, NOW - 86_400_000)], { model, texts: en });
+  assert.deepEqual(rows.map((row) => [row.key, row.count]), [["1", 2], ["3", 1], ["4", 1], ["5", 1]]);
+  assert.equal(rows[0].day, en.formatDateTime(NOW, { timeStyle: undefined }));
+  assert.equal(rows[0].time, en.formatDateTime(NOW, { dateStyle: undefined, timeStyle: "medium" }));
+  assert.match(rows[0].time, /\d:\d{2}:\d{2}/, "to the second");
+  assert.notEqual(rows[3].day, rows[0].day);
 });
 
 // V6 (UI-04): every value the integration traces is worded; a vendor's own robot status, which the
