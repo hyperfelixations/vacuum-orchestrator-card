@@ -28,7 +28,8 @@ test("each setting is an ordered ladder without aliases; robot mappings may also
   assert.deepEqual(schema.MODE_SETTINGS.vacuum, ["vacuumPower"]);
   assert.deepEqual(schema.MODE_SETTINGS.mop, ["mopIntensity", "mopRoute"]);
   assert.deepEqual(schema.ROBOT_OPTION_MAPS.vacuum_levels[0], "off");
-  assert.equal(schema.ROBOT_TIMEOUT_FIELDS.return_timeout_seconds, 900);
+  // The integration reports every time limit; the card names the fields and fills in none.
+  assert.ok(Array.isArray(schema.ROBOT_TIMEOUT_FIELDS) && schema.ROBOT_TIMEOUT_FIELDS.includes("fault_timeout_seconds"));
 });
 
 test("terminal and active states partition the non-queued states except attention", async () => {

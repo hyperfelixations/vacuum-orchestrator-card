@@ -115,16 +115,8 @@ export const ROBOT_ROLE_DOMAINS = Object.freeze({
   clean_fluid_empty: "binary_sensor",
 });
 export const ROBOT_PROTOCOLS = list(["roborock_v1"]);
-export const ROBOT_TIMEOUT_FIELDS = Object.freeze({
-  start_timeout_seconds: 180,
-  run_timeout_seconds: 14400,
-  cancel_timeout_seconds: 120,
-  settle_seconds: 30,
-  settings_timeout_seconds: 45,
-  return_timeout_seconds: 900,
-  fault_timeout_seconds: 900,
-  connection_timeout_seconds: 600,
-});
+// A robot's time limits; the integration reports each one, the card fills in none.
+export const ROBOT_TIMEOUT_FIELDS = list(["start_timeout_seconds", "run_timeout_seconds", "cancel_timeout_seconds", "settle_seconds", "settings_timeout_seconds", "return_timeout_seconds", "fault_timeout_seconds", "connection_timeout_seconds"]);
 // Option maps: which semantic keys each map may carry; `map_options` keys are free. `off`
 // names the robot option that switches suction or water off for a single-operation phase.
 export const ROBOT_OPTION_MAPS = Object.freeze({

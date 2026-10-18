@@ -75,7 +75,7 @@ function capabilities(wire) {
 function configuration(wire) {
   const value = isRecord(wire) ? wire : {};
   const timeouts = {};
-  for (const field of Object.keys(ROBOT_TIMEOUT_FIELDS)) timeouts[field] = finite(value[field]);
+  for (const field of ROBOT_TIMEOUT_FIELDS) timeouts[field] = finite(value[field]);
   const optionMaps = {};
   for (const field of Object.keys(ROBOT_OPTION_MAPS)) optionMaps[field] = stringMap(value[field]);
   return Object.freeze({

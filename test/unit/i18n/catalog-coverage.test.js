@@ -46,7 +46,7 @@ test("every job state, attempt state, mode, setting rung, origin, role, release 
     ...schema.AFTER_CANCEL.map((choice) => `detail.afterCancel.${choice}`),
     ...schema.ROBOT_ROLES.map((role) => `role.${role}`),
     ...Object.keys(schema.ROBOT_OPTION_MAPS).map((map) => `robotEditor.optionMap.${map}`),
-    ...Object.keys(schema.ROBOT_TIMEOUT_FIELDS).map((field) => `robotEditor.timeout.${field}`),
+    ...schema.ROBOT_TIMEOUT_FIELDS.map((field) => `robotEditor.timeout.${field}`),
     ...schema.QUEUE_MODES.map((mode) => `queue.mode.${mode}`),
     ...schema.RELEASE_KINDS.flatMap((kind) => [`release.kind.${camel(kind)}`, `release.explain.${camel(kind)}`]),
     ...schema.SETTINGS_POLICIES.map((policy) => `policy.${camel(policy)}`),

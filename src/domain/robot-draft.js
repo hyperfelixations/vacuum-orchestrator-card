@@ -40,7 +40,8 @@ export function createRobotDraft(robot, { roleEntities = {} } = {}) {
     protocol: wire.protocol ?? null,
     physicalRobotId: wire.physical_robot_id ?? null,
     roles: Object.fromEntries(ROBOT_ROLES.map((role) => [role, roleDraft(roles, role, roleEntities)])),
-    timeouts: Object.fromEntries(Object.entries(ROBOT_TIMEOUT_FIELDS).map(([field, fallback]) => [field, Number.isFinite(wire[field]) ? wire[field] : fallback])),
+    // A limit the integration does not report stays empty: its check names what is missing.
+    timeouts: Object.fromEntries(ROBOT_TIMEOUT_FIELDS.map((field) => [field, Number.isFinite(wire[field]) ? wire[field] : ""])),
     optionMaps: Object.fromEntries(Object.keys(ROBOT_OPTION_MAPS).map((field) => [field, { ...(wire[field] && typeof wire[field] === "object" ? wire[field] : {}) }])),
     requirements: (Array.isArray(wire.requirements) ? wire.requirements : []).map((item) => ({
       entityId: item.entity_id,
@@ -91,7 +92,7 @@ const ROBOT_FIELDS = Object.freeze({
 export function robotFieldOf(path) {
   const [root, part, child] = String(path).split(".");
   if (root !== "configuration") return null;
-  if (Object.hasOwn(ROBOT_TIMEOUT_FIELDS, part)) return `timeouts.${part}`;
+  if (ROBOT_TIMEOUT_FIELDS.includes(part)) return `timeouts.${part}`;
   if (Object.hasOwn(ROBOT_OPTION_MAPS, part)) return `optionMaps.${part}`;
   if (part === "roles") return ROBOT_ROLES.includes(child) ? `roles.${child}` : null;
   if (part === "requirements") return /^\d+$/.test(child ?? "") ? `requirements.${child}` : null;

@@ -122,7 +122,7 @@ export function buildRobotEditor({ model, texts, context, overlay }) {
       roles: { open: open("roles"), rows: ROBOT_ROLES.map((role) => roleRow(texts, model, draft, overlay, role, error, model.robotsLive?.[draft.meta.robotId])) },
       requirements: { open: open("requirements") || draft.requirements.length > 0, rows: requirements, search: entityField(texts, model, { key: "requirementsAdd", labelKey: "room.addCondition", value: [], query: overlay.queries?.requirementsAdd, hintKey: "robotEditor.requirementsHint" }) },
       options: { open: open("optionMaps"), groups: optionGroups(texts, draft, error), newKey: overlay.newOptionKey ?? "", newValue: overlay.newOptionValue ?? "" },
-      timeouts: { open: open("timeouts"), fields: Object.keys(ROBOT_TIMEOUT_FIELDS).map((name) => field(texts, { key: `timeouts.${name}`, labelKey: `robotEditor.timeout.${name}`, control: "text", inputType: "number", min: 1, max: 86400, step: 1, value: draft.timeouts[name], error: error(`timeouts.${name}`) })) },
+      timeouts: { open: open("timeouts"), fields: ROBOT_TIMEOUT_FIELDS.map((name) => field(texts, { key: `timeouts.${name}`, labelKey: `robotEditor.timeout.${name}`, control: "text", inputType: "number", min: 1, max: 86400, step: 1, value: draft.timeouts[name], error: error(`timeouts.${name}`) })) },
       identity: {
         open: open("identity", "protocol", "physicalRobotId"),
         fields: [

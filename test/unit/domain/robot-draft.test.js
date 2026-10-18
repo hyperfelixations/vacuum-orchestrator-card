@@ -31,6 +31,14 @@ test("an unchanged draft gives back the stored definition", async () => {
   assert.deepEqual(configuration, JSON.parse(JSON.stringify(robot.configuration.wire)));
 });
 
+test("a time limit the integration does not report stays empty rather than a card value", async () => {
+  const { createRobotDraft, robot } = await load();
+  const { start_timeout_seconds: _gone, ...wire } = robot.configuration.wire;
+  const draft = createRobotDraft({ ...robot, configuration: { ...robot.configuration, wire } });
+  assert.equal(draft.timeouts.start_timeout_seconds, "");
+  assert.equal(draft.timeouts.fault_timeout_seconds, robot.configuration.wire.fault_timeout_seconds);
+});
+
 test("edited fields replace their stored values; automatic roles leave the role map", async () => {
   const { createRobotDraft, updateRobotDraft, robotDraftToConfiguration, robot } = await load();
   let draft = createRobotDraft(robot);
