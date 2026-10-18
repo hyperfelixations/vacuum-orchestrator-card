@@ -67,13 +67,12 @@ test("a row's menu is operated by keyboard", async ({ page }) => {
   await expect(card.locator('[role="menu"]')).toHaveCount(0);
 });
 
-test("a control the user may not use keeps its explanation and stays reachable", async ({ page }) => {
+// UI-22: a user who may change nothing tabs through no locked controls and reads why once.
+test("a read-only user meets no locked controls and reads why in the header", async ({ page }) => {
   const card = await mountCard(page, { ...BUSY, admin: false });
-  const edit = named(card, ".voc-job", "Conservatory", '[data-action="edit-job"]');
-  await expect(edit).toHaveAttribute("aria-disabled", "true");
-  await expect(edit).toHaveAttribute("title", /administrator/i);
-  await edit.focus();
-  await expect(edit).toBeFocused();
+  await expect(card.locator('[aria-disabled="true"], button[disabled]')).toHaveCount(0);
+  await expect(named(card, ".voc-job", "Conservatory", '[data-action="edit-job"]')).toHaveCount(0);
+  await expect(card.locator(".voc-subtitle")).toContainText("Read only: changes need an administrator.");
 });
 
 // A row that does not fit first drops the inactive labels, then the primary action's label; the

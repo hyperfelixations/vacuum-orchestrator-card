@@ -62,11 +62,11 @@ test("job controls follow the integration's verdicts, rights, offered operations
       for (const [control, [name, operation]] of Object.entries(CONTROLS)) {
         const verdict = wire.actions[name];
         const decision = decisions[control];
-        const shown = Boolean(verdict) && (verdict.available || !NOT_APPLICABLE.has(verdict.reason));
-        assert.equal(decision.state !== "hidden", shown, `${control} shows where the integration offers or explains it`);
+        const shown = canCommand && Boolean(verdict) && (verdict.available || !NOT_APPLICABLE.has(verdict.reason));
+        assert.equal(decision.state !== "hidden", shown, `${control} shows where the integration offers or explains it, to whom may change things`);
+        if (!canCommand && verdict && (verdict.available || !NOT_APPLICABLE.has(verdict.reason))) assert.equal(decision.reason, "read_only", "read only hides it with its reason");
         if (!shown) continue;
-        if (!canCommand) assert.deepEqual([decision.state, decision.reason], ["disabled", "read_only"]);
-        else if (!operations.includes(operation)) assert.deepEqual([decision.state, decision.reason], ["disabled", "operation_missing"]);
+        if (!operations.includes(operation)) assert.deepEqual([decision.state, decision.reason], ["disabled", "operation_missing"]);
         else if (pending) assert.deepEqual([decision.state, decision.reason], ["disabled", "command_pending"]);
         else if (verdict.available) assert.equal(decision.state, "enabled", control);
         else assert.deepEqual([decision.state, decision.reason, decision.source], ["disabled", verdict.reason, "integration"]);

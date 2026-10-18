@@ -165,6 +165,16 @@ test("an empty queue says so and offers templates", async () => {
   const queue = buildQueueView({ ...quiet, options: {} });
   assert.equal(queue.empty, true);
   assert.equal(queue.templates.length, 2);
+  assert.deepEqual([queue.create.state, queue.emptyText], ["enabled", quiet.texts.t("queue.empty")]);
+});
+
+// UI-22: who may change nothing is not asked what to clean next and offered no button for it.
+test("an empty queue tells a read-only user only that nothing waits", async () => {
+  const { buildQueueView } = await view("queue");
+  const quiet = await modelFor("showcase", { from: "A quiet afternoon", requests: TEMPLATES, admin: false });
+  const queue = buildQueueView({ ...quiet, options: {} });
+  assert.deepEqual([queue.create.state, queue.emptyText], ["hidden", quiet.texts.t("queue.emptyReadOnly")]);
+  assert.deepEqual(queue.templates, [], "no quick start whose button would be hidden");
 });
 
 test("rooms show due verdicts, release, reaching robots and conditions as reported", async () => {
@@ -367,7 +377,7 @@ test("settings show the queue's start delay and wait time, the job defaults and 
   const immediate = buildSettingsView({ ...built, model: { ...built.model, slots: { ...built.model.slots, queue: { ...queue, data: { ...queue.data, graceSeconds: 0 } } } } });
   assert.equal(immediate.queue.facts[1].value, built.texts.t("settings.graceOff"));
   const locked = buildSettingsView(await busy({}, { admin: false }));
-  assert.deepEqual([locked.queue.decision.state, locked.queue.decision.reason, locked.about.open], ["disabled", "read_only", null]);
+  assert.deepEqual([locked.queue.decision.state, locked.queue.decision.reason, locked.about.open], ["hidden", "read_only", null]);
   const missing = buildSettingsView({ ...built, context: affordanceContext({ operations: [] }) });
   assert.equal(missing.queue.decision.reason, "operation_missing");
   const loading = buildSettingsView({ ...built, model: { ...built.model, slots: { ...built.model.slots, queue: { status: "loading" } } } });

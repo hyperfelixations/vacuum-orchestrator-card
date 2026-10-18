@@ -52,6 +52,7 @@ export const en = {
   "queue.attention": "Needs attention",
   "queue.waiting": "Waiting",
   "queue.empty": "What should be cleaned next?",
+  "queue.emptyReadOnly": "Nothing waits to be cleaned.",
   "queue.fromTemplate": "From template",
 
   "view.label": "Views",
@@ -139,7 +140,6 @@ export const en = {
   "action.cancel": "Cancel",
   "action.save": "Save",
 
-  "affordance.read_only": "Only administrators can change this.",
   "affordance.operation_missing": "The installed Vacuum Orchestrator does not offer this.",
   "affordance.command_pending": "A command for this is still running.",
   "affordance.connection_lost": "The connection to Home Assistant is interrupted.",
@@ -360,6 +360,7 @@ export const en = {
   "hint.reconnecting": "Reconnecting…",
   "hint.offline": "Some data could not be refreshed.",
   "hint.partialJobs": "Not every running job could be read.",
+  "hint.readOnly": "Read only: changes need an administrator.",
   "hint.several": (v) => `${v.count} notes.`,
 
   "scope.queue": "The queue",

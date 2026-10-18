@@ -167,8 +167,17 @@ test.describe("the queue", () => {
 
   test("read-only", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, admin: false, config: BASE });
-    await expect(named(card, ".voc-job", "Conservatory", '[data-action="edit-job"]')).toHaveAttribute("aria-disabled", "true");
+    await expect(card.locator(".voc-subtitle")).toContainText("Read only: changes need an administrator.");
+    await expect(named(card, ".voc-job", "Conservatory", '[data-action="edit-job"]')).toHaveCount(0);
     await shot(page, "queue-read-only-medium-light.png", MEDIUM);
+  });
+
+  test("read-only, narrow, dark", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    const card = await mountCard(page, { ...BUSY, admin: false, config: BASE });
+    await setCardWidth(page, NARROW);
+    await expect(card.locator(".voc-job .voc-menu-button")).toHaveCount(0);
+    await shot(page, "queue-read-only-narrow-dark.png");
   });
 });
 

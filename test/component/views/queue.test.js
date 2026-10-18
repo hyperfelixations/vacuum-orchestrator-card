@@ -373,13 +373,13 @@ test("a quick start creates a job from its template", async () => {
   card.unmount();
 });
 
-test("a read-only user sees the queue with every command locked and explained", async () => {
+// UI-22: read only is said once in the subtitle instead of on every greyed-out control.
+test("a read-only user sees the queue without commands and is told why once", async () => {
   const card = await mountCard({ ...BUSY, admin: false });
-  const edit = inRow(card, "Conservatory", '[data-action="edit-job"]');
-  assert.equal(edit.getAttribute("aria-disabled"), "true");
-  assert.ok(edit.getAttribute("title"));
-  await card.click(edit);
-  assert.equal(card.root.querySelector(".voc-overlay"), null);
+  assert.equal(inRow(card, "Conservatory", '[data-action="edit-job"]'), null);
+  assert.equal(inRow(card, "Conservatory", ".voc-menu-button"), null, "a row with nothing to manage has no menu");
+  assert.equal(card.root.querySelector('[data-action="create-job"], [aria-disabled="true"]'), null);
+  assert.match(card.text(".voc-subtitle"), /Read only: changes need an administrator/);
   card.unmount();
 });
 

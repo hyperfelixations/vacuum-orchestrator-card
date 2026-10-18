@@ -19,9 +19,9 @@ export function icon(name, { label = null, className = "" } = {}) {
   return `<ha-icon${attr("class", className || null)} icon="${e(name)}"${label ? ` aria-label="${e(label)}" role="img"` : ' aria-hidden="true"'}></ha-icon>`;
 }
 
-// A missing operation or a read-only user keeps a control focusable so its explanation can be
-// read; every other reason makes it inert.
-const SOFT_REASONS = new Set(["read_only", "operation_missing"]);
+// A missing operation keeps a control focusable so its explanation can be read; every other
+// reason makes it inert.
+const SOFT_REASONS = new Set(["operation_missing"]);
 
 export function decisionAttributes(decision, reasonText) {
   if (!decision || decision.state !== "disabled") return "";

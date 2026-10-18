@@ -1,7 +1,7 @@
 // The queue view: recovery and attention first, then work in progress, then the waiting jobs in
 // the integration's order, then quick starts from templates. See internal dev doc §8 "Queue".
 
-import { recoveryAffordance, templateAffordances } from "../../domain/affordances.js";
+import { CREATE_TARGET, decide, recoveryAffordance, templateAffordances } from "../../domain/affordances.js";
 import { faultsText } from "../common/faults.js";
 import { list, robotName, roomIndex, slotData } from "../common/lookups.js";
 import { pagination, reasonText, t } from "../common/texts.js";
@@ -92,8 +92,11 @@ export function buildQueueView({ model, texts, context, options = {}, ui = {}, t
     : list(slotData(model, "templates")?.items)
         .filter((template) => template.enabled)
         .slice(0, QUICK_TEMPLATE_LIMIT)
-        .map((template) => ({ key: template.templateId, templateId: template.templateId, name: template.name, decision: templateAffordances(template, context).instantiate }));
+        .map((template) => ({ key: template.templateId, templateId: template.templateId, name: template.name, decision: templateAffordances(template, context).instantiate }))
+        .filter((template) => template.decision.state !== "hidden");
   const devices = deviceAttention(queue, { model, texts });
+  // Only who may add a job is asked what to clean next (UI-22, UI-23).
+  const create = decide(context, { operation: "create_job", target: CREATE_TARGET });
   const status = model.slots?.queue?.status ?? "idle";
   return {
     key: "queue",
@@ -107,6 +110,8 @@ export function buildQueueView({ model, texts, context, options = {}, ui = {}, t
     waiting,
     waitingTotal: queue?.total ?? 0,
     empty: queueIsEmpty(model, options),
+    emptyText: t(texts, create.state === "hidden" ? "queue.emptyReadOnly" : "queue.empty"),
+    create,
     detail,
     templates,
     pagination: pagination(queue, texts),

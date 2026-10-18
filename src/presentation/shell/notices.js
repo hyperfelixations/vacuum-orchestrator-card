@@ -25,6 +25,7 @@ const DIAGNOSTIC_MESSAGES = Object.freeze({
   "hint.reconnecting": () => message("hint.reconnecting"),
   "hint.offline": () => message("hint.offline"),
   "hint.partial_jobs": () => message("hint.partialJobs"),
+  "hint.read_only": () => message("hint.readOnly"),
 });
 
 export const DIAGNOSTIC_CODES_WITH_MESSAGES = Object.freeze(Object.keys(DIAGNOSTIC_MESSAGES));

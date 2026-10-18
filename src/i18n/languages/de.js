@@ -52,6 +52,7 @@ export const de = {
   "queue.attention": "Braucht Aufmerksamkeit",
   "queue.waiting": "Wartend",
   "queue.empty": "Was soll als Nächstes gereinigt werden?",
+  "queue.emptyReadOnly": "Nichts wartet auf eine Reinigung.",
   "queue.fromTemplate": "Aus Vorlage",
 
   "view.label": "Ansichten",
@@ -139,7 +140,6 @@ export const de = {
   "action.cancel": "Abbrechen",
   "action.save": "Speichern",
 
-  "affordance.read_only": "Nur Administratoren können das ändern.",
   "affordance.operation_missing": "Der installierte Vacuum Orchestrator bietet das nicht an.",
   "affordance.command_pending": "Ein Befehl dafür läuft noch.",
   "affordance.connection_lost": "Die Verbindung zu Home Assistant ist unterbrochen.",
@@ -360,6 +360,7 @@ export const de = {
   "hint.reconnecting": "Verbindung wird wiederhergestellt …",
   "hint.offline": "Einige Daten konnten nicht aktualisiert werden.",
   "hint.partialJobs": "Nicht jeder laufende Auftrag konnte gelesen werden.",
+  "hint.readOnly": "Nur lesend: Änderungen brauchen Administratorrechte.",
   "hint.several": (v) => `${v.count} Hinweise.`,
 
   "scope.queue": "Die Warteschlange",

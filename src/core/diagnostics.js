@@ -7,6 +7,7 @@ export const DIAGNOSTIC_SEVERITY = Object.freeze({
   "hint.reconnecting": SEVERITY.HINT,
   "hint.offline": SEVERITY.HINT,
   "hint.partial_jobs": SEVERITY.HINT,
+  "hint.read_only": SEVERITY.HINT,
 });
 
 export const FALLBACK = Object.freeze({

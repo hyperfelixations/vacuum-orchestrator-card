@@ -152,6 +152,10 @@ test("by default the five everyday views show; settings for administrators, diag
   const running = { ...assistant.model, slots: { ...assistant.model.slots, openJobs: { data: { jobs: [{ jobId: "job-run", state: "running", roomIds: [] }] } } } };
   const busyTabs = buildTabs({ definitions: VIEWS, model: running, config: config(), ui: {}, texts });
   assert.deepEqual([busyTabs.tabs.some((tab) => tab.key === "setup"), busyTabs.active], [true, "queue"], "offered, but the running work is shown first");
+  // UI-22: who may change nothing cannot finish the setup and is not offered it.
+  const reading = await shell(ASSISTANT, { admin: false });
+  const readingTabs = buildTabs({ definitions: VIEWS, model: reading.model, config: config(), ui: {}, texts });
+  assert.deepEqual([readingTabs.tabs.some((tab) => tab.key === "setup"), readingTabs.active], [false, "queue"]);
 });
 
 test("a written list decides order and switches; the start view is a wish", async () => {

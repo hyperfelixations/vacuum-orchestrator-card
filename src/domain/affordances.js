@@ -3,8 +3,9 @@
 // checked by the integration and a refusal is shown as such. See internal dev doc §7 "Affordances".
 
 // The card's own reasons a visible control is unavailable; presentation words each one. Any
-// other reason is an integration error code, worded by the integration.
-export const AFFORDANCE_REASONS = Object.freeze(["read_only", "operation_missing", "command_pending", "connection_lost"]);
+// other reason is an integration error code, worded by the integration. A read-only user's
+// controls are hidden with the reason `read_only`, said once as a hint.
+export const AFFORDANCE_REASONS = Object.freeze(["operation_missing", "command_pending", "connection_lost"]);
 
 // Integration reasons that say an action does not apply to the object as it is; such a control
 // is not shown. Every other reason keeps the control visible and explains why it is unavailable.
@@ -33,6 +34,9 @@ export const NOT_APPLICABLE = Object.freeze(new Set([
 ]));
 
 const HIDDEN = Object.freeze({ state: "hidden", reason: null });
+// A user who may change nothing sees no control that would change something; one hint says why
+// (UI-22).
+const READ_ONLY = Object.freeze({ state: "hidden", reason: "read_only" });
 const ENABLED = Object.freeze({ state: "enabled", reason: null });
 const disabled = (reason) => Object.freeze({ state: "disabled", reason });
 const refused = (reason, detail) => Object.freeze({ state: "disabled", reason, source: "integration", detail: detail ?? null });
@@ -50,7 +54,7 @@ export function affordanceContext({ canCommand = true, connected = true, operati
 
 // The card's own reasons, in order.
 function local(context, operation, target) {
-  if (!context.canCommand) return disabled("read_only");
+  if (!context.canCommand) return READ_ONLY;
   if (operation && !context.operations.has(operation)) return disabled("operation_missing");
   if (!context.connected) return disabled("connection_lost");
   if (target && context.pending.has(target)) return disabled("command_pending");

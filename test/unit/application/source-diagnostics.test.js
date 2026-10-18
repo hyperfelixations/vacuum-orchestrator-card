@@ -43,3 +43,13 @@ test("the same failure in two slots is reported once, and the lists are frozen",
   assert.equal(once.hints.length, 1);
   assert.ok(Object.isFrozen(result.warnings) && Object.isFrozen(result.hints));
 });
+
+// UI-22: read only is said once, as a hint, instead of greying out every control.
+test("a user who may change nothing gets one read-only hint", async () => {
+  const { modelFor } = require("../../helpers/model.js");
+  const { collectSourceDiagnostics: sourceDiagnostics } = await import("../../../src/application/source-diagnostics.js");
+  const reader = await modelFor("showcase", { from: "A busy afternoon", admin: false });
+  assert.deepEqual(sourceDiagnostics(reader.model).hints.map((hint) => hint.code), ["hint.read_only"]);
+  const admin = await modelFor("showcase", { from: "A busy afternoon" });
+  assert.deepEqual(sourceDiagnostics(admin.model).hints, []);
+});

@@ -44,7 +44,7 @@ test("without a verdict nothing is offered", async () => {
 test("rights, missing actions, the connection and commands in flight disable in that order", async () => {
   const { decide, offer } = await load();
   const spec = { operation: "run_queue", target: "queue" };
-  assert.deepEqual({ ...decide(await context({ canCommand: false, connected: false, pending: ["queue"] }), spec) }, { state: "disabled", reason: "read_only" });
+  assert.deepEqual({ ...decide(await context({ canCommand: false, connected: false, pending: ["queue"] }), spec) }, { state: "hidden", reason: "read_only" }, "read only hides what would change something (UI-22)");
   assert.equal(decide(await context({ operations: [], connected: false }), spec).reason, "operation_missing");
   assert.equal(decide(await context({ connected: false, pending: ["queue"] }), spec).reason, "connection_lost");
   assert.equal(decide(await context({ pending: ["queue"] }), spec).reason, "command_pending");

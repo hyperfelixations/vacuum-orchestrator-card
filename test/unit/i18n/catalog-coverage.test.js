@@ -109,4 +109,5 @@ test("the empty queue asks what to clean next", async () => {
   const { en } = await import("../../../src/i18n/languages/en.js");
   const { de } = await import("../../../src/i18n/languages/de.js");
   assert.deepEqual([en["queue.empty"], de["queue.empty"]], ["What should be cleaned next?", "Was soll als Nächstes gereinigt werden?"]);
+  assert.deepEqual([en["queue.emptyReadOnly"], de["queue.emptyReadOnly"]], ["Nothing waits to be cleaned.", "Nichts wartet auf eine Reinigung."]);
 });

@@ -28,8 +28,8 @@ export function renderQueue(context, vm) {
   if (vm.active.length) parts.push(group(context.t("queue.active"), vm.active.map((row) => jobRow(context, row)).join(""), { key: "active" }));
   if (vm.attention.length) parts.push(group(context.t("queue.attention"), vm.attention.map((row) => jobRow(context, row, { rowActions: [] })).join(""), { key: "attention-jobs" }));
   if (vm.empty) {
-    const create = button({ action: "create-job", label: context.t("action.createJob"), iconName: "mdi:plus", variant: "primary" });
-    parts.push(emptyState("mdi:playlist-check", context.t("queue.empty"), `${create}${templateButtons(context, vm)}`));
+    const create = button({ action: "create-job", label: context.t("action.createJob"), iconName: "mdi:plus", variant: "primary", decision: vm.create, reasonText: context.reason(vm.create) });
+    parts.push(emptyState("mdi:playlist-check", vm.emptyText, `${create}${templateButtons(context, vm)}`));
   } else if (vm.waiting.length) {
     parts.push(group(context.t("queue.waiting"), vm.waiting.map((row) => jobRow(context, row)).join(""), { count: vm.waitingTotal, key: "waiting" }));
     if (vm.templates.length) parts.push(`<div class="voc-quick" data-key="quick"><span class="voc-quick-label">${e(context.t("queue.fromTemplate"))}</span>${templateButtons(context, vm)}</div>`);

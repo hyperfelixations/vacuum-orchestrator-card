@@ -28,5 +28,6 @@ export function collectSourceDiagnostics(model) {
   if (model.subscription === "reconnecting") add(createDiagnostic("hint.reconnecting"));
   else if (transient) add(createDiagnostic("hint.offline"));
   if (model.slots.openJobs?.data && model.slots.openJobs.data.complete === false) add(createDiagnostic("hint.partial_jobs"));
+  if (model.permissions?.canCommand === false) add(createDiagnostic("hint.read_only"));
   return Object.freeze({ warnings: Object.freeze(warnings), hints: Object.freeze(hints) });
 }

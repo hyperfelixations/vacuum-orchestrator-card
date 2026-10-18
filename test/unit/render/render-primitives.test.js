@@ -40,7 +40,7 @@ test("a hidden decision renders nothing; a disabled one says why", async () => {
   const hard = button({ action: "x", label: "X", decision: { state: "disabled", reason: "command_pending" }, reasonText: "Busy" });
   assert.match(hard, / disabled/);
   assert.match(hard, /title="Busy"/);
-  const soft = button({ action: "x", label: "X", decision: { state: "disabled", reason: "read_only" }, reasonText: "Read only" });
+  const soft = button({ action: "x", label: "X", decision: { state: "disabled", reason: "operation_missing" }, reasonText: "Not offered" });
   assert.match(soft, /aria-disabled="true"/);
   assert.doesNotMatch(soft, / disabled[ >]/, "a soft reason stays focusable so it can be read");
 });
@@ -127,7 +127,7 @@ test("the render context words decisions and parses into the given document", as
   const { createRenderContext } = await import("../../../src/render/primitives/render-context.js");
   const document = documentOf();
   const context = createRenderContext(document, { texts: { t: (key) => `T(${key})` }, resolveUrl: (path) => `https://ha${path}` });
-  assert.equal(context.reason({ state: "disabled", reason: "read_only" }), "T(affordance.read_only)");
+  assert.equal(context.reason({ state: "disabled", reason: "command_pending" }), "T(affordance.command_pending)");
   assert.equal(context.reason({ state: "enabled", reason: null }), "");
   assert.equal(context.resolveUrl("/x"), "https://ha/x");
   assert.equal(context.fragment("<span>a</span>").firstChild.textContent, "a");

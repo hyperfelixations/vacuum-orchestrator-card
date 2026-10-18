@@ -88,17 +88,15 @@ test("about names integration, API and card versions and opens the integration i
   card.unmount();
 });
 
-test("a user who may not change settings sees them only when enabled, locked and explained", async () => {
+// UI-22: who may change nothing sees the settings without controls and one note why.
+test("a user who may not change settings sees them only when enabled, without controls, and is told why once", async () => {
   const automatic = await mountCard({ ...BUSY, admin: false });
   assert.equal(automatic.root.querySelector('[role=tab][data-view="settings"]'), null);
   automatic.unmount();
   const card = await mountCard({ ...BUSY, admin: false, config: { views: ["queue", { type: "settings", enabled: true }], start_view: "settings" } });
-  const change = card.root.querySelector('[data-key="queue"] [data-action="open-queue-settings"]');
-  assert.equal(change.getAttribute("aria-disabled"), "true");
-  assert.match(change.getAttribute("title"), /administrator/i);
-  assert.equal(change.getAttribute("aria-describedby"), "voc-settings-queue", "named by its section");
-  await card.click(change);
-  assert.equal(card.root.querySelector(".voc-overlay"), null);
+  assert.equal(card.root.querySelector('[data-key="queue"] [data-action="open-queue-settings"]'), null);
+  assert.equal(card.root.querySelector('[data-action="open-job-defaults"]'), null);
+  assert.match(card.text(".voc-subtitle"), /Read only/);
   assert.equal(card.root.querySelector('[data-key="about"] [data-action="navigate"]'), null);
   card.unmount();
 });

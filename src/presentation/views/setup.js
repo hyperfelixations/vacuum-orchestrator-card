@@ -20,8 +20,9 @@ export function setupNeeded(model) {
 
 // SET-06, SET-10: the assistant is offered while setup is pending, unless set aside for this
 // session; it is where the card starts only while no job is under way.
+// Only who may change things can finish the setup (UI-22).
 export function setupOffered(model, ui) {
-  return setupNeeded(model) && ui?.setupDeferred !== true;
+  return setupNeeded(model) && ui?.setupDeferred !== true && model.permissions?.canCommand !== false;
 }
 
 export function setupFirst(model, ui) {
