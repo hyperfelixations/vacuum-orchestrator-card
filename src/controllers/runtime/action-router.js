@@ -596,6 +596,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       { operation: "remove_robot", parameters: { robot_id: robotId }, options: { target: robotTarget(robotId), invalidates: ROBOT_SCOPES, closeOverlay: ui.overlay?.kind === "robot-editor", success: { key: "notice.robotRemoved" } } },
       { titleKey: "confirm.removeRobot.title", textKey: "confirm.removeRobot.text", confirmKey: "confirm.removeRobot.confirm", icon: "mdi:delete-outline", vars: { robot: findIn(getModel(), "robots", "robotId", robotId)?.name ?? "" } }
     ),
+    "open-map": ({ robotId, entityId, rotation }) => ui.openOverlay({ kind: "robot-map", robotId, entityId, rotation: rotation === "none" ? "none" : "auto" }),
     // A robot's own name; left empty, Home Assistant's name again.
     "rename-robot": ({ robotId }) => {
       const robot = findIn(getModel(), "robots", "robotId", robotId);

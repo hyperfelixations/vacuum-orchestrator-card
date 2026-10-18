@@ -44,7 +44,7 @@ function assertMarkupContract(host, label) {
 test("the registry declares every view and page once with build and render", async () => {
   const { VIEWS, OVERLAYS, VIEW_TYPES, viewFor, overlayFor, optionSchemaForView, VIEW_CSS } = await import("../../../src/views/registry.js");
   assert.deepEqual(VIEW_TYPES, ["setup", "queue", "rooms", "robots", "templates", "history", "diagnostics", "settings"]);
-  assert.equal(OVERLAYS.length, 18);
+  assert.equal(OVERLAYS.length, 19);
   assert.equal(overlayFor("setup-guide").key, "setup-guide");
   assert.equal(overlayFor("cancel-job").key, "cancel-job");
   assert.equal(overlayFor("correct-job").key, "correct-job");
@@ -257,6 +257,7 @@ test("every page renders inside the shared frame, every dialog in the dialog fra
     "room-create": { name: "" },
     "robot-add": {},
     "rename-robot": { robotId: robot.robotId, name: "" },
+    "robot-map": { robotId: robot.robotId, entityId: "image.none", rotation: "auto" },
     "robot-editor": { draft: createRobotDraft(robot), open: ["roles", "requirements", "optionMaps", "timeouts", "identity"] },
   };
   const { document, context } = await renderContext(built.texts);

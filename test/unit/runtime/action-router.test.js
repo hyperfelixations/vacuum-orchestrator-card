@@ -634,6 +634,12 @@ test("an entity picker search is overlay state and a pick clears it", async () =
   assert.equal(ui.overlay.draft.roles.error.entity, null, "picking it again clears it");
 });
 
+test("a robot's map opens enlarged as a page", async () => {
+  const { router, ui } = await setup();
+  router.handle("open-map", { robotId: "robot-rocky", entityId: "image.rocky_main_floor", rotation: "none" });
+  assert.deepEqual(shown(ui.overlay), { kind: "robot-map", robotId: "robot-rocky", entityId: "image.rocky_main_floor", rotation: "none" });
+});
+
 // A robot's own name travels as given; an empty one returns to Home Assistant's name.
 test("a robot is renamed, or given Home Assistant's name back", async () => {
   const { router, ui, commands } = await setup();

@@ -27,6 +27,7 @@ import { createDiagnosticsReporter } from "../controllers/runtime/diagnostics-re
 import { createInteractionRuntime } from "../controllers/runtime/interaction-runtime.js";
 import { createKeyboardRuntime } from "../controllers/runtime/keyboard-runtime.js";
 import { placeMenus } from "../controllers/runtime/menu-placement.js";
+import { placeMaps } from "../controllers/runtime/map-rotation.js";
 import { createScrollRuntime } from "../controllers/runtime/scroll-runtime.js";
 import { createLayoutRuntime } from "../controllers/runtime/layout-runtime.js";
 import { createTabStripRuntime } from "../controllers/runtime/tab-strip-runtime.js";
@@ -367,6 +368,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._mount.mount(context, { css: STYLES, html: renderCard(context, viewModel, renderBody) });
     this._scroll.sync(this._scrollStack(viewModel));
     placeMenus(this.shadowRoot);
+    placeMaps(this.shadowRoot, { viewportHeight: this.ownerDocument?.defaultView?.innerHeight ?? 0 });
     const requested = this._ui.consumeFocus();
     if (requested) focusSelector(this.shadowRoot, requested, ring);
     else if (depth > previousDepth && held && viewModel.dialog) focusSelector(this.shadowRoot, ".voc-dialog [data-autofocus]", ring) || focusSelector(this.shadowRoot, "#voc-dialog-title", ring);

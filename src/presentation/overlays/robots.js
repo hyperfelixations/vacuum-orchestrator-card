@@ -151,3 +151,17 @@ export function buildRenameRobot({ model, texts, context, overlay }) {
     pending: list(model.pending).includes(robotTarget(overlay.robotId)),
   };
 }
+
+// UI-10: one robot's map, enlarged; the stage turns it where that shows it larger.
+export function buildRobotMap({ model, overlay }) {
+  const robot = robotsOf(model).find((entry) => entry.robotId === overlay.robotId) || null;
+  const map = list(model.robotsLive?.[overlay.robotId]?.maps).find((entry) => entry.entityId === overlay.entityId && entry.picture) || null;
+  const label = map ? map.friendlyName || map.entityId : overlay.entityId;
+  return {
+    key: "robot-map",
+    title: [robot?.name || overlay.robotId, label].join(" · "),
+    picture: map?.picture ?? null,
+    rotation: overlay.rotation === "none" ? "none" : "auto",
+    missing: !map,
+  };
+}

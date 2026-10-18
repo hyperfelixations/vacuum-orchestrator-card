@@ -1,10 +1,11 @@
 // Robot dialogs: add a discovered robot, edit a profile.
 
-import { buildRenameRobot, buildRobotAdd, buildRobotEditor } from "../../presentation/overlays/robots.js";
+import { buildRenameRobot, buildRobotAdd, buildRobotEditor, buildRobotMap } from "../../presentation/overlays/robots.js";
 import { button, chip, e, icon } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
 import { errorState, footerLead, loadingState } from "../parts.js";
 import { FORMS_CSS } from "../styles/forms.js";
+import { ROBOTS_CSS } from "../styles/robots.js";
 import { dialog } from "./dialog.js";
 import { block, frame } from "./frame.js";
 
@@ -97,4 +98,18 @@ export const renameRobotOverlay = Object.freeze({
     return dialog(context, { key: "rename-robot", title: vm.title, invalid: vm.invalid, content: `<div class="voc-form">${renderField(context, vm.field)}</div>`, actions });
   },
   css: FORMS_CSS,
+});
+
+// UI-10: the map large on its own page; the stage is laid out after each render
+// (`controllers/runtime/map-rotation.js`).
+export const robotMapOverlay = Object.freeze({
+  key: "robot-map",
+  build: ({ model, overlay }) => buildRobotMap({ model, overlay }),
+  render(context, vm) {
+    const content = vm.missing
+      ? `<div class="voc-unavailable" data-key="missing">${icon("mdi:map-marker-question-outline")}<div>${e(context.t("robot.mapMissing"))}</div></div>`
+      : `<div class="voc-map-stage" data-map-stage data-rotation="${e(vm.rotation)}"><img src="${e(context.resolveUrl(vm.picture))}" alt="${e(vm.title)}"></div>`;
+    return frame(context, { key: "robot-map", title: vm.title, content });
+  },
+  css: ROBOTS_CSS,
 });

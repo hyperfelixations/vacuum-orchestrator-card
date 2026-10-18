@@ -216,6 +216,7 @@ Options belong inside the corresponding `views:` entry.
 | `rooms` | `show_disabled` | `true` / `false` | `false` | Shows the rooms excluded from cleaning. |
 | `robots` | `show_map` | `true` / `false` | `true` | Shows the robot's map, when it has one. |
 | `robots` | `show_capabilities` | `true` / `false` | `true` | Shows the suction, water and mop route levels the robot offers. |
+| `robots` | `map_rotation` | `auto` / `none` | `auto` | Turns the enlarged map a quarter where that shows it clearly larger. |
 | `history` | `source` | `jobs` / `runs` / `both` | `both` | Shows finished jobs, recorded cleaning runs, or both with a switch between them. |
 | `diagnostics` | `show_trace` | `true` / `false` | `true` | Shows the integration's event trace. |
 

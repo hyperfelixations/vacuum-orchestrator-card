@@ -351,6 +351,18 @@ test("room settings show detected robot targets and the occupancy fields only fo
   assert.deepEqual([unnamed.fields[0].error, unnamed.invalid], [said(built, "empty_name"), built.texts.t("editor.fixErrors")]);
 });
 
+// UI-10: the enlarged map names its robot and map; a map that went away is said so.
+test("the enlarged map shows the chosen picture with its robot's name", async () => {
+  const { buildRobotMap } = await overlays("robots");
+  const built = await busy();
+  const rocky = built.model.slots.robots.data.items.find((robot) => robot.name === "Rocky");
+  const [map] = built.model.robotsLive[rocky.robotId].maps;
+  const vm = buildRobotMap({ ...built, overlay: { robotId: rocky.robotId, entityId: map.entityId, rotation: "auto" } });
+  assert.deepEqual([vm.key, vm.title, vm.rotation, vm.missing], ["robot-map", `Rocky · ${map.friendlyName}`, "auto", false]);
+  assert.ok(vm.picture.startsWith("/api/image_proxy/"));
+  assert.equal(buildRobotMap({ ...built, overlay: { robotId: rocky.robotId, entityId: "image.gone", rotation: "auto" } }).missing, true);
+});
+
 // A robot's own name, or Home Assistant's when left empty.
 test("renaming a robot offers Home Assistant's name as the one left empty", async () => {
   const { buildRenameRobot } = await overlays("robots");

@@ -10,7 +10,7 @@ module.exports = Object.freeze({
     setup: [],
     queue: ["show_active", "show_attention", "show_templates"],
     rooms: ["sort", "show_disabled"],
-    robots: ["show_map", "show_capabilities"],
+    robots: ["show_map", "show_capabilities", "map_rotation"],
     templates: [],
     history: ["source"],
     diagnostics: ["show_trace"],

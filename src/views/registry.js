@@ -12,7 +12,7 @@ import { historyView } from "./history.js";
 import { diagnosticsView } from "./diagnostics.js";
 import { setupView } from "./setup.js";
 import { settingsView } from "./settings.js";
-import { renameRobotOverlay, robotAddOverlay, robotEditorOverlay } from "./overlays/robots.js";
+import { renameRobotOverlay, robotAddOverlay, robotEditorOverlay, robotMapOverlay } from "./overlays/robots.js";
 import { releaseOverlay, roomCreateOverlay, roomEditorOverlay } from "./overlays/rooms.js";
 import { jobEditorOverlay } from "./overlays/job-editor.js";
 import { jobDetailOverlay } from "./overlays/job-detail.js";
@@ -21,7 +21,7 @@ import { setupGuideOverlay } from "./setup.js";
 import { cancelJobOverlay, confirmOverlay, correctJobOverlay, queueEndOverlay, queueSettingsOverlay, recoveryOverlay, startJobOverlay } from "./overlays/dialogs.js";
 
 export const VIEWS = Object.freeze([setupView, queueView, roomsView, robotsView, templatesView, historyView, diagnosticsView, settingsView]);
-export const OVERLAYS = Object.freeze([jobEditorOverlay, jobDetailOverlay, confirmOverlay, startJobOverlay, recoveryOverlay, queueSettingsOverlay, releaseOverlay, roomEditorOverlay, roomCreateOverlay, robotAddOverlay, robotEditorOverlay, renameRobotOverlay, saveTemplateOverlay, jobDefaultsOverlay, cancelJobOverlay, correctJobOverlay, queueEndOverlay, setupGuideOverlay]);
+export const OVERLAYS = Object.freeze([jobEditorOverlay, jobDetailOverlay, confirmOverlay, startJobOverlay, recoveryOverlay, queueSettingsOverlay, releaseOverlay, roomEditorOverlay, roomCreateOverlay, robotAddOverlay, robotEditorOverlay, renameRobotOverlay, robotMapOverlay, saveTemplateOverlay, jobDefaultsOverlay, cancelJobOverlay, correctJobOverlay, queueEndOverlay, setupGuideOverlay]);
 
 function verify() {
   const keys = new Set();

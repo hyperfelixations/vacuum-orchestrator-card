@@ -1,6 +1,6 @@
 // The robots view. See internal dev doc §8 "Roboter".
 
-import { boolOption } from "../config/option-schemas.js";
+import { boolOption, enumOption } from "../config/option-schemas.js";
 import { buildRobotsView } from "../presentation/views/robots.js";
 import { button, chip, e, icon, pill } from "../render/primitives/markup.js";
 import { emptyState, errorState, loadingState } from "./parts.js";
@@ -25,7 +25,9 @@ function robotCard(context, robot) {
     ? `<div class="voc-robot-line" data-key="rooms">${icon("mdi:floor-plan")}<span>${e(robot.rooms.join(", "))}</span></div>`
     : `<div class="voc-robot-line voc-room-warning" data-key="rooms">${icon("mdi:map-marker-question-outline")}<span>${e(context.t("robot.noRooms"))}</span></div>`;
   const choices = robot.mapChoices.length ? `<div class="voc-chips" data-key="map-choices">${robot.mapChoices.map((entry) => button({ action: "choose", args: { key: `map:${robot.robotId}`, value: entry.entityId }, label: entry.label, variant: "quiet", pressed: entry.selected, key: `map:${entry.entityId}` })).join("")}</div>` : "";
-  const map = robot.map ? `<figure class="voc-robot-map" data-key="map"><img src="${e(context.resolveUrl(robot.map.picture))}" alt="${e(context.t("robot.mapAlt", { robot: robot.name, map: robot.map.label }))}" loading="lazy">${choices}</figure>` : "";
+  const picture = robot.map ? `<img src="${e(context.resolveUrl(robot.map.picture))}" alt="${e(context.t("robot.mapAlt", { robot: robot.name, map: robot.map.label }))}" loading="lazy">` : "";
+  const enlarge = robot.map ? `<button type="button" class="voc-robot-map-open" data-action="${e(robot.map.open.action)}" data-args="${e(JSON.stringify(robot.map.open.args))}" aria-label="${e(context.t("robot.mapOpen", { map: robot.map.label }))}" title="${e(context.t("robot.mapOpen", { map: robot.map.label }))}">${picture}</button>` : "";
+  const map = robot.map ? `<figure class="voc-robot-map" data-key="map">${enlarge}${choices}</figure>` : "";
   const home = robot.actions.returnToDock.state === "hidden" ? "" : `<div class="voc-robot-actions" data-key="actions">${button({ action: "return-robot", args: { robotId: robot.robotId }, label: context.t("action.returnToDock"), iconName: "mdi:home-import-outline", variant: "text", decision: robot.actions.returnToDock, reasonText: context.reason(robot.actions.returnToDock) })}</div>`;
   const configure = button({ action: "edit-robot", args: { robotId: robot.robotId }, label: context.t("robot.settings", { robot: robot.name }), iconName: "mdi:cog-outline", variant: "icon", decision: robot.actions.configure, reasonText: context.reason(robot.actions.configure) });
   return `<article class="voc-robot" data-key="robot:${e(robot.robotId)}" data-tone="${e(robot.tone)}"><header class="voc-robot-head"><span class="voc-robot-icon" aria-hidden="true">${icon("mdi:robot-vacuum")}</span><div class="voc-robot-title"><h3 class="voc-robot-name">${e(robot.name)}</h3><div class="voc-robot-state">${pill(robot.state, robot.tone)}${robot.batteryText ? `<span class="voc-robot-battery">${icon("mdi:battery-outline")}${e(robot.batteryText)}</span>` : ""}</div></div>${configure}</header><div class="voc-robot-body"><div class="voc-robot-info">${facts ? `<div class="voc-robot-facts">${facts}</div>` : ""}${notes}${home}${rooms}${capabilities}</div>${map}</div></article>`;
@@ -46,7 +48,7 @@ export const robotsView = Object.freeze({
   icon: "mdi:robot-vacuum",
   requires: ["get_robots"],
   defaultEnabled: () => true,
-  optionsSchema: Object.freeze({ show_map: boolOption(true), show_capabilities: boolOption(true) }),
+  optionsSchema: Object.freeze({ show_map: boolOption(true), show_capabilities: boolOption(true), map_rotation: enumOption("auto", ["auto", "none"]) }),
   primary: Object.freeze({ action: "add-robot", icon: "mdi:plus", labelKey: "action.addRobot", operation: "add_robot", target: "create" }),
   scopes: () => [{ name: "candidates" }],
   build: ({ model, texts, context, options, ui }) => buildRobotsView({ model, texts, context, options, ui }),

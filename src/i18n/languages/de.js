@@ -649,6 +649,8 @@ export const de = {
   "confirm.disableRoom.text": (v) => `${v.room} wird nicht mehr gereinigt. Der Verlauf bleibt; du kannst ihn wieder aufnehmen.`,
   "confirm.disableRoom.confirm": "Ausschließen",
   "action.addRobot": "Roboter hinzufügen",
+  "robot.mapOpen": (v) => `${v.map} vergrößert öffnen`,
+  "robot.mapMissing": "Diese Karte ist nicht mehr verfügbar.",
   "robot.capabilities": "Was er kann",
   "robot.phase.cleaning": "Reinigt",
   "robot.phase.cleaningExternal": "Reinigt außerhalb von Vacuum Orchestrator",

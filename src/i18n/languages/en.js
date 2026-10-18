@@ -649,6 +649,8 @@ export const en = {
   "confirm.disableRoom.text": (v) => `${v.room} is no longer cleaned. Its history stays; you can include it again.`,
   "confirm.disableRoom.confirm": "Exclude",
   "action.addRobot": "Add robot",
+  "robot.mapOpen": (v) => `Open ${v.map} enlarged`,
+  "robot.mapMissing": "This map is no longer available.",
   "robot.capabilities": "What it can do",
   "robot.phase.cleaning": "Cleaning",
   "robot.phase.cleaningExternal": "Cleaning outside Vacuum Orchestrator",

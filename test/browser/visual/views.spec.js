@@ -361,6 +361,23 @@ test.describe("robots", () => {
     await shot(page, "robots-medium-light.png", MEDIUM);
   });
 
+  // UI-10: the map opens large; on a narrow card a wide map turns to fill it, on a wider one it
+  // stays upright.
+  test("the map enlarged, narrow and medium", async ({ page }) => {
+    const card = await mountCard(page, { ...BUSY, config: BASE });
+    await open(page, card, "robots");
+    await setCardWidth(page, NARROW);
+    await act(page, named(card, ".voc-robot", "Rocky", '[data-action="open-map"]'));
+    await expect(card.locator("[data-map-stage]")).toHaveAttribute("data-rotated", "true");
+    await shot(page, "robot-map-narrow-light.png", NARROW);
+    await setCardWidth(page, MEDIUM);
+    await page.evaluate(() => window.dispatchEvent(new Event("resize")));
+    await act(page, card.locator('[data-action="back"]').first());
+    await act(page, named(card, ".voc-robot", "Rocky", '[data-action="open-map"]'));
+    await expect(card.locator("[data-map-stage]")).toHaveAttribute("data-rotated", "false");
+    await shot(page, "robot-map-medium-light.png", MEDIUM);
+  });
+
   test("a robot stopped away from its dock", async ({ page }) => {
     const card = await mountCard(page, { ...STOPPED, config: BASE });
     await open(page, card, "robots");
