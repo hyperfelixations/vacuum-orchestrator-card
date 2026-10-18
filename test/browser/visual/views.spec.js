@@ -432,7 +432,7 @@ test.describe("robots", () => {
     await open(page, card, "robots");
     await act(page, named(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]'));
     await act(page, card.locator('[data-action="toggle-section"][data-args*="roles"]'));
-    await expect(card.locator('[data-key="role:status"]')).toContainText("sensor.rocky_status");
+    await expect(card.locator('[data-key="role:status"]')).toContainText("Found: Rocky Status");
     await shot(page, "robot-editor-medium-light.png", MEDIUM);
   });
 

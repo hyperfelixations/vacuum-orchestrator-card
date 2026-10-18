@@ -171,7 +171,7 @@ test("role choices in the robot profile are named radio groups", async ({ page }
   await card.locator('[data-action="toggle-section"][data-args*="roles"]').click();
   const battery = card.locator('[data-key="role:battery"] [role=radiogroup]');
   await expect(battery).toHaveAccessibleName("Battery");
-  await expect(battery).toHaveAccessibleDescription(/Found: sensor\.rocky_battery/);
+  await expect(battery).toHaveAccessibleDescription("Found: Rocky Battery");
 });
 
 // In a sections grid cell the content scrolls inside the card.

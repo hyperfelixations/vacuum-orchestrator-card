@@ -26,6 +26,8 @@ export function buildRobotAdd({ model, texts, context }) {
         name: candidate.name,
         adapter: adapterLabel(texts, candidate.adapter),
         protocol: candidate.protocol ? t(texts, "robot.protocol.roborockV1") : null,
+        // UI-04: by its integration, never by its entity ID.
+        detail: [adapterLabel(texts, candidate.adapter), candidate.protocol ? t(texts, "robot.protocol.roborockV1") : null].filter(Boolean).join(" · "),
         roles: Object.keys(candidate.roles).map((role) => t(texts, `role.${role}`)),
         ambiguous: candidate.ambiguousRoles.map((role) => t(texts, `role.${role}`)),
         configured,
@@ -81,6 +83,14 @@ function optionGroups(texts, draft, error) {
   });
 }
 
+// The vacuum the profile drives by its Home Assistant name where that differs from the robot's,
+// and the integration; never the entity ID (UI-04).
+function profileLead(texts, model, robot, draft) {
+  const vacuum = entityName(robot.configuration.entityId, model);
+  const named = vacuum && vacuum !== robot.configuration.entityId && vacuum !== robot.name ? vacuum : null;
+  return [named, adapterLabel(texts, draft.meta.adapter)].filter(Boolean).join(" · ");
+}
+
 export function buildRobotEditor({ model, texts, context, overlay }) {
   const draft = overlay.draft;
   const robot = robotsOf(model).find((entry) => entry.robotId === draft.meta.robotId) || null;
@@ -114,7 +124,7 @@ export function buildRobotEditor({ model, texts, context, overlay }) {
     key: "robot-editor",
     robotId: draft.meta.robotId,
     title: t(texts, "robotEditor.title", { robot: robot?.name || draft.meta.robotId }),
-    lead: robot ? t(texts, "robotEditor.lead", { entity: robot.configuration.entityId || "", adapter: adapterLabel(texts, draft.meta.adapter) }) : null,
+    lead: robot ? profileLead(texts, model, robot, draft) : null,
     general,
     areaScope,
     areas,

@@ -172,6 +172,16 @@ test("the detail page shows the waiting reason on three axes, unreleased rooms t
   const facts = Object.fromEntries(vm.facts.map((fact) => [fact.label, fact.value]));
   assert.deepEqual([facts.Origin, facts[built.texts.t("detail.occasion")]], ["Added by hand", "Guests are coming"], "how the job came and its occasion stand apart");
   assert.equal(facts[built.texts.t("detail.updated")], null, "a job never changed since it was created names one moment");
+  // UI-04: the job's ID is diagnostic data; the detail page names the job instead, and a retry
+  // names the job it repeats.
+  assert.ok(vm.facts.every((fact) => fact.value !== conservatory.jobId));
+  const library = jobIn(built.model, "Library");
+  const retried = (retriesJobId) => {
+    const slots = { ...built.model.slots, job: { ...built.model.slots.job, data: { ...built.model.slots.job.data, retriesJobId } } };
+    const detail = buildJobDetail({ ...built, model: { ...built.model, slots }, overlay: { jobId: conservatory.jobId }, config: {} });
+    return Object.fromEntries(detail.facts.map((fact) => [fact.label, fact.value]))[built.texts.t("detail.retryOf")];
+  };
+  assert.deepEqual([retried(library.jobId), retried("00000000-0000-4000-8000-0000000000ff")], ["Library, thoroughly", null]);
 });
 
 // Before a start, the phases explain what the robot axis does not: here that Dusty, an area vacuum
@@ -393,9 +403,15 @@ test("robot discovery marks configured vacuums; the profile explains each role",
   const built = await modelFor("robot_choice", { from: "Either robot can start the dining room", needsEntityCatalog: true });
   const add = buildRobotAdd(built);
   assert.deepEqual(add.candidates.map((candidate) => [candidate.entityId, candidate.configured]), [["vacuum.rocky", true], ["vacuum.dusty", true]]);
+  // UI-04: a vacuum is shown by its name and integration, never by its entity ID.
+  assert.ok(add.candidates.every((candidate) => candidate.detail && !candidate.detail.includes(candidate.entityId)));
   const dusty = built.model.slots.robots.data.items.find((robot) => robot.name === "Dusty");
   let draft = createRobotDraft(dusty);
   const vm = buildRobotEditor({ ...built, overlay: { draft, open: [] } });
+  assert.doesNotMatch(vm.lead, /vacuum\./, "the profile names its vacuum, not its entity ID (UI-04)");
+  const rockyRobot = built.model.slots.robots.data.items.find((robot) => robot.name === "Rocky");
+  const rockyRoles = Object.fromEntries(buildRobotEditor({ ...built, overlay: { draft: createRobotDraft(rockyRobot), open: [] } }).sections.roles.rows.map((row) => [row.key, row]));
+  assert.equal(rockyRoles.battery.mode.hint, built.texts.t("robotEditor.roleDiscovered", { entity: "Rocky Battery" }), "a found entity by its Home Assistant name");
   const roles = Object.fromEntries(vm.sections.roles.rows.map((row) => [row.key, row]));
   assert.equal(roles.error.mode.hint, built.texts.t("robotEditor.roleNotFound"));
   draft = updateRobotDraft(draft, "roles.error.mode", "entity");

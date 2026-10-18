@@ -6,7 +6,7 @@
 import { decide, jobAffordances, jobTarget, roomAffordances } from "../../domain/affordances.js";
 import { explanationsByOperation } from "../../domain/execution.js";
 import { isTerminalState } from "../../domain/job-schema.js";
-import { findJob, list, robotName, roomIndex, roomName, slotData } from "../common/lookups.js";
+import { findJob, jobTitle, list, robotName, roomIndex, roomName, slotData } from "../common/lookups.js";
 import { attemptStateLabel, jobStateLabel, modeLabel, moment, operationLabel, outcomeText, qualityLabel, reasonText, settingLabel, settingName, t } from "../common/texts.js";
 import { traceRows } from "../common/trace.js";
 import { MODE_ICONS, progressOf, readinessReasons, settingChips, stateTone } from "../views/job-row.js";
@@ -63,6 +63,12 @@ function resultOf(job, { texts, config, model, actions }) {
 
 // `pane`: shown beside a wide queue's list, where the trace opens as a block of the card rather
 // than of a page (LAY-03). `menu`: the key of the card's open menu, if any.
+// The job a retry repeats, by its title; an ID is diagnostic data (UI-04).
+function retriedTitle(job, model) {
+  const original = findJob(model, job.retriesJobId);
+  return original ? jobTitle(original, roomIndex(model), model) : null;
+}
+
 export function buildJobDetail({ model, texts, context, overlay, config, pane = false, menu = null }) {
   const job = findJob(model, overlay.jobId);
   const status = model.slots?.job?.status;
@@ -134,8 +140,7 @@ export function buildJobDetail({ model, texts, context, overlay, config, pane = 
       { label: t(texts, "detail.origin"), value: originText(texts, job, model) },
       { label: t(texts, "detail.occasion"), value: job.reason },
       { label: t(texts, "field.note"), value: job.note },
-      { label: t(texts, "detail.retryOf"), value: job.retriesJobId },
-      { label: t(texts, "detail.jobId"), value: job.jobId },
+      { label: t(texts, "detail.retryOf"), value: retriedTitle(job, model) },
     ],
     actions,
     saveAsTemplate: decide(context, { operation: "save_job_as_template", target: jobTarget(job.jobId) }),

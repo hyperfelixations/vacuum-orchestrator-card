@@ -31,7 +31,7 @@ export const robotAddOverlay = Object.freeze({
           const action = candidate.configured
             ? `<span class="voc-pill voc-pill--muted">${e(context.t("robotAdd.configured"))}</span>`
             : button({ action: "add-candidate", args: { entityId: candidate.entityId }, label: context.t("action.addRobot"), iconName: "mdi:plus", variant: "primary", decision: candidate.decision, reasonText: context.reason(candidate.decision) });
-          return `<article class="voc-robot" data-key="candidate:${e(candidate.key)}"><header class="voc-robot-head"><span class="voc-robot-icon" aria-hidden="true">${icon("mdi:robot-vacuum")}</span><div class="voc-robot-title"><h3 class="voc-robot-name">${e(candidate.name)}</h3><div class="voc-robot-line">${e([candidate.entityId, candidate.adapter, candidate.protocol].filter(Boolean).join(" · "))}</div></div>${action}</header>${roles}${ambiguous}</article>`;
+          return `<article class="voc-robot" data-key="candidate:${e(candidate.key)}"><header class="voc-robot-head"><span class="voc-robot-icon" aria-hidden="true">${icon("mdi:robot-vacuum")}</span><div class="voc-robot-title"><h3 class="voc-robot-name">${e(candidate.name)}</h3><div class="voc-robot-line">${e(candidate.detail)}</div></div>${action}</header>${roles}${ambiguous}</article>`;
         })
         .join("")}</div>`;
     }

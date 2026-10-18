@@ -41,7 +41,7 @@ function robotsStep(model, texts, context, step) {
     note: candidates.length || names.length ? null : t(texts, "setup.step.robots.none"),
     // Each robot taken over can be renamed here.
     robots: step.robotIds.map((robotId) => ({ key: robotId, robotId, name: robots.find((robot) => robot.robotId === robotId)?.name ?? robotId, rename: { action: "rename-robot", decision: decide(context, { operation: "rename_robot", target: robotTarget(robotId) }) } })),
-    candidates: candidates.map((candidate) => ({ key: candidate.registryId, entityId: candidate.entityId, name: candidate.name, detail: [candidate.entityId, adapterLabel(texts, candidate.adapter)].join(" · "), decision })),
+    candidates: candidates.map((candidate) => ({ key: candidate.registryId, entityId: candidate.entityId, name: candidate.name, detail: adapterLabel(texts, candidate.adapter), decision })),
   };
 }
 
