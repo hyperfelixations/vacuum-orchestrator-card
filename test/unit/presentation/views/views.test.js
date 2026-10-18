@@ -244,6 +244,8 @@ test("robots show Home Assistant's live state beside the integration's profile f
   assert.deepEqual(rocky.facts.map((fact) => fact.key), ["room", "status", "map"]);
   assert.equal(rocky.facts[0].value, "Studio", "the room the robot reports cleaning");
   assert.ok(rocky.map.picture.startsWith("/api/image_proxy/image.rocky_main_floor"));
+  // V6: maps by the names the integration gives them, without the robot's name before each.
+  assert.deepEqual([rocky.map.label, rocky.mapChoices.map((choice) => choice.label)], ["Main Floor", ["Main Floor", "Lower Floor"]]);
   assert.deepEqual(rocky.rooms, ["Dining Room", "Studio", "Library"]);
   assert.equal(robots.newCandidates, 0);
   assert.equal(rocky.actions.returnToDock.state, "hidden", "Rocky cleans for a job");

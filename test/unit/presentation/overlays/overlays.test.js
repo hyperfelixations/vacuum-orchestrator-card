@@ -383,7 +383,8 @@ test("the enlarged map shows the chosen picture with its robot's name", async ()
   const rocky = built.model.slots.robots.data.items.find((robot) => robot.name === "Rocky");
   const [map] = built.model.robotsLive[rocky.robotId].maps;
   const vm = buildRobotMap({ ...built, overlay: { robotId: rocky.robotId, entityId: map.entityId, rotation: "auto" } });
-  assert.deepEqual([vm.key, vm.title, vm.rotation, vm.missing], ["robot-map", `Rocky · ${map.friendlyName}`, "auto", false]);
+  // V6: a map by the name the integration gives it, not its image entity's name with the robot's.
+  assert.deepEqual([vm.key, vm.title, vm.rotation, vm.missing], ["robot-map", "Rocky · Main Floor", "auto", false]);
   assert.ok(vm.picture.startsWith("/api/image_proxy/"));
   assert.equal(buildRobotMap({ ...built, overlay: { robotId: rocky.robotId, entityId: "image.gone", rotation: "auto" } }).missing, true);
 });

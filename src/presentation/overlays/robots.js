@@ -5,7 +5,7 @@
 import { candidateAffordance, decide, robotAffordances, robotTarget } from "../../domain/affordances.js";
 import { OPERATIONS, ROBOT_OPTION_MAPS, ROBOT_ROLES, ROBOT_ROLE_DOMAINS, ROBOT_TIMEOUT_FIELDS } from "../../domain/job-schema.js";
 import { isConfiguredCandidate } from "../../domain/robots.js";
-import { entityName, list, robotsOf, slotData } from "../common/lookups.js";
+import { entityName, list, mapLabel, robotsOf, slotData } from "../common/lookups.js";
 import { adapterLabel, operationLabel, settingLabel, t } from "../common/texts.js";
 import { entityField, field, pageErrors } from "./editor-fields.js";
 
@@ -170,7 +170,7 @@ export function buildRenameRobot({ model, texts, context, overlay }) {
 export function buildRobotMap({ model, overlay }) {
   const robot = robotsOf(model).find((entry) => entry.robotId === overlay.robotId) || null;
   const map = list(model.robotsLive?.[overlay.robotId]?.maps).find((entry) => entry.entityId === overlay.entityId && entry.picture) || null;
-  const label = map ? map.friendlyName || map.entityId : overlay.entityId;
+  const label = map ? mapLabel(robot, map) : overlay.entityId;
   return {
     key: "robot-map",
     title: [robot?.name || overlay.robotId, label].join(" · "),

@@ -5,7 +5,7 @@
 import { candidateAffordance, recoveryAffordance, robotAffordances } from "../../domain/affordances.js";
 import { isConfiguredCandidate, reachableRoomIds } from "../../domain/robots.js";
 import { OPERATIONS, SETTING_FIELDS } from "../../domain/job-schema.js";
-import { list, robotsOf, roomIndex, roomName, slotData } from "../common/lookups.js";
+import { list, mapLabel, robotsOf, roomIndex, roomName, slotData } from "../common/lookups.js";
 import { number, operationLabel, reasonText, settingLabel, settingName, t } from "../common/texts.js";
 import { robotStatus } from "../common/robot-status.js";
 import { faultText } from "../common/faults.js";
@@ -83,8 +83,8 @@ export function buildRobotsView({ model, texts, context, options = {}, ui = {} }
         // UI-09: what a robot can do is folded away until asked for.
         capabilitiesOpen: list(ui.expanded).includes(`robot:${robot.robotId}:capabilities`),
         // UI-10: the map opens enlarged, turned where that shows it larger unless the view says not to.
-        map: map ? { entityId: map.entityId, picture: map.picture, label: map.friendlyName || map.entityId, open: { action: "open-map", args: { robotId: robot.robotId, entityId: map.entityId, rotation: options.map_rotation === "none" ? "none" : "auto" } } } : null,
-        mapChoices: maps.length > 1 ? maps.map((entry) => ({ entityId: entry.entityId, label: entry.friendlyName || entry.entityId, selected: entry.entityId === map?.entityId })) : [],
+        map: map ? { entityId: map.entityId, picture: map.picture, label: mapLabel(robot, map), open: { action: "open-map", args: { robotId: robot.robotId, entityId: map.entityId, rotation: options.map_rotation === "none" ? "none" : "auto" } } } : null,
+        mapChoices: maps.length > 1 ? maps.map((entry) => ({ entityId: entry.entityId, label: mapLabel(robot, entry), selected: entry.entityId === map?.entityId })) : [],
         actions: robotAffordances(robot, context),
       };
     }),
