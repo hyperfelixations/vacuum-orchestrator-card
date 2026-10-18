@@ -83,6 +83,11 @@ test("a field ties its label, hint and error to the control", async () => {
   const muted = parse(document, renderField(context, { key: "rooms", label: "Rooms", control: "chips", value: ["all"], options: [{ value: "all", label: "All" }, { value: "b", label: "B", muted: true }] }));
   assert.deepEqual([...muted.querySelectorAll("[role=option]")].map((option) => [option.classList.contains("is-muted"), option.getAttribute("aria-selected")]), [[false, "true"], [true, "false"]]);
   assert.equal(renderField(context, { key: "x", control: "text", hidden: true }), "");
+  // V6: a switch shows one label, the one beside it; the field's name stays for assistive technology.
+  const toggle = parse(document, renderField(context, { key: "automatic", label: "Automatic", control: "switch", value: false, switchLabel: "Create a job when a room is due" }));
+  assert.ok(toggle.querySelector(".voc-field-label").classList.contains("voc-sr-only"));
+  assert.equal(toggle.querySelector(".voc-switch-label").textContent, "Create a job when a room is due");
+  assert.equal(toggle.querySelector(".voc-field-label").getAttribute("for"), toggle.querySelector("input").id);
   // A11Y-05: a chosen option shows a check in place of its icon, not only a colour.
   const icons = (fragment) => [...fragment.querySelectorAll(".voc-option")].map((option) => option.querySelector("ha-icon")?.getAttribute("icon") ?? null);
   assert.deepEqual(icons(parse(document, renderField(context, { key: "mode", label: "Mode", control: "segmented", value: "mop", options: [{ value: "vacuum", label: "Vacuum", icon: "mdi:robot-vacuum" }, { value: "mop", label: "Mop", icon: "mdi:water" }] }))), ["mdi:robot-vacuum", "mdi:check"]);

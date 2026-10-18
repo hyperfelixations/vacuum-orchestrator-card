@@ -111,3 +111,11 @@ test("the empty queue asks what to clean next", async () => {
   assert.deepEqual([en["queue.empty"], de["queue.empty"]], ["What should be cleaned next?", "Was soll als Nächstes gereinigt werden?"]);
   assert.deepEqual([en["queue.emptyReadOnly"], de["queue.emptyReadOnly"]], ["Nothing waits to be cleaned.", "Nichts wartet auf eine Reinigung."]);
 });
+
+// V6: template actions name their effect and match the editor's words for the same effect.
+test("template actions say what they do", async () => {
+  const { en } = await import("../../../src/i18n/languages/en.js");
+  const { de } = await import("../../../src/i18n/languages/de.js");
+  assert.deepEqual([en["action.resetDemand"], de["action.resetDemand"]], ["Allow another job", "Weiteren Auftrag erlauben"]);
+  assert.deepEqual([en["action.createFromTemplate"], de["action.createFromTemplate"]], [en["action.addToQueue"], de["action.addToQueue"]]);
+});

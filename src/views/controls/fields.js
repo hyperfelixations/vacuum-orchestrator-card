@@ -95,7 +95,9 @@ export function renderField(context, field) {
   // Inputs take a <label for>; choice groups are named through aria-labelledby.
   const labelTag = ["text", "textarea", "stepper", "switch", "entities"].includes(field.control) ? "label" : "div";
   const optional = field.optionalLabel ? ` <span class="voc-field-optional">${e(field.optionalLabel)}</span>` : "";
-  const label = `<${labelTag} class="voc-field-label${field.labelHidden ? " voc-sr-only" : ""}" id="${id}-label"${labelTag === "label" ? ` for="${id}"` : ""}>${e(field.label)}${optional}</${labelTag}>`;
+  // A switch shows one label, the one beside it; the field's name stays for assistive technology.
+  const labelHidden = field.labelHidden || (field.control === "switch" && Boolean(field.switchLabel));
+  const label = `<${labelTag} class="voc-field-label${labelHidden ? " voc-sr-only" : ""}" id="${id}-label"${labelTag === "label" ? ` for="${id}"` : ""}>${e(field.label)}${optional}</${labelTag}>`;
   const hint = field.hint ? `<div class="voc-field-hint" id="${id}-hint">${e(field.hint)}</div>` : "";
   // What follows from the choice, set apart from the hint on what it means.
   const warning = field.warning ? `<div class="voc-field-warning" id="${id}-warning">${icon("mdi:alert-outline")}<span>${e(field.warning)}</span></div>` : "";
