@@ -4,7 +4,7 @@
 
 import { roomAffordances } from "../../domain/affordances.js";
 import { DUE_OPERATIONS } from "../../domain/rooms.js";
-import { entityName, list, robotsOf, roomsOf } from "../common/lookups.js";
+import { entityName, jobTitle, list, robotName, robotsOf, roomIndex, roomsOf, slotData } from "../common/lookups.js";
 import { dueReasonText, duration, moment, qualityLabel, remainingText, t } from "../common/texts.js";
 
 const DUE_ICONS = Object.freeze({ vacuum: "mdi:robot-vacuum", mop: "mdi:water-outline" });
@@ -34,13 +34,29 @@ function dueLine(room, operation, { texts, model, timeFormat }) {
   };
 }
 
+const STARTED = new Set(["dispatching", "running"]);
+
+// What is happening to a room now (UI-07): a started job cleaning it, with its robot, and the
+// queued jobs that wait for it.
+function workOf(room, { texts, model }) {
+  const started = list(slotData(model, "openJobs")?.jobs).filter((job) => STARTED.has(job.state) && list(job.roomIds).includes(room.roomId));
+  const waiting = list(slotData(model, "queue")?.jobs).filter((job) => job.state === "queued" && list(job.roomIds).includes(room.roomId));
+  return [
+    ...started.map((job) => ({ key: "cleaning", tone: "running", text: job.progress?.robotId ? t(texts, "rooms.cleaning", { robot: robotName(job.progress.robotId, model) }) : t(texts, "rooms.cleaningNow") })),
+    ...(waiting.length ? [{ key: "waiting", tone: "neutral", text: t(texts, "rooms.waiting", { count: waiting.length }) }] : []),
+  ];
+}
+
 function releaseState(room, texts, model) {
   const release = room.release;
   if (!room.enabled) return { tone: "muted", icon: "mdi:eye-off-outline", label: t(texts, "rooms.excluded") };
   if (room.areaMissing) return { tone: "attention", icon: "mdi:map-marker-alert-outline", label: t(texts, "rooms.areaMissing") };
   // A release says what is left of it (UI-07); when it ends is the integration's to decide.
   if (room.released) return { tone: "ready", icon: "mdi:lock-open-variant-outline", label: releasedLabel(release, texts, model) };
-  if (release?.reservedJobId && !release.consumed) return { tone: "running", icon: "mdi:lock-clock", label: t(texts, "rooms.reserved") };
+  if (release?.reservedJobId && !release.consumed) {
+    const job = list(slotData(model, "queue")?.jobs).find((entry) => entry.jobId === release.reservedJobId);
+    return { tone: "running", icon: "mdi:lock-clock", label: job ? t(texts, "rooms.reservedFor", { job: jobTitle(job, roomIndex(model), model) }) : t(texts, "rooms.reserved") };
+  }
   if (release?.consumed) return { tone: "neutral", icon: "mdi:lock-outline", label: t(texts, "rooms.consumed") };
   return { tone: "neutral", icon: "mdi:lock-outline", label: t(texts, "rooms.locked") };
 }
@@ -98,6 +114,7 @@ export function buildRoomsView({ model, texts, context, options = {}, ui = {}, t
         robots: robots.length > 1 ? reaching.map((robot) => robot.name) : [],
         unreachable: room.enabled && reaching.length === 0,
         conditions: room.requirements.map((requirement) => condition(requirement, model, texts)),
+        work: workOf(room, { texts, model }),
         actions: roomAffordances(room, context),
       };
     }),

@@ -30,6 +30,7 @@ export const ROOMS_CSS = `
 .voc-room-meta-item { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
 .voc-room-meta-item ha-icon { --mdc-icon-size: 14px; }
 .voc-room-warning { color: var(--voc-warning-ink); font-weight: 750; }
+.voc-room-meta-item[data-tone="running"] { color: var(--voc-accent-ink); font-weight: 750; }
 .voc-room-actions { display: flex; flex-wrap: wrap; gap: var(--voc-target-gap); margin: 0 -4px; }
 .voc-room-toggle { margin-left: auto; }
 .voc-room-actions .voc-button { padding: 4px 10px; }
