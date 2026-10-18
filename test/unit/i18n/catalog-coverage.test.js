@@ -103,3 +103,10 @@ test("the quality of a cleaning record is said in plain words", async () => {
   const { de } = await import("../../../src/i18n/languages/de.js");
   assert.deepEqual([en["quality.confirmed"], en["quality.derived"], de["quality.confirmed"], de["quality.derived"]], ["Confirmed by the robot", "Not fully observed", "Vom Roboter bestätigt", "Nicht vollständig beobachtet"]);
 });
+
+// UI-23: an empty queue asks for the next step instead of saying a fourth time that nothing waits.
+test("the empty queue asks what to clean next", async () => {
+  const { en } = await import("../../../src/i18n/languages/en.js");
+  const { de } = await import("../../../src/i18n/languages/de.js");
+  assert.deepEqual([en["queue.empty"], de["queue.empty"]], ["What should be cleaned next?", "Was soll als Nächstes gereinigt werden?"]);
+});

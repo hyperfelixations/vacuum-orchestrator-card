@@ -51,7 +51,7 @@ export const en = {
   "queue.active": "In progress",
   "queue.attention": "Needs attention",
   "queue.waiting": "Waiting",
-  "queue.empty": "No jobs are waiting.",
+  "queue.empty": "What should be cleaned next?",
   "queue.fromTemplate": "From template",
 
   "view.label": "Views",
