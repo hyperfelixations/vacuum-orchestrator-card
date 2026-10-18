@@ -565,6 +565,14 @@ test.describe("onboarding and setup", () => {
     await expect(card.locator('[data-key="step:robots"]')).toContainText("Rocky");
     await shot(page, "setup-assistant-narrow-light.png", NARROW);
   });
+
+  test("the assistant on its last step, where finishing stands out, medium", async ({ page }) => {
+    const card = await mountCard(page, { ...ASSISTANT, config: BASE });
+    for (const step of ["robots", "rooms", "defaults"]) await act(page, card.locator(`[data-key="step:${step}"] [data-key="setup-next"]`));
+    await expect(card.locator('[data-key="step:queue"]')).toHaveAttribute("data-current", "true");
+    await expect(card.locator('[data-action="complete-setup"]')).toHaveClass(/voc-button--primary/);
+    await shot(page, "setup-assistant-last-step-medium-light.png", MEDIUM);
+  });
 });
 
 // A sections grid cell of the default ten rows: header, panel and tabs stay, the content scrolls.

@@ -64,6 +64,8 @@ test("the assistant renames the robot, sets the start delay and finishes", async
   await card.settle(32);
   assert.deepEqual(card.commands("rename_robot").map((message) => message.parameters), [{ robot_id: robotId, name: "Rocky downstairs" }]);
   assert.match(card.text('[data-key="step:robots"]'), /Rocky downstairs/);
+  await card.click('[data-key="step:robots"] [data-key="setup-next"]');
+  assert.equal(card.root.querySelector('[aria-current="step"]').dataset.key, "step:rooms", "Next opens the following step");
   await card.click('[data-key="step:queue"] [data-action="choose"]');
   await card.click('[data-key="step:queue"] [data-action="open-queue-settings"]');
   await card.type('[data-field="overlay:delay"]', "10");

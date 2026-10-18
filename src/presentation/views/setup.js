@@ -92,11 +92,17 @@ export function buildSetupView({ model, texts, context, ui = {} }) {
     loading: false,
     pending: setup.assistantPending,
     finish: setup.assistantPending ? decide(context, { operation: "complete_setup", target: SETUP_TARGET }) : null,
+    // PO 2026-10-18: finishing the whole setup stands out only on the last step; before it,
+    // each step leads on to the next.
+    finishPrimary: current === SETUP_STEPS.at(-1),
     steps: SETUP_STEPS.map((key, position) => ({
       key,
       number: position + 1,
       title: t(texts, `setup.step.${key}.title`),
       current: key === current,
+      next: position < SETUP_STEPS.length - 1
+        ? { key: SETUP_STEP_CHOICE, value: SETUP_STEPS[position + 1], label: t(texts, "setup.next", { step: t(texts, `setup.step.${SETUP_STEPS[position + 1]}.title`) }) }
+        : null,
       builtIn: false,
       ...BUILDERS[key](model, texts, context, setup.steps[key]),
     })),

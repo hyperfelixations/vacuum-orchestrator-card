@@ -43,7 +43,7 @@ function stepCard(context, step) {
     ? `<h3 class="voc-setup-title">${e(step.title)}</h3>`
     : `<h3 class="voc-setup-title"><button type="button" class="voc-setup-open" data-action="choose"${argsAttr({ key: SETUP_STEP_CHOICE, value: step.key })} aria-expanded="false">${e(step.title)}</button></h3>`;
   const body = step.current
-    ? `<div class="voc-setup-body"><p class="voc-setup-text">${e(step.text)}</p>${step.note ? `<p class="voc-setup-note">${icon("mdi:information-outline")}<span>${e(step.note)}</span></p>` : ""}${BODIES[step.key](context, step)}</div>`
+    ? `<div class="voc-setup-body"><p class="voc-setup-text">${e(step.text)}</p>${step.note ? `<p class="voc-setup-note">${icon("mdi:information-outline")}<span>${e(step.note)}</span></p>` : ""}${BODIES[step.key](context, step)}${step.next ? `<div class="voc-inline-actions">${button({ action: "choose", args: { key: step.next.key, value: step.next.value }, label: step.next.label, iconName: "mdi:arrow-down", variant: "primary", key: "setup-next" })}</div>` : ""}</div>`
     : "";
   return `<li class="voc-setup-step" data-key="step:${e(step.key)}" data-current="${step.current}"${step.current ? ' aria-current="step"' : ""}><span class="voc-setup-marker" aria-hidden="true">${marker}</span><div class="voc-setup-main"><div class="voc-setup-head">${title}${status}</div>${body}</div></li>`;
 }
@@ -63,7 +63,7 @@ export function renderSetup(context, vm) {
   if (vm.loading) return wrap(loadingState(context));
   const lead = `<p class="voc-setup-lead" data-key="lead">${e(context.t("setup.lead"))}</p>`;
   const later = vm.finish ? button({ action: "defer-setup", label: context.t("setup.later"), variant: "quiet" }) : "";
-  const finish = vm.finish ? `<div class="voc-inline-actions" data-key="finish">${later}${button({ action: "complete-setup", label: context.t("setup.finish"), iconName: "mdi:check", variant: "primary", decision: vm.finish, reasonText: context.reason(vm.finish) })}</div>` : "";
+  const finish = vm.finish ? `<div class="voc-inline-actions" data-key="finish">${later}${button({ action: "complete-setup", label: context.t("setup.finish"), iconName: "mdi:check", variant: vm.finishPrimary ? "primary" : "text", decision: vm.finish, reasonText: context.reason(vm.finish) })}</div>` : "";
   return wrap(`${lead}<ol class="voc-setup-steps">${vm.steps.map((step) => stepCard(context, step)).join("")}</ol>${finish}`);
 }
 

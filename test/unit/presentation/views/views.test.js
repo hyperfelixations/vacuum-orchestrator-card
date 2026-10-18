@@ -349,6 +349,12 @@ test("setup shows the integration's four steps with their facts; the open step i
   assert.match(step(setup, "queue").summary, /5 s/, "the start delay in seconds");
   const picked = buildSetupView({ ...assistant, ui: { choices: { "setup:step": "queue" } } });
   assert.deepEqual(picked.steps.filter((entry) => entry.current).map((entry) => entry.key), ["queue"], "a step the user opens is shown instead");
+  // PO 2026-10-18: each step leads on to the next by name; finishing the whole setup stands out
+  // only on the last step and is named so.
+  assert.deepEqual(setup.steps.map((entry) => entry.next?.value ?? null), ["rooms", "defaults", "queue", null]);
+  assert.equal(step(setup, "robots").next.label, assistant.texts.t("setup.next", { step: assistant.texts.t("setup.step.rooms.title") }));
+  assert.deepEqual([setup.finishPrimary, picked.finishPrimary], [false, true]);
+  assert.deepEqual([assistant.texts.t("setup.finish"), assistant.texts.t("setup.next", { step: "Queue" })], ["Finish setup", "Next: Queue"]);
   assert.equal(buildSetupView({ ...assistant, ui: { choices: { "setup:step": "garden" } } }).steps.find((entry) => entry.current).key, "robots");
   // SET-12: a setup that could not be read says why, with a way to try again.
   const failure = { ok: false, code: "connection_lost" };
