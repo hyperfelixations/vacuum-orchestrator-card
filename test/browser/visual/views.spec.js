@@ -5,6 +5,7 @@
 // Re-record with `npx playwright test test/browser/visual --update-snapshots`, then look at every
 // changed image.
 
+const path = require("node:path");
 const { test, expect } = require("../../helpers/playwright.js");
 const { BUSY, act, mountCard, named, setCardWidth, waitForStableLayout } = require("../../helpers/browser-helpers.js");
 
@@ -388,6 +389,27 @@ test.describe("robots", () => {
     await shot(page, "robots-medium-light.png", MEDIUM);
   });
 
+  // Plan R1.12: a tall map on a wide card turns to fill its column instead of standing narrow.
+  test("a tall map on a wide card", async ({ page }) => {
+    const card = await mountCard(page, { ...BUSY, config: BASE });
+    await page.route("**/api/image_proxy/**", (route) => route.fulfill({ path: path.join(__dirname, "..", "..", "fixtures", "map-portrait.svg"), contentType: "image/svg+xml" }));
+    await setCardWidth(page, WIDE);
+    await open(page, card, "robots");
+    const stage = named(card, ".voc-robot", "Rocky", "[data-map-stage]");
+    await expect(stage).toHaveAttribute("data-rotated", "true");
+    const [box, picture] = await Promise.all([stage.boundingBox(), stage.locator("img").boundingBox()]);
+    expect(picture.width / box.width, "the turned map fills most of its column").toBeGreaterThan(0.6);
+    await shot(page, "robots-tall-map-wide-light.png", WIDE);
+    // A card that narrows within a width tier (a turned tablet) lays its map out again; it never
+    // keeps the old size.
+    await setCardWidth(page, MEDIUM);
+    await setCardWidth(page, NARROW);
+    await expect.poll(async () => {
+      const [narrowBox, narrowPicture] = await Promise.all([stage.boundingBox(), stage.locator("img").boundingBox()]);
+      return Math.round((narrowPicture.width / narrowBox.width) * 100);
+    }).toBeGreaterThanOrEqual(95);
+  });
+
   // UI-10: the map opens large; on a narrow card a wide map turns to fill it, on a wider one it
   // stays upright.
   test("the map enlarged, narrow and medium", async ({ page }) => {
@@ -396,6 +418,9 @@ test.describe("robots", () => {
     await setCardWidth(page, NARROW);
     await act(page, named(card, ".voc-robot", "Rocky", '[data-action="open-map"]'));
     await expect(card.locator("[data-map-stage]")).toHaveAttribute("data-rotated", "true");
+    // The whole map stays in view below the page's lead (plan R1.13).
+    const [stageBox, regionBox] = await Promise.all([card.locator("[data-map-stage]").boundingBox(), card.locator(".voc-overlay-scroll").boundingBox()]);
+    expect(stageBox.y + stageBox.height).toBeLessThanOrEqual(regionBox.y + regionBox.height + 1);
     await shot(page, "robot-map-narrow-light.png", NARROW);
     await setCardWidth(page, MEDIUM);
     await page.evaluate(() => window.dispatchEvent(new Event("resize")));
@@ -528,13 +553,19 @@ test.describe("on a touch screen", () => {
     await shot(page, "queue-narrow-touch-light.png");
   });
 
-  // UI-22: a refused control has no hover on touch; tapped, it says why.
+  // UI-22: a refused control has no hover on touch; tapped, it says why. Plan R1.2: the profile of
+  // a working robot opens for its next job; removing it waits.
   test("a tapped refused control says why", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await setCardWidth(page, NARROW);
     await open(page, card, "robots");
-    await card.locator('.voc-robot [data-action="edit-robot"]').first().tap({ force: true });
-    await expect(card.locator(".voc-notice--info")).toBeVisible();
+    await act(page, card.locator('.voc-robot [data-action="edit-robot"]').first());
+    await expect(card.locator('[data-key="busy"]')).toBeVisible();
+    // LAY-12: only the card's own notice floats; a page's notes stand in its flow.
+    expect(await card.locator('[data-key="busy"]').evaluate((node) => getComputedStyle(node).position)).toBe("static");
+    await act(page, card.locator(".voc-overlay-actions .voc-menu-button"));
+    await card.locator('[role="menuitem"][data-action="remove-robot"]').tap({ force: true });
+    await expect(card.locator(".voc-notice--info:not([data-key])")).toBeVisible();
     await shot(page, "robot-refused-narrow-touch-light.png");
   });
 

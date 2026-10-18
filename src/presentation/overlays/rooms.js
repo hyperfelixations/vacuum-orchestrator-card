@@ -25,6 +25,13 @@ function intervalField(texts, draft, key, labelKey, error, hintKey = null) {
   };
 }
 
+// A robot target `<map>_<segment>` by its segment's name on that map, else as reported (UI-04).
+function targetName(robot, target) {
+  const [mapId, segmentId] = String(target).split("_");
+  const segment = list(robot.maps).find((map) => map.mapId === mapId)?.segments.find((entry) => entry.id === segmentId);
+  return segment?.name || target;
+}
+
 function roomOf(model, roomId) {
   return roomsOf(model).find((room) => room.roomId === roomId) || null;
 }
@@ -136,7 +143,13 @@ export function buildRoomEditor({ model, texts, context, overlay }) {
   const actions = room ? roomAffordances(room, context) : null;
   const detected = robotsOf(model)
     .filter((robot) => robot.capabilities?.targets?.[draft.meta.roomId])
-    .map((robot) => ({ key: robot.robotId, text: t(texts, "room.detectedTarget", { robot: robot.name, targets: robot.capabilities.targets[draft.meta.roomId].join(", ") }) }));
+    .map((robot) => ({ key: robot.robotId, text: t(texts, "room.detectedTarget", { robot: robot.name, targets: robot.capabilities.targets[draft.meta.roomId].map((target) => targetName(robot, target)).join(", ") }) }));
+  // Plan R1.6: segments of the area a robot leaves out (outdated or on another map), fixed in
+  // Home Assistant's assignment.
+  const ignored = robotsOf(model).flatMap((robot) => {
+    const reach = list(robot.reach).find((entry) => entry.roomId === draft.meta.roomId);
+    return reach?.ignored.length ? [{ key: robot.robotId, text: t(texts, "room.ignoredTargets", { robot: robot.name, count: reach.ignored.length }), assign: robot.configuration?.entityId ? { entityId: robot.configuration.entityId } : null }] : [];
+  });
   return {
     key: "room-editor",
     roomId: draft.meta.roomId,
@@ -171,9 +184,10 @@ export function buildRoomEditor({ model, texts, context, overlay }) {
     requirements: requirementRows(texts, model, draft, error),
     requirementSearch: entityField(texts, model, { key: "requirementsAdd", labelKey: "room.addCondition", value: [], query: queries.requirementsAdd, hintKey: "room.conditionsHint" }),
     bindings: bindingRows(texts, model, draft, error),
-    bindingsOpen: overlay.bindingsOpen === true || draft.bindings.length > 0,
+    bindingsOpen: overlay.bindingsOpen === true || draft.bindings.length > 0 || ignored.length > 0,
     robots: robotsOf(model).map((robot) => ({ robotId: robot.robotId, name: robot.name })),
     detected,
+    ignored,
     invalid,
     save: decide(context, { operation: "update_room", target: roomTarget(draft.meta.roomId) }),
     disable: actions?.disable ?? null,

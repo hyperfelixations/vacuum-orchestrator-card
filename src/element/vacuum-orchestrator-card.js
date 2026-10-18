@@ -153,10 +153,16 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._tabStrip.connect();
     this._scroll.connect();
     this._layoutTier.connect();
+    // A card that changes size lays its map pictures out again, also within a width tier.
+    this._stopMapResize = this._platform.observeResize(this, () => this._placeMaps());
     this._clock.connect();
     this._syncSession();
     void this._router.resumeHolds();
     this._renderSafely();
+  }
+
+  _placeMaps() {
+    placeMaps(this.shadowRoot, { viewportHeight: this.ownerDocument?.defaultView?.innerHeight ?? 0 });
   }
 
   disconnectedCallback() {
@@ -165,6 +171,8 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._tabStrip.disconnect();
     this._scroll.disconnect();
     this._layoutTier.disconnect();
+    this._stopMapResize?.();
+    this._stopMapResize = null;
     this._clock.disconnect();
     this._router.pauseHolds();
     this._releaseSession();
@@ -370,7 +378,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._mount.mount(context, { css: STYLES, html: renderCard(context, viewModel, renderBody) });
     this._scroll.sync(this._scrollStack(viewModel));
     placeMenus(this.shadowRoot);
-    placeMaps(this.shadowRoot, { viewportHeight: this.ownerDocument?.defaultView?.innerHeight ?? 0 });
+    this._placeMaps();
     const requested = this._ui.consumeFocus();
     if (requested) focusSelector(this.shadowRoot, requested, ring);
     else if (depth > previousDepth && held && viewModel.dialog) focusSelector(this.shadowRoot, ".voc-dialog [data-autofocus]", ring) || focusSelector(this.shadowRoot, "#voc-dialog-title", ring);

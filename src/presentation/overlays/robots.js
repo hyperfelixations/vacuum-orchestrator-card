@@ -6,7 +6,7 @@ import { candidateAffordance, decide, robotAffordances, robotTarget } from "../.
 import { OPERATIONS, ROBOT_OPTION_MAPS, ROBOT_ROLES, ROBOT_ROLE_DOMAINS, ROBOT_TIMEOUT_FIELDS } from "../../domain/job-schema.js";
 import { isConfiguredCandidate } from "../../domain/robots.js";
 import { entityName, list, mapLabel, robotsOf, slotData } from "../common/lookups.js";
-import { adapterLabel, operationLabel, settingLabel, t } from "../common/texts.js";
+import { adapterLabel, moment, operationLabel, settingLabel, t } from "../common/texts.js";
 import { entityField, field, pageErrors } from "./editor-fields.js";
 
 export function buildRobotAdd({ model, texts, context, ui = {} }) {
@@ -129,6 +129,8 @@ export function buildRobotEditor({ model, texts, context, overlay }) {
     robotId: draft.meta.robotId,
     title: t(texts, "robotEditor.title", { robot: robot?.name || draft.meta.robotId }),
     lead: robot ? profileLead(texts, model, robot, draft) : null,
+    // Plan R1.2: during a job the integration takes the change for the robot's next job.
+    busy: robot?.active ? t(texts, "robotEditor.busy", { robot: robot.name }) : null,
     general,
     areaScope,
     areas,
@@ -167,7 +169,7 @@ export function buildRenameRobot({ model, texts, context, overlay }) {
 }
 
 // UI-10: one robot's map, enlarged; the stage turns it where that shows it larger.
-export function buildRobotMap({ model, overlay }) {
+export function buildRobotMap({ model, texts, overlay }) {
   const robot = robotsOf(model).find((entry) => entry.robotId === overlay.robotId) || null;
   const map = list(model.robotsLive?.[overlay.robotId]?.maps).find((entry) => entry.entityId === overlay.entityId && entry.picture) || null;
   const label = map ? mapLabel(robot, map) : overlay.entityId;
@@ -175,6 +177,8 @@ export function buildRobotMap({ model, overlay }) {
     key: "robot-map",
     title: [robot?.name || overlay.robotId, label].join(" · "),
     picture: map?.picture ?? null,
+    // When the picture came: the image entity's state is the time of its last image.
+    updated: Number.isFinite(map?.updatedAt) ? t(texts, "robot.mapUpdated", { when: moment(texts, map.updatedAt, "auto", model.nowMs) }) : null,
     rotation: overlay.rotation === "none" ? "none" : "auto",
     missing: !map,
   };

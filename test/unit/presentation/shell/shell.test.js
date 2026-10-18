@@ -55,6 +55,10 @@ test("the integration's counts mark attention and work before the open jobs are 
   assert.equal(automaticSubtitle(queue({ attentionCount: 2 }), "attention", texts), texts.t("subtitle.attention"), "attention items are not jobs");
   assert.equal(cardStatus(queue({ activeCount: 1 })), "cleaning");
   assert.equal(cardStatus({ ...queue({}), live: { mode: "idle", attentionCount: 1, activeCount: 0 } }), "attention", "a live event is newer than the queue read");
+  // Plan R1.10, UI-03: beside the panel, which counts nothing and says how the queue rests, the
+  // subtitle has nothing to add; without the panel it says it.
+  assert.equal(automaticSubtitle(queue({}), "idle", texts), texts.t("subtitle.nothingWaiting"));
+  for (const [mode, status] of [["idle", "idle"], ["running", "running"], ["paused", "paused"]]) assert.equal(automaticSubtitle(queue({ mode }), status, texts, { panelShown: true }), "", status);
 });
 
 test("each status has a tone in the RCC token derivation", async () => {

@@ -7,6 +7,7 @@ import { emptyState, errorState, loadingState } from "./parts.js";
 import { ROOMS_CSS } from "./styles/rooms.js";
 
 function dueRow(line) {
+  if (line.none) return `<div class="voc-due voc-due--none" data-key="due:none" data-due="disabled">${icon(line.icon)}<span>${e(line.status)}</span></div>`;
   const bar = line.share === null ? "" : `<span class="voc-due-bar" aria-hidden="true"><span style="width:${Math.round(line.share * 100)}%"></span></span>`;
   const quality = line.quality ? `<span class="voc-due-quality" data-quality="${e(line.qualityKey)}">${e(line.quality)}</span>` : "";
   const notes = [line.last ? e(line.last) : "", quality, line.reason ? e(line.reason) : ""].filter(Boolean).join(" · ");
@@ -41,7 +42,7 @@ function roomCard(context, room) {
       ? `<span class="voc-room-meta-item">${icon("mdi:robot-vacuum")}${e(room.robots.join(", "))}</span>`
       : "";
   const work = room.work.map((entry) => `<span class="voc-room-meta-item" data-key="work:${e(entry.key)}" data-tone="${e(entry.tone)}">${icon(entry.key === "cleaning" ? "mdi:robot-vacuum" : "mdi:timer-sand")}${e(entry.text)}</span>`).join("");
-  const conditions = room.conditions.map((entry) => `<span class="voc-room-meta-item" data-key="condition:${e(entry.key)}">${icon("mdi:door")}${e(entry.text)}</span>`).join("");
+  const conditions = room.conditions.map((entry) => `<span class="voc-room-meta-item" data-key="condition:${e(entry.key)}" data-met="${entry.met}">${icon(entry.met ? "mdi:check-circle-outline" : "mdi:door")}${e(entry.text)}</span>`).join("");
   const settings = button({ action: "edit-room", args: { roomId: room.roomId }, label: context.t("rooms.settings", { room: room.name }), iconName: "mdi:cog-outline", variant: "icon", decision: room.actions.edit, reasonText: context.reason(room.actions.edit) });
   return `<article class="voc-room" data-key="room:${e(room.roomId)}"${room.enabled ? "" : ' data-excluded="true"'}><header class="voc-room-head"><span class="voc-room-icon" aria-hidden="true">${icon(room.icon)}</span><h3 class="voc-room-name">${e(room.name)}</h3>${settings}</header><div class="voc-room-status">${pill(room.release.label, room.release.tone, { iconName: room.release.icon })}</div><div class="voc-room-due">${room.due.map(dueRow).join("")}</div>${work || robots || conditions ? `<div class="voc-room-meta">${work}${robots}${conditions}</div>` : ""}<div class="voc-room-actions">${actions}</div></article>`;
 }

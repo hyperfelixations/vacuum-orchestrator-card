@@ -200,15 +200,21 @@ test("rooms show due verdicts, release, reaching robots and conditions as report
   assert.equal(byName.Studio.reach, null);
   assert.deepEqual(byName.Conservatory.conditions.map((item) => item.text), [texts.t("rooms.condition", { entity: "Conservatory Door", state: "off", allowed: "on" })]);
   assert.match(byName.Conservatory.conditions[0].text, / – required: on$/, "worded as on the detail page");
+  // Plan R1.9: an unmet condition says what it needs; a met one only says that it holds.
+  assert.equal(byName.Conservatory.conditions[0].met, false);
+  const open = buildRoomsView({ texts, context, model: { ...model, slots: { ...model.slots, rooms: { ...model.slots.rooms, data: { ...model.slots.rooms.data, items: model.slots.rooms.data.items.map((room) => ({ ...room, requirementStates: Object.fromEntries(room.requirements.map((item) => [item.entityId, "ready"])) })) } } } }, options: {} }).rooms.find((room) => room.name === "Conservatory");
+  assert.deepEqual([open.conditions[0].met, open.conditions[0].text], [true, texts.t("rooms.conditionMet", { entity: "Conservatory Door", state: "off" })]);
   // UI-04: in Home Assistant's own words where it words them.
   const { formatLikeHomeAssistant } = require("../../../helpers/recorded-backend.js");
   const worded = buildRoomsView({ ...(await busy({}, { formatEntityState: formatLikeHomeAssistant })), options: {} }).rooms.find((room) => room.name === "Conservatory");
   assert.equal(worded.conditions[0].text, texts.t("rooms.condition", { entity: "Conservatory Door", state: "Closed", allowed: "Open" }));
-  assert.equal(byName.Conservatory.due[0].state, "disabled");
+  // Plan R1.8, UI-08: without any due rule or record, one line says so instead of two.
+  assert.deepEqual(byName.Conservatory.due.map((line) => [line.key, line.state, line.status]), [["none", "disabled", texts.t("rooms.due.none")]]);
+  assert.deepEqual(byName["Dining Room"].due.map((line) => line.key), ["vacuum", "mop"], "a room with a rule keeps both lines");
   // UI-07, REL-05: a release says what is left of it; only a recorded cleaning has a line of its own.
   assert.deepEqual([byName["Dining Room"].release.label, byName.Library.release.label], [texts.t("rooms.released"), texts.t("rooms.releasedOnce")]);
   assert.match(byName.Studio.release.label, /^Released · \d+ h( \d+ min)? left$/);
-  assert.deepEqual([byName.Studio.due[0].last, byName.Conservatory.due[0].last, byName.Conservatory.due[1].last], [null, null, null], "nothing recorded, nothing to say");
+  assert.deepEqual([byName.Studio.due[0].last, byName.Conservatory.due[0].last], [null, null], "nothing recorded, nothing to say");
   assert.match(byName["Dining Room"].due[0].last, /^Last /);
   // REL-04: several released rooms are locked in one step.
   assert.deepEqual([rooms.lockAll.roomIds, rooms.lockAll.text, rooms.lockAll.decision.state], [["Dining Room", "Studio", "Library"].map((name) => byName[name].roomId), texts.t("rooms.releasedCount", { count: 3 }), "enabled"]);
@@ -240,7 +246,8 @@ test("robots show Home Assistant's live state beside the integration's profile f
   const [rocky] = robots.robots;
   assert.equal(rocky.batteryText, "100 %");
   assert.equal(rocky.active, true);
-  assert.equal(rocky.actions.configure.reason, "robot_busy");
+  // Plan R1.2: the integration takes profile changes during a job, for the robot's next one.
+  assert.deepEqual([rocky.actions.configure.state, rocky.actions.remove.reason], ["enabled", "robot_busy"]);
   assert.deepEqual(rocky.facts.map((fact) => fact.key), ["room", "status", "map"]);
   assert.equal(rocky.facts[0].value, "Studio", "the room the robot reports cleaning");
   assert.ok(rocky.map.picture.startsWith("/api/image_proxy/image.rocky_main_floor"));

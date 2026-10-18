@@ -52,6 +52,20 @@ function reading(states, entityId, format) {
   });
 }
 
+// An image entity's state is the time of its last image. Home Assistant's own cards build the
+// picture with it, so each new image is a new address (frontend `computeImageUrl`); without a
+// token the entity's own picture stands.
+function mapReading(states, entityId, format) {
+  const base = reading(states, entityId, format);
+  const token = states?.[entityId]?.attributes?.access_token;
+  const updatedAt = Date.parse(base.state ?? "");
+  return Object.freeze({
+    ...base,
+    picture: typeof token === "string" && base.state ? `/api/image_proxy/${entityId}?token=${encodeURIComponent(token)}&state=${encodeURIComponent(base.state)}` : base.picture,
+    updatedAt: Number.isFinite(updatedAt) ? updatedAt : null,
+  });
+}
+
 // The entity the integration uses for a role: the profile's own reference, else the one its
 // discovery found for the vacuum; an explicit null switches the role off.
 export function roleReference(robot, candidate, role) {
@@ -79,7 +93,7 @@ export function robotLive(robot, registry, states, candidate = null, format = nu
     roles: Object.freeze(roles),
     discovered: Object.freeze(discovered),
     ambiguousRoles: Object.freeze([...(candidate?.ambiguousRoles || [])]),
-    maps: Object.freeze(maps.map((mapId) => reading(states, mapId, format))),
+    maps: Object.freeze(maps.map((mapId) => mapReading(states, mapId, format))),
   });
 }
 

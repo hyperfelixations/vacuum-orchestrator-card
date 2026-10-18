@@ -62,7 +62,9 @@ export const FORMS_CSS = `
   font-size: 13px;
   font-weight: 650;
 }
-.voc-input[type="number"] { max-width: 160px; }
+/* Touch first: no native spin arrows on number fields; steppers and the keyboard count. */
+.voc-input[type="number"] { max-width: 160px; -moz-appearance: textfield; appearance: textfield; }
+.voc-input[type="number"]::-webkit-inner-spin-button, .voc-input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-input:focus { border-color: var(--voc-accent-border); }
 .voc-input[aria-invalid="true"] { border-color: color-mix(in srgb, var(--voc-error) 60%, transparent); }
@@ -71,8 +73,7 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-duration { display: flex; flex-wrap: wrap; gap: 8px 16px; }
 .voc-duration-part { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
 .voc-duration-part .voc-input { width: 72px; text-align: center; font-variant-numeric: tabular-nums; }
-.voc-stepper-input { width: 64px; text-align: center; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
-.voc-stepper-input::-webkit-inner-spin-button, .voc-stepper-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.voc-stepper-input { width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
 
 .voc-switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-size: 12.5px; font-weight: 700; }
 .voc-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }

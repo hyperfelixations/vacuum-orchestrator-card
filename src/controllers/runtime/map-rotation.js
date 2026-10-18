@@ -1,4 +1,4 @@
-// The enlarged robot map (UI-10): turned a quarter when that shows it more than 15 % larger in its
+// The robot map (UI-10), enlarged on its page and in a robot's card: turned a quarter when that shows it more than 15 % larger in its
 // box, laid out with width and height swapped rather than only transformed, and decided again only
 // when the box changes by more than 10 %. Measured after each render and once a picture loads; see
 // internal dev doc §9 "Kartenbild".
@@ -35,7 +35,11 @@ const decisions = new Map();
 function place(stage, image, viewportHeight) {
   const region = stage.closest?.("[data-frame]") ? stage.closest("[data-scroll]") : null;
   const share = Math.round(viewportHeight * MAP_VIEWPORT_SHARE);
-  const box = { boxWidth: stage.clientWidth, boxHeight: region?.clientHeight > 0 ? Math.min(share, region.clientHeight) : share };
+  // A stage in a robot's card has its own fixed height (plan R1.12).
+  const fixed = Number(stage.dataset.maxHeight);
+  // In a page's region the map has what is left below what stands above it (the page's lead).
+  const above = region ? stage.getBoundingClientRect().top - region.getBoundingClientRect().top + region.scrollTop : 0;
+  const box = { boxWidth: stage.clientWidth, boxHeight: fixed > 0 ? fixed : region?.clientHeight > 0 ? Math.min(share, region.clientHeight - above) : share };
   const size = { imageWidth: image.naturalWidth, imageHeight: image.naturalHeight };
   if (!(box.boxWidth > 0 && box.boxHeight > 0 && size.imageWidth > 0 && size.imageHeight > 0)) return;
   const key = image.getAttribute("src");

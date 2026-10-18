@@ -79,7 +79,8 @@ export const robotEditorOverlay = Object.freeze({
     // On a narrow card removing sits in a menu, so the footer stays one line (LAY-09).
     const remove = footerLead(context, { items: [vm.remove ? { action: "remove-robot", args: { robotId: vm.robotId }, label: context.t("robotEditor.remove"), iconName: "mdi:delete-outline", decision: vm.remove, reasonText: context.reason(vm.remove), tone: "danger" } : null, vm.rename ? { action: "rename-robot", args: { robotId: vm.robotId }, label: context.t("action.rename"), iconName: "mdi:rename-outline", decision: vm.rename, reasonText: context.reason(vm.rename) } : null], key: "robot-editor", label: context.t("action.moreActions"), open: vm.menuOpen === true });
     const actions = `${remove}${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${button({ action: "save-robot", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
-    return frame(context, { key: "robot-editor", title: vm.title, lead: vm.lead, invalid: vm.invalid, content: `<div class="voc-form">${content}</div>`, actions });
+    const busy = vm.busy ? `<div class="voc-notice voc-notice--info" role="status" data-key="busy">${icon("mdi:information-outline")}<span class="voc-notice-text">${e(vm.busy)}</span></div>` : "";
+    return frame(context, { key: "robot-editor", title: vm.title, lead: vm.lead, invalid: vm.invalid, content: `${busy}<div class="voc-form">${content}</div>`, actions });
   },
   css: `${FORMS_CSS}
 .voc-roles { display: grid; }
@@ -106,12 +107,12 @@ export const renameRobotOverlay = Object.freeze({
 // (`controllers/runtime/map-rotation.js`).
 export const robotMapOverlay = Object.freeze({
   key: "robot-map",
-  build: ({ model, overlay }) => buildRobotMap({ model, overlay }),
+  build: ({ model, texts, overlay }) => buildRobotMap({ model, texts, overlay }),
   render(context, vm) {
     const content = vm.missing
       ? `<div class="voc-unavailable" data-key="missing">${icon("mdi:map-marker-question-outline")}<div>${e(context.t("robot.mapMissing"))}</div></div>`
       : `<div class="voc-map-stage" data-map-stage data-rotation="${e(vm.rotation)}"><img src="${e(context.resolveUrl(vm.picture))}" alt="${e(vm.title)}"></div>`;
-    return frame(context, { key: "robot-map", title: vm.title, content });
+    return frame(context, { key: "robot-map", title: vm.title, lead: vm.updated || "", content });
   },
   css: ROBOTS_CSS,
 });

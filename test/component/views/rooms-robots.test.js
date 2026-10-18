@@ -123,18 +123,22 @@ test("a new room needs a name and is created without an area", async () => {
   card.unmount();
 });
 
-test("robots show live state, and a profile under a lease cannot be reconfigured", async () => {
+// Plan R1.2: a working robot's profile opens and says that changes apply from its next job; only
+// removing it waits, and the refused button says why when tapped (UI-22).
+test("robots show live state, and a profile under a lease is changed for the next job", async () => {
   const card = await open("robots", BUSY);
   assert.match(robot(card, "Rocky").textContent, /100 %/);
-  const settings = robot(card, "Rocky").querySelector('[data-action="edit-robot"]');
-  assert.deepEqual([settings.disabled, settings.getAttribute("aria-disabled")], [false, "true"]);
-  const reason = settings.getAttribute("title");
-  assert.ok(reason);
-  // UI-22: tapped, the refused gear says why instead of doing nothing (touch has no hover).
-  await card.click(settings);
-  assert.equal(card.root.querySelector(".voc-overlay"), null, "nothing opens");
-  assert.equal(card.text(".voc-notice--info .voc-notice-text"), reason);
+  await card.click(robot(card, "Rocky").querySelector('[data-action="edit-robot"]'));
+  await card.settle(32);
+  assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:robot-editor");
+  assert.equal(card.text('[data-key="busy"]'), "Rocky is working on a job. Changes apply from its next job.");
+  assert.equal(card.root.querySelector('[data-action="save-robot"]').getAttribute("aria-disabled"), null);
+  const remove = card.root.querySelector('[data-action="remove-robot"]');
+  assert.equal(remove.getAttribute("aria-disabled"), "true");
+  await card.click(remove);
+  assert.equal(card.text(".voc-notice--info .voc-notice-text"), remove.getAttribute("title"), "tapped, it says why");
   assert.equal(card.root.querySelector(".voc-notice--info").getAttribute("role"), "status");
+  assert.deepEqual(card.commands("remove_robot"), []);
   card.unmount();
 });
 

@@ -111,6 +111,6 @@ test("against a recording, every object carries the integration's verdicts", asy
   const running = model.slots.openJobs.data.jobs[0];
   assert.deepEqual([jobAffordances(running, ctx).cancel.state, jobAffordances(running, ctx).delete.state], ["enabled", "hidden"]);
   const robot = robotAffordances(model.slots.robots.data.items[0], ctx);
-  assert.deepEqual([robot.configure.reason, robot.rename.state], ["robot_busy", "enabled"]);
+  assert.deepEqual([robot.configure.state, robot.remove.reason, robot.rename.state], ["enabled", "robot_busy", "enabled"], "a working robot is configured for its next job, not removed");
   assert.ok(model.slots.rooms.data.items.every((room) => roomAffordances(room, ctx).release.state !== "hidden"));
 });

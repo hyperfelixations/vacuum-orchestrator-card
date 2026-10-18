@@ -37,7 +37,7 @@ const NOTICE_ICONS = Object.freeze({ error: "mdi:alert-circle-outline", warning:
 
 function renderNotice(context, notice) {
   if (!notice) return "";
-  return `<div class="voc-notice voc-notice--${e(notice.kind)}" role="${notice.kind === "success" || notice.kind === "info" ? "status" : "alert"}">${icon(NOTICE_ICONS[notice.kind] ?? NOTICE_ICONS.success)}<span class="voc-notice-text">${e(notice.text)}</span>${button({ action: "dismiss-notice", label: context.t("action.dismiss"), iconName: "mdi:close", variant: "icon", className: "voc-notice-close" })}</div>`;
+  return `<div class="voc-notice voc-notice--float voc-notice--${e(notice.kind)}" role="${notice.kind === "success" || notice.kind === "info" ? "status" : "alert"}">${icon(NOTICE_ICONS[notice.kind] ?? NOTICE_ICONS.success)}<span class="voc-notice-text">${e(notice.text)}</span>${button({ action: "dismiss-notice", label: context.t("action.dismiss"), iconName: "mdi:close", variant: "icon", className: "voc-notice-close" })}</div>`;
 }
 
 function renderPanel(context, panel) {

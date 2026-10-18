@@ -56,6 +56,19 @@ test("readings copy single values, use Home Assistant's formatter and report unu
   assert.equal(throwing.roles.battery.display, null);
 });
 
+// Plan R1.13: a map picture changes with each new image, as Home Assistant's own image card
+// builds it, and says when that image came.
+test("a map picture follows each new image of its entity and says when it came", async () => {
+  const { indexRegistry, robotLive } = await load();
+  const robot = { configuration: { entityId: "vacuum.rocky" }, mapImageEntityId: "image.main_floor", maps: [] };
+  const at = (state) => robotLive(robot, indexRegistry([]), { "image.main_floor": { state, attributes: { access_token: "abc", entity_picture: "/api/image_proxy/image.main_floor?token=abc" } } }).maps[0];
+  const first = at("2026-10-18T12:00:00+00:00");
+  assert.deepEqual([first.picture, first.updatedAt], ["/api/image_proxy/image.main_floor?token=abc&state=2026-10-18T12%3A00%3A00%2B00%3A00", Date.parse("2026-10-18T12:00:00Z")]);
+  assert.notEqual(at("2026-10-18T12:01:00+00:00").picture, first.picture, "a new image is a new picture");
+  const plain = robotLive(robot, indexRegistry([]), { "image.main_floor": { state: "unknown", attributes: { entity_picture: "/main.png" } } }).maps[0];
+  assert.deepEqual([plain.picture, plain.updatedAt], ["/main.png", null], "without a token the entity's own picture, without a time no time");
+});
+
 test("a role whose entity has no state yet reads as unavailable", async () => {
   const { indexRegistry, robotLive } = await load();
   const live = robotLive({ configuration: { entityId: "vacuum.x", roles: { battery: "sensor.missing" } } }, indexRegistry([]), {});

@@ -27,6 +27,9 @@ export function automaticSubtitle(model, status, texts, { panelShown = false } =
   const waiting = queue?.total ?? model.live?.pendingJobs ?? 0;
   const next = panelShown && waiting && queue?.offset === 0 ? list(queue.jobs)[0] : null;
   if (next && (status === "running" || status === "paused" || status === "idle" || status === "waiting" || status === "setup")) return t(texts, "subtitle.next", { job: jobTitle(next, roomIndex(model), model) });
+  // Plan R1.10: with nothing waiting the panel already says how the queue rests or runs.
+  const restful = status === "idle" || status === "waiting" || status === "paused" || (status === "running" && queue?.run?.phase !== "standby");
+  if (panelShown && !waiting && restful) return "";
   switch (status) {
     case "attention":
       return attentionSentence(model, texts);

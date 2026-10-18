@@ -16,6 +16,8 @@ export const ROOMS_CSS = `
 .voc-due { display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; align-items: center; }
 .voc-due-label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 850; letter-spacing: .03em; color: var(--voc-faint); text-transform: uppercase; }
 .voc-due-label ha-icon { --mdc-icon-size: 14px; }
+.voc-due--none { display: flex; gap: 4px; font-size: 12px; font-weight: 650; color: var(--voc-faint); }
+.voc-due--none ha-icon { --mdc-icon-size: 14px; }
 .voc-due-status { justify-self: end; font-size: 12px; font-weight: 800; }
 .voc-due-bar { grid-column: 1 / -1; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--primary-text-color) 9%, transparent); overflow: hidden; }
 .voc-due-bar span { display: block; height: 100%; border-radius: inherit; background: color-mix(in srgb, var(--voc-success) 75%, transparent); }
@@ -39,6 +41,7 @@ export const ROOMS_CSS = `
 .voc-rooms-bar > span { display: inline-flex; align-items: center; gap: 6px; }
 .voc-rooms-bar > span ha-icon { --mdc-icon-size: 16px; color: var(--voc-success); }
 .voc-room-meta-item[data-tone="running"] { color: var(--voc-accent-ink); font-weight: 750; }
+.voc-room-meta-item[data-met="false"] { color: var(--voc-warning-ink); }
 .voc-room-actions { display: flex; flex-wrap: wrap; gap: var(--voc-target-gap); margin: 0 -4px; }
 .voc-room-toggle { margin-left: auto; }
 .voc-room-actions .voc-button { padding: 4px 10px; }

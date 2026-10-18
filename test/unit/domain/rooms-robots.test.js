@@ -21,16 +21,19 @@ test("a room keeps identity, grant, policy, stamps and the due verdict per opera
     last_cleaning: { vacuum: W.wireStamp(), mop: null },
     bindings: [{ robot_id: "robot-rocky", target_ids: ["16"], map_id: "map-0" }, { robot_id: "robot-dusty", target_ids: [] }],
     requirements: [W.wireRoomRequirement(), { accepted_states: ["on"] }],
+    requirement_states: [{ entity_id: "binary_sensor.conservatory_door", state: "ready" }, { entity_id: "sensor.other", state: "sideways" }, { state: "blocked" }],
   }));
   assert.equal(room.release.kind, "timed");
   assert.equal(room.release.expiresAt, Date.parse("2026-09-17T14:00:00Z"));
   assert.equal(room.released, true);
   assert.equal(room.due.vacuum.state, "due");
   assert.equal(room.due.mop.remainingSeconds, 3600);
-  assert.equal(room.lastCleaning.vacuum.quality, "derived");
+  assert.equal(room.lastCleaning.vacuum.quality, "confirmed", "a run seen to its end (plan R1.1)");
   assert.equal(room.lastCleaning.mop, null);
   assert.deepEqual(room.bindings.map((binding) => [binding.robotId, binding.mapId]), [["robot-rocky", "map-0"]]);
   assert.equal(room.requirements.length, 1);
+  // Plan R1.9: whether each condition holds is the integration's to say.
+  assert.deepEqual({ ...room.requirementStates }, { "binary_sensor.conservatory_door": "ready", "sensor.other": "unknown" });
   assert.ok(Object.isFrozen(room.due.vacuum));
 });
 

@@ -3,7 +3,7 @@
 // presents them and computes nothing. See internal dev doc §7 "Raummodell".
 
 import { normalizeActions } from "./availability.js";
-import { isCompletionQuality, isDueBasis, isDueState, isOperation, isReleaseKind } from "./job-schema.js";
+import { isCompletionQuality, isDueBasis, isDueState, isOperation, isReleaseKind, isRequirementState } from "./job-schema.js";
 import { bool, enumerated, finite, instant, integer, isRecord, records, strings, text, unknownFields } from "./wire-values.js";
 
 const ROOM_FIELDS = new Set([
@@ -17,6 +17,7 @@ const ROOM_FIELDS = new Set([
   "follow_area_name",
   "bindings",
   "requirements",
+  "requirement_states",
   "release",
   "due_policy",
   "occupancy",
@@ -135,6 +136,8 @@ export function normalizeRoom(wire) {
     followAreaName: wire.follow_area_name !== false,
     bindings: Object.freeze(records(wire.bindings).map(binding).filter(Boolean)),
     requirements: Object.freeze(records(wire.requirements).map(normalizeRequirement).filter(Boolean)),
+    // Whether each condition holds now, by entity; the integration weighs it (plan R1.9).
+    requirementStates: Object.freeze(Object.fromEntries(records(wire.requirement_states).filter((item) => text(item.entity_id)).map((item) => [text(item.entity_id), enumerated(item.state, isRequirementState) ?? "unknown"]))),
     release: release(wire.release),
     released: wire.released === true,
     // Waiting jobs that name this room among their reasons.

@@ -29,9 +29,17 @@ function dueLine(room, operation, { texts, model, timeFormat }) {
     share: share === null ? null : Math.max(0, Math.min(1, share)),
     // Only a recorded cleaning has a line; "never cleaned" is the status's to say.
     last: stamp ? t(texts, "rooms.last", { when: moment(texts, stamp.completedAt, timeFormat, model.nowMs) }) : null,
-    quality: stamp?.quality ? qualityLabel(texts, stamp.quality) : null,
+    // Plan R1.7: a cleaning seen to its end is the usual case; only an uncertain one says so.
+    quality: stamp?.quality === "derived" ? qualityLabel(texts, stamp.quality) : null,
     qualityKey: stamp?.quality ?? null,
   };
+}
+
+// UI-08: a room without any due rule or recorded cleaning says so once, not per operation.
+function dueLines(room, context) {
+  const lines = DUE_OPERATIONS.map((operation) => dueLine(room, operation, context));
+  if (!lines.every((line) => line.state === "disabled" && !line.last)) return lines;
+  return [{ key: "none", icon: "mdi:calendar-blank-outline", state: "disabled", status: t(context.texts, "rooms.due.none"), last: null, none: true }];
 }
 
 const STARTED = new Set(["dispatching", "running"]);
@@ -83,13 +91,15 @@ function releasedLabel(release, texts, model) {
 
 // The current state beside the accepted ones; whether the condition holds (including its maximum
 // age) is the integration's verdict, reported per job as readiness.
-function condition(requirement, model, texts) {
+function condition(room, requirement, model, texts) {
   const reading = model.entityReadings?.[requirement.entityId] ?? null;
   const name = entityName(requirement.entityId, model);
   // In Home Assistant's own words where it words them (UI-04), else as reported.
   const state = reading?.available ? reading.display || reading.state : t(texts, "value.unknown");
   const allowed = requirement.acceptedStates.map((value) => reading?.values?.[value] || value).join(", ");
-  return { key: requirement.entityId, name, state, allowed, text: t(texts, "rooms.condition", { entity: name, state, allowed }) };
+  // Plan R1.9: a condition the integration finds met only says that it holds.
+  const met = room.requirementStates?.[requirement.entityId] === "ready";
+  return { key: requirement.entityId, name, state, allowed, met, text: met ? t(texts, "rooms.conditionMet", { entity: name, state }) : t(texts, "rooms.condition", { entity: name, state, allowed }) };
 }
 
 const SORTERS = Object.freeze({
@@ -126,12 +136,12 @@ export function buildRoomsView({ model, texts, context, options = {}, ui = {}, t
         icon: list(model.areas).find((area) => area.areaId === room.areaId)?.icon || "mdi:floor-plan",
         enabled: room.enabled,
         release: releaseState(room, texts, model),
-        due: DUE_OPERATIONS.map((operation) => dueLine(room, operation, { texts, model, timeFormat })),
+        due: dueLines(room, { texts, model, timeFormat }),
         // With one robot, naming it says nothing (UI-08).
         robots: robots.length > 1 ? reaching.map((robot) => robot.name) : [],
         unreachable: room.enabled && reaching.length === 0,
         reach: room.enabled && reaching.length === 0 ? reachOf(room, robots, texts) : null,
-        conditions: room.requirements.map((requirement) => condition(requirement, model, texts)),
+        conditions: room.requirements.map((requirement) => condition(room, requirement, model, texts)),
         work: workOf(room, { texts, model }),
         actions: roomAffordances(room, context),
       };

@@ -1,13 +1,16 @@
-// The per-card notice: the result of this card's last command, until dismissed or replaced. It
-// floats over the card's foot like a snackbar and moves no control (LAY-12); its surface is opaque.
+// Notices: the card's own (`--float`), the result of its last command until dismissed or replaced,
+// floats over the card's foot like a snackbar and moves no control (LAY-12); a page's notes stand
+// in its flow. Their surface is opaque.
 
 export const NOTICES_CSS = `
-.voc-notice {
+.voc-notice--float {
   position: absolute;
   inset-inline: 12px;
   bottom: 12px;
   z-index: 4;
   box-shadow: 0 6px 18px color-mix(in srgb, #000 22%, transparent);
+}
+.voc-notice {
   display: flex;
   align-items: center;
   gap: 8px;

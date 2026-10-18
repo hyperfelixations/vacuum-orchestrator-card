@@ -101,7 +101,9 @@ test("a count of one is singular", async () => {
 test("the quality of a cleaning record is said in plain words", async () => {
   const { en } = await import("../../../src/i18n/languages/en.js");
   const { de } = await import("../../../src/i18n/languages/de.js");
-  assert.deepEqual([en["quality.confirmed"], en["quality.derived"], de["quality.confirmed"], de["quality.derived"]], ["Confirmed by the robot", "Not fully observed", "Vom Roboter bestätigt", "Nicht vollständig beobachtet"]);
+  // Plan R1.7: VOI confirms a run it saw to its end, not only one the robot confirmed.
+  assert.deepEqual([en["quality.confirmed"], en["quality.derived"], de["quality.confirmed"], de["quality.derived"]], ["Confirmed", "Not fully observed", "Bestätigt", "Nicht vollständig beobachtet"]);
+  assert.deepEqual([en["result.completed.confirmed"], de["result.completed.confirmed"]], [en["result.completed"], de["result.completed"]], "a confirmed cleaning is plainly cleaned");
 });
 
 // UI-23: an empty queue asks for the next step instead of saying a fourth time that nothing waits.
@@ -122,6 +124,15 @@ test("template actions say what they do", async () => {
 
 // V6: one word per thing, the integration's own (Saugkraft, Wassermenge, Nachlaufzeit), the same in
 // settings, setup and editors; a dismissal is "Back", never a second "Cancel" beside "Cancel job".
+// Plan R1.14: the robot editor keeps apart which rooms a robot cleans and how a room is sent to it.
+test("the robot editor names which rooms apart from how rooms are sent", async () => {
+  const { en } = await import("../../../src/i18n/languages/en.js");
+  const { de } = await import("../../../src/i18n/languages/de.js");
+  assert.deepEqual([en["robotEditor.group.areas"], en["robotEditor.group.identity"], en["robotEditor.protocol"]], ["Rooms", "Connection", "Send rooms as"]);
+  assert.deepEqual([de["robotEditor.group.areas"], de["robotEditor.group.identity"], de["robotEditor.protocol"]], ["Räume", "Verbindung", "Räume senden als"]);
+  for (const language of [en, de]) assert.match(language["robotEditor.protocolHint"], /Vacuum Orchestrator/, "the hint says what the choice does");
+});
+
 test("the card's words follow the glossary", async () => {
   const { en } = await import("../../../src/i18n/languages/en.js");
   const { de } = await import("../../../src/i18n/languages/de.js");

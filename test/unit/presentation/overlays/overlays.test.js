@@ -374,6 +374,13 @@ test("room settings show detected robot targets and the occupancy fields only fo
   const draft = createRoomDraft(room);
   const vm = buildRoomEditor({ ...built, overlay: { draft } });
   assert.deepEqual(vm.detected.map((item) => item.key), [robotId(built.model, "Rocky")]);
+  // UI-04: a target by its segment's name, never its ID.
+  assert.equal(vm.detected[0].text, built.texts.t("room.detectedTarget", { robot: "Rocky", targets: "Dining Room" }));
+  assert.deepEqual(vm.ignored, []);
+  // Plan R1.6: a segment of the area that the robot leaves out is said where it can be fixed.
+  const library = buildRoomEditor({ ...built, overlay: { draft: createRoomDraft(built.model.slots.rooms.data.items.find((entry) => entry.name === "Library")) } });
+  assert.deepEqual(library.ignored.map((item) => [item.text, item.assign]), [[built.texts.t("room.ignoredTargets", { robot: "Rocky", count: 1 }), { entityId: "vacuum.rocky" }]]);
+  assert.equal(library.bindingsOpen, true, "the section with the hint opens");
   assert.equal(fieldsOf(vm, "due").occupancyEntityId, undefined);
   // An interval reads in days and hours beside each other; an error of the integration stands below both.
   const vacuum = fieldsOf(vm, "due").vacuumHours;
@@ -409,6 +416,10 @@ test("the enlarged map shows the chosen picture with its robot's name", async ()
   // V6: a map by the name the integration gives it, not its image entity's name with the robot's.
   assert.deepEqual([vm.key, vm.title, vm.rotation, vm.missing], ["robot-map", "Rocky · Main Floor", "auto", false]);
   assert.ok(vm.picture.startsWith("/api/image_proxy/"));
+  // Plan R1.13: the page says when the picture came, from the image entity's own time.
+  const { moment } = await import("../../../../src/presentation/common/texts.js");
+  assert.equal(vm.updated, built.texts.t("robot.mapUpdated", { when: moment(built.texts, map.updatedAt, "auto", built.model.nowMs) }));
+  assert.equal(buildRobotMap({ ...built, model: { ...built.model, robotsLive: { [rocky.robotId]: { maps: [{ ...map, updatedAt: null }] } } }, overlay: { robotId: rocky.robotId, entityId: map.entityId } }).updated, null);
   assert.equal(buildRobotMap({ ...built, overlay: { robotId: rocky.robotId, entityId: "image.gone", rotation: "auto" } }).missing, true);
 });
 
@@ -443,6 +454,11 @@ test("robot discovery marks configured vacuums; the profile explains each role",
   assert.deepEqual([battery.value, battery.placeholder], ["", "No minimum"]);
   const rockyRobot = built.model.slots.robots.data.items.find((robot) => robot.name === "Rocky");
   const rockyRoles = Object.fromEntries(buildRobotEditor({ ...built, overlay: { draft: createRobotDraft(rockyRobot), open: [] } }).sections.roles.rows.map((row) => [row.key, row]));
+  // Plan R1.2: a robot working on a job can be changed; the page says when the change applies.
+  const afternoon = await busy();
+  const leased = afternoon.model.slots.robots.data.items.find((robot) => robot.name === "Rocky");
+  const working = buildRobotEditor({ ...afternoon, overlay: { draft: createRobotDraft(leased), open: [] } });
+  assert.deepEqual([working.busy, working.save.state, vm.busy], [afternoon.texts.t("robotEditor.busy", { robot: "Rocky" }), "enabled", null]);
   assert.equal(rockyRoles.battery.mode.hint, built.texts.t("robotEditor.roleDiscovered", { entity: "Rocky Battery" }), "a found entity by its Home Assistant name");
   const roles = Object.fromEntries(vm.sections.roles.rows.map((row) => [row.key, row]));
   assert.equal(roles.error.mode.hint, built.texts.t("robotEditor.roleNotFound"));

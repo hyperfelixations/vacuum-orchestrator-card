@@ -31,12 +31,12 @@ export const ROBOTS_CSS = `
 .voc-robot-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .voc-robot-line { display: flex; align-items: flex-start; gap: 5px; font-size: 12px; font-weight: 650; color: var(--voc-muted); }
 .voc-robot-levels { display: grid; gap: 2px; font-size: 11.5px; font-weight: 600; color: var(--voc-faint); }
-.voc-robot-map { display: grid; gap: 6px; justify-items: start; margin: 0; }
-.voc-robot-map-open { display: block; max-width: 100%; padding: 0; border: 0; border-radius: 12px; background: none; cursor: zoom-in; }
+.voc-robot-map { display: grid; gap: 6px; margin: 0; }
+.voc-robot-map-open { display: block; width: 100%; padding: 0; border: 0; border-radius: 12px; background: none; cursor: zoom-in; }
 .voc-robot-map-open:focus-visible { outline: 2px solid var(--voc-focus); outline-offset: 2px; }
 .voc-map-stage { position: relative; width: 100%; min-height: 120px; overflow: hidden; }
 .voc-map-stage img { position: absolute; display: block; max-width: none; border-radius: 12px; background: var(--voc-panel); transform-origin: center; }
-.voc-robot-map img { display: block; width: auto; max-width: 100%; height: auto; max-height: 240px; border-radius: 12px; background: var(--voc-panel); border: 1px solid var(--voc-hairline); }
+.voc-robot-map img { border: 1px solid var(--voc-hairline); }
 .voc-alert--info { background: color-mix(in srgb, var(--voc-info) 8%, transparent); border-color: color-mix(in srgb, var(--voc-info) 38%, transparent); }
 .voc-alert--info > ha-icon { color: color-mix(in srgb, var(--voc-info) 80%, var(--primary-text-color)); }
 `;
