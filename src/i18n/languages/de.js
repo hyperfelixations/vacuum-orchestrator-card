@@ -660,6 +660,8 @@ export const de = {
   "action.addRobot": "Roboter hinzufügen",
   "robot.mapOpen": (v) => `${v.map} vergrößert öffnen`,
   "robot.mapMissing": "Diese Karte ist nicht mehr verfügbar.",
+  "robot.faultBlocks": (v) => `Sperrt: ${v.operations}`,
+  "robot.faultBlocksAll": "Sperrt jede Reinigung",
   "robot.capabilities": "Was er kann",
   "robot.phase.cleaning": "Reinigt",
   "robot.phase.cleaningExternal": "Reinigt außerhalb von Vacuum Orchestrator",

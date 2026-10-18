@@ -378,6 +378,14 @@ test.describe("robots", () => {
     await shot(page, "robot-map-medium-light.png", MEDIUM);
   });
 
+  // ROB-13: a fault names its cause and which cleaning it blocks.
+  test("a robot whose station needs attention, narrow, German", async ({ page }) => {
+    const card = await mountCard(page, { recording: "attention", from: "The station needs attention", config: { ...BASE, language: "de" } });
+    await open(page, card, "robots");
+    await expect(named(card, ".voc-robot", "Rocky", '[data-key="fault:dirty_water_full"]')).toContainText("Sperrt: Wischen");
+    await shot(page, "robots-fault-german-narrow-light.png", NARROW);
+  });
+
   test("a robot stopped away from its dock", async ({ page }) => {
     const card = await mountCard(page, { ...STOPPED, config: BASE });
     await open(page, card, "robots");

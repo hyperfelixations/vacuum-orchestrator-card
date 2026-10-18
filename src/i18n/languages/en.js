@@ -660,6 +660,8 @@ export const en = {
   "action.addRobot": "Add robot",
   "robot.mapOpen": (v) => `Open ${v.map} enlarged`,
   "robot.mapMissing": "This map is no longer available.",
+  "robot.faultBlocks": (v) => `Blocks: ${v.operations}`,
+  "robot.faultBlocksAll": "Blocks every cleaning",
   "robot.capabilities": "What it can do",
   "robot.phase.cleaning": "Cleaning",
   "robot.phase.cleaningExternal": "Cleaning outside Vacuum Orchestrator",

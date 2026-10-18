@@ -8,6 +8,7 @@ import { OPERATIONS, SETTING_FIELDS } from "../../domain/job-schema.js";
 import { list, robotsOf, roomIndex, roomName, slotData } from "../common/lookups.js";
 import { number, operationLabel, reasonText, settingLabel, settingName, t } from "../common/texts.js";
 import { robotStatus } from "../common/robot-status.js";
+import { faultText } from "../common/faults.js";
 
 const QUIET_ERRORS = new Set(["none", "ok", "no_error", "0"]);
 
@@ -53,6 +54,13 @@ export function buildRobotsView({ model, texts, context, options = {}, ui = {} }
           { key: "minimum", icon: "mdi:battery-low", label: t(texts, "robot.minimumBattery"), value: robot.configuration.minimumBattery === null ? null : t(texts, "robot.minimumBatteryValue", { value: number(texts, robot.configuration.minimumBattery) }) },
         ].filter((fact) => fact.value !== null),
         error,
+        // ROB-13: each fault the integration reports, what it blocks; one the user chose only informs.
+        faults: list(robot.faults).map((fault) => ({
+          key: fault.code,
+          text: faultText(fault.code, robot.robotId, { model, texts }),
+          blocks: OPERATIONS.every((operation) => fault.operations.includes(operation)) ? t(texts, "robot.faultBlocksAll") : fault.operations.length ? t(texts, "robot.faultBlocks", { operations: OPERATIONS.filter((operation) => fault.operations.includes(operation)).map((operation) => operationLabel(texts, operation)).join(", ") }) : null,
+          tone: fault.needsAction ? "attention" : "neutral",
+        })),
         active: robot.active,
         disabled: !robot.configuration.enabled,
         blocked: robot.blockedReason ? reasonText(texts, robot.blockedReason) : null,

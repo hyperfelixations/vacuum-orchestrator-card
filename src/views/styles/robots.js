@@ -24,6 +24,7 @@ export const ROBOTS_CSS = `
 .voc-robot-fact ha-icon, .voc-robot-line ha-icon, .voc-robot-note ha-icon { --mdc-icon-size: 15px; }
 .voc-robot-note { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 10px; background: var(--voc-panel); font-size: 12px; font-weight: 700; }
 .voc-robot-note span { flex: 1; min-width: 0; }
+.voc-robot-note-detail { display: block; font-size: 11.5px; font-weight: 650; opacity: .85; }
 .voc-robot-note[data-tone="running"] { color: color-mix(in srgb, var(--voc-info) 80%, var(--primary-text-color)); }
 .voc-robot-note[data-tone="attention"] { background: color-mix(in srgb, var(--voc-error) 9%, transparent); color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
 .voc-robot-chips { display: flex; flex-wrap: wrap; gap: 4px; }

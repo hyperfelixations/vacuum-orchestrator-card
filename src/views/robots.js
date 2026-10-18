@@ -10,7 +10,9 @@ function robotCard(context, robot) {
   const facts = robot.facts.map((fact) => `<span class="voc-robot-fact" data-key="fact:${e(fact.key)}" title="${e(fact.label)}">${icon(fact.icon)}<span class="voc-sr-only">${e(fact.label)}: </span>${e(fact.value)}</span>`).join("");
   const notes = [
     robot.disabled ? `<div class="voc-robot-note" data-key="disabled">${icon("mdi:pause-circle-outline")}<span>${e(context.t("robot.disabled"))}</span></div>` : "",
-    robot.error ? `<div class="voc-robot-note" data-key="error" data-tone="attention">${icon("mdi:alert-circle-outline")}<span>${e(context.t("robot.error", { error: robot.error }))}</span></div>` : "",
+    ...robot.faults.map((fault) => `<div class="voc-robot-note" data-key="fault:${e(fault.key)}"${fault.tone === "attention" ? ' data-tone="attention"' : ""}>${icon(fault.tone === "attention" ? "mdi:alert-circle-outline" : "mdi:information-outline")}<span>${e(fault.text)}${fault.blocks ? `<small class="voc-robot-note-detail">${e(fault.blocks)}</small>` : ""}</span></div>`),
+    // Home Assistant's error reading only where the integration names no fault.
+    robot.error && !robot.faults.length ? `<div class="voc-robot-note" data-key="error" data-tone="attention">${icon("mdi:alert-circle-outline")}<span>${e(context.t("robot.error", { error: robot.error }))}</span></div>` : "",
     robot.blocked && !robot.recovery ? `<div class="voc-robot-note" data-key="blocked" data-tone="attention">${icon("mdi:block-helper")}<span>${e(robot.blocked)}</span></div>` : "",
     robot.recovery ? `<div class="voc-robot-note" data-key="recovery" data-tone="attention">${icon("mdi:robot-vacuum-alert")}<span>${e(robot.recovery.reason)}</span>${button({ action: "open-recovery", args: { robotId: robot.robotId }, label: context.t("action.resolve"), variant: "primary", decision: robot.recovery.decision, reasonText: context.reason(robot.recovery.decision) })}</div>` : "",
     robot.unresolved ? `<div class="voc-robot-note" data-key="unresolved">${icon("mdi:help-circle-outline")}<span>${e(context.t("robot.unresolved"))}</span></div>` : "",
