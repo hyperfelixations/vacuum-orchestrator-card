@@ -324,6 +324,10 @@ test("setup shows the integration's four steps with their facts; the open step i
   const picked = buildSetupView({ ...assistant, ui: { choices: { "setup:step": "queue" } } });
   assert.deepEqual(picked.steps.filter((entry) => entry.current).map((entry) => entry.key), ["queue"], "a step the user opens is shown instead");
   assert.equal(buildSetupView({ ...assistant, ui: { choices: { "setup:step": "garden" } } }).steps.find((entry) => entry.current).key, "robots");
+  // SET-12: a setup that could not be read says why, with a way to try again.
+  const failure = { ok: false, code: "connection_lost" };
+  const failed = buildSetupView({ ...assistant, model: { ...assistant.model, setup: null, slots: { ...assistant.model.slots, setup: { status: "error", error: failure } } } });
+  assert.deepEqual([failed.loading, failed.error], [false, failure]);
   const empty = await modelFor("no_robot");
   assert.equal(step(buildSetupView(empty), "robots").note, empty.texts.t("setup.step.robots.none"));
   const done = await busy();

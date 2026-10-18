@@ -852,6 +852,8 @@ export const de = {
   "setup.step.queue.title": "Warteschlange",
   "setup.lead": "Vacuum Orchestrator hat deine Roboter und Bereiche übernommen. Prüfe die Schritte; keiner davon ist Pflicht. Räume bleiben gesperrt, bis du sie freigibst.",
   "setup.more": (v) => `und ${v.count} weitere`,
+  "setup.later": "Später",
+  "notice.setupDone": "Einrichtung abgeschlossen.",
   "setup.finish": "Fertig",
   "setup.step.robots.text": "Vacuum Orchestrator arbeitet mit den Saugrobotern, die Home Assistant schon kennt. Füge einen hinzu; dadurch startet nichts.",
   "setup.step.robots.more": "Weitere Roboter kannst du hier oder später in der Roboteransicht hinzufügen.",

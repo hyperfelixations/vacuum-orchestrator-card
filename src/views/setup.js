@@ -1,8 +1,8 @@
 // The setup assistant view. See internal dev doc §8 "Einrichtung".
 
-import { SETUP_STEP_CHOICE, buildSetupView, setupNeeded } from "../presentation/views/setup.js";
+import { SETUP_STEP_CHOICE, buildSetupView, setupFirst, setupOffered } from "../presentation/views/setup.js";
 import { argsAttr, button, e, icon } from "../render/primitives/markup.js";
-import { loadingState } from "./parts.js";
+import { errorState, loadingState } from "./parts.js";
 import { frame } from "./overlays/frame.js";
 import { SETUP_CSS } from "./styles/setup.js";
 
@@ -59,9 +59,11 @@ export const setupGuideOverlay = Object.freeze({
 
 export function renderSetup(context, vm) {
   const wrap = (content) => `<div class="voc-view voc-setup" data-key="view:setup">${content}</div>`;
+  if (vm.error) return wrap(errorState(context, vm.error));
   if (vm.loading) return wrap(loadingState(context));
   const lead = `<p class="voc-setup-lead" data-key="lead">${e(context.t("setup.lead"))}</p>`;
-  const finish = vm.finish ? `<div class="voc-inline-actions" data-key="finish">${button({ action: "complete-setup", label: context.t("setup.finish"), iconName: "mdi:check", variant: "primary", decision: vm.finish, reasonText: context.reason(vm.finish) })}</div>` : "";
+  const later = vm.finish ? button({ action: "defer-setup", label: context.t("setup.later"), variant: "quiet" }) : "";
+  const finish = vm.finish ? `<div class="voc-inline-actions" data-key="finish">${later}${button({ action: "complete-setup", label: context.t("setup.finish"), iconName: "mdi:check", variant: "primary", decision: vm.finish, reasonText: context.reason(vm.finish) })}</div>` : "";
   return wrap(`${lead}<ol class="voc-setup-steps">${vm.steps.map((step) => stepCard(context, step)).join("")}</ol>${finish}`);
 }
 
@@ -69,8 +71,8 @@ export const setupView = Object.freeze({
   key: "setup",
   icon: "mdi:clipboard-check-outline",
   requires: ["get_setup"],
-  defaultEnabled: (model) => setupNeeded(model),
-  preferredStart: (model) => setupNeeded(model),
+  defaultEnabled: (model, ui) => setupOffered(model, ui),
+  preferredStart: (model, ui) => setupFirst(model, ui),
   optionsSchema: Object.freeze({}),
   primary: null,
   scopes: () => [{ name: "candidates" }, { name: "templates" }],

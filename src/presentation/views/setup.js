@@ -18,6 +18,17 @@ export function setupNeeded(model) {
   return model.setup?.assistantPending === true;
 }
 
+// SET-06, SET-10: the assistant is offered while setup is pending, unless set aside for this
+// session; it is where the card starts only while no job is under way.
+export function setupOffered(model, ui) {
+  return setupNeeded(model) && ui?.setupDeferred !== true;
+}
+
+export function setupFirst(model, ui) {
+  const started = list(slotData(model, "openJobs")?.jobs).some((job) => job.state === "dispatching" || job.state === "running");
+  return setupOffered(model, ui) && !started;
+}
+
 function robotsStep(model, texts, context, step) {
   const robots = robotsOf(model);
   const names = step.robotIds.map((robotId) => robots.find((robot) => robot.robotId === robotId)?.name ?? robotId);
@@ -68,7 +79,11 @@ const BUILDERS = Object.freeze({ robots: robotsStep, rooms: roomsStep, defaults:
 
 export function buildSetupView({ model, texts, context, ui = {} }) {
   const setup = model.setup;
-  if (!setup) return { key: "setup", loading: true, steps: [] };
+  // SET-12: a setup that could not be read says why, with a way to try again.
+  if (!setup) {
+    const error = model.slots?.setup?.error ?? null;
+    return { key: "setup", loading: !error, error, steps: [] };
+  }
   const chosen = ui.choices?.[SETUP_STEP_CHOICE];
   const current = SETUP_STEPS.includes(chosen) ? chosen : SETUP_STEPS[0];
   return {

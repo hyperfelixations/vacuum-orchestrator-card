@@ -145,6 +145,12 @@ test("by default the five everyday views show; settings for administrators, diag
   const setupTabs = buildTabs({ definitions: VIEWS, model: assistant.model, config: config(), ui: {}, texts });
   assert.equal(setupTabs.tabs[0].key, "setup");
   assert.equal(setupTabs.active, "setup", "an unfinished setup is where the card starts");
+  // SET-10: "Later" closes the assistant until the next load; SET-06: running work comes first.
+  const later = buildTabs({ definitions: VIEWS, model: assistant.model, config: config(), ui: { setupDeferred: true }, texts });
+  assert.deepEqual([later.tabs.some((tab) => tab.key === "setup"), later.active], [false, "queue"]);
+  const running = { ...assistant.model, slots: { ...assistant.model.slots, openJobs: { data: { jobs: [{ jobId: "job-run", state: "running", roomIds: [] }] } } } };
+  const busyTabs = buildTabs({ definitions: VIEWS, model: running, config: config(), ui: {}, texts });
+  assert.deepEqual([busyTabs.tabs.some((tab) => tab.key === "setup"), busyTabs.active], [true, "queue"], "offered, but the running work is shown first");
 });
 
 test("a written list decides order and switches; the start view is a wish", async () => {

@@ -636,6 +636,18 @@ test("an entity picker search is overlay state and a pick clears it", async () =
   assert.equal(ui.overlay.draft.roles.error.entity, null, "picking it again clears it");
 });
 
+// SET-10, SET-09: "Later" leaves the assistant for this session; "Done" ends it in the integration
+// and shows the queue, whose empty state offers the first job.
+test("the assistant is left for later or finished onto the queue", async () => {
+  const { router, ui, commands } = await setup();
+  ui.setView("setup");
+  router.handle("defer-setup");
+  assert.deepEqual([ui.snapshot.setupDeferred, ui.snapshot.view], [true, "queue"]);
+  ui.setView("setup");
+  await router.handle("complete-setup");
+  assert.deepEqual([commands.at(-1).operation, ui.snapshot.view, ui.snapshot.notice.messageKey], ["complete_setup", "queue", "notice.setupDone"]);
+});
+
 // ROOM-08: a segment picked by name joins or leaves the binding's targets.
 test("a binding's segments are toggled by name", async () => {
   const { router, ui } = await setup();

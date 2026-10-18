@@ -6,7 +6,7 @@
 
 export function createUIState() {
   let opened = 0;
-  let state = Object.freeze({ view: null, overlays: Object.freeze([]), pages: Object.freeze({}), expanded: Object.freeze([]), menu: null, wide: false, selectedJob: null, choices: Object.freeze({}), notice: null, focus: null });
+  let state = Object.freeze({ view: null, overlays: Object.freeze([]), pages: Object.freeze({}), expanded: Object.freeze([]), menu: null, wide: false, selectedJob: null, setupDeferred: false, choices: Object.freeze({}), notice: null, focus: null });
   const listeners = new Set();
   const publish = () => listeners.forEach((listener) => listener(state));
   const update = (patch, { silent = false } = {}) => {
@@ -70,6 +70,10 @@ export function createUIState() {
       return update({ menu: key || null });
     },
     // The width tier where the queue shows list and detail side by side (LAY-03).
+    // SET-10: "Later" sets the assistant aside until the card loads again; nothing is stored.
+    deferSetup() {
+      return update({ setupDeferred: true });
+    },
     setWide(wide) {
       if (Boolean(wide) === state.wide) return state;
       return update({ wide: Boolean(wide) });

@@ -299,7 +299,17 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     choose: ({ key, value }) => ui.choose(key, value),
     "show-view": ({ view }) => ui.setView(view),
     "open-setup": () => ui.openOverlay({ kind: "setup-guide" }),
-    "complete-setup": () => run("complete_setup", {}, { target: SETUP_TARGET, invalidates: ["setup"], closeOverlay: ui.overlay?.kind === "setup-guide" }),
+    // SET-09: once finished the card shows the queue, whose empty state offers the first job.
+    "complete-setup": async () => {
+      const guide = ui.overlay?.kind === "setup-guide";
+      const result = await run("complete_setup", {}, { target: SETUP_TARGET, invalidates: ["setup"], closeOverlay: guide, success: { key: "notice.setupDone" } });
+      if (result?.ok && !guide) ui.setView("queue");
+      return result;
+    },
+    "defer-setup": () => {
+      ui.deferSetup();
+      ui.setView("queue");
+    },
     page: ({ scope, direction }) => {
       const model = getModel();
       const data = model?.slots?.[scope]?.data;

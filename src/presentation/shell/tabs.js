@@ -21,7 +21,7 @@ export function buildTabs({ definitions = [], model = {}, config = {}, ui = {}, 
   const candidates = entries
     .map(({ definition, request }) => {
       const auto = !request || request.enabled === "auto";
-      const enabled = auto ? definition.defaultEnabled(model) !== false : request.enabled !== false;
+      const enabled = auto ? definition.defaultEnabled(model, ui) !== false : request.enabled !== false;
       const available = availableView(definition, model);
       return {
         key: definition.key,
@@ -30,7 +30,9 @@ export function buildTabs({ definitions = [], model = {}, config = {}, ui = {}, 
         enabled,
         available,
         options: request?.options || {},
-        startPreferred: auto && typeof definition.preferredStart === "function" && definition.preferredStart(model) === true,
+        startPreferred: auto && typeof definition.preferredStart === "function" && definition.preferredStart(model, ui) === true,
+        // A view that says when it should start is not the start by mere position.
+        startsOnlyWhenPreferred: typeof definition.preferredStart === "function",
       };
     })
     .filter((tab) => tab.enabled && (tab.available || showUnavailable));
@@ -40,6 +42,7 @@ export function buildTabs({ definitions = [], model = {}, config = {}, ui = {}, 
     (ui.view && candidates.some((tab) => tab.key === ui.view) ? ui.view : null) ||
     (config.start_view && usable(config.start_view) ? config.start_view : null) ||
     candidates.find((tab) => tab.startPreferred && tab.available)?.key ||
+    candidates.find((tab) => tab.available && !tab.startsOnlyWhenPreferred)?.key ||
     candidates.find((tab) => tab.available)?.key ||
     candidates[0]?.key ||
     null;

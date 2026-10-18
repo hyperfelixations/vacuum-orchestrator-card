@@ -852,6 +852,8 @@ export const en = {
   "setup.step.queue.title": "Queue",
   "setup.lead": "Vacuum Orchestrator has taken over your robots and areas. Check each step; none of them is mandatory. Rooms stay locked until you release them.",
   "setup.more": (v) => `and ${v.count} more`,
+  "setup.later": "Later",
+  "notice.setupDone": "Setup finished.",
   "setup.finish": "Done",
   "setup.step.robots.text": "Vacuum Orchestrator works with the robot vacuums Home Assistant already knows. Add one to get started; adding starts nothing.",
   "setup.step.robots.more": "Add further robots here or later in the robot view.",
