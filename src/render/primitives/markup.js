@@ -19,14 +19,13 @@ export function icon(name, { label = null, className = "" } = {}) {
   return `<ha-icon${attr("class", className || null)} icon="${e(name)}"${label ? ` aria-label="${e(label)}" role="img"` : ' aria-hidden="true"'}></ha-icon>`;
 }
 
-// A missing operation keeps a control focusable so its explanation can be read; every other
-// reason makes it inert.
-const SOFT_REASONS = new Set(["operation_missing"]);
-
+// UI-22: a control refused for a reason stays focusable and tappable so the reason can be read,
+// by hover, by a screen reader and on touch (a tap shows it); a control that is only at its end
+// carries no reason and is plainly disabled.
 export function decisionAttributes(decision, reasonText) {
   if (!decision || decision.state !== "disabled") return "";
-  const hard = !SOFT_REASONS.has(decision.reason);
-  return `${hard ? " disabled" : ' aria-disabled="true"'}${reasonText ? ` title="${e(reasonText)}"` : ""}`;
+  const explained = Boolean(decision.reason && reasonText);
+  return `${explained ? ' aria-disabled="true"' : " disabled"}${reasonText ? ` title="${e(reasonText)}"` : ""}`;
 }
 
 // A stepper or pager at its end: the control's own state, not a reason an action is unavailable.

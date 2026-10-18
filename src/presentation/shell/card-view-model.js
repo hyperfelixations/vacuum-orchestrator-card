@@ -32,6 +32,8 @@ function noticeFor(ui, texts) {
   const notice = ui?.notice;
   if (!notice) return null;
   if (notice.kind === "error") return { kind: "error", text: failureText(texts, notice.failure), operation: notice.operation };
+  // Why a tapped control is refused, already in words.
+  if (notice.text) return { kind: notice.kind, text: notice.text };
   return { kind: notice.kind, text: t(texts, notice.messageKey, notice.vars) };
 }
 

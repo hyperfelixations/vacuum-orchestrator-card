@@ -34,7 +34,7 @@ button { font: inherit; color: inherit; }
 .voc-button--icon { width: var(--voc-icon-target); min-width: var(--voc-icon-target); min-height: var(--voc-icon-target); padding: 0; border-color: transparent; background: transparent; color: var(--voc-muted); }
 .voc-button--icon:hover { background: var(--voc-chip-bg); color: var(--primary-text-color); }
 .voc-button[disabled] { cursor: default; opacity: .4; }
-.voc-button[aria-disabled="true"] { cursor: not-allowed; opacity: .55; }
+.voc-button[aria-disabled="true"] { cursor: not-allowed; opacity: .4; }
 .voc-button[aria-pressed="true"] { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
 
 .voc-tab:focus-visible, .voc-button:focus-visible, .voc-root :is(input, textarea, [role="radio"], [role="option"], [role="switch"], [role="checkbox"]):focus-visible {

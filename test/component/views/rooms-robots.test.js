@@ -127,8 +127,14 @@ test("robots show live state, and a profile under a lease cannot be reconfigured
   const card = await open("robots", BUSY);
   assert.match(robot(card, "Rocky").textContent, /100 %/);
   const settings = robot(card, "Rocky").querySelector('[data-action="edit-robot"]');
-  assert.equal(settings.disabled, true);
-  assert.ok(settings.getAttribute("title"));
+  assert.deepEqual([settings.disabled, settings.getAttribute("aria-disabled")], [false, "true"]);
+  const reason = settings.getAttribute("title");
+  assert.ok(reason);
+  // UI-22: tapped, the refused gear says why instead of doing nothing (touch has no hover).
+  await card.click(settings);
+  assert.equal(card.root.querySelector(".voc-overlay"), null, "nothing opens");
+  assert.equal(card.text(".voc-notice--info .voc-notice-text"), reason);
+  assert.equal(card.root.querySelector(".voc-notice--info").getAttribute("role"), "status");
   card.unmount();
 });
 

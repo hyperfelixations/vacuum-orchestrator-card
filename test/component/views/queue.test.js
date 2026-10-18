@@ -37,8 +37,11 @@ test("moving a job sends one move and the queue shows the integration's new orde
 test("the first row cannot move up and says why", async () => {
   const card = await at("Rocky cleans while two jobs wait");
   const up = inRow(card, "Dining Room", `[data-action="move-job"][data-args*='"up"']`);
-  assert.equal(up.disabled, true);
+  assert.equal(up.getAttribute("aria-disabled"), "true");
   assert.ok(up.getAttribute("title"));
+  await card.click(up);
+  assert.equal(card.text(".voc-notice--info .voc-notice-text"), up.getAttribute("title"), "tapped, it says why");
+  assert.deepEqual(card.commands("move_job"), []);
   card.unmount();
 });
 

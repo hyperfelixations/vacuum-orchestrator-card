@@ -37,12 +37,17 @@ test("an icon button is named for assistive technology; a text button shows its 
 test("a hidden decision renders nothing; a disabled one says why", async () => {
   const { button } = await markup();
   assert.equal(button({ action: "x", label: "X", decision: { state: "hidden", reason: null } }), "");
-  const hard = button({ action: "x", label: "X", decision: { state: "disabled", reason: "command_pending" }, reasonText: "Busy" });
-  assert.match(hard, / disabled/);
-  assert.match(hard, /title="Busy"/);
-  const soft = button({ action: "x", label: "X", decision: { state: "disabled", reason: "operation_missing" }, reasonText: "Not offered" });
-  assert.match(soft, /aria-disabled="true"/);
-  assert.doesNotMatch(soft, / disabled[ >]/, "a soft reason stays focusable so it can be read");
+  // UI-22: a control the integration refuses stays focusable and tappable so its reason can be
+  // read on touch too; a control only at its end (a stepper at its bound) is plainly disabled.
+  for (const reason of ["command_pending", "operation_missing", "room_busy"]) {
+    const refused = button({ action: "x", label: "X", decision: { state: "disabled", reason }, reasonText: "Why" });
+    assert.match(refused, /aria-disabled="true"/, reason);
+    assert.match(refused, /title="Why"/);
+    assert.doesNotMatch(refused, / disabled[ >]/, reason);
+  }
+  const atEnd = button({ action: "x", label: "X", decision: { state: "disabled", reason: null }, reasonText: "At the end" });
+  assert.match(atEnd, / disabled/);
+  assert.doesNotMatch(atEnd, /aria-disabled/);
 });
 
 test("an external link opens in a new tab without referrer", async () => {

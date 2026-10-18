@@ -26,4 +26,6 @@ export const NOTICES_CSS = `
 .voc-notice--warning ha-icon { color: var(--voc-warning-ink); }
 .voc-notice--success { background: color-mix(in srgb, var(--voc-success) 12%, var(--card-background-color, #fff)); border: 1px solid color-mix(in srgb, var(--voc-success) 38%, transparent); }
 .voc-notice--success ha-icon { color: var(--voc-success); }
+.voc-notice--info { background: color-mix(in srgb, var(--voc-accent) 10%, var(--card-background-color, #fff)); border: 1px solid var(--voc-accent-border); }
+.voc-notice--info ha-icon { color: var(--voc-accent-ink); }
 `;

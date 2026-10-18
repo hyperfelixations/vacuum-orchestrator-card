@@ -29,7 +29,12 @@ export function createInteractionRuntime({ root, onAction = () => {} } = {}) {
       onAction({ type: "background", event });
       return;
     }
-    if (inert(target)) return;
+    if (inert(target)) {
+      // A refused control explains itself when tapped (UI-22).
+      const reason = target.getAttribute("aria-disabled") === "true" ? target.getAttribute("title") : null;
+      if (reason) onAction({ type: "explain", text: reason, target, event });
+      return;
+    }
     if (TEXT_INPUTS.has(target.tagName)) return;
     if (target.dataset.view && target.getAttribute("role") === "tab") {
       onAction({ type: "view", view: target.dataset.view, target, event });

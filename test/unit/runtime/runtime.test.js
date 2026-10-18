@@ -332,21 +332,23 @@ test("an open menu opens above its button only where below is too short", async 
 
 test("clicks become view, action or background events with parsed arguments; inert controls stay silent", async () => {
   const { createInteractionRuntime } = await import("../../../src/controllers/runtime/interaction-runtime.js");
-  const { window, root } = shadow(`<button role="tab" data-view="rooms"><span id="inner">R</span></button><button data-action="move-job" data-args='{"jobId":"a"}' id="go"></button><button data-action="x" data-args="{broken" id="bad"></button><button data-action="y" aria-disabled="true" id="off"></button><input data-field="name" id="field"><p id="plain">text</p>`);
+  const { window, root } = shadow(`<button role="tab" data-view="rooms"><span id="inner">R</span></button><button data-action="move-job" data-args='{"jobId":"a"}' id="go"></button><button data-action="x" data-args="{broken" id="bad"></button><button data-action="y" aria-disabled="true" id="off"></button><button data-action="z" aria-disabled="true" title="Rocky is cleaning" id="why"><span id="why-icon"></span></button><input data-field="name" id="field"><p id="plain">text</p>`);
   const events = [];
-  const runtime = createInteractionRuntime({ root, onAction: (event) => events.push([event.type, event.view || event.action || event.field, event.args]) });
+  const runtime = createInteractionRuntime({ root, onAction: (event) => events.push([event.type, event.view || event.action || event.field || event.text, event.args]) });
   runtime.connect();
   const click = (id) => root.querySelector(id).dispatchEvent(new window.MouseEvent("click", { bubbles: true, composed: true }));
   click("#inner");
   click("#go");
   click("#bad");
   click("#off");
+  click("#why-icon");
   click("#plain");
   root.querySelector("#field").dispatchEvent(new window.Event("input", { bubbles: true }));
-  assert.deepEqual(events, [["view", "rooms", undefined], ["action", "move-job", { jobId: "a" }], ["action", "x", {}], ["background", undefined, undefined], ["input", "name", {}]], "a click on nothing the card acts on is a background click");
+  // UI-22: a refused control says why when tapped; one without a reason stays silent.
+  assert.deepEqual(events, [["view", "rooms", undefined], ["action", "move-job", { jobId: "a" }], ["action", "x", {}], ["explain", "Rocky is cleaning", undefined], ["background", undefined, undefined], ["input", "name", {}]], "a click on nothing the card acts on is a background click");
   runtime.disconnect();
   click("#go");
-  assert.equal(events.length, 5);
+  assert.equal(events.length, 6);
 });
 
 test("the platform navigates inside Home Assistant and refuses foreign targets", async () => {

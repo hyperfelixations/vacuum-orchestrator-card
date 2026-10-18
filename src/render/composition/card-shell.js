@@ -33,11 +33,11 @@ function renderWarning(warning) {
   return `<div class="voc-warning"><svg class="voc-warning-icon" viewBox="0 0 24 24" role="img" aria-label="${e(warning.label)}">${WARNING_ICON}</svg><div class="voc-warning-text">${e(warning.text)}</div></div>`;
 }
 
-const NOTICE_ICONS = Object.freeze({ error: "mdi:alert-circle-outline", warning: "mdi:alert-outline", success: "mdi:check-circle-outline" });
+const NOTICE_ICONS = Object.freeze({ error: "mdi:alert-circle-outline", warning: "mdi:alert-outline", success: "mdi:check-circle-outline", info: "mdi:information-outline" });
 
 function renderNotice(context, notice) {
   if (!notice) return "";
-  return `<div class="voc-notice voc-notice--${e(notice.kind)}" role="${notice.kind === "success" ? "status" : "alert"}">${icon(NOTICE_ICONS[notice.kind] ?? NOTICE_ICONS.success)}<span class="voc-notice-text">${e(notice.text)}</span>${button({ action: "dismiss-notice", label: context.t("action.dismiss"), iconName: "mdi:close", variant: "icon", className: "voc-notice-close" })}</div>`;
+  return `<div class="voc-notice voc-notice--${e(notice.kind)}" role="${notice.kind === "success" || notice.kind === "info" ? "status" : "alert"}">${icon(NOTICE_ICONS[notice.kind] ?? NOTICE_ICONS.success)}<span class="voc-notice-text">${e(notice.text)}</span>${button({ action: "dismiss-notice", label: context.t("action.dismiss"), iconName: "mdi:close", variant: "icon", className: "voc-notice-close" })}</div>`;
 }
 
 function renderPanel(context, panel) {

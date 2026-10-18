@@ -528,6 +528,16 @@ test.describe("on a touch screen", () => {
     await shot(page, "queue-narrow-touch-light.png");
   });
 
+  // UI-22: a refused control has no hover on touch; tapped, it says why.
+  test("a tapped refused control says why", async ({ page }) => {
+    const card = await mountCard(page, { ...BUSY, config: BASE });
+    await setCardWidth(page, NARROW);
+    await open(page, card, "robots");
+    await card.locator('.voc-robot [data-action="edit-robot"]').first().tap({ force: true });
+    await expect(card.locator(".voc-notice--info")).toBeVisible();
+    await shot(page, "robot-refused-narrow-touch-light.png");
+  });
+
   test("more views than fit, dark", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     const views = ["setup", "queue", "rooms", "robots", "templates", "history", "diagnostics", "settings"];

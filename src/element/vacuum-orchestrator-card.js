@@ -456,6 +456,10 @@ export class VacuumOrchestratorCard extends HTMLElement {
       if (this._ui.snapshot.menu) this._ui.setMenu(null);
       return;
     }
+    if (event.type === "explain") {
+      this._ui.setNotice({ kind: "info", text: event.text });
+      return;
+    }
     if (event.type === "view") {
       this._ui.requestFocus(`[role="tab"][data-view="${event.view}"]`);
       this._ui.setView(event.view);
