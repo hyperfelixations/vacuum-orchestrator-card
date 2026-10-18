@@ -1,6 +1,7 @@
 // The header: icon, title, the automatic status sentence and the pill (RCC header contract).
 // `show` decides whether a part is drawn; the option decides what it says.
 
+import { faultsText } from "../common/faults.js";
 import { list, roomIndex, robotName, slotData, jobTitle } from "../common/lookups.js";
 import { jobStateLabel, relative, t } from "../common/texts.js";
 
@@ -11,12 +12,20 @@ function attentionSentence(model, texts) {
   // The integration's attention items are faults and recoveries, not jobs; only jobs that need
   // clarification are counted as jobs.
   const count = list(slotData(model, "openJobs")?.jobs).filter((job) => job.state === "needs_attention").length;
-  return count ? t(texts, "subtitle.attentionJobs", { count }) : t(texts, "subtitle.attention");
+  if (count) return t(texts, "subtitle.attentionJobs", { count });
+  const faults = list(slotData(model, "queue")?.attention).filter((entry) => entry.kind === "device_fault" && entry.robotId);
+  if (faults.length === 1) return t(texts, "subtitle.deviceOne", { robot: robotName(faults[0].robotId, model), what: faultsText(faults[0].codes, faults[0].robotId, { model, texts }) });
+  if (faults.length > 1) return t(texts, "subtitle.deviceMany", { count: new Set(faults.map((entry) => entry.robotId)).size });
+  return t(texts, "subtitle.attention");
 }
 
-export function automaticSubtitle(model, status, texts) {
+// `panelShown`: the main panel already counts the waiting jobs and says how the queue runs, so the
+// subtitle names the next job or that the run waits for new work instead (UI-03).
+export function automaticSubtitle(model, status, texts, { panelShown = false } = {}) {
   const queue = slotData(model, "queue");
   const waiting = queue?.total ?? model.live?.pendingJobs ?? 0;
+  const next = panelShown && waiting && queue?.offset === 0 ? list(queue.jobs)[0] : null;
+  if (next && (status === "running" || status === "paused" || status === "idle")) return t(texts, "subtitle.next", { job: jobTitle(next, roomIndex(model), model) });
   switch (status) {
     case "attention":
       return attentionSentence(model, texts);
@@ -28,7 +37,7 @@ export function automaticSubtitle(model, status, texts) {
       return t(texts, "subtitle.activeJob", { job: jobTitle(job, roomIndex(model), model), detail: robot || jobStateLabel(texts, job?.state) });
     }
     case "running":
-      if (queue?.run?.phase === "standby" && queue.run.endsAt !== null) return t(texts, "subtitle.runEnding", { when: relative(texts, queue.run.endsAt, model.nowMs) });
+      if (queue?.run?.phase === "standby" && queue.run.endsAt !== null) return panelShown ? t(texts, "subtitle.waitingForWork") : t(texts, "subtitle.runEnding", { when: relative(texts, queue.run.endsAt, model.nowMs) });
       return waiting ? t(texts, "subtitle.waitingRunning", { count: waiting }) : t(texts, "subtitle.running");
     case "paused":
       return t(texts, "subtitle.waitingPaused", { count: waiting });
@@ -45,7 +54,7 @@ export function automaticSubtitle(model, status, texts) {
 export function buildHeader({ model = {}, config = {}, texts, status } = {}) {
   const show = config.show || {};
   const title = config.title?.text ?? t(texts, "card.title");
-  const subtitle = config.subtitle?.text ?? automaticSubtitle(model, status, texts);
+  const subtitle = config.subtitle?.text ?? automaticSubtitle(model, status, texts, { panelShown: show.panel !== false });
   const hasIcon = show.icon !== false;
   const hasTitle = show.title !== false && title !== "";
   const hasSubtitle = show.subtitle !== false && subtitle !== "";

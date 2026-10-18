@@ -33,14 +33,16 @@ test("the queue groups recovery, work in progress, attention and waiting jobs", 
   const queue = buildQueueView({ ...built, options: {} });
   assert.deepEqual(queue.active.map((row) => row.title), ["Studio"]);
   assert.deepEqual(queue.waiting.map((row) => [row.title, row.position]), [["Conservatory", "1"], ["Library, thoroughly", "2"], ["Dining Room", "3"]]);
-  assert.equal(queue.waitingTotal, 3);
+  // V6: the panel's headline already counts the waiting jobs; the heading counts them only without it.
+  assert.equal(queue.waitingCount, null);
+  assert.equal(buildQueueView({ ...built, options: {}, panelShown: false }).waitingCount, 3);
   assert.deepEqual(queue.templates.map((template) => template.name), ["Weekly clean", "Mop the dining room"]);
   const disabled = buildQueueView({ ...withItems(built, "templates", (template, index) => (index === 0 ? { ...template, enabled: false } : template)), options: {} });
   assert.deepEqual(disabled.templates.map((template) => template.name), ["Mop the dining room"], "a disabled template is no quick start");
   const recovery = await modelFor("recovery", { from: "The job needs clarification" });
   const stuck = buildQueueView({ ...recovery, options: {} });
   assert.deepEqual(stuck.recovery.map((item) => [item.robot, item.reason, item.decision.state]), [["Rocky", recovery.texts.t("failure.robot_connection_lost"), "enabled"]]);
-  assert.deepEqual(stuck.attention.map((row) => row.title), ["Library"]);
+  assert.deepEqual(stuck.attention.map((row) => [row.title, row.showState]), [["Library", false]], "the group already says it needs attention");
   assert.equal(stuck.attentionNeeded, false, "the recovery itself explains the attention");
   const hidden = buildQueueView({ ...built, options: { show_active: false, show_templates: false } });
   assert.deepEqual([hidden.active.length, hidden.templates.length], [0, 0]);

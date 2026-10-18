@@ -70,7 +70,8 @@ export function buildQueueScopes({ ui = {}, model = null, options = {} }) {
   return scopes;
 }
 
-export function buildQueueView({ model, texts, context, options = {}, ui = {}, timeFormat = "auto" }) {
+// `panelShown`: the main panel's headline already counts the waiting jobs.
+export function buildQueueView({ model, texts, context, options = {}, ui = {}, timeFormat = "auto", panelShown = true }) {
   const queue = slotData(model, "queue");
   const index = roomIndex(model);
   const shared = { model, texts, index, context, timeFormat, menu: ui?.menu ?? null };
@@ -84,7 +85,8 @@ export function buildQueueView({ model, texts, context, options = {}, ui = {}, t
   const shown = ui?.wide ? detailJobId(model, options, ui.selectedJob) : null;
   const row = (job) => ({ ...buildJobRow(job, shared), selected: job.jobId === shown });
   const listed = listedJobs(model, options);
-  const [active, attention, waiting] = [listed.active.map(row), listed.attention.map(row), listed.waiting.map(row)];
+  // The attention group's title already says what the row's state pill would (V6).
+  const [active, attention, waiting] = [listed.active.map(row), listed.attention.map((job) => ({ ...row(job), showState: false })), listed.waiting.map(row)];
   // The detail itself is built beside the list by the view (LAY-03).
   const detail = shown ? { jobId: shown, traceOpen: list(ui?.expanded).includes(`trace:${shown}`) } : null;
   const templates = options.show_templates === false
@@ -108,7 +110,7 @@ export function buildQueueView({ model, texts, context, options = {}, ui = {}, t
     active,
     attention,
     waiting,
-    waitingTotal: queue?.total ?? 0,
+    waitingCount: panelShown ? null : (queue?.total ?? 0),
     empty: queueIsEmpty(model, options),
     emptyText: t(texts, create.state === "hidden" ? "queue.emptyReadOnly" : "queue.empty"),
     create,

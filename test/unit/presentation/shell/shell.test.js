@@ -83,11 +83,30 @@ test("the automatic subtitle names what the card is doing", async () => {
   const recovery = await at(RECOVERY);
   assert.equal(automaticSubtitle(recovery.model, "attention", recovery.texts), recovery.texts.t("subtitle.recoveryOne", { robot: "Rocky" }));
   const station = await at(STATION);
-  assert.equal(automaticSubtitle(station.model, "attention", station.texts), station.texts.t("subtitle.attention"), "a station fault is no job");
+  // V6: a fault is named with its robot rather than as "something".
+  assert.equal(automaticSubtitle(station.model, "attention", station.texts), "Rocky · Dirty water tank full", "a station fault is no job");
   const waiting = await at(WAITING_FOR_WORK);
   assert.match(automaticSubtitle(waiting.model, "running", waiting.texts), /14/, "the run ends 14 minutes from now");
   const assistant = await at(ASSISTANT);
   assert.equal(automaticSubtitle(assistant.model, "setup", assistant.texts), assistant.texts.t("subtitle.setupIncomplete"));
+});
+
+// V6 (UI-03): beside the panel, which counts the waiting jobs and says how the queue runs, the
+// subtitle names what the panel does not: the next job, or that the run waits for new work.
+test("beside the panel the subtitle names the next job instead of the count", async () => {
+  const { automaticSubtitle } = await import("../../../../src/presentation/shell/header.js");
+  const countdown = await at(["start_delay", { from: "The job starts in four seconds" }]);
+  assert.equal(automaticSubtitle(countdown.model, "running", countdown.texts, { panelShown: true }), "Next: Dining Room, Studio");
+  assert.equal(automaticSubtitle(countdown.model, "running", countdown.texts), countdown.texts.t("subtitle.waitingRunning", { count: 1 }), "without the panel it counts");
+  const choice = await at(["robot_choice", { from: "Either robot can start the dining room" }]);
+  assert.equal(automaticSubtitle(choice.model, "idle", choice.texts, { panelShown: true }), "Next: Dining Room");
+  const waiting = await at(WAITING_FOR_WORK);
+  assert.equal(automaticSubtitle(waiting.model, "running", waiting.texts, { panelShown: true }), "Waiting for new work");
+  const { buildPanel } = await import("../../../../src/presentation/shell/panel.js");
+  const { config } = await shell();
+  assert.equal(buildPanel({ model: waiting.model, config: config(), texts: waiting.texts, context: waiting.context }).runLine, "Queue running · ends in 14 minutes");
+  const german = await at(WAITING_FOR_WORK, { language: "de" });
+  assert.equal(automaticSubtitle(german.model, "running", german.texts, { panelShown: true }), "Wartet auf neue Aufträge");
 });
 
 test("the header honours title, subtitle, icon and the show switches", async () => {

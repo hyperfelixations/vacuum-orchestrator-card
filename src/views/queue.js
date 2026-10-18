@@ -31,7 +31,7 @@ export function renderQueue(context, vm) {
     const create = button({ action: "create-job", label: context.t("action.createJob"), iconName: "mdi:plus", variant: "primary", decision: vm.create, reasonText: context.reason(vm.create) });
     parts.push(emptyState("mdi:playlist-check", vm.emptyText, `${create}${templateButtons(context, vm)}`));
   } else if (vm.waiting.length) {
-    parts.push(group(context.t("queue.waiting"), vm.waiting.map((row) => jobRow(context, row)).join(""), { count: vm.waitingTotal, key: "waiting" }));
+    parts.push(group(context.t("queue.waiting"), vm.waiting.map((row) => jobRow(context, row)).join(""), { count: vm.waitingCount, key: "waiting" }));
     if (vm.templates.length) parts.push(`<div class="voc-quick" data-key="quick"><span class="voc-quick-label">${e(context.t("queue.fromTemplate"))}</span>${templateButtons(context, vm)}</div>`);
   }
   parts.push(pagination(context, vm.pagination, "queue"));
@@ -50,7 +50,7 @@ export const queueView = Object.freeze({
   bodyHoldsPrimary: ({ model, options }) => queueIsEmpty(model, options),
   scopes: ({ ui, model, options }) => buildQueueScopes({ ui, model, options }),
   build: ({ model, texts, context, options, config, ui }) => {
-    const vm = buildQueueView({ model, texts, context, options, ui, timeFormat: config.time_format });
+    const vm = buildQueueView({ model, texts, context, options, ui, timeFormat: config.time_format, panelShown: config.show?.panel !== false });
     if (!vm.detail) return vm;
     return { ...vm, detail: buildJobDetail({ model, texts, context, overlay: vm.detail, config, pane: true, menu: ui?.menu ?? null }) };
   },
