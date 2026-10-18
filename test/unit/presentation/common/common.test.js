@@ -139,3 +139,31 @@ test("trace rows word known events and states and keep unknown ones as reported"
   const counted = traceRows([{ ...again, sequence: 5 }, { sequence: 6, timestamp: NOW, event: "internal_error", details: {} }, again], { model, texts: en });
   assert.deepEqual(counted.map((row) => [row.event, row.count]), [[en.t("trace.event.dispatch_blocked"), 2], [en.t("trace.event.internal_error"), 1]]);
 });
+
+// V6 (UI-04): every value the integration traces is worded; a vendor's own robot status, which the
+// integration passes on as reported, is written out rather than shown as a code.
+test("trace details word commands, stages, robot states, settings and vendor statuses", async () => {
+  const { model } = await modelFor("showcase", { from: BUSY });
+  const { traceRows } = await import("../../../../src/presentation/common/trace.js");
+  const { robotsOf } = await import("../../../../src/presentation/common/lookups.js");
+  const en = await texts();
+  const detail = (event, details) => traceRows([{ sequence: 1, timestamp: NOW, event, details }], { model, texts: en })[0].detail;
+  const rocky = robotsOf(model)[0].robotId;
+  assert.equal(detail("command", { command: "create_job_from_template", stage: "returned" }), "Job from template · done");
+  assert.equal(detail("command", { command: "release_rooms", stage: "rejected", reason: "job_prerequisites" }), "Release rooms · its prerequisites are not met yet · refused");
+  assert.equal(detail("storage", { stage: "committed" }), "saved");
+  assert.equal(detail("queue_run", { state: "running", stage: "idle_reset" }), "Running · wait reset");
+  assert.equal(detail("robot_observation", { state: "busy", reason: "segment_cleaning", robot_id: rocky }), "Busy · Segment cleaning · Rocky");
+  assert.equal(detail("robot_observation", { state: "available", reason: "docked", robot_id: rocky }), "Available · Docked · Rocky");
+  assert.equal(detail("availability", { state: "offline", reason: "unavailable", robot_id: rocky }), "Offline · Unavailable · Rocky");
+  assert.equal(detail("setting", { reason: "vacuum_power", stage: "unchanged", robot_id: rocky }), "Suction · Rocky · already set");
+  assert.equal(detail("setting", { reason: "cleaning_mode", stage: "confirmed" }), "Cleaning mode · confirmed");
+  assert.equal(detail("physical_command", { reason: "returning", stage: "requested", robot_id: rocky }), "return to the dock · Rocky · requested");
+  assert.equal(detail("recovery_resolved", { reason: "verified_stopped", stage: "abandoned", robot_id: rocky }), "confirmed stopped · Rocky · attempt given up");
+  const { TRACE_COMMANDS, TRACE_STAGES, TRACE_ROBOT_STATES, TRACE_REASONS } = await import("../../../../src/presentation/common/trace.js");
+  const { de } = await import("../../../../src/i18n/languages/de.js");
+  const { en: english } = await import("../../../../src/i18n/languages/en.js");
+  const keys = [...TRACE_COMMANDS].map((name) => `trace.command.${name}`).concat([...TRACE_STAGES].map((stage) => `trace.stage.${stage}`), [...TRACE_ROBOT_STATES].map((state) => `trace.robotState.${state}`), [...TRACE_REASONS].map((code) => `trace.reason.${code}`));
+  assert.deepEqual(keys.filter((key) => !(key in english) || !(key in de)), []);
+  assert.equal(TRACE_COMMANDS.size, 37, "every command the integration traces");
+});
