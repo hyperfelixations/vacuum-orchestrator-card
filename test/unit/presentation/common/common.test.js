@@ -105,6 +105,10 @@ test("a robot's status line joins its activity and battery with the lease", asyn
   const outside = await modelFor("external_run", { from: "The card opens" });
   const [external] = robotsOf(outside.model).map((robot) => robotStatus(robot, outside.model, en));
   assert.deepEqual([external.state, en.t("robot.phase.cleaningExternal")], [en.t("robot.phase.cleaningExternal"), "Cleaning outside Vacuum Orchestrator"]);
+  // V6: a robot that cannot be reached has no current battery level; the last one is not shown.
+  const lost = await modelFor("recovery", { from: "The job needs clarification" });
+  const [unreachable] = robotsOf(lost.model).map((robot) => robotStatus(robot, lost.model, en));
+  assert.deepEqual([unreachable.battery, unreachable.summary], [null, `Rocky · ${unreachable.state}`]);
   const unknown = robotStatus({ ...robotsOf(model)[0], activity: { phase: "unknown", external: false } }, model, en);
   assert.equal(unknown.state, en.t("vacuum.state.cleaning"), "without an activity, Home Assistant's state");
 });

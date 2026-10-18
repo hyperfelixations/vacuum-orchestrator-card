@@ -248,7 +248,9 @@ test("robots show Home Assistant's live state beside the integration's profile f
   assert.equal(robots.newCandidates, 0);
   assert.equal(rocky.actions.returnToDock.state, "hidden", "Rocky cleans for a job");
   const stopped = await modelFor("queue_controls", { from: "Rocky stopped in the studio" });
-  assert.equal(buildRobotsView({ ...stopped, options: {}, ui: {} }).robots[0].actions.returnToDock.state, "enabled");
+  const [still] = buildRobotsView({ ...stopped, options: {}, ui: {} }).robots;
+  assert.equal(still.actions.returnToDock.state, "enabled");
+  assert.equal(still.facts.some((fact) => fact.key === "status"), false, "a status that says what the pill says is not repeated (V6)");
   // UI-10: the map opens enlarged, turned where that shows it larger unless the view says not to.
   assert.deepEqual(rocky.map.open, { action: "open-map", args: { robotId: rocky.robotId, entityId: rocky.map.entityId, rotation: "auto" } });
   assert.equal(buildRobotsView({ ...built, options: { map_rotation: "none" }, ui: {} }).robots[0].map.open.args.rotation, "none");

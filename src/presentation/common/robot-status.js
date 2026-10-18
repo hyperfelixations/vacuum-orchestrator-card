@@ -1,6 +1,7 @@
 // One robot as a short status: the integration's vendor-neutral activity (Home Assistant's vacuum
 // state only where the integration has none), the battery reading, the lease and block. Values are
-// displayed as reported; nothing is inferred from them.
+// displayed as reported; nothing is inferred from them. A robot that cannot be reached shows no
+// battery level, since the reading is only the last one it sent.
 
 import { numericReading } from "../../application/ha-entities.js";
 import { number, t } from "./texts.js";
@@ -21,7 +22,8 @@ export function activityLabel(texts, activity) {
 
 export function robotStatus(robot, model, texts) {
   const live = model.robotsLive?.[robot.robotId] ?? null;
-  const battery = numericReading(live?.roles?.battery);
+  const reachable = robot.activity?.phase !== "offline" && live?.vacuum?.available !== false;
+  const battery = reachable ? numericReading(live?.roles?.battery) : null;
   const state = activityLabel(texts, robot.activity) ?? vacuumStateLabel(texts, live?.vacuum);
   const failed = robot.activity?.phase === "error" || live?.vacuum?.state === "error";
   const tone = robot.blockedReason || failed ? "attention" : robot.active ? "running" : robot.activity?.phase === "offline" ? "muted" : live?.vacuum?.available ? "ready" : "muted";

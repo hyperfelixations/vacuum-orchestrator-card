@@ -33,6 +33,12 @@ test("status precedence: phase, attention, work in progress, queue mode, unfinis
   assert.equal(await statusOf((await at(STATION)).model), "attention", "attention outranks the pending assistant");
   assert.equal(await statusOf((await at(WAITING_FOR_WORK)).model), "running");
   assert.equal(await statusOf((await at(QUIET)).model), "idle");
+  // V6: jobs waiting on a queue that was not started are not "Ready"; the pill says the queue does not run.
+  const held = await at(["robot_choice", { from: "Either robot can start the dining room" }]);
+  assert.equal(await statusOf(held.model), "waiting");
+  assert.deepEqual([held.texts.t("status.waiting"), held.texts.t("status.idle")], ["Not running", "Ready"]);
+  const { toneFor } = await import("../../../../src/presentation/shell/status.js");
+  assert.match(toneFor("waiting").style, /--tone-color:var\(--secondary-text-color\);.*--voc-accent:var\(--primary-color, #03a9f4\);/);
   assert.equal(await statusOf((await at(ASSISTANT)).model), "setup");
   assert.equal(await statusOf((await at(NOT_INSTALLED)).model), "notInstalled");
   assert.equal(await statusOf((await at(UNLOADED)).model), "loadFailed");

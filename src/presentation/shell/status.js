@@ -29,7 +29,8 @@ export function cardStatus(model = {}) {
   if (mode === "paused") return "paused";
   if (!queue) return "connecting";
   if (model.setup?.assistantPending) return "setup";
-  return "idle";
+  // Jobs waiting on a queue nobody started are not "ready" to run (V6).
+  return (queue.total ?? model.live?.pendingJobs ?? 0) > 0 ? "waiting" : "idle";
 }
 
 // [tone, control accent]: the accent is the tone, except that an error tone leaves the controls
@@ -41,6 +42,7 @@ const TONES = Object.freeze({
   running: ["var(--info-color, #039be5)"],
   paused: ["var(--warning-color, #ffa600)"],
   idle: ["var(--success-color, #43a047)"],
+  waiting: ["var(--secondary-text-color)", PRIMARY],
   setup: ["var(--primary-color, #03a9f4)"],
   connecting: ["var(--secondary-text-color)"],
   offline: ["var(--secondary-text-color)"],

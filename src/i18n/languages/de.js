@@ -17,6 +17,7 @@ export const de = {
   "status.running": "Läuft",
   "status.paused": "Pausiert",
   "status.idle": "Bereit",
+  "status.waiting": "Läuft nicht",
   "status.setup": "Einrichtung",
 
   "subtitle.connecting": "Verbinde mit Vacuum Orchestrator …",

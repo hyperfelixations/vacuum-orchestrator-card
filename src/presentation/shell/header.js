@@ -25,7 +25,7 @@ export function automaticSubtitle(model, status, texts, { panelShown = false } =
   const queue = slotData(model, "queue");
   const waiting = queue?.total ?? model.live?.pendingJobs ?? 0;
   const next = panelShown && waiting && queue?.offset === 0 ? list(queue.jobs)[0] : null;
-  if (next && (status === "running" || status === "paused" || status === "idle")) return t(texts, "subtitle.next", { job: jobTitle(next, roomIndex(model), model) });
+  if (next && (status === "running" || status === "paused" || status === "idle" || status === "waiting")) return t(texts, "subtitle.next", { job: jobTitle(next, roomIndex(model), model) });
   switch (status) {
     case "attention":
       return attentionSentence(model, texts);
@@ -42,6 +42,7 @@ export function automaticSubtitle(model, status, texts, { panelShown = false } =
     case "paused":
       return t(texts, "subtitle.waitingPaused", { count: waiting });
     case "idle":
+    case "waiting":
       return waiting ? t(texts, "subtitle.waiting", { count: waiting }) : t(texts, "subtitle.nothingWaiting");
     case "setup":
       return waiting ? t(texts, "subtitle.waiting", { count: waiting }) : t(texts, "subtitle.setupIncomplete");

@@ -17,6 +17,12 @@ function readingText(reading) {
   return reading.display || `${reading.state}${reading.unit ? ` ${reading.unit}` : ""}`;
 }
 
+// The robot's own status sensor beside the state pill: shown only where it adds something (V6).
+function sameWords(a, b) {
+  const plain = (text) => String(text ?? "").replace(/_/g, " ").trim().toLowerCase();
+  return a !== null && plain(a) === plain(b);
+}
+
 export function buildRobotsView({ model, texts, context, options = {}, ui = {} }) {
   const robots = robotsOf(model);
   const status = model.slots?.robots?.status;
@@ -49,7 +55,7 @@ export function buildRobotsView({ model, texts, context, options = {}, ui = {} }
         batteryText: summary.battery === null ? null : t(texts, "robot.battery", { value: number(texts, summary.battery) }),
         facts: [
           { key: "room", icon: "mdi:map-marker-outline", label: t(texts, "robot.currentRoom"), value: readingText(live?.roles?.current_room) },
-          { key: "status", icon: "mdi:information-outline", label: t(texts, "robot.status"), value: readingText(live?.roles?.status) },
+          { key: "status", icon: "mdi:information-outline", label: t(texts, "robot.status"), value: sameWords(readingText(live?.roles?.status), summary.state) ? null : readingText(live?.roles?.status) },
           { key: "map", icon: "mdi:map-outline", label: t(texts, "robot.selectedMap"), value: readingText(live?.roles?.selected_map) },
           { key: "minimum", icon: "mdi:battery-low", label: t(texts, "robot.minimumBattery"), value: robot.configuration.minimumBattery === null ? null : t(texts, "robot.minimumBatteryValue", { value: number(texts, robot.configuration.minimumBattery) }) },
         ].filter((fact) => fact.value !== null),
