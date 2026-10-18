@@ -684,6 +684,7 @@ export const en = {
   "release.quickMinutes": (v) => `${v.value} min`,
   "release.quickHours": (v) => `${v.value} h`,
   "release.addRoom": "Add room",
+  "release.afterwards": "After the release, the job still waits:",
   "release.removeRoom": (v) => `Remove ${v.room} from the release`,
   "release.current": (v) => `Currently: ${v.kind}. A new release replaces it.`,
   "release.explain.permanent": "The room may be cleaned until you lock it again.",

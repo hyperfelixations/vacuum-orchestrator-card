@@ -26,10 +26,14 @@ export const releaseOverlay = Object.freeze({
   build: ({ model, texts, context, overlay }) => buildRelease({ model, texts, context, overlay }),
   render(context, vm) {
     if (vm.missing) return dialog(context, { key: "release", title: vm.title, lead: context.t("release.missingRoom"), actions: button({ action: "back", label: context.t("action.back"), variant: "quiet" }) });
+    // What the job the dialog was opened from still waits for afterwards.
+    // One reason reads as a sentence, several as a list.
+    const reasons = vm.afterwards.length === 1 ? ` <span>${e(vm.afterwards[0])}</span>` : `<ul>${vm.afterwards.map((reason) => `<li>${e(reason)}</li>`).join("")}</ul>`;
+    const afterwards = vm.afterwards.length ? `<div class="voc-release-after" data-key="afterwards">${icon("mdi:information-outline")}<div><span>${e(context.t("release.afterwards"))}</span>${reasons}</div></div>` : "";
     const add = vm.addable.length ? `<div class="voc-release-add" role="group" aria-labelledby="voc-release-add-label"><span class="voc-field-label" id="voc-release-add-label">${e(context.t("release.addRoom"))}</span><div class="voc-chips">${vm.addable.map((room) => button({ action: "add-release-room", args: { roomId: room.roomId }, label: room.name, iconName: "mdi:plus", variant: "text" })).join("")}</div></div>` : "";
     const revoke = vm.revoke ? button({ action: "revoke-room", args: { roomId: vm.rows[0].roomId, close: true }, label: context.t("rooms.lock"), iconName: "mdi:lock-outline", variant: "quiet", decision: vm.revoke, reasonText: context.reason(vm.revoke), className: "voc-action-start" }) : "";
     const actions = `${revoke}${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${button({ action: "release-room", label: context.t("rooms.release"), iconName: "mdi:lock-open-variant-outline", variant: "primary", decision: vm.submit, reasonText: context.reason(vm.submit) })}`;
-    return dialog(context, { key: "release", title: vm.title, invalid: vm.invalid, content: `<div class="voc-form">${vm.rows.map((row) => releaseRow(context, vm, row)).join("")}${add}</div>`, actions });
+    return dialog(context, { key: "release", title: vm.title, invalid: vm.invalid, content: `<div class="voc-form">${vm.rows.map((row) => releaseRow(context, vm, row)).join("")}${add}${afterwards}</div>`, actions });
   },
   css: `${FORMS_CSS}
 .voc-release-row { display: grid; gap: 10px; min-width: 0; }
@@ -39,6 +43,9 @@ export const releaseOverlay = Object.freeze({
 .voc-release-row.voc-list-item [data-key$=":kind"] > .voc-field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .voc-release-duration { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 12px; }
 .voc-release-duration .voc-input[type="number"] { max-width: none; }
+.voc-release-after { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; font-weight: 650; line-height: 1.35; color: var(--voc-muted); }
+.voc-release-after ha-icon { --mdc-icon-size: 15px; flex: none; }
+.voc-release-after ul { margin: 2px 0 0; padding-inline-start: 18px; }
 .voc-release-add { display: grid; gap: 6px; min-width: 0; padding-top: 10px; border-top: 1px solid var(--voc-hairline); }
 `,
 });

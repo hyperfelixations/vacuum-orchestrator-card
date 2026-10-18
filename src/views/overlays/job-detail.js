@@ -69,7 +69,7 @@ function waiting(context, vm) {
       : `<li data-ready="true">${icon("mdi:check-circle-outline")}<span>${e(context.t("waiting.axis.ready"))}</span></li>`;
     return `<div class="voc-axis" data-key="axis:${key}" data-ready="${entry.ready}"><div class="voc-axis-title">${e(title)}</div><ul class="voc-reasons">${items}</ul></div>`;
   };
-  const release = vm.releaseable.map((room) => button({ action: "open-release", args: { roomId: room.roomId }, label: context.t("detail.releaseRoom", { room: room.name }), iconName: "mdi:lock-open-variant-outline", decision: room.decision, reasonText: context.reason(room.decision), key: `release:${room.roomId}` })).join("");
+  const release = vm.releaseable.map((room) => button({ action: "open-release", args: { roomId: room.roomId, jobId: vm.jobId }, label: context.t("detail.releaseRoom", { room: room.name }), iconName: "mdi:lock-open-variant-outline", decision: room.decision, reasonText: context.reason(room.decision), key: `release:${room.roomId}` })).join("");
   const content = `${axis("job", context.t("waiting.axis.job"), vm.waiting.job)}${release ? `<div class="voc-inline-actions">${release}</div>` : ""}${axis("robots", context.t("waiting.axis.robots"), vm.waiting.robots)}${axis("queue", context.t("waiting.axis.queue"), vm.waiting.queue)}`;
   return block(context.t("detail.readiness"), content, { iconName: "mdi:timer-sand", key: "readiness" });
 }

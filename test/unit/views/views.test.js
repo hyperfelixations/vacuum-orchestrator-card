@@ -212,6 +212,12 @@ test("locking and excluding a room are not destructive actions", async () => {
   const lock = releaseHost.querySelector('[data-action="revoke-room"]');
   assert.ok(lock, "a released room can be locked from its release dialog");
   assert.ok(!lock.classList.contains("voc-button--danger"));
+  // What a job still waits for after the release: one reason as a sentence, several as a list.
+  const vm = release.build({ ...built, overlay: { kind: "release", rooms: [{ roomId: studio, kind: "queue_run", hours: 2, minutes: 0 }] } });
+  const after = (afterwards) => parse(document, release.render(context, { ...vm, afterwards })).querySelector('[data-key="afterwards"]');
+  assert.equal(after([]), null);
+  assert.deepEqual([after(["Door is closed"]).querySelectorAll("li").length, after(["Door is closed"]).textContent.includes("Door is closed")], [0, true]);
+  assert.equal(after(["Door is closed", "Window is open"]).querySelectorAll("li").length, 2);
   const editor = overlayFor("room-editor");
   const editorHost = parse(document, editor.render(context, editor.build({ ...built, overlay: { kind: "room-editor", roomId: studio, draft: createRoomDraft(built.model.slots.rooms.data.items.find((room) => room.roomId === studio)) }, config: {}, ui: {} })));
   const exclude = editorHost.querySelector('[data-action="disable-room"]');

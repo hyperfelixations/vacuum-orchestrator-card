@@ -3,10 +3,12 @@
 
 import { CREATE_TARGET, decide, roomAffordances, roomTarget } from "../../domain/affordances.js";
 import { RELEASE_KINDS } from "../../domain/job-schema.js";
-import { entityName, list, robotsOf, roomsOf } from "../common/lookups.js";
+import { entityName, findJob, list, robotsOf, roomIndex, roomsOf } from "../common/lookups.js";
 import { releaseKindLabel, t } from "../common/texts.js";
 import { entityField, field, pageErrors } from "./editor-fields.js";
 import { intervalParts, splitList } from "../../domain/room-draft.js";
+import { readinessBeyondRooms } from "../../domain/readiness.js";
+import { readinessReasons } from "../views/job-row.js";
 
 const KIND_ICONS = Object.freeze({ permanent: "mdi:lock-open-variant-outline", once: "mdi:numeric-1-circle-outline", timed: "mdi:timer-outline", queue_run: "mdi:playlist-play" });
 const camel = (value) => value.replace(/_([a-z])/g, (_match, letter) => letter.toUpperCase());
@@ -72,8 +74,12 @@ export function buildRelease({ model, texts, context, overlay }) {
   const addable = roomsOf(model)
     .filter((room) => !taken.has(room.roomId) && roomAffordances(room, context).release.state === "enabled")
     .map((room) => ({ roomId: room.roomId, name: room.name }));
+  // Opened from a job: what it still waits for once these rooms are released (plan V5).
+  const job = overlay.jobId ? findJob(model, overlay.jobId) : null;
+  const afterwards = job ? readinessReasons(readinessBeyondRooms(job.readiness, [...taken]), { index: roomIndex(model), model, texts }) : [];
   return {
     key: "release",
+    afterwards,
     title: rows.length === 1 ? t(texts, "release.title", { room: rows[0].name }) : t(texts, "release.titleMany"),
     missing: rows.length === 0 || rows.every((row) => row.missing),
     rows,

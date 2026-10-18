@@ -684,6 +684,7 @@ export const de = {
   "release.quickMinutes": (v) => `${v.value} min`,
   "release.quickHours": (v) => `${v.value} h`,
   "release.addRoom": "Raum hinzufügen",
+  "release.afterwards": "Nach der Freigabe wartet der Auftrag noch:",
   "release.removeRoom": (v) => `${v.room} aus der Freigabe entfernen`,
   "release.current": (v) => `Aktuell: ${v.kind}. Eine neue Freigabe ersetzt sie.`,
   "release.explain.permanent": "Der Raum darf gereinigt werden, bis du ihn wieder sperrst.",

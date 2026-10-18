@@ -536,7 +536,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       { titleKey: "confirm.removeTemplate.title", textKey: "confirm.removeTemplate.text", confirmKey: "confirm.removeTemplate.confirm", icon: "mdi:delete-outline", vars: { template: findIn(getModel(), "templates", "templateId", templateId)?.name ?? "" } }
     ),
     "reset-template-demand": ({ templateId }) => run("reset_template_demand", { template_id: templateId }, { target: templateTarget(templateId), invalidates: ["templates"], success: { key: "notice.templateDemandReset" } }),
-    "open-release": ({ roomId, roomIds }) => ui.openOverlay({ kind: "release", rooms: releaseRows(roomIds?.length ? roomIds : [roomId]) }),
+    "open-release": ({ roomId, roomIds, jobId = null }) => ui.openOverlay({ kind: "release", jobId, rooms: releaseRows(roomIds?.length ? roomIds : [roomId]) }),
     "add-release-room": ({ roomId }) => {
       if (ui.overlay?.kind === "release") ui.updateOverlay({ rooms: withReleaseRoom(ui.overlay.rooms, roomId) });
     },

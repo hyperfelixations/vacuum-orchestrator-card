@@ -347,10 +347,11 @@ test.describe("rooms", () => {
     await shot(page, "rooms-narrow-dark.png", NARROW);
   });
 
+  // Opened from the job, the dialog also says what the job still waits for afterwards.
   test("release dialog", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
-    await open(page, card, "rooms");
-    await act(page, named(card, ".voc-room", "Conservatory", '[data-action="open-release"]'));
+    await act(page, named(card, ".voc-job", "Conservatory", '[data-action="open-release"]'));
+    await expect(card.locator('[data-key="afterwards"]')).toBeVisible();
     await act(page, card.locator('[data-key="field:release:0:kind"] [data-value="timed"]'));
     await expect(card.locator('[data-field="release:0:hours"]')).toBeVisible();
     await shot(page, "release-medium-light.png", MEDIUM);

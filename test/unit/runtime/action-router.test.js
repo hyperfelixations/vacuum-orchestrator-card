@@ -561,7 +561,8 @@ test("a release sends every listed room with its kind and, for a timed one, the 
   assert.deepEqual(ui.overlay.rooms[1], { roomId: "room-studio", kind: "timed", hours: 4, minutes: 0 }, "a quick choice sets hours and minutes");
   await router.handle("release-room");
   assert.deepEqual(commands[0], { operation: "release_rooms", parameters: { grants: [{ room: "room-library", kind: "once" }, { room: "room-studio", kind: "timed", duration_seconds: 14400 }] }, target: "release_rooms", invalidates: commands[0].invalidates });
-  router.handle("open-release", { roomId: "room-library" });
+  router.handle("open-release", { roomId: "room-library", jobId: "job-1" });
+  assert.equal(ui.overlay.jobId, "job-1", "the dialog knows the job it was opened from");
   router.handle("add-release-room", { roomId: "room-studio" });
   router.handle("set-field", { field: "release:1:kind", value: "timed" });
   router.input("release:1:hours", 0);

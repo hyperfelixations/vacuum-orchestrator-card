@@ -163,3 +163,15 @@ test("a discovered vacuum is added from the robots view", async () => {
   assert.ok(robot(card, "Rocky"));
   card.unmount();
 });
+
+// Plan V5: releasing the conservatory from its job leaves the closed door; the dialog says so.
+test("a release opened from a job says what the job still waits for afterwards", async () => {
+  const card = await open("queue", BUSY);
+  await card.click(card.named(".voc-job", "Conservatory").querySelector('[data-action="open-release"]'));
+  assert.equal(card.text('[data-key="afterwards"]'), "After the release, the job still waits: Conservatory Door is not in an allowed state");
+  await card.click('[data-action="back"]');
+  await card.click('[role="tab"][data-view="rooms"]');
+  await card.click(room(card, "Conservatory").querySelector('[data-action="open-release"]'));
+  assert.equal(card.root.querySelector('[data-key="afterwards"]'), null, "opened from the room, no job to speak of");
+  card.unmount();
+});

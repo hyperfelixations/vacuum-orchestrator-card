@@ -34,6 +34,16 @@ export function normalizeReadiness(wire) {
   });
 }
 
+// The explanation without the given rooms: what a job still waits for once a dialog releases
+// them. Without a room left the room reason goes too; everything else stays as reported.
+export function readinessBeyondRooms(readiness, roomIds) {
+  if (!readiness) return null;
+  const releasing = new Set(roomIds);
+  const blockedRoomIds = readiness.blockedRoomIds.filter((roomId) => !releasing.has(roomId));
+  const reasonCodes = blockedRoomIds.length ? readiness.reasonCodes : readiness.reasonCodes.filter((code) => code !== "room_not_released");
+  return Object.freeze({ ...readiness, blockedRoomIds: Object.freeze(blockedRoomIds), reasonCodes: Object.freeze(reasonCodes) });
+}
+
 // The requirement results that explain a non-ready state, blocked before stale before unknown.
 const PROBLEM_ORDER = Object.freeze({ blocked: 0, stale: 1, unknown: 2 });
 

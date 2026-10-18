@@ -1193,6 +1193,9 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-release-row.voc-list-item [data-key$=":kind"] > .voc-field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .voc-release-duration { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 12px; }
 .voc-release-duration .voc-input[type="number"] { max-width: none; }
+.voc-release-after { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; font-weight: 650; line-height: 1.35; color: var(--voc-muted); }
+.voc-release-after ha-icon { --mdc-icon-size: 15px; flex: none; }
+.voc-release-after ul { margin: 2px 0 0; padding-inline-start: 18px; }
 .voc-release-add { display: grid; gap: 6px; min-width: 0; padding-top: 10px; border-top: 1px solid var(--voc-hairline); }
 
 .voc-candidates { display: grid; gap: 8px; }

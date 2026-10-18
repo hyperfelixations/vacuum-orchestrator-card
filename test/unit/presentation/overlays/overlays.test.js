@@ -344,6 +344,10 @@ test("a release lists each room with its own kind; a timed one asks for its dura
   assert.deepEqual([one.rows[0].duration, one.rows[0].removable], [null, false], "one room, no duration for a run-long release");
   assert.equal(one.revoke.state, "hidden");
   assert.deepEqual(one.addable.map((room) => room.name), ["Dining Room", "Studio", "Library"], "every other room can join");
+  // Opened from a job, the dialog says what the job still waits for once its rooms are released.
+  const waiting = jobIn(built.model, "Conservatory");
+  const fromJob = buildRelease({ ...built, overlay: { jobId: waiting.jobId, rooms: [{ roomId: conservatory, kind: "queue_run", hours: 2, minutes: 0 }] } });
+  assert.deepEqual([fromJob.afterwards, one.afterwards], [["Conservatory Door is not in an allowed state"], []]);
   const two = buildRelease({ ...built, overlay: { rooms: [{ roomId: conservatory, kind: "once", hours: 2, minutes: 0 }, { roomId: studio, kind: "timed", hours: 0, minutes: 0 }], errors: { "release:1:duration": "release_duration_mismatch", "release:0:room": "room_unavailable" } } });
   assert.equal(two.title, "Release rooms");
   assert.deepEqual(two.rows.map((row) => [row.name, row.kind.value, row.removable]), [["Conservatory", "once", true], ["Studio", "timed", true]]);

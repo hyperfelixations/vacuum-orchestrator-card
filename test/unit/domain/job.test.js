@@ -81,6 +81,17 @@ test("readiness keeps reason codes, unreleased rooms and requirement results", a
   assert.equal(normalizeReadiness(W.wireReadiness({ state: "maybe" })).state, "unknown");
 });
 
+// Plan V5, REL-07: what the explanation names besides the rooms a release dialog is releasing.
+test("the explanation beyond some rooms keeps the other rooms and every other reason", async () => {
+  const { normalizeReadiness, readinessBeyondRooms } = await load();
+  const both = normalizeReadiness(W.wireReadiness({ state: "blocked", reason_codes: ["room_not_released", "requirement_not_satisfied"], blocked_room_ids: ["room-conservatory", "room-studio"], requirements: [W.wireRequirementResult({ state: "blocked" })] }));
+  const rest = readinessBeyondRooms(both, ["room-conservatory"]);
+  assert.deepEqual([rest.blockedRoomIds, rest.reasonCodes, rest.requirements.length], [["room-studio"], ["room_not_released", "requirement_not_satisfied"], 1]);
+  const door = readinessBeyondRooms(both, ["room-conservatory", "room-studio"]);
+  assert.deepEqual([door.blockedRoomIds, door.reasonCodes], [[], ["requirement_not_satisfied"]], "no room left, no room reason");
+  assert.equal(readinessBeyondRooms(null, ["room-studio"]), null);
+});
+
 test("problems are ordered blocked, stale, unknown and keep the integration's order within", async () => {
   const { normalizeReadiness, readinessProblems } = await load();
   const readiness = normalizeReadiness(W.wireReadiness({
