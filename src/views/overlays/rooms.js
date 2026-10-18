@@ -51,7 +51,7 @@ function requirementRow(context, row) {
 
 function bindingRow(context, row) {
   const remove = button({ action: "remove-binding", args: { index: row.index }, label: context.t("field.remove", { item: context.t("room.binding") }), iconName: "mdi:close", variant: "icon" });
-  return `<div class="voc-list-item" data-key="binding:${e(row.key)}"><div class="voc-list-head"><strong>${e(context.t("room.binding"))}</strong>${remove}</div>${renderField(context, row.robot)}<div class="voc-list-fields">${renderField(context, row.mapId)}${renderField(context, row.targets)}</div>${row.error ? `<div class="voc-field-error" role="alert">${e(row.error)}</div>` : ""}</div>`;
+  return `<div class="voc-list-item" data-key="binding:${e(row.key)}"><div class="voc-list-head"><strong>${e(context.t("room.binding"))}</strong>${remove}</div>${renderField(context, row.robot)}${row.mapId.control === "text" ? `<div class="voc-list-fields">${renderField(context, row.mapId)}${renderField(context, row.targets)}</div>` : `${renderField(context, row.mapId)}${renderField(context, row.targets)}`}${row.error ? `<div class="voc-field-error" role="alert">${e(row.error)}</div>` : ""}</div>`;
 }
 
 export const roomEditorOverlay = Object.freeze({

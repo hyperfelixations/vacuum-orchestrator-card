@@ -636,6 +636,19 @@ test("an entity picker search is overlay state and a pick clears it", async () =
   assert.equal(ui.overlay.draft.roles.error.entity, null, "picking it again clears it");
 });
 
+// ROOM-08: a segment picked by name joins or leaves the binding's targets.
+test("a binding's segments are toggled by name", async () => {
+  const { router, ui } = await setup();
+  const { normalizeRoom } = await import("../../../src/domain/rooms.js");
+  const { createRoomDraft } = await import("../../../src/domain/room-draft.js");
+  const room = normalizeRoom(W.wireRoom({ room_id: "room-library", name: "Library" }));
+  ui.openOverlay({ kind: "room-editor", draft: { ...createRoomDraft(room), bindings: [{ robotId: "robot-rocky", mapId: "0", targetIds: "16" }] } });
+  router.handle("toggle-value", { field: "bindings.0.targetIds", value: "18" });
+  assert.equal(ui.overlay.draft.bindings[0].targetIds, "16, 18");
+  router.handle("toggle-value", { field: "bindings.0.targetIds", value: "16" });
+  assert.equal(ui.overlay.draft.bindings[0].targetIds, "18");
+});
+
 // ROOM-09: Home Assistant's own dialog of a vacuum, where its map segments are assigned to areas.
 test("an entity's Home Assistant dialog opens through the platform", async () => {
   const { router, moreInfo } = await setup();

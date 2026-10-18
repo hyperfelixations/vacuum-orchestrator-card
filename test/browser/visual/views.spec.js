@@ -386,6 +386,20 @@ test.describe("robots", () => {
     await shot(page, "robots-fault-german-narrow-light.png", NARROW);
   });
 
+  // ROOM-08: an own binding picks the robot's map and segments by name.
+  test("a room bound to a segment of another map", async ({ page }) => {
+    const card = await mountCard(page, { ...BUSY, config: BASE });
+    await open(page, card, "rooms");
+    await act(page, named(card, ".voc-room", "Conservatory", '[data-action="edit-room"]'));
+    await act(page, card.locator('[data-key="group:targets"] .voc-disclosure'));
+    await act(page, card.locator('[data-action="add-binding"]').first());
+    await act(page, card.locator('[data-key="field:bindings.0.mapId"] [data-value="1"]'));
+    await act(page, card.locator('[data-key="field:bindings.0.targetIds"] [data-value="16"]'));
+    await card.locator('[data-key="field:bindings.0.targetIds"]').evaluate((node) => node.scrollIntoView({ block: "center" }));
+    await expect(card.locator('[data-key="field:bindings.0.targetIds"] [data-value="16"]')).toHaveAttribute("aria-selected", "true");
+    await shot(page, "room-binding-medium-light.png", MEDIUM);
+  });
+
   test("a robot stopped away from its dock", async ({ page }) => {
     const card = await mountCard(page, { ...STOPPED, config: BASE });
     await open(page, card, "robots");

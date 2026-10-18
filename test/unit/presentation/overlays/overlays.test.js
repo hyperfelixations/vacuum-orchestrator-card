@@ -345,6 +345,17 @@ test("room settings show detected robot targets and the occupancy fields only fo
   assert.equal(fieldsOf(vm, "due").occupancyEntityId, undefined);
   const occupied = buildRoomEditor({ ...built, overlay: { draft: updateRoomDraft(draft, "basis", "occupied"), errors: { occupancyEntityId: "required_field", unoccupiedState: "invalid_value" } } });
   assert.deepEqual([fieldsOf(occupied, "due").occupancyEntityId.error, fieldsOf(occupied, "due").occupiedState.error, fieldsOf(occupied, "due").unoccupiedState.error], [said(built, "required_field"), null, said(built, "invalid_value")]);
+  // ROOM-08: an own binding picks the robot's map and its segments by name; without a reported
+  // map the targets stay text.
+  const rocky = robotId(built.model, "Rocky");
+  const bound = buildRoomEditor({ ...built, overlay: { draft: updateRoomDraft(draft, "bindings", [{ robotId: rocky, mapId: "1", targetIds: "16" }]) } });
+  const [binding] = bound.bindings;
+  assert.deepEqual(binding.mapId.options.map((option) => [option.value, option.label]), [["", built.texts.t("room.bindingCurrentMap")], ["0", "Main Floor"], ["1", "Lower Floor"]]);
+  assert.deepEqual([binding.targets.control, binding.targets.value, binding.targets.options.map((option) => [option.value, option.label])], ["chips", ["16"], [["16", "Conservatory"]]]);
+  const current = buildRoomEditor({ ...built, overlay: { draft: updateRoomDraft(draft, "bindings", [{ robotId: rocky, mapId: "", targetIds: "" }]) } }).bindings[0];
+  assert.deepEqual(current.targets.options.map((option) => option.label), ["Dining Room", "Studio", "Library"], "the current map's segments");
+  const unknown = buildRoomEditor({ ...built, overlay: { draft: updateRoomDraft(draft, "bindings", [{ robotId: "robot-gone", mapId: "", targetIds: "kitchen" }]) } }).bindings[0];
+  assert.deepEqual([unknown.mapId.control, unknown.targets.control, unknown.targets.value], ["text", "text", "kitchen"]);
   const create = buildRoomCreate({ ...built, overlay: { name: "" } });
   assert.deepEqual(create.fields[1].options.map((option) => option.value), [null], "every area already has its room");
   const unnamed = buildRoomCreate({ ...built, overlay: { name: " ", errors: { "overlay:name": "empty_name" } } });

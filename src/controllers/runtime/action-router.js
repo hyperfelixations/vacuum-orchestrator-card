@@ -7,7 +7,7 @@
 
 import { CREATE_TARGET, QUEUE_TARGET, SETUP_TARGET, jobTarget, robotTarget, roomTarget, templateTarget, queueControl } from "../../domain/affordances.js";
 import { applyDraftChange, createDraft, draftFieldOf, draftToIntent, draftToTemplate, draftToUpdatePatch, isDirty, toggleRoom } from "../../domain/job-draft.js";
-import { createRoomDraft, isRoomDirty, newBinding, newRequirement, roomDraftToPatch, roomFieldOf, updateRoomDraft } from "../../domain/room-draft.js";
+import { createRoomDraft, isRoomDirty, newBinding, newRequirement, roomDraftToPatch, roomFieldOf, splitList, updateRoomDraft } from "../../domain/room-draft.js";
 import { createRobotDraft, isRobotDirty, robotDraftToConfiguration, robotFieldOf, updateRobotDraft } from "../../domain/robot-draft.js";
 import { formErrors, withoutFieldError } from "../../domain/validation.js";
 import { grantsOf, releaseField, releaseFieldOf, releaseGroupOf, releaseRows, updateReleaseRow, withReleaseRoom, withoutReleaseRow } from "../../domain/release-draft.js";
@@ -393,6 +393,13 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       if ((overlay?.kind === "room-editor" || overlay?.kind === "robot-editor") && field === "requirementsAdd") {
         editDraft("requirements", [...overlay.draft.requirements, newRequirement(value)]);
         ui.updateOverlay({ queries: { ...(ui.overlay.queries || {}), [field]: "" } });
+        return;
+      }
+      // ROOM-08: a binding's segments, picked by name, stay its comma-separated targets.
+      const binding = overlay?.kind === "room-editor" ? /^bindings\.(\d+)\.targetIds$/.exec(field) : null;
+      if (binding) {
+        const targets = splitList(overlay.draft.bindings[Number(binding[1])]?.targetIds ?? "");
+        editDraft(field, (targets.includes(value) ? targets.filter((item) => item !== value) : [...targets, value]).join(", "));
         return;
       }
       const current = ui.overlay?.draft?.[field];

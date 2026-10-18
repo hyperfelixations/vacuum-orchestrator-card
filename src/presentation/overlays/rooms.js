@@ -6,6 +6,7 @@ import { RELEASE_KINDS } from "../../domain/job-schema.js";
 import { entityName, list, robotsOf, roomsOf } from "../common/lookups.js";
 import { releaseKindLabel, t } from "../common/texts.js";
 import { entityField, field, pageErrors } from "./editor-fields.js";
+import { splitList } from "../../domain/room-draft.js";
 
 const KIND_ICONS = Object.freeze({ permanent: "mdi:lock-open-variant-outline", once: "mdi:numeric-1-circle-outline", timed: "mdi:timer-outline", queue_run: "mdi:playlist-play" });
 const camel = (value) => value.replace(/_([a-z])/g, (_match, letter) => letter.toUpperCase());
@@ -84,16 +85,28 @@ function requirementRows(texts, model, draft, error) {
   }));
 }
 
+// ROOM-08: an own binding picks the robot's map and its segments by name, as the integration
+// reports them; a robot without a reported map keeps the ids as text.
 function bindingRows(texts, model, draft, error) {
   const robots = robotsOf(model);
-  return draft.bindings.map((item, index) => ({
-    key: `${index}:${item.robotId}`,
-    index,
-    robot: field(texts, { key: `bindings.${index}.robotId`, labelKey: "room.bindingRobot", control: "segmented", value: item.robotId, options: robots.map((robot) => ({ value: robot.robotId, label: robot.name })) }),
-    mapId: field(texts, { key: `bindings.${index}.mapId`, labelKey: "room.bindingMap", control: "text", value: item.mapId, optional: true }),
-    targets: field(texts, { key: `bindings.${index}.targetIds`, labelKey: "room.bindingTargets", control: "text", value: item.targetIds, hintKey: "room.bindingTargetsHint" }),
-    error: error(`bindings.${index}`),
-  }));
+  return draft.bindings.map((item, index) => {
+    const maps = list(robots.find((robot) => robot.robotId === item.robotId)?.maps).filter((map) => map.segments.length);
+    const chosen = maps.find((map) => map.mapId === item.mapId) ?? maps.find((map) => map.current) ?? null;
+    const mapKey = `bindings.${index}.mapId`;
+    const targetsKey = `bindings.${index}.targetIds`;
+    return {
+      key: `${index}:${item.robotId}`,
+      index,
+      robot: field(texts, { key: `bindings.${index}.robotId`, labelKey: "room.bindingRobot", control: "segmented", value: item.robotId, options: robots.map((robot) => ({ value: robot.robotId, label: robot.name })) }),
+      mapId: maps.length
+        ? field(texts, { key: mapKey, labelKey: "room.bindingMap", control: "segmented", value: item.mapId ?? "", options: [{ value: "", label: t(texts, "room.bindingCurrentMap") }, ...maps.map((map) => ({ value: map.mapId, label: map.name || map.mapId }))] })
+        : field(texts, { key: mapKey, labelKey: "room.bindingMapId", control: "text", value: item.mapId, optional: true }),
+      targets: chosen
+        ? field(texts, { key: targetsKey, labelKey: "room.bindingSegments", control: "chips", value: splitList(item.targetIds), options: chosen.segments.map((segment) => ({ value: segment.id, label: segment.name || segment.id })) })
+        : field(texts, { key: targetsKey, labelKey: "room.bindingTargets", control: "text", value: item.targetIds, hintKey: "room.bindingTargetsHint" }),
+      error: error(`bindings.${index}`),
+    };
+  });
 }
 
 export function buildRoomEditor({ model, texts, context, overlay }) {
