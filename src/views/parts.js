@@ -41,7 +41,7 @@ export function facts(rows) {
 }
 
 export function traceList(rows) {
-  return `<ol class="voc-trace">${rows.map((record) => `<li data-key="trace:${e(record.key)}" data-tone="${e(record.tone)}"><span class="voc-trace-time">${e(record.time)}</span><span class="voc-trace-event">${e(record.event)}</span>${record.detail ? `<span class="voc-trace-detail">${e(record.detail)}</span>` : ""}</li>`).join("")}</ol>`;
+  return `<ol class="voc-trace">${rows.map((record) => `<li data-key="trace:${e(record.key)}" data-tone="${e(record.tone)}"><span class="voc-trace-time">${e(record.time)}</span><span class="voc-trace-event">${e(record.event)}</span>${record.detail ? `<span class="voc-trace-detail">${e(record.detail)}</span>` : ""}${record.count > 1 ? `<span class="voc-trace-count">×${e(record.count)}</span>` : ""}</li>`).join("")}</ol>`;
 }
 
 export function pagination(context, vm, scope) {

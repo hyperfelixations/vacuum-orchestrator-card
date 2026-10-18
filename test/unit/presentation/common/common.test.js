@@ -115,11 +115,23 @@ test("trace rows word known events and states and keep unknown ones as reported"
   const en = await texts();
   const records = model.slots.trace.data.records;
   const rows = traceRows(records, { model, texts: en, withJob: true });
-  const confirmed = rows[records.findIndex((record) => record.event === "attempt_transition" && record.details.state === "start_confirmed")];
+  const record = records.find((entry) => entry.event === "attempt_transition" && entry.details.state === "start_confirmed");
+  const confirmed = rows.find((row) => row.key === String(record.sequence));
   assert.equal(confirmed.event, en.t("trace.event.attempt_transition"));
   assert.match(confirmed.detail, new RegExp(en.t("attempt.state.startConfirmed")));
   assert.match(confirmed.detail, /Studio/, "the job is named by its room");
   const unknown = traceRows([{ sequence: 1, timestamp: NOW, event: "teleport", details: { state: "beamed" } }], { model, texts: en });
   assert.deepEqual([unknown[0].event, unknown[0].detail], ["teleport", "beamed"]);
   assert.equal(traceRows([{ sequence: 2, timestamp: NOW, event: "internal_error", details: {} }], { model, texts: en })[0].tone, "attention");
+  // V6: a job not started for missing prerequisites is no error, and its reason is worded.
+  const [blocked] = traceRows([{ sequence: 3, timestamp: NOW, event: "dispatch_blocked", details: { state: "blocked", reason: "job_prerequisites" } }], { model, texts: en });
+  assert.deepEqual([blocked.event, blocked.tone], [en.t("trace.event.dispatch_blocked"), "neutral"]);
+  assert.match(blocked.detail, new RegExp(en.t("trace.reason.job_prerequisites")));
+  assert.doesNotMatch(blocked.detail, /job_prerequisites/);
+  assert.equal(en.t("trace.event.dispatch_blocked"), "Not started yet");
+  assert.doesNotMatch(blocked.detail, /blocked/, "the reason says it; the raw state does not");
+  // The same entry again within the shown minute is counted, not repeated.
+  const again = { sequence: 4, timestamp: NOW, event: "dispatch_blocked", details: { state: "blocked", reason: "job_prerequisites" } };
+  const counted = traceRows([{ ...again, sequence: 5 }, { sequence: 6, timestamp: NOW, event: "internal_error", details: {} }, again], { model, texts: en });
+  assert.deepEqual(counted.map((row) => [row.event, row.count]), [[en.t("trace.event.dispatch_blocked"), 2], [en.t("trace.event.internal_error"), 1]]);
 });
