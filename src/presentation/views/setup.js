@@ -37,7 +37,8 @@ function robotsStep(model, texts, context, step) {
   const decision = candidateAffordance(context);
   return {
     summary: names.length ? t(texts, "setup.step.robots.done", { robots: names.join(", ") }) : null,
-    text: t(texts, names.length ? "setup.step.robots.more" : "setup.step.robots.text"),
+    // Without a robot and nothing to add, the step does not ask to add one.
+    text: t(texts, names.length ? "setup.step.robots.more" : candidates.length ? "setup.step.robots.text" : "setup.step.robots.textNone"),
     note: candidates.length || names.length ? null : t(texts, "setup.step.robots.none"),
     // Each robot taken over can be renamed here.
     robots: step.robotIds.map((robotId) => ({ key: robotId, robotId, name: robots.find((robot) => robot.robotId === robotId)?.name ?? robotId, rename: { action: "rename-robot", decision: decide(context, { operation: "rename_robot", target: robotTarget(robotId) }) } })),
@@ -95,6 +96,8 @@ export function buildSetupView({ model, texts, context, ui = {} }) {
     // PO 2026-10-18: finishing the whole setup stands out only on the last step; before it,
     // each step leads on to the next.
     finishPrimary: current === SETUP_STEPS.at(-1),
+    // What the steps are for: taken over, taken over without a robot, or opened again.
+    lead: t(texts, !setup.assistantPending ? "setup.leadGuide" : robotsOf(model).length ? "setup.lead" : "setup.leadNoRobot"),
     steps: SETUP_STEPS.map((key, position) => ({
       key,
       number: position + 1,

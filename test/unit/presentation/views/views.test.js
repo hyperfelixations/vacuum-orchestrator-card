@@ -364,9 +364,13 @@ test("setup shows the integration's four steps with their facts; the open step i
   assert.deepEqual([failed.loading, failed.error], [false, failure]);
   const empty = await modelFor("no_robot");
   assert.equal(step(buildSetupView(empty), "robots").note, empty.texts.t("setup.step.robots.none"));
+  // V6 (V5 finding): the lead and the robots step say what is true in each case: no robot taken
+  // over, nothing to add, or the steps opened again once the setup is finished.
+  assert.equal(setup.lead, assistant.texts.t("setup.lead"));
+  assert.deepEqual([buildSetupView(empty).lead, step(buildSetupView(empty), "robots").text], [empty.texts.t("setup.leadNoRobot"), empty.texts.t("setup.step.robots.textNone")]);
   const done = await busy();
   assert.equal(setupNeeded(done.model), false);
-  assert.deepEqual([buildSetupView(done).pending, buildSetupView(done).finish], [false, null]);
+  assert.deepEqual([buildSetupView(done).pending, buildSetupView(done).finish, buildSetupView(done).lead], [false, null, done.texts.t("setup.leadGuide")]);
 });
 
 // The integration-wide settings, where the integration lives in Home Assistant, and which card

@@ -61,7 +61,7 @@ export function renderSetup(context, vm) {
   const wrap = (content) => `<div class="voc-view voc-setup" data-key="view:setup">${content}</div>`;
   if (vm.error) return wrap(errorState(context, vm.error));
   if (vm.loading) return wrap(loadingState(context));
-  const lead = `<p class="voc-setup-lead" data-key="lead">${e(context.t("setup.lead"))}</p>`;
+  const lead = `<p class="voc-setup-lead" data-key="lead">${e(vm.lead)}</p>`;
   const later = vm.finish ? button({ action: "defer-setup", label: context.t("setup.later"), variant: "quiet" }) : "";
   const finish = vm.finish ? `<div class="voc-inline-actions" data-key="finish">${later}${button({ action: "complete-setup", label: context.t("setup.finish"), iconName: "mdi:check", variant: vm.finishPrimary ? "primary" : "text", decision: vm.finish, reasonText: context.reason(vm.finish) })}</div>` : "";
   return wrap(`${lead}<ol class="voc-setup-steps">${vm.steps.map((step) => stepCard(context, step)).join("")}</ol>${finish}`);

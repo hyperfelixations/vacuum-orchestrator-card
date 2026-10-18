@@ -12,7 +12,8 @@ export const SETUP_CSS = `
 .voc-setup-main { display: grid; gap: 8px; min-width: 0; padding-top: 4px; }
 .voc-setup-head { display: grid; gap: 2px; }
 .voc-setup-title { margin: 0; font-size: 13.5px; font-weight: 850; }
-.voc-setup-step[data-current="false"] .voc-setup-title { color: var(--voc-muted); }
+/* A step not open is a choice, not disabled: full colour, lighter weight. */
+.voc-setup-step[data-current="false"] .voc-setup-title { font-weight: 650; }
 .voc-setup-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; font-weight: 650; color: var(--voc-muted); overflow-wrap: anywhere; }
 .voc-setup-mark { display: inline-flex; align-items: center; min-height: 18px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--voc-hairline); font-size: 10.5px; font-weight: 800; color: var(--voc-muted); }
 .voc-setup-mark[data-tone="default"] { border-color: var(--voc-accent-border); color: var(--voc-accent-ink); }
