@@ -17,7 +17,7 @@ import { entityField, field, pageErrors } from "./editor-fields.js";
 // reaches yet (for all rooms, those the integration's preview names) and chosen rooms not released.
 function roomField(model, texts, draft, error, preview) {
   const allRooms = draft.allRooms === true;
-  const options = [{ value: ALL_ROOMS, label: t(texts, "field.allRooms"), icon: "mdi:select-all" }, ...roomOptions(model, texts, list(draft.roomIds)).map((option) => (allRooms ? { ...option, muted: true } : option))];
+  const options = [{ value: ALL_ROOMS, label: t(texts, "field.allRooms"), icon: "mdi:select-all" }, ...roomOptions(model, texts, list(draft.roomIds)).map((option) => (allRooms ? { ...option, included: true, title: t(texts, "editor.includedInAllRooms") } : option))];
   const base = allRooms ? (draft.meta.kind === "template" ? "editor.allRoomsTemplate" : "editor.allRoomsJob") : roomsOf(model).length ? null : "editor.noRooms";
   const index = roomIndex(model);
   const names = (ids) => ids.map((roomId) => roomName(roomId, index, model)).join(", ");

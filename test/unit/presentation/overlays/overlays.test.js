@@ -122,10 +122,11 @@ test("the room choice starts with all rooms; chosen, it mutes the single rooms a
   const roomsField = (draft) => fieldsOf(buildJobEditor({ ...built, overlay: { draft } }), "basics").roomIds;
   const plain = roomsField(createDraft());
   assert.deepEqual([plain.options[0].value, plain.options[0].icon, plain.options[0].label], ["all", "mdi:select-all", built.texts.t("field.allRooms")]);
-  assert.equal(plain.options.some((option) => option.muted), false);
+  assert.equal(plain.options.some((option) => option.included), false);
   const all = roomsField(applyDraftChange(createDraft(), "allRooms", true));
   assert.deepEqual(all.value, ["all"]);
-  assert.ok(all.options.slice(1).length > 0 && all.options.slice(1).every((option) => option.muted));
+  // V6: with "All rooms" the rooms are part of the job, shown as included rather than greyed out.
+  assert.ok(all.options.slice(1).length > 0 && all.options.slice(1).every((option) => option.included && option.title === built.texts.t("editor.includedInAllRooms")));
   assert.equal(all.hint, built.texts.t("editor.allRoomsJob"));
   assert.equal(roomsField(applyDraftChange(createDraft({ kind: "template" }), "allRooms", true)).hint, built.texts.t("editor.allRoomsTemplate"));
 });

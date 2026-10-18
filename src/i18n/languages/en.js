@@ -434,6 +434,7 @@ export const en = {
   "field.jobNamePlaceholder": "Named after its rooms",
   "field.allRooms": "All rooms",
   "editor.allRoomsJob": "Every active room; the job keeps the rooms active now.",
+  "editor.includedInAllRooms": "Included in all rooms",
   "editor.allRoomsTemplate": "Every active room at the time a job is created from this template.",
   "field.templateName": "Template name",
   "field.templateEnabled": "Enabled",

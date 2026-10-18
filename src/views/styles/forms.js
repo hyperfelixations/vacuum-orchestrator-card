@@ -43,7 +43,8 @@ export const FORMS_CSS = `
 .voc-option:hover { color: var(--primary-text-color); }
 .voc-option.is-selected { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
 .voc-option[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
-.voc-option.is-muted { opacity: .55; }
+/* A room "All rooms" includes: part of the job, not chosen on its own and not disabled. */
+.voc-option.is-included { background: color-mix(in srgb, var(--voc-accent-soft) 55%, transparent); border: 1px dashed var(--voc-accent-border); color: var(--primary-text-color); }
 .voc-option-badge { display: inline-flex; color: var(--voc-warning-ink); }
 .voc-option-badge ha-icon { --mdc-icon-size: 14px; }
 .voc-field.is-invalid .voc-segmented, .voc-field.is-invalid .voc-chips { padding: 4px; margin: -4px; border-radius: 14px; outline: 1px solid color-mix(in srgb, var(--voc-error) 55%, transparent); }

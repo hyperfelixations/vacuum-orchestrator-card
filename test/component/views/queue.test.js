@@ -100,7 +100,7 @@ test("a job for all rooms leaves the choice of rooms to the integration", async 
   await card.click(".voc-primary-action");
   await card.click(chip(card, "All rooms"));
   assert.equal(chip(card, "All rooms").getAttribute("aria-selected"), "true");
-  assert.ok(chip(card, "Studio").classList.contains("is-muted"));
+  assert.ok(chip(card, "Studio").classList.contains("is-included"), "a room all rooms takes in shows as included");
   await card.settle(32);
   await card.click('[data-action="save-draft"]');
   await card.settle(32);

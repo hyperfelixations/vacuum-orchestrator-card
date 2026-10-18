@@ -434,6 +434,7 @@ export const de = {
   "field.jobNamePlaceholder": "Nach den Räumen benannt",
   "field.allRooms": "Alle Räume",
   "editor.allRoomsJob": "Jeder aktive Raum; der Auftrag behält die jetzt aktiven Räume.",
+  "editor.includedInAllRooms": "In „Alle Räume“ enthalten",
   "editor.allRoomsTemplate": "Jeder aktive Raum zu dem Zeitpunkt, an dem ein Auftrag aus dieser Vorlage entsteht.",
   "field.templateName": "Name der Vorlage",
   "field.templateEnabled": "Aktiv",

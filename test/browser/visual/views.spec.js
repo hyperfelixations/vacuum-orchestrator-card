@@ -212,7 +212,7 @@ test.describe("job pages", () => {
     await act(page, card.locator(".voc-primary-action"));
     await act(page, card.locator('[data-key="field:roomIds"] [data-value="all"]'));
     await expect(card.locator('[data-key="field:roomIds"] [data-value="all"]')).toHaveAttribute("aria-selected", "true");
-    await expect(room(card, "Studio")).toHaveClass(/is-muted/);
+    await expect(room(card, "Studio")).toHaveClass(/is-included/);
     await shot(page, "editor-all-rooms-german-narrow-light.png", NARROW);
   });
 
