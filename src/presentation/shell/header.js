@@ -46,8 +46,9 @@ export function automaticSubtitle(model, status, texts, { panelShown = false } =
       return waiting ? t(texts, "subtitle.waiting", { count: waiting }) : t(texts, "subtitle.nothingWaiting");
     case "setup":
       return waiting ? t(texts, "subtitle.waiting", { count: waiting }) : t(texts, "subtitle.setupIncomplete");
+    // While the integration cannot be shown, the onboarding says why (V6).
     default:
-      return t(texts, `subtitle.${status}`);
+      return "";
   }
 }
 

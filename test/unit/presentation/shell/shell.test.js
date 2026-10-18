@@ -73,6 +73,8 @@ test("controls take an accent from the tone that is never the error colour", asy
   const accent = (status) => toneFor(status).style.match(/--voc-accent:([^;]+);/)?.[1];
   assert.equal(accent("paused"), "var(--warning-color, #ffa600)");
   assert.equal(accent("idle"), "var(--success-color, #43a047)");
+  // V6: a grey tone would grey out the controls too; they take the primary colour.
+  for (const status of ["connecting", "notInstalled", "offline"]) assert.equal(accent(status), "var(--primary-color, #03a9f4)", status);
   for (const status of ["attention", "loadFailed", "checkFailed"]) {
     assert.match(toneFor(status).style, /--tone-color:var\(--error-color, #db4437\);/, status);
     assert.equal(accent(status), "var(--primary-color, #03a9f4)", status);
@@ -230,7 +232,7 @@ test("onboarding explains each unusable phase and offers Home Assistant's own pa
   const notInstalled = buildOnboarding({ model: missing.model, texts: missing.texts });
   assert.equal(notInstalled.steps.length, 3);
   assert.match(notInstalled.steps[0], /HACS/);
-  assert.deepEqual(notInstalled.actions.map((action) => [action.kind, action.href]), [["link", HACS_INTEGRATION_URL], ["link", INTEGRATION_URL]]);
+  assert.deepEqual(notInstalled.actions.map((action) => [action.kind, action.href, action.primary]), [["link", HACS_INTEGRATION_URL, true], ["link", INTEGRATION_URL, false]], "one next step stands out");
   assert.equal(notInstalled.note, null);
   const missingAsUser = await at(NOT_INSTALLED, { admin: false });
   const notInstalledAsUser = buildOnboarding({ model: missingAsUser.model, texts: missingAsUser.texts });
@@ -243,7 +245,17 @@ test("onboarding explains each unusable phase and offers Home Assistant's own pa
   assert.deepEqual(asUser.actions, []);
   assert.equal(asUser.note, nonAdmin.texts.t("onboarding.adminRequired"));
   const unloaded = await at(UNLOADED);
-  assert.deepEqual(buildOnboarding({ model: unloaded.model, texts: unloaded.texts }).actions.map((action) => action.path), [INTEGRATION_PAGE_PATH]);
+  const notLoaded = buildOnboarding({ model: unloaded.model, texts: unloaded.texts });
+  assert.deepEqual(notLoaded.actions.map((action) => action.path), [INTEGRATION_PAGE_PATH]);
+  // V6: an entry that does not run may be disabled; the pill already says it is not loaded.
+  assert.deepEqual([notLoaded.title, notLoaded.note], ["Vacuum Orchestrator is not running", null]);
+  const failing = { ...unloaded.model, phaseFailure: { ok: false, code: "unknown", detail: "Boom", channel: "ws" } };
+  assert.equal(buildOnboarding({ model: failing, texts: unloaded.texts }).note, unloaded.texts.t("error.code.unknown", { detail: "Boom" }));
+  // V6: while the card cannot show the integration, the onboarding says why; the subtitle does not
+  // say it a second time.
+  const { automaticSubtitle, buildHeader } = await import("../../../../src/presentation/shell/header.js");
+  assert.equal(automaticSubtitle(unloaded.model, "loadFailed", unloaded.texts), "");
+  assert.equal(buildHeader({ model: missing.model, config: {}, texts: missing.texts, status: "notInstalled" }).hasSubtitle, false);
   // A newer integration than this card speaks; the recordings are all of the supported version.
   const newer = { phase: "api_incompatible", phaseFailure: { ok: false, code: "api_incompatible", detail: "5" }, supportedApiVersions: [4], permissions: { isAdmin: true } };
   assert.equal(buildOnboarding({ model: newer, texts: unloaded.texts }).text, unloaded.texts.t("onboarding.api_incompatible.text", { version: "5", supported: "4" }));
@@ -257,7 +269,11 @@ test("a failed check names its failure and is not shown as a lost connection", a
   const texts = textService("en");
   const model = { phase: "check_failed", phaseFailure: { ok: false, code: "unknown", detail: "Boom", channel: "ws" }, permissions: { isAdmin: true } };
   const onboarding = buildOnboarding({ model, texts });
-  assert.deepEqual([onboarding.title, onboarding.text, onboarding.note, onboarding.actions, onboarding.busy], [texts.t("onboarding.check_failed.title"), texts.t("onboarding.check_failed.text"), texts.t("error.code.unknown", { detail: "Boom" }), [], false]);
+  // V6: the card says when it tries again and offers to try at once.
+  const { RETRY_MS } = await import("../../../../src/backend/session.js");
+  assert.deepEqual([onboarding.title, onboarding.text, onboarding.note, onboarding.busy], [texts.t("onboarding.check_failed.title"), texts.t("onboarding.check_failed.text", { seconds: RETRY_MS / 1000 }), texts.t("error.code.unknown", { detail: "Boom" }), false]);
+  assert.equal(onboarding.text, "Home Assistant answered with an error. The card tries again every 30 seconds.");
+  assert.deepEqual(onboarding.actions.map((action) => [action.kind, action.label]), [["reload", texts.t("action.retryLoad")]]);
   assert.equal(onboarding.icon, "mdi:help-network-outline");
   assert.equal(cardStatus(model), "checkFailed");
   assert.equal(toneFor("checkFailed").style, toneFor("loadFailed").style.replace(/loadFailed/g, "checkFailed"));

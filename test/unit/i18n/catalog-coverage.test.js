@@ -65,7 +65,7 @@ test("every view, setup step and phase has its texts", async () => {
   const { cardStatus } = await import("../../../src/presentation/shell/status.js");
   const statuses = phases.map((phase) => cardStatus({ phase }));
   const keys = [
-    ...statuses.flatMap((status) => [`status.${status}`, `subtitle.${status}`]),
+    ...statuses.map((status) => `status.${status}`),
     ...views.map((view) => `view.${view}`),
     ...SETUP_STEPS.flatMap((step) => [`setup.step.${step}.title`, `setup.step.${step}.text`]),
     ...phases.flatMap((phase) => [`onboarding.${phase}.title`, `onboarding.${phase}.text`]),

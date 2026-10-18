@@ -8,7 +8,6 @@
 </div>
 <div class="voc-title-block">
 <div class="voc-title">Cleaning</div>
-<div class="voc-subtitle">Vacuum Orchestrator could not be checked.</div>
 </div>
 <div class="voc-status-pill">Error</div>
 </div>
@@ -19,8 +18,15 @@
 </ha-icon>
 <h2 class="voc-onboarding-title">Vacuum Orchestrator could not be checked</h2>
 </div>
-<p class="voc-onboarding-text">Home Assistant answered with an error. The card tries again by itself.</p>
+<p class="voc-onboarding-text">Home Assistant answered with an error. The card tries again every 30 seconds.</p>
 <p class="voc-onboarding-note">The request failed: Unknown error</p>
+<div class="voc-onboarding-actions">
+<button type="button" class="voc-button voc-button--primary" data-action="reload">
+<ha-icon icon="mdi:refresh" aria-hidden="true">
+</ha-icon>
+<span class="voc-button-label">Try again</span>
+</button>
+</div>
 </section>
 </div>
 <div class="voc-live-region" aria-live="polite" aria-atomic="true">

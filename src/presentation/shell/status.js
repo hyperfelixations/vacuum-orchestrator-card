@@ -33,8 +33,9 @@ export function cardStatus(model = {}) {
   return (queue.total ?? model.live?.pendingJobs ?? 0) > 0 ? "waiting" : "idle";
 }
 
-// [tone, control accent]: the accent is the tone, except that an error tone leaves the controls
-// in the primary colour; the error colour marks only errors and destructive actions (UI-20).
+// [tone, control accent]: the accent is the tone, except that an error or a grey tone leaves the
+// controls in the primary colour; the error colour marks only errors and destructive actions, and
+// grey controls would look disabled (UI-20).
 const PRIMARY = "var(--primary-color, #03a9f4)";
 const TONES = Object.freeze({
   attention: ["var(--error-color, #db4437)", PRIMARY],
@@ -44,9 +45,9 @@ const TONES = Object.freeze({
   idle: ["var(--success-color, #43a047)"],
   waiting: ["var(--secondary-text-color)", PRIMARY],
   setup: ["var(--primary-color, #03a9f4)"],
-  connecting: ["var(--secondary-text-color)"],
-  offline: ["var(--secondary-text-color)"],
-  notInstalled: ["var(--secondary-text-color)"],
+  connecting: ["var(--secondary-text-color)", PRIMARY],
+  offline: ["var(--secondary-text-color)", PRIMARY],
+  notInstalled: ["var(--secondary-text-color)", PRIMARY],
   notSetUp: ["var(--primary-color, #03a9f4)"],
   loadFailed: ["var(--error-color, #db4437)", PRIMARY],
   checkFailed: ["var(--error-color, #db4437)", PRIMARY],

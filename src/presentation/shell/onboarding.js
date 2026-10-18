@@ -2,6 +2,7 @@
 // how to set it up, or why it does not answer. Navigation targets are Home Assistant's own
 // "My" redirects, so Home Assistant keeps ownership of installation and setup.
 
+import { RETRY_MS } from "../../backend/session.js";
 import { HACS_INTEGRATION_URL, INTEGRATION_PAGE_PATH, INTEGRATION_URL, SET_UP_PATH } from "../common/links.js";
 import { failureText, t } from "../common/texts.js";
 
@@ -39,12 +40,17 @@ export function buildOnboarding({ model = {}, texts } = {}) {
     if (!isAdmin) base.note = t(texts, "onboarding.adminRequired");
   } else if (phase === "load_failed") {
     base.actions = isAdmin ? [{ kind: "navigate", path: INTEGRATION_PAGE_PATH, label: t(texts, "onboarding.action.openIntegration"), icon: "mdi:cog-outline" }] : [];
-    base.note = model.phaseFailure ? failureText(texts, model.phaseFailure) : null;
+    // "Not loaded" is what the pill says; only another failure adds something.
+    base.note = model.phaseFailure && model.phaseFailure.code !== "orchestrator_not_loaded" ? failureText(texts, model.phaseFailure) : null;
   } else if (phase === "api_incompatible") {
     base.text = t(texts, "onboarding.api_incompatible.text", { version: model.phaseFailure?.detail ?? "?", supported: (model.supportedApiVersions || []).join(", ") || "?" });
     base.actions = [{ kind: "link", href: INTEGRATION_URL, label: t(texts, "onboarding.action.guide"), icon: "mdi:open-in-new" }];
   } else if (phase === "check_failed") {
+    base.text = t(texts, "onboarding.check_failed.text", { seconds: RETRY_MS / 1000 });
+    base.actions = [{ kind: "reload", label: t(texts, "action.retryLoad"), icon: "mdi:refresh" }];
     base.note = model.phaseFailure ? failureText(texts, model.phaseFailure) : null;
   }
+  // One next step stands out (UI-19).
+  base.actions = base.actions.map((action, index) => ({ ...action, primary: index === 0 }));
   return base;
 }

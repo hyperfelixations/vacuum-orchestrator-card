@@ -54,6 +54,6 @@ export function chip(text, { iconName = null, className = "", title = null, labe
   return `<span class="voc-chip${className ? ` ${e(className)}` : ""}"${attr("title", title ?? (label ? `${label}: ${text}` : null))}>${icon(iconName)}${label ? `<span class="voc-sr-only">${e(label)}: </span>` : ""}<span>${e(text)}</span></span>`;
 }
 
-export function link({ href, label, iconName = null }) {
-  return `<a class="voc-button voc-button--primary" href="${e(href)}" target="_blank" rel="noopener noreferrer">${icon(iconName)}<span class="voc-button-label">${e(label)}</span></a>`;
+export function link({ href, label, iconName = null, variant = "primary" }) {
+  return `<a class="voc-button voc-button--${e(variant)}" href="${e(href)}" target="_blank" rel="noopener noreferrer">${icon(iconName)}<span class="voc-button-label">${e(label)}</span></a>`;
 }

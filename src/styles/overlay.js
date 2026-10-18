@@ -67,7 +67,7 @@ export const OVERLAY_CSS = `
 .voc-onboarding-head ha-icon { --mdc-icon-size: 26px; color: var(--tone-ink); }
 .voc-onboarding-title { margin: 0; font-size: 16px; font-weight: 900; line-height: 1.2; }
 .voc-onboarding-text { margin: 0; color: var(--voc-muted); font-size: 12.5px; font-weight: 650; line-height: 1.4; }
-.voc-onboarding-steps { display: grid; gap: 6px; margin: 0; padding-left: 20px; font-size: 12.5px; font-weight: 700; line-height: 1.35; }
+.voc-onboarding-steps { display: grid; gap: 6px; margin: 0; padding-left: 20px; font-size: 12.5px; font-weight: 500; line-height: 1.35; }
 .voc-onboarding-note { margin: 0; font-size: 12px; font-weight: 700; color: var(--voc-muted); }
 .voc-onboarding-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .voc-onboarding[data-busy="true"] ha-icon { animation: voc-pulse 1.4s ease-in-out infinite; }
