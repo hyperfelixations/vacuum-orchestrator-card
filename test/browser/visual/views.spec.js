@@ -235,6 +235,24 @@ test.describe("job pages", () => {
     await shot(page, "cancel-job-narrow-light.png", NARROW);
   });
 
+  // JOB-25: how a finished job ended, corrected by a person, with its log to save.
+  test("detail of a corrected job, narrow, German", async ({ page }) => {
+    const card = await mountCard(page, { recording: "recovery", from: "The library job is corrected", config: { ...BASE, language: "de" } });
+    await open(page, card, "history");
+    await act(page, named(card, ".voc-job", "Library", ".voc-job-main"));
+    await expect(card.locator('[data-key="result"] [data-key="note:reported_by_user"]')).toBeVisible();
+    await shot(page, "detail-corrected-german-narrow-light.png", NARROW);
+  });
+
+  test("correcting a finished job's result", async ({ page }) => {
+    const card = await mountCard(page, { recording: "recovery", from: "Rocky is free again", config: BASE });
+    await open(page, card, "history");
+    await act(page, named(card, ".voc-job", "Library", ".voc-job-main"));
+    await act(page, card.locator('[data-key="result"] [data-action="correct-job"]'));
+    await expect(card.locator('[data-action="confirm-correct"]')).toBeVisible();
+    await shot(page, "correct-job-medium-light.png", MEDIUM);
+  });
+
   test("cancelling a started job, German, dark", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     const card = await mountCard(page, { ...BUSY, config: { ...BASE, language: "de" } });
@@ -379,7 +397,7 @@ test.describe("templates, history and diagnostics", () => {
   test("history of jobs", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await open(page, card, "history");
-    await expect(card.locator('[data-key="jobs"] .voc-job')).toHaveCount(7);
+    await expect(card.locator('[data-key="jobs"] .voc-job')).toHaveCount(3);
     await shot(page, "history-jobs-medium-light.png", MEDIUM);
   });
 

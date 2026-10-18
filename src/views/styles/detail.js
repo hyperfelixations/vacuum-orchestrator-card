@@ -1,5 +1,5 @@
-// Job detail page: summary chips, progress, the three axes of the waiting reason, execution
-// explanation, attempts and trace.
+// Job detail page: summary chips, a finished job's result, progress, the three axes of the waiting
+// reason, execution explanation, attempts and trace.
 
 export const DETAIL_CSS = `
 .voc-detail-summary { display: grid; gap: 6px; }
@@ -14,6 +14,11 @@ export const DETAIL_CSS = `
 .voc-axis-title { font-size: 12px; font-weight: 850; }
 .voc-axis li[data-ready="true"] ha-icon { color: var(--voc-success); }
 .voc-axis li strong { font-weight: 850; }
+.voc-result li ha-icon { color: var(--voc-muted); }
+.voc-result li[data-tone="success"] ha-icon { color: var(--voc-success); }
+.voc-result li[data-tone="attention"] ha-icon { color: var(--voc-warning); }
+.voc-result + .voc-inline-actions { padding-top: 2px; }
+.voc-trace-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 
 .voc-phase { display: grid; gap: 4px; }
 .voc-phase + .voc-phase { padding-top: 6px; border-top: 1px solid var(--voc-hairline); }

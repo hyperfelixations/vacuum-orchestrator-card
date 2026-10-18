@@ -12,7 +12,7 @@ import { createRobotDraft, isRobotDirty, robotDraftToConfiguration, robotFieldOf
 import { formErrors, withoutFieldError } from "../../domain/validation.js";
 import { grantsOf, releaseField, releaseFieldOf, releaseGroupOf, releaseRows, updateReleaseRow, withReleaseRoom, withoutReleaseRow } from "../../domain/release-draft.js";
 import { isTransportFailure } from "../../domain/backend-errors.js";
-import { AFTER_CANCEL_CHOICES, queueEndChoices } from "../../presentation/overlays/dialogs.js";
+import { AFTER_CANCEL_CHOICES, CORRECTION_OUTCOMES, queueEndChoices } from "../../presentation/overlays/dialogs.js";
 import { jobTitle, roomIndex, roomName } from "../../presentation/common/lookups.js";
 import { SETTING_FIELDS, SETTING_WIRE_NAMES } from "../../domain/job-schema.js";
 import { menuId } from "../../views/controls/menu.js";
@@ -467,6 +467,21 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       }
       if (ui.overlay?.kind === "confirm" && findJob(getModel(), jobId)?.state === "queued") return holdForDeletion(ui.overlay.id, jobId);
       return result;
+    },
+    // DIA-06: the job's log as the integration gave it, its incidents included.
+    "save-trace": ({ jobId }) => {
+      const answer = getModel()?.slots?.trace?.data?.answer;
+      if (answer) platform.download?.(`vacuum-orchestrator-job-${jobId}.json`, JSON.stringify(answer, null, 2), "application/json");
+    },
+    // JOB-25: a correction changes the rooms' cleaning record, so their due dates and the runs.
+    "correct-job": ({ jobId }) => {
+      const job = findJob(getModel(), jobId);
+      if (job) ui.openOverlay({ kind: "correct-job", jobId, outcome: job.state === "completed" ? "failed" : "completed" });
+    },
+    "confirm-correct": () => {
+      const overlay = ui.overlay;
+      if (overlay?.kind !== "correct-job" || !CORRECTION_OUTCOMES.includes(overlay.outcome)) return null;
+      return run("correct_job", { job_id: overlay.jobId, outcome: overlay.outcome }, { target: jobTarget(overlay.jobId), invalidates: [...QUEUE_SCOPES, "rooms", "runs"], closeOverlay: true, success: { key: "notice.jobCorrected" } });
     },
     "retry-job": ({ jobId }) => run("retry_job", { job_id: jobId }, { target: jobTarget(jobId), invalidates: QUEUE_SCOPES, success: { key: "notice.jobRetried" } }),
     // The confirmation waits for the answer and then leaves with what its command closes (the

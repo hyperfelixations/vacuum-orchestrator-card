@@ -999,6 +999,11 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-axis-title { font-size: 12px; font-weight: 850; }
 .voc-axis li[data-ready="true"] ha-icon { color: var(--voc-success); }
 .voc-axis li strong { font-weight: 850; }
+.voc-result li ha-icon { color: var(--voc-muted); }
+.voc-result li[data-tone="success"] ha-icon { color: var(--voc-success); }
+.voc-result li[data-tone="attention"] ha-icon { color: var(--voc-warning); }
+.voc-result + .voc-inline-actions { padding-top: 2px; }
+.voc-trace-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 
 .voc-phase { display: grid; gap: 4px; }
 .voc-phase + .voc-phase { padding-top: 6px; border-top: 1px solid var(--voc-hairline); }

@@ -88,11 +88,11 @@ test("a template is removed from its editor after a confirmation", async () => {
   card.unmount();
 });
 
-test("history lists every job newest first and switches to cleaning runs", async () => {
+// Open jobs stand in the queue; the history keeps what has ended.
+test("history lists finished jobs newest first and switches to cleaning runs", async () => {
   const card = await open("history", BUSY);
   const rows = card.all('[data-key="jobs"] .voc-job');
-  assert.equal(rows.length, 7);
-  assert.equal(rows[0].querySelector(".voc-job-title").textContent.trim(), "Dining Room");
+  assert.deepEqual(rows.map((row) => row.querySelector(".voc-job-title").textContent.trim()), ["Library", "Studio", "Dining Room"]);
   assert.ok(card.named('[data-key="jobs"] .voc-job', "Library").querySelector('[data-action="retry-job"]'), "a failed job can be retried");
   await card.click('[data-key="segment:runs"]');
   await card.settle(24);
@@ -101,13 +101,35 @@ test("history lists every job newest first and switches to cleaning runs", async
   card.unmount();
 });
 
+// JOB-25, DIA-06: a finished job says how it ended; its result is corrected from its detail page,
+// and its log can be saved.
+test("a finished job's result is corrected from its detail page", async () => {
+  const card = await open("history", { recording: "recovery", from: "Rocky is free again" });
+  const library = card.named('[data-key="jobs"] .voc-job', "Library");
+  const jobId = library.dataset.key.replace(/^job:/, "");
+  await card.click(library.querySelector(".voc-job-main"));
+  await card.settle(32);
+  assert.ok(card.root.querySelector('[data-key="result"] [data-key="outcome"]'));
+  assert.equal(card.root.querySelector('[data-action="save-trace"]'), null, "a closed log keeps to one line");
+  await card.click('[data-key="trace"] .voc-disclosure');
+  assert.ok(card.root.querySelector('[data-key="trace"] [data-action="save-trace"]'));
+  await card.click('[data-key="result"] [data-action="correct-job"]');
+  assert.equal(card.root.querySelector('.voc-radio[data-value="completed"]').getAttribute("aria-checked"), "true", "the other outcome comes first");
+  await card.click('[data-action="confirm-correct"]');
+  await card.settle(32);
+  assert.deepEqual(card.services("correct_job").map((call) => call.data), [{ job_id: jobId, outcome: "completed" }]);
+  assert.equal(card.root.querySelector(".voc-dialog"), null);
+  assert.match(card.text('[data-key="result"]'), /A person reported it as cleaned\./);
+  card.unmount();
+});
+
 test("history pages ask the integration for the next page", async () => {
-  const card = await open("history", BUSY, { config: { page_size: 5 } });
+  const card = await open("history", { recording: "long_history", from: "Rocky has cleaned six times" }, { config: { page_size: 5 } });
   assert.equal(card.all('[data-key="jobs"] .voc-job').length, 5);
   await card.click('.voc-pagination [data-action="page"][data-args*="next"]');
   await card.settle(24);
-  assert.equal(card.all('[data-key="jobs"] .voc-job').length, 2);
-  assert.ok(card.backend.calls.some((message) => message.type.endsWith("/jobs/list") && message.offset === 5 && message.limit === 5));
+  assert.equal(card.all('[data-key="jobs"] .voc-job').length, 1);
+  assert.ok(card.backend.calls.some((message) => message.type.endsWith("/jobs/list") && message.offset === 5 && message.limit === 5 && message.states?.includes("completed")));
   card.unmount();
 });
 

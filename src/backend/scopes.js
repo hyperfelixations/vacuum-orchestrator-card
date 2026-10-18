@@ -7,6 +7,7 @@ import { parseInstant } from "../core/time.js";
 import { backendFailure } from "../domain/backend-errors.js";
 import { normalizeExecution } from "../domain/execution.js";
 import { normalizeJob } from "../domain/job.js";
+import { TERMINAL_STATES } from "../domain/job-schema.js";
 import { normalizePreview } from "../domain/preview.js";
 import { normalizeQueuePage } from "../domain/queue.js";
 import { normalizeCandidate, normalizeRobot } from "../domain/robots.js";
@@ -111,7 +112,7 @@ export async function loadOpenJobs(transport) {
 }
 
 export async function loadJobLog(transport, { offset = 0, limit = 25 } = {}) {
-  const result = await guarded(transport.ws(messages.jobsList({ offset, limit })), guards.jobsPage, "jobs/list");
+  const result = await guarded(transport.ws(messages.jobsList({ offset, limit, states: TERMINAL_STATES })), guards.jobsPage, "jobs/list");
   if (!result.ok) return result;
   const { total, offset: pageOffset, limit: pageLimit } = result.data;
   return done(Object.freeze({ jobs: Object.freeze(result.data.jobs.map(normalizeJob).filter(Boolean)), total, offset: pageOffset, limit: pageLimit }), viewOf(result.data));
@@ -141,7 +142,9 @@ export async function loadTrace(transport, { jobId = null } = {}) {
   if (jobId) parameters.job_id = jobId;
   const result = await guarded(transport.ws(messages.query("get_trace", parameters)), guards.tracePage, "get_trace");
   if (!result.ok) return result;
-  return done(normalizeTracePage(result.data), viewOf(result.data));
+  // The answer as given travels along: a person saves it as a file (DIA-06).
+  const page = normalizeTracePage(result.data);
+  return done(page && Object.freeze({ ...page, answer: JSON.parse(JSON.stringify(result.data)) }), viewOf(result.data));
 }
 
 export async function loadExecution(transport, { jobId }) {

@@ -118,10 +118,13 @@ test("open jobs beyond the page bound are marked incomplete", async () => {
   assert.equal(result.data.complete, false);
 });
 
-test("the job log keeps the page position; single records load by id", async () => {
+// The history lists finished jobs only; open ones stand in the queue.
+test("the job log asks for finished jobs and keeps the page position; single records load by id", async () => {
   const { loadJobLog, loadJob } = await load();
-  const log = await loadJobLog(scripted(() => W.wireJobListPage([W.wireJob()], { total: 40, offset: 25, limit: 25 })), { offset: 25, limit: 25 });
+  const listed = scripted(() => W.wireJobListPage([W.wireJob()], { total: 40, offset: 25, limit: 25 }));
+  const log = await loadJobLog(listed, { offset: 25, limit: 25 });
   assert.deepEqual([log.data.total, log.data.offset, log.data.limit, log.data.jobs.length], [40, 25, 25, 1]);
+  assert.deepEqual(listed.sent, [{ type: "vacuum_orchestrator/jobs/list", offset: 25, limit: 25, states: ["completed", "failed", "cancelled"] }]);
   const transport = scripted(() => W.wireJob({ job_id: "job-9" }));
   const job = await loadJob(transport, { jobId: "job-9" });
   assert.equal(job.data.jobId, "job-9");
@@ -138,7 +141,9 @@ test("history, trace, execution and diagnostics use their configuration queries"
     return W.wireDiagnostics();
   });
   assert.equal((await loadRuns(transport, { offset: 0, limit: 10 })).data.runs.length, 1);
-  assert.equal((await loadTrace(transport, { jobId: "job-1" })).data.records.length, 1);
+  const trace = await loadTrace(transport, { jobId: "job-1" });
+  assert.equal(trace.data.records.length, 1);
+  assert.deepEqual(trace.data.answer, W.wireTracePage([W.wireTraceRecord()]), "kept as given, to be saved (DIA-06)");
   assert.equal((await loadExecution(transport, { jobId: "job-1" })).ok, true);
   assert.equal((await loadDiagnostics(transport)).data.apiVersion, 4);
   assert.deepEqual(transport.sent.map((message) => [message.query, message.parameters]), [

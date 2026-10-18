@@ -163,6 +163,8 @@ test("the detail page shows the waiting reason on three axes, unreleased rooms t
   assert.equal(vm.execution, null, "one phase without deviating settings: the robot axis says it all");
   assert.deepEqual([vm.actions.delete.state, vm.actions.retry.state], ["enabled", "hidden"]);
   assert.equal(vm.saveAsTemplate.state, "enabled");
+  assert.equal(vm.result, null, "a waiting job has no result yet");
+  assert.deepEqual(vm.saveTrace, { action: "save-trace", args: { jobId: conservatory.jobId } }, "its log can be saved");
   const facts = Object.fromEntries(vm.facts.map((fact) => [fact.label, fact.value]));
   assert.deepEqual([facts.Origin, facts[built.texts.t("detail.occasion")]], ["Added by hand", "Guests are coming"], "how the job came and its occasion stand apart");
   assert.equal(facts[built.texts.t("detail.updated")], null, "a job never changed since it was created names one moment");
@@ -251,6 +253,36 @@ test("the small dialogs word their command and show the integration's verdict on
   const settings = dialogs.buildQueueSettings({ ...built, overlay: { minutes: 2000, errors: { "overlay:minutes": "out_of_range" } } });
   assert.deepEqual([settings.field.error, settings.field.max], [said(built, "out_of_range"), 1440]);
   assert.deepEqual([dialogs.buildQueueSettings({ ...built, overlay: { minutes: 15 } }).field.error, dialogs.buildQueueSettings({ ...built, overlay: { minutes: 15 } }).invalid], [null, null]);
+});
+
+// V4f, JOB-25, EXE-14, EXE-15: a finished job says how it ended and how sure the integration is,
+// its notes in words and when it was corrected, and offers to correct it.
+const CORRECTED = "The library job is corrected";
+const finishedLibrary = async () => {
+  const listed = await modelFor("recovery", { from: CORRECTED, requests: { jobLog: { name: "jobLog", params: { offset: 0, limit: 25 } } } });
+  const [library] = listed.model.slots.jobLog.data.jobs;
+  return { library, built: await modelFor("recovery", { from: CORRECTED, requests: { ...jobRequests(library.jobId), jobLog: { name: "jobLog", params: { offset: 0, limit: 25 } } } }) };
+};
+
+test("a finished job's detail states its result in words and offers a correction", async () => {
+  const { buildJobDetail } = await overlays("job-detail");
+  const { library, built } = await finishedLibrary();
+  const vm = buildJobDetail({ ...built, overlay: { jobId: library.jobId }, config: {} });
+  const t = built.texts.t;
+  assert.deepEqual(vm.result.lines.map((line) => line.text), [t("result.completed.derived"), t("completion.note.reported_by_user")]);
+  assert.ok(vm.result.corrected, "when it was corrected");
+  assert.deepEqual([vm.result.correct.state, vm.outcome], ["enabled", null], "the result block says how it ended");
+});
+
+test("correcting a result offers both outcomes as radios", async () => {
+  const dialogs = await overlays("dialogs");
+  const { library, built } = await finishedLibrary();
+  const vm = dialogs.buildCorrectJob({ ...built, overlay: { jobId: library.jobId, outcome: "failed" } });
+  assert.deepEqual([vm.field.control, vm.field.key, vm.field.value], ["radios", "overlay:outcome", "failed"]);
+  assert.deepEqual(vm.field.options.map((option) => option.value), ["completed", "failed"]);
+  assert.ok(vm.field.options.every((option) => option.label && option.description));
+  assert.match(vm.lead, /Library/);
+  assert.deepEqual([vm.title, vm.confirmLabel, vm.pending], [built.texts.t("correctJob.title"), built.texts.t("correctJob.confirm"), false]);
 });
 
 test("cancelling a started job and ending the queue offer their choices as radios", async () => {

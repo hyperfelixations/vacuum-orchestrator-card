@@ -36,6 +36,22 @@ export function createBrowserPlatform(getDocument) {
       return () => observer.disconnect();
     },
     log(level, ...args) { viewOf()?.console?.[level]?.(...args); },
+    // Offers `text` as a file named `name`; the link is gone at once, its address shortly after.
+    download(name, text, type = "text/plain") {
+      const document = currentDocument();
+      const view = viewOf();
+      if (!document?.body || !view?.URL?.createObjectURL || !view.Blob) return false;
+      const href = view.URL.createObjectURL(new view.Blob([text], { type }));
+      const link = document.createElement("a");
+      link.href = href;
+      link.download = name;
+      link.hidden = true;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      view.setTimeout(() => view.URL.revokeObjectURL(href), 0);
+      return true;
+    },
     // Home Assistant's in-app navigation: push the path and announce it to the router.
     navigate(path) {
       const view = viewOf();

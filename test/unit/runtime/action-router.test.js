@@ -58,8 +58,10 @@ async function setup({ config = {}, answer = () => ({ ok: true, data: null }), v
   };
   // Timers run only when a test fires them.
   const timers = [];
+  const downloads = [];
   const platform = {
     navigate: (path) => navigated.push(path),
+    download: (name, text, type) => (downloads.push({ name, type, data: JSON.parse(text) }), true),
     setTimeout: (fn, ms) => {
       const timer = { fn, ms, cancelled: false, cancel: () => (timer.cancelled = true) };
       timers.push(timer);
@@ -73,7 +75,7 @@ async function setup({ config = {}, answer = () => ({ ok: true, data: null }), v
     return due.map((timer) => timer.ms);
   };
   const router = createActionRouter({ ui, getSession: () => session, getModel: () => model, getConfig: () => config, platform, isDialog });
-  return { router, ui, commands, checked, navigated, timers, fire };
+  return { router, ui, commands, checked, navigated, timers, fire, downloads };
 }
 
 test("all rooms in the editor excludes single rooms, and a single room ends all rooms", async () => {
@@ -127,6 +129,34 @@ test("cancelling asks first, and only the confirmation sends", async () => {
   await router.handle("confirm-command");
   assert.deepEqual(commands.map((command) => command.operation), ["cancel_job"]);
   assert.equal(ui.overlay, null);
+});
+
+// DIA-06: a job's log is saved as the integration gave it, its incidents included.
+test("a job's log is saved as a file", async () => {
+  const answer = { runtime_id: "run-1", total: 1, records: [{ sequence: 1 }], incidents: [{ kind: "recovery" }] };
+  const { router, downloads } = await setup({ slots: { trace: { data: { records: [], answer } } } });
+  router.handle("save-trace", { jobId: "job-1" });
+  assert.deepEqual(downloads, [{ name: "vacuum-orchestrator-job-job-1.json", type: "application/json", data: answer }]);
+  const empty = await setup({ slots: { trace: { data: null } } });
+  empty.router.handle("save-trace", { jobId: "job-1" });
+  assert.deepEqual(empty.downloads, [], "nothing loaded, nothing saved");
+});
+
+// JOB-25: the other outcome is chosen first; the rooms' due dates follow the correction.
+test("a finished job's result is corrected to the outcome chosen", async () => {
+  const { normalizeJob } = await import("../../../src/domain/job.js");
+  const finished = (state) => ({ data: { jobs: [normalizeJob(W.wireJob({ job_id: "job-done", state }))] } });
+  const { router, ui, commands } = await setup({ slots: { jobLog: finished("completed") } });
+  router.handle("correct-job", { jobId: "job-done" });
+  assert.deepEqual(shown(ui.overlay), { kind: "correct-job", jobId: "job-done", outcome: "failed" });
+  await router.handle("confirm-correct");
+  assert.deepEqual(commands[0], { operation: "correct_job", parameters: { job_id: "job-done", outcome: "failed" }, target: "job:job-done", invalidates: ["queue", "openJobs", "jobLog", "job", "execution", "trace", "rooms", "runs"] });
+  assert.deepEqual([ui.overlay, ui.snapshot.notice.messageKey], [null, "notice.jobCorrected"]);
+  await router.handle("confirm-correct");
+  assert.equal(commands.length, 1, "outside its dialog nothing is sent");
+  const failed = await setup({ slots: { jobLog: finished("failed") } });
+  failed.router.handle("correct-job", { jobId: "job-done" });
+  assert.equal(failed.ui.overlay.outcome, "completed");
 });
 
 test("cancelling a started job asks where its robot goes; returning home is the default", async () => {

@@ -5,6 +5,7 @@
 
 import { decide, jobAffordances, jobTarget, roomAffordances } from "../../domain/affordances.js";
 import { explanationsByOperation } from "../../domain/execution.js";
+import { isTerminalState } from "../../domain/job-schema.js";
 import { findJob, list, robotName, roomIndex, roomName, slotData } from "../common/lookups.js";
 import { attemptStateLabel, jobStateLabel, modeLabel, moment, operationLabel, outcomeText, qualityLabel, reasonText, settingLabel, settingName, t } from "../common/texts.js";
 import { traceRows } from "../common/trace.js";
@@ -43,6 +44,23 @@ function explains(execution, job, texts) {
   return groups.length > 1 || groups.some((group) => group.robots.some((item) => settingsNote(texts, item.settings)));
 }
 
+// How a finished job ended, in words (JOB-25, EXE-14, EXE-15): the outcome with how sure the
+// integration is of a completion, the notes it keeps with it, when a person corrected it, and the
+// correction itself. A failed or cancelled job names its failure.
+function resultOf(job, { texts, config, model, actions }) {
+  if (!isTerminalState(job.state)) return null;
+  const quality = job.completion?.quality;
+  const ended = job.state === "completed"
+    ? { key: "outcome", icon: "mdi:check-circle-outline", tone: "success", text: t(texts, quality ? `result.completed.${quality}` : "result.completed") }
+    : { key: "outcome", icon: job.state === "failed" ? "mdi:alert-circle-outline" : "mdi:stop-circle-outline", tone: "attention", text: outcomeText(texts, job.failureCode) || t(texts, `result.${job.state}`) };
+  const notes = list(job.completion?.notes).map((code) => ({ key: `note:${code}`, icon: "mdi:information-outline", text: t(texts, `completion.note.${code}`) }));
+  return {
+    lines: [ended, ...notes],
+    corrected: job.correctedAt ? moment(texts, job.correctedAt, config?.time_format, model.nowMs) : null,
+    correct: actions.correct,
+  };
+}
+
 // `pane`: shown beside a wide queue's list, where the trace opens as a block of the card rather
 // than of a page (LAY-03).
 export function buildJobDetail({ model, texts, context, overlay, config, pane = false }) {
@@ -75,7 +93,8 @@ export function buildJobDetail({ model, texts, context, overlay, config, pane = 
     mode: modeLabel(texts, job.mode),
     settings: settingChips(job, texts),
     position,
-    outcome: outcomeText(texts, job.failureCode),
+    outcome: isTerminalState(job.state) ? null : outcomeText(texts, job.failureCode),
+    result: resultOf(job, { texts, config, model, actions }),
     afterCancel: job.state === "canceling" && job.afterCancel ? t(texts, `detail.afterCancel.${job.afterCancel}`) : null,
     waiting: waitingAxes(job, { job, model, texts, index, title }),
     progress: progressOf(job, { model, texts, timeFormat: "absolute" }),
@@ -105,6 +124,7 @@ export function buildJobDetail({ model, texts, context, overlay, config, pane = 
     })),
     trace,
     traceOpen: overlay.traceOpen === true,
+    saveTrace: slotData(model, "trace")?.answer ? { action: "save-trace", args: { jobId: job.jobId } } : null,
     traceToggle: pane ? { action: "toggle", args: { key: `trace:${job.jobId}` } } : { action: "set-overlay", args: { traceOpen: overlay.traceOpen !== true } },
     facts: [
       { label: t(texts, "detail.created"), value: created },

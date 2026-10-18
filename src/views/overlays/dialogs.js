@@ -1,7 +1,7 @@
 // Card dialogs: confirmation, cancelling a started job, ending the queue, robot choice for a
 // direct start, the queue's waiting time and recovery resolution.
 
-import { buildCancelJob, buildConfirm, buildQueueEnd, buildQueueSettings, buildRecovery, buildStartJob } from "../../presentation/overlays/dialogs.js";
+import { buildCancelJob, buildConfirm, buildCorrectJob, buildQueueEnd, buildQueueSettings, buildRecovery, buildStartJob } from "../../presentation/overlays/dialogs.js";
 import { argsAttr, button, decisionAttributes, e, icon } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
 import { loadingState } from "../parts.js";
@@ -45,6 +45,14 @@ export const cancelJobOverlay = Object.freeze({
   dialog: true,
   build: ({ model, texts, overlay }) => buildCancelJob({ model, texts, overlay }),
   render: (context, vm) => choiceDialog(context, vm, { action: "confirm-cancel", iconName: "mdi:stop-circle-outline", variant: "danger" }),
+  css: FORMS_CSS,
+});
+
+export const correctJobOverlay = Object.freeze({
+  key: "correct-job",
+  dialog: true,
+  build: ({ model, texts, overlay }) => buildCorrectJob({ model, texts, overlay }),
+  render: (context, vm) => choiceDialog(context, vm, { action: "confirm-correct", iconName: "mdi:check", variant: "primary" }),
   css: FORMS_CSS,
 });
 

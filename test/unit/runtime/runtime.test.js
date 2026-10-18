@@ -370,6 +370,24 @@ test("the platform navigates inside Home Assistant and refuses foreign targets",
   assert.equal(typeof createBrowserPlatform(() => null).observeResize(null, () => {}), "function", "without an observer there is nothing to stop");
 });
 
+test("the platform saves a text as a file the browser downloads", async () => {
+  const { createBrowserPlatform } = await import("../../../src/controllers/runtime/browser-platform.js");
+  const { window } = new JSDOM("<!doctype html><body></body>", { url: "http://ha.local/lovelace/0" });
+  const created = [];
+  const revoked = [];
+  const clicked = [];
+  window.URL.createObjectURL = (blob) => (created.push(blob), "blob:saved");
+  window.URL.revokeObjectURL = (url) => revoked.push(url);
+  window.HTMLAnchorElement.prototype.click = function click() { clicked.push([this.download, this.href, this.isConnected]); };
+  const platform = createBrowserPlatform(() => window.document);
+  assert.equal(platform.download("log.json", "{}", "application/json"), true);
+  assert.deepEqual([clicked, created[0].type], [[["log.json", "blob:saved", true]], "application/json"]);
+  assert.equal(window.document.querySelector("a"), null, "the link leaves again");
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.deepEqual(revoked, ["blob:saved"]);
+  assert.equal(createBrowserPlatform(() => null).download("log.json", "{}"), false);
+});
+
 test("the tab strip marks the edges with more tabs and reveals the active tab without passing its end", async () => {
   const { stripOverflow, revealOffset } = await import("../../../src/controllers/runtime/tab-strip-runtime.js");
   assert.deepEqual(stripOverflow({ scrollLeft: 0, clientWidth: 300, scrollWidth: 300 }), { start: false, end: false });

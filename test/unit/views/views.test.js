@@ -44,9 +44,10 @@ function assertMarkupContract(host, label) {
 test("the registry declares every view and page once with build and render", async () => {
   const { VIEWS, OVERLAYS, VIEW_TYPES, viewFor, overlayFor, optionSchemaForView, VIEW_CSS } = await import("../../../src/views/registry.js");
   assert.deepEqual(VIEW_TYPES, ["setup", "queue", "rooms", "robots", "templates", "history", "diagnostics", "settings"]);
-  assert.equal(OVERLAYS.length, 16);
+  assert.equal(OVERLAYS.length, 17);
   assert.equal(overlayFor("setup-guide").key, "setup-guide");
   assert.equal(overlayFor("cancel-job").key, "cancel-job");
+  assert.equal(overlayFor("correct-job").key, "correct-job");
   assert.equal(overlayFor("queue-end").key, "queue-end");
   assert.equal(overlayFor("save-template").key, "save-template");
   assert.equal(overlayFor("job-defaults").key, "job-defaults");
@@ -255,7 +256,7 @@ test("every page renders inside the shared frame, every dialog in the dialog fra
   };
   const { document, context } = await renderContext(built.texts);
   const dialogs = OVERLAYS.filter((overlay) => isDialog(overlay.key)).map((overlay) => overlay.key);
-  assert.deepEqual(dialogs.sort(), ["cancel-job", "confirm", "queue-end", "queue-settings", "recovery", "release", "save-template", "start-job"]);
+  assert.deepEqual(dialogs.sort(), ["cancel-job", "confirm", "correct-job", "queue-end", "queue-settings", "recovery", "release", "save-template", "start-job"]);
   for (const overlay of OVERLAYS) {
     const vm = overlay.build({ ...built, overlay: { kind: overlay.key, ...pages[overlay.key] }, config: {}, ui: {} });
     const host = parse(document, overlay.render(context, vm));

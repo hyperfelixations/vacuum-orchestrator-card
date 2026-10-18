@@ -239,7 +239,7 @@ test("history pages through all jobs or through cleaning runs", async () => {
   const jobs = await busy({ jobLog: { name: "jobLog", params: { offset: 0, limit: 25 } } });
   const log = buildHistoryView({ ...jobs, options: {}, ui: {} });
   assert.equal(log.segment, "jobs");
-  assert.deepEqual(log.jobs.map((row) => row.state), ["queued", "queued", "queued", "running", "failed", "cancelled", "completed"], "newest first");
+  assert.deepEqual(log.jobs.map((row) => row.state), ["failed", "cancelled", "completed"], "finished only, newest first");
   const failed = log.jobs.find((row) => row.state === "failed");
   assert.deepEqual([failed.actions.retry.state, failed.outcome], ["enabled", jobs.texts.t("failure.start_not_observed")]);
   const runs = await busy({ runs: { name: "runs", params: { offset: 0, limit: 25 } } });

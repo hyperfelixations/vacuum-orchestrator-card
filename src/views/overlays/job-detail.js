@@ -85,17 +85,30 @@ function execution(context, vm) {
   return block(context.t("detail.robots"), `<p class="voc-overlay-lead">${e(context.t("detail.robotsLead"))}</p>${groups}`, { iconName: "mdi:robot-vacuum", key: "execution" });
 }
 
+// How a finished job ended, with the correction beside what it corrects.
+function result(context, vm) {
+  if (!vm.result) return "";
+  const lines = vm.result.lines.map((line) => `<li data-key="${e(line.key)}"${line.tone ? ` data-tone="${e(line.tone)}"` : ""}>${icon(line.icon)}<span>${e(line.text)}</span></li>`);
+  if (vm.result.corrected) lines.push(`<li data-key="corrected">${icon("mdi:pencil-outline")}<span>${e(context.t("detail.correctedAt", { when: vm.result.corrected }))}</span></li>`);
+  const decision = vm.result.correct;
+  const correct = decision && decision.state !== "hidden" ? `<div class="voc-inline-actions">${button({ action: "correct-job", args: { jobId: vm.jobId }, label: context.t("action.correctResult"), iconName: "mdi:clipboard-edit-outline", decision, reasonText: context.reason(decision) })}</div>` : "";
+  return block(context.t("detail.result"), `<ul class="voc-reasons voc-result">${lines.join("")}</ul>${correct}`, { iconName: "mdi:flag-checkered", key: "result" });
+}
+
 function attempts(context, vm) {
   if (!vm.attempts.length) return "";
   const rows = vm.attempts.map((attempt) => `<li data-key="attempt:${e(attempt.key)}"><strong>${e(attempt.robot)}</strong><span>${e([attempt.state, attempt.quality, attempt.outcome, attempt.settings].filter(Boolean).join(" · "))}</span></li>`).join("");
   return block(context.t("detail.attempts"), `<ul class="voc-attempts">${rows}</ul>`, { iconName: "mdi:history", key: "attempts" });
 }
 
+// The log opens in place and, open, can be saved as the integration gave it, incidents included
+// (DIA-06).
 function trace(context, vm) {
   if (!vm.trace.length) return "";
   const toggle = `<button type="button" class="voc-disclosure" data-action="${e(vm.traceToggle.action)}" data-args="${e(JSON.stringify(vm.traceToggle.args))}" aria-expanded="${vm.traceOpen}">${icon(vm.traceOpen ? "mdi:chevron-up" : "mdi:chevron-down")}<span>${e(context.t("detail.trace"))}</span></button>`;
+  const save = vm.saveTrace && vm.traceOpen ? button({ action: vm.saveTrace.action, args: vm.saveTrace.args, label: context.t("action.saveTrace"), iconName: "mdi:download-outline", variant: "text", className: "voc-trace-save" }) : "";
   const rows = vm.traceOpen ? traceList(vm.trace) : "";
-  return `<section class="voc-block" data-key="trace">${toggle}${rows}</section>`;
+  return `<section class="voc-block" data-key="trace"><div class="voc-trace-head">${toggle}${save}</div>${rows}</section>`;
 }
 
 function missing(context, vm) {
@@ -104,7 +117,7 @@ function missing(context, vm) {
 
 function detailContent(context, vm) {
   const summary = `<div class="voc-detail-summary" data-key="summary"><div class="voc-detail-line">${chip(vm.mode, { iconName: "mdi:broom" })}${vm.rooms.map((room) => chip(room, { iconName: "mdi:floor-plan" })).join("")}${vm.settings.map((setting) => chip(setting.text, { iconName: setting.icon, label: setting.label })).join("")}</div>${position(context, vm)}${vm.outcome ? `<div class="voc-job-outcome">${icon("mdi:alert-outline")}<span>${e(vm.outcome)}</span></div>` : ""}${vm.afterCancel ? `<div class="voc-job-outcome" data-key="after-cancel">${icon("mdi:home-import-outline")}<span>${e(vm.afterCancel)}</span></div>` : ""}</div>`;
-  return `${summary}${progress(context, vm)}${waiting(context, vm)}${execution(context, vm)}${attempts(context, vm)}${block(context.t("detail.details"), facts(vm.facts), { iconName: "mdi:information-outline", key: "facts" })}${trace(context, vm)}`;
+  return `${summary}${result(context, vm)}${progress(context, vm)}${waiting(context, vm)}${execution(context, vm)}${attempts(context, vm)}${block(context.t("detail.details"), facts(vm.facts), { iconName: "mdi:information-outline", key: "facts" })}${trace(context, vm)}`;
 }
 
 export function renderJobDetail(context, vm) {

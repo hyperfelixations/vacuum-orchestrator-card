@@ -44,6 +44,21 @@ export function buildCancelJob({ model, texts, overlay }) {
   };
 }
 
+// Correcting a finished job's result (JOB-25): cleaned or not; the other one is chosen first.
+export const CORRECTION_OUTCOMES = Object.freeze(["completed", "failed"]);
+
+export function buildCorrectJob({ model, texts, overlay }) {
+  const job = findJob(model, overlay.jobId);
+  return {
+    key: "correct-job",
+    title: t(texts, "correctJob.title"),
+    lead: t(texts, "correctJob.lead", { job: job ? jobTitle(job, roomIndex(model), model) : "" }),
+    field: radios(texts, "overlay:outcome", "correctJob.outcome", overlay.outcome, CORRECTION_OUTCOMES),
+    confirmLabel: t(texts, "correctJob.confirm"),
+    pending: list(model.pending).includes(jobTarget(overlay.jobId)),
+  };
+}
+
 // Ending a queue with started jobs: let them finish, or cancel them with either robot choice.
 // Cancelling with a return home is offered only where some robot can return.
 export function queueEndChoices(model) {
