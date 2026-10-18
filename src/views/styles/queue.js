@@ -104,8 +104,10 @@ export const QUEUE_CSS = `
 .voc-alert-text { display: grid; gap: 2px; flex: 1; min-width: 0; font-size: 12px; font-weight: 650; line-height: 1.3; color: var(--voc-muted); }
 .voc-alert-text strong { color: var(--primary-text-color); font-size: 13px; font-weight: 850; }
 
-.voc-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.voc-quick-label { font-size: 10px; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; color: var(--voc-faint); margin-right: 2px; }
+/* The label beside its chips; chips that wrap line up under the first one. */
+.voc-quick { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 8px; }
+.voc-quick-label { display: flex; align-items: center; min-height: var(--voc-control); font-size: 10px; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; color: var(--voc-faint); }
+.voc-quick-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 
 .voc-pagination { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 750; color: var(--voc-muted); }
 

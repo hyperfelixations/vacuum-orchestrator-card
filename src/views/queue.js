@@ -32,7 +32,7 @@ export function renderQueue(context, vm) {
     parts.push(emptyState("mdi:playlist-check", vm.emptyText, `${create}${templateButtons(context, vm)}`));
   } else if (vm.waiting.length) {
     parts.push(group(context.t("queue.waiting"), vm.waiting.map((row) => jobRow(context, row)).join(""), { count: vm.waitingCount, key: "waiting" }));
-    if (vm.templates.length) parts.push(`<div class="voc-quick" data-key="quick"><span class="voc-quick-label">${e(context.t("queue.fromTemplate"))}</span>${templateButtons(context, vm)}</div>`);
+    if (vm.templates.length) parts.push(`<div class="voc-quick" data-key="quick"><span class="voc-quick-label">${e(context.t("queue.fromTemplate"))}</span><div class="voc-quick-chips">${templateButtons(context, vm)}</div></div>`);
   }
   parts.push(pagination(context, vm.pagination, "queue"));
   // A wide queue shows the chosen job beside the list (LAY-03).

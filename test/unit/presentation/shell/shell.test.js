@@ -96,7 +96,9 @@ test("the automatic subtitle names what the card is doing", async () => {
   const waiting = await at(WAITING_FOR_WORK);
   assert.match(automaticSubtitle(waiting.model, "running", waiting.texts), /14/, "the run ends 14 minutes from now");
   const assistant = await at(ASSISTANT);
-  assert.equal(automaticSubtitle(assistant.model, "setup", assistant.texts), assistant.texts.t("subtitle.setupIncomplete"));
+  // V6: the pill and the tab say "Setup"; the subtitle names what to do there instead.
+  assert.equal(automaticSubtitle(assistant.model, "setup", assistant.texts), "4 optional steps to check");
+  assert.equal(automaticSubtitle(assistant.model, "setup", assistant.texts, { panelShown: true }), "4 optional steps to check");
 });
 
 // V6 (UI-03): beside the panel, which counts the waiting jobs and says how the queue runs, the

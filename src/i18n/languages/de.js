@@ -34,7 +34,7 @@ export const de = {
   "subtitle.running": "Warteschlange läuft",
   "subtitle.waitingPaused": (v) => plural(v.count, "1 Auftrag wartet · pausiert", `${v.count} Aufträge warten · pausiert`),
   "subtitle.waiting": (v) => plural(v.count, "1 Auftrag wartet", `${v.count} Aufträge warten`),
-  "subtitle.setupIncomplete": "Die Einrichtung ist noch nicht abgeschlossen",
+  "subtitle.setupIncomplete": (v) => `${v.count} freiwillige Schritte prüfen`,
   "subtitle.nothingWaiting": "Nichts wartet",
 
   "panel.waiting": "Wartend",

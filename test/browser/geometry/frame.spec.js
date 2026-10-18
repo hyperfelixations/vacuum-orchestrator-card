@@ -162,3 +162,12 @@ test("an empty state that is a view's only content stands in the middle of the f
   });
   expect(Math.abs((empty.top - body.top - padTop) - (body.bottom - padBottom - empty.bottom))).toBeLessThan(2);
 });
+
+// V6 finding: quick starts that wrap line up under the first one, not under their label.
+test("wrapping quick starts line up under the first one", async ({ page }) => {
+  const card = await mountCard(page, { ...BUSY, layout: "grid", width: 380 });
+  const lefts = await card.evaluate((element) => [...element.shadowRoot.querySelectorAll(".voc-quick .voc-button")].map((button) => Math.round(button.getBoundingClientRect().left)));
+  const tops = await card.evaluate((element) => [...element.shadowRoot.querySelectorAll(".voc-quick .voc-button")].map((button) => Math.round(button.getBoundingClientRect().top)));
+  expect(new Set(tops).size, "the chips wrap at this width").toBeGreaterThan(1);
+  expect(new Set(lefts).size).toBe(1);
+});
