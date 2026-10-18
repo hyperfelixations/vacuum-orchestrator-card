@@ -134,5 +134,20 @@ export function buildRobotEditor({ model, texts, context, overlay }) {
     invalid,
     save: actions?.configure ?? decide(context, { operation: "configure_robot", target: robotTarget(draft.meta.robotId) }),
     remove: actions?.remove ?? null,
+    rename: robot ? decide(context, { operation: "rename_robot", target: robotTarget(robot.robotId) }) : null,
+  };
+}
+
+// A robot's own name; the field left empty takes Home Assistant's name again.
+export function buildRenameRobot({ model, texts, context, overlay }) {
+  const robot = robotsOf(model).find((entry) => entry.robotId === overlay.robotId) || null;
+  const { error, invalid } = pageErrors(texts, overlay);
+  return {
+    key: "rename-robot",
+    title: t(texts, "renameRobot.title", { robot: robot?.name || overlay.robotId }),
+    field: field(texts, { key: "overlay:name", labelKey: "renameRobot.name", control: "text", value: String(overlay.name ?? ""), placeholder: robot?.haName || "", hintKey: "renameRobot.hint", optional: true, error: error("overlay:name") }),
+    invalid,
+    save: decide(context, { operation: "rename_robot", target: robotTarget(overlay.robotId) }),
+    pending: list(model.pending).includes(robotTarget(overlay.robotId)),
   };
 }

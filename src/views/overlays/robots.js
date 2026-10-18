@@ -1,10 +1,11 @@
 // Robot dialogs: add a discovered robot, edit a profile.
 
-import { buildRobotAdd, buildRobotEditor } from "../../presentation/overlays/robots.js";
+import { buildRenameRobot, buildRobotAdd, buildRobotEditor } from "../../presentation/overlays/robots.js";
 import { button, chip, e, icon } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
 import { errorState, footerLead, loadingState } from "../parts.js";
 import { FORMS_CSS } from "../styles/forms.js";
+import { dialog } from "./dialog.js";
 import { block, frame } from "./frame.js";
 
 function section(context, key, title, open, content) {
@@ -73,7 +74,7 @@ export const robotEditorOverlay = Object.freeze({
       section(context, "identity", context.t("robotEditor.group.identity"), s.identity.open, s.identity.fields.map((field) => renderField(context, field)).join("")),
     ].join("");
     // On a narrow card removing sits in a menu, so the footer stays one line (LAY-09).
-    const remove = footerLead(context, { items: [vm.remove ? { action: "remove-robot", args: { robotId: vm.robotId }, label: context.t("robotEditor.remove"), iconName: "mdi:delete-outline", decision: vm.remove, reasonText: context.reason(vm.remove), tone: "danger" } : null], key: "robot-editor", label: context.t("action.moreActions"), open: vm.menuOpen === true });
+    const remove = footerLead(context, { items: [vm.remove ? { action: "remove-robot", args: { robotId: vm.robotId }, label: context.t("robotEditor.remove"), iconName: "mdi:delete-outline", decision: vm.remove, reasonText: context.reason(vm.remove), tone: "danger" } : null, vm.rename ? { action: "rename-robot", args: { robotId: vm.robotId }, label: context.t("action.rename"), iconName: "mdi:rename-outline", decision: vm.rename, reasonText: context.reason(vm.rename) } : null], key: "robot-editor", label: context.t("action.moreActions"), open: vm.menuOpen === true });
     const actions = `${remove}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-robot", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
     return frame(context, { key: "robot-editor", title: vm.title, lead: vm.lead, invalid: vm.invalid, content: `<div class="voc-form">${content}</div>`, actions });
   },
@@ -84,4 +85,16 @@ export const robotEditorOverlay = Object.freeze({
 .voc-role .voc-option { min-height: 28px; padding: 3px 10px; }
 .voc-role.is-attention .voc-field-hint { color: var(--voc-warning-ink); }
 `,
+});
+
+export const renameRobotOverlay = Object.freeze({
+  key: "rename-robot",
+  dialog: true,
+  build: ({ model, texts, context, overlay }) => buildRenameRobot({ model, texts, context, overlay }),
+  render(context, vm) {
+    const decision = vm.pending ? { state: "disabled", reason: "command_pending" } : vm.save;
+    const actions = `${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-robot-name", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision, reasonText: context.reason(vm.save) })}`;
+    return dialog(context, { key: "rename-robot", title: vm.title, invalid: vm.invalid, content: `<div class="voc-form">${renderField(context, vm.field)}</div>`, actions });
+  },
+  css: FORMS_CSS,
 });

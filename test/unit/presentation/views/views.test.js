@@ -295,6 +295,8 @@ test("setup shows the integration's four steps with their facts; the open step i
   assert.deepEqual(setup.steps.map((step) => [step.key, step.current]), [["robots", true], ["rooms", false], ["defaults", false], ["queue", false]]);
   const step = (vm, key) => vm.steps.find((entry) => entry.key === key);
   assert.deepEqual([step(setup, "robots").summary, step(setup, "robots").candidates], [assistant.texts.t("setup.step.robots.done", { robots: "Rocky" }), []]);
+  // Each robot taken over can be renamed right in the assistant.
+  assert.deepEqual(step(setup, "robots").robots.map((robot) => [robot.name, robot.rename.action, robot.rename.decision.state]), [["Rocky", "rename-robot", "enabled"]]);
   assert.deepEqual(step(setup, "rooms").uncovered.map((room) => room.name), ["Conservatory"]);
   assert.deepEqual([step(setup, "defaults").builtIn, step(setup, "defaults").link.action], [true, "open-job-defaults"]);
   assert.match(step(setup, "queue").summary, /15 min/);

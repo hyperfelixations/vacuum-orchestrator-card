@@ -351,6 +351,15 @@ test("room settings show detected robot targets and the occupancy fields only fo
   assert.deepEqual([unnamed.fields[0].error, unnamed.invalid], [said(built, "empty_name"), built.texts.t("editor.fixErrors")]);
 });
 
+// A robot's own name, or Home Assistant's when left empty.
+test("renaming a robot offers Home Assistant's name as the one left empty", async () => {
+  const { buildRenameRobot } = await overlays("robots");
+  const built = await modelFor("setup", { from: "The assistant opens" });
+  const [rocky] = built.model.slots.robots.data.items;
+  const vm = buildRenameRobot({ ...built, overlay: { robotId: rocky.robotId, name: "" } });
+  assert.deepEqual([vm.key, vm.title, vm.field.key, vm.field.placeholder, vm.field.hint, vm.save.state], ["rename-robot", built.texts.t("renameRobot.title", { robot: "Rocky" }), "overlay:name", rocky.haName, built.texts.t("renameRobot.hint"), "enabled"]);
+});
+
 test("robot discovery marks configured vacuums; the profile explains each role", async () => {
   const { buildRobotAdd, buildRobotEditor } = await overlays("robots");
   const { createRobotDraft, updateRobotDraft } = await import("../../../../src/domain/robot-draft.js");
@@ -369,7 +378,7 @@ test("robot discovery marks configured vacuums; the profile explains each role",
   assert.equal(error.entity.error, said(built, "required_field"));
   assert.deepEqual([picking.sections.roles.open, picking.sections.identity.open, picking.sections.timeouts.open], [true, true, false], "a section with an error opens");
   assert.equal(picking.sections.identity.fields.find((entry) => entry.key === "physicalRobotId").error, said(built, "invalid_value"));
-  assert.equal(vm.remove.state, "enabled");
+  assert.deepEqual([vm.remove.state, vm.rename.state], ["enabled", "enabled"]);
   // UI-18: the areas are offered only once the robot is limited to some; none chosen is said.
   assert.deepEqual([vm.areaScope.value, vm.areaScope.options.map((option) => option.value), vm.areas], ["follow", ["follow", "only"], null]);
   const limited = buildRobotEditor({ ...built, overlay: { draft: updateRobotDraft(createRobotDraft(dusty), "areaScope", "only"), open: [] } });

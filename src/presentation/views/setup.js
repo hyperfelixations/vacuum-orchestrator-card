@@ -4,7 +4,7 @@
 // See internal dev doc §8 "Einrichtung".
 
 import { SETUP_STEPS } from "../../domain/setup.js";
-import { QUEUE_TARGET, SETUP_TARGET, candidateAffordance, decide, roomAffordances } from "../../domain/affordances.js";
+import { QUEUE_TARGET, SETUP_TARGET, candidateAffordance, decide, robotTarget, roomAffordances } from "../../domain/affordances.js";
 import { isConfiguredCandidate } from "../../domain/robots.js";
 import { list, robotsOf, roomIndex, roomName, slotData } from "../common/lookups.js";
 import { adapterLabel, number, seconds, t } from "../common/texts.js";
@@ -27,6 +27,8 @@ function robotsStep(model, texts, context, step) {
     summary: names.length ? t(texts, "setup.step.robots.done", { robots: names.join(", ") }) : null,
     text: t(texts, names.length ? "setup.step.robots.more" : "setup.step.robots.text"),
     note: candidates.length || names.length ? null : t(texts, "setup.step.robots.none"),
+    // Each robot taken over can be renamed here.
+    robots: step.robotIds.map((robotId) => ({ key: robotId, robotId, name: robots.find((robot) => robot.robotId === robotId)?.name ?? robotId, rename: { action: "rename-robot", decision: decide(context, { operation: "rename_robot", target: robotTarget(robotId) }) } })),
     candidates: candidates.map((candidate) => ({ key: candidate.registryId, entityId: candidate.entityId, name: candidate.name, detail: [candidate.entityId, adapterLabel(texts, candidate.adapter)].join(" · "), decision })),
   };
 }

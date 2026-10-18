@@ -24,7 +24,10 @@ function link(context, step) {
 
 const BODIES = Object.freeze({
   robots: (context, step) =>
-    itemList(step.candidates.map((candidate) => item(`candidate:${candidate.key}`, candidate.name, candidate.detail, button({ action: "add-candidate", args: { entityId: candidate.entityId }, label: context.t("action.addRobot"), iconName: "mdi:plus", variant: "primary", decision: candidate.decision, reasonText: context.reason(candidate.decision) })))),
+    itemList([
+      ...step.robots.map((robot) => item(`robot:${robot.key}`, robot.name, "", button({ action: robot.rename.action, args: { robotId: robot.robotId }, label: context.t("action.rename"), iconName: "mdi:rename-outline", decision: robot.rename.decision, reasonText: context.reason(robot.rename.decision) }))),
+      ...step.candidates.map((candidate) => item(`candidate:${candidate.key}`, candidate.name, candidate.detail, button({ action: "add-candidate", args: { entityId: candidate.entityId }, label: context.t("action.addRobot"), iconName: "mdi:plus", variant: "primary", decision: candidate.decision, reasonText: context.reason(candidate.decision) }))),
+    ]),
   rooms: (context, step) =>
     `${step.uncovered.length ? `<p class="voc-setup-label">${e(context.t("setup.step.rooms.uncovered"))}</p>` : ""}${itemList(step.uncovered.map((room) => item(`room:${room.key}`, room.name, null, button({ action: "edit-room", args: { roomId: room.roomId }, label: context.t("setup.step.rooms.assign"), iconName: "mdi:map-marker-plus-outline", decision: room.decision, reasonText: context.reason(room.decision) }))))}${more(context, step.more)}`,
   defaults: (context, step) => link(context, step),

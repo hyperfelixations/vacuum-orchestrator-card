@@ -52,6 +52,30 @@ test("an installed but unconfigured integration offers Home Assistant's setup di
   card.unmount();
 });
 
+// SET-07, SET-10: the assistant renames the robot taken over, sets the start delay and records its
+// end in the integration, with exactly the commands the integration recorded.
+test("the assistant renames the robot, sets the start delay and finishes", async () => {
+  const card = await mountCard({ recording: "setup", from: "The assistant opens" });
+  const robot = card.root.querySelector('[data-key="step:robots"] [data-action="rename-robot"]');
+  const robotId = JSON.parse(robot.dataset.args).robotId;
+  await card.click(robot);
+  await card.type('[data-field="overlay:name"]', "Rocky downstairs");
+  await card.click('[data-action="save-robot-name"]');
+  await card.settle(32);
+  assert.deepEqual(card.commands("rename_robot").map((message) => message.parameters), [{ robot_id: robotId, name: "Rocky downstairs" }]);
+  assert.match(card.text('[data-key="step:robots"]'), /Rocky downstairs/);
+  await card.click('[data-key="step:queue"] [data-action="choose"]');
+  await card.click('[data-key="step:queue"] [data-action="open-queue-settings"]');
+  await card.type('[data-field="overlay:delay"]', "10");
+  await card.click('[data-action="save-queue-settings"]');
+  await card.settle(32);
+  assert.deepEqual(card.commands("configure_queue").map((message) => message.parameters), [{ start_delay_seconds: 10 }]);
+  await card.click('[data-action="complete-setup"]');
+  await card.settle(32);
+  assert.equal(card.commands("complete_setup").length, 1);
+  card.unmount();
+});
+
 test("removing and re-adding the card renders one card and keeps the subscription", async () => {
   const card = await mountCard(BUSY);
   const parent = card.card.parentNode;
