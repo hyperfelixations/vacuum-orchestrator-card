@@ -832,6 +832,7 @@ export const de = {
   "robotEditor.preference": "Präferenz",
   "robotEditor.preferenceHint": "Von −100 bis 100; Roboter mit höherem Wert werden zuerst gewählt.",
   "robotEditor.minimumBattery": "Mindestakku (%)",
+  "robotEditor.minimumBatteryNone": "Kein Minimum",
   "robotEditor.minimumBatteryHint": "Darunter übernimmt der Roboter keinen neuen Auftrag.",
   "renameRobot.title": (v) => `${v.robot} umbenennen`,
   "renameRobot.name": "Name",

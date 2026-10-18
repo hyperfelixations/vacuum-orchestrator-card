@@ -832,6 +832,7 @@ export const en = {
   "robotEditor.preference": "Preference",
   "robotEditor.preferenceHint": "From −100 to 100; robots with a higher value are chosen first.",
   "robotEditor.minimumBattery": "Minimum battery (%)",
+  "robotEditor.minimumBatteryNone": "No minimum",
   "robotEditor.minimumBatteryHint": "Below this level the robot takes no new job.",
   "renameRobot.title": (v) => `Rename ${v.robot}`,
   "renameRobot.name": "Name",

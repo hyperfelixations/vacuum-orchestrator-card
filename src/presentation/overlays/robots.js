@@ -107,7 +107,7 @@ export function buildRobotEditor({ model, texts, context, overlay }) {
     field(texts, { key: "allowedOperations", labelKey: "robotEditor.allowedOperations", control: "chips", value: draft.allowedOperations, options: OPERATIONS.map((value) => ({ value, label: operationLabel(texts, value) })), error: error("allowedOperations") }),
     field(texts, { key: "fixedMode", labelKey: "robotEditor.fixedMode", control: "segmented", value: draft.fixedMode, options: [{ value: null, label: t(texts, "robotEditor.notFixed") }, ...OPERATIONS.map((value) => ({ value, label: operationLabel(texts, value) }))], hintKey: "robotEditor.fixedModeHint", error: error("fixedMode") }),
     field(texts, { key: "preference", labelKey: "robotEditor.preference", control: "text", inputType: "number", min: -100, max: 100, step: 1, value: draft.preference, error: error("preference"), hintKey: "robotEditor.preferenceHint" }),
-    field(texts, { key: "minimumBattery", labelKey: "robotEditor.minimumBattery", control: "text", inputType: "number", min: 0, max: 100, step: 1, value: draft.minimumBattery ?? "", error: error("minimumBattery"), optional: true, hintKey: "robotEditor.minimumBatteryHint" }),
+    field(texts, { key: "minimumBattery", labelKey: "robotEditor.minimumBattery", control: "text", inputType: "number", min: 0, max: 100, step: 1, value: draft.minimumBattery ?? "", placeholder: t(texts, "robotEditor.minimumBatteryNone"), error: error("minimumBattery"), optional: true, hintKey: "robotEditor.minimumBatteryHint" }),
   ];
   // UI-18: the areas are offered once the robot is limited to some; with none chosen it follows
   // Home Assistant, as the integration stores it, and the field says so.

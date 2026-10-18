@@ -438,6 +438,9 @@ test("robot discovery marks configured vacuums; the profile explains each role",
   let draft = createRobotDraft(dusty);
   const vm = buildRobotEditor({ ...built, overlay: { draft, open: [] } });
   assert.doesNotMatch(vm.lead, /vacuum\./, "the profile names its vacuum, not its entity ID (UI-04)");
+  // An empty minimum battery is no minimum at all; the empty field says so.
+  const battery = vm.general.find((entry) => entry.key === "minimumBattery");
+  assert.deepEqual([battery.value, battery.placeholder], ["", "No minimum"]);
   const rockyRobot = built.model.slots.robots.data.items.find((robot) => robot.name === "Rocky");
   const rockyRoles = Object.fromEntries(buildRobotEditor({ ...built, overlay: { draft: createRobotDraft(rockyRobot), open: [] } }).sections.roles.rows.map((row) => [row.key, row]));
   assert.equal(rockyRoles.battery.mode.hint, built.texts.t("robotEditor.roleDiscovered", { entity: "Rocky Battery" }), "a found entity by its Home Assistant name");
