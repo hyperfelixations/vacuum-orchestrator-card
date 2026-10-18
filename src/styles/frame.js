@@ -33,6 +33,9 @@ ha-card[data-frame] > .voc-root > .voc-body {
 
 ha-card[data-frame] .voc-body[data-body^="onboarding:"] { display: flex; flex-direction: column; }
 ha-card[data-frame] .voc-body[data-body^="onboarding:"] > .voc-onboarding { flex: none; margin-block: auto; }
+/* An empty state that is a view's only content stands in the middle, as the onboarding does. */
+ha-card[data-frame] .voc-body[data-body^="view:"]:has(> .voc-view > .voc-empty:only-child) { display: flex; flex-direction: column; }
+ha-card[data-frame] .voc-body[data-body^="view:"]:has(> .voc-view > .voc-empty:only-child) > .voc-view { flex: none; margin-block: auto; }
 
 ha-card[data-frame] .voc-body[data-body^="overlay:"] { overflow-y: hidden; display: flex; flex-direction: column; }
 ha-card[data-frame] .voc-body[data-body^="overlay:"] > .voc-overlay { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }

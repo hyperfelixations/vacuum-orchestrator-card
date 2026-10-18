@@ -31,7 +31,7 @@ import { placeMaps } from "../controllers/runtime/map-rotation.js";
 import { createScrollRuntime } from "../controllers/runtime/scroll-runtime.js";
 import { createLayoutRuntime } from "../controllers/runtime/layout-runtime.js";
 import { createTabStripRuntime } from "../controllers/runtime/tab-strip-runtime.js";
-import { createUIState } from "../controllers/runtime/ui-state.js";
+import { createUIState, pagesPastTheEnd } from "../controllers/runtime/ui-state.js";
 import { createActionRouter } from "../controllers/runtime/action-router.js";
 import { createRenderController } from "../controllers/render/render-controller.js";
 import { VIEWS, VIEW_CSS, VIEW_TYPES, handleControlKeydown, isDialog, optionSchemaForView, overlayFor, renderBody, viewFor } from "../views/index.js";
@@ -310,6 +310,8 @@ export class VacuumOrchestratorCard extends HTMLElement {
       texts = this._texts(model);
     }
     this._model = model;
+    // A page emptied by a delete steps back; the change schedules the next render (LAY-16).
+    for (const [scope, offset] of Object.entries(pagesPastTheEnd(model.slots, this._ui.snapshot.pages))) this._ui.setPage(scope, offset);
     return { model, tabs: buildTabs({ definitions: VIEWS, model, config: this._config, ui: this._ui.snapshot, texts }), texts };
   }
 

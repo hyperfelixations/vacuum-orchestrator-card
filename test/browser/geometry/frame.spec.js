@@ -149,3 +149,16 @@ test.describe("on a touch screen", () => {
     expect(await sizes("grid")).toEqual(free);
   });
 });
+
+// V3c finding: an empty state as a view's only content stands in the middle of the frame, as the
+// onboarding does, rather than at its top above empty space.
+test("an empty state that is a view's only content stands in the middle of the frame", async ({ page }) => {
+  const card = await mountCard(page, { recording: "queue_end", from: "The card opens", layout: "grid", width: 640 });
+  await expect(card.locator(".voc-empty")).toBeVisible();
+  const { ".voc-body": body, ".voc-empty": empty } = await boxes(card, [".voc-body", ".voc-empty"]);
+  const [padTop, padBottom] = await card.evaluate((element) => {
+    const style = getComputedStyle(element.shadowRoot.querySelector(".voc-body"));
+    return [parseFloat(style.paddingTop), parseFloat(style.paddingBottom)];
+  });
+  expect(Math.abs((empty.top - body.top - padTop) - (body.bottom - padBottom - empty.bottom))).toBeLessThan(2);
+});

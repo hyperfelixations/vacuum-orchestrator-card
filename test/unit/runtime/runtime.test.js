@@ -36,6 +36,18 @@ test("ui state keeps the view, an overlay stack, pages, choices and the notice",
 });
 
 // One menu is open at a time; opening a page or another view closes it.
+// LAY-16: a list page left empty by deleting its last entry steps back to the last page there is.
+test("a page past the end of its list steps back to the last page", async () => {
+  const { pagesPastTheEnd } = await import("../../../src/controllers/runtime/ui-state.js");
+  const page = (offset, total, limit = 5) => ({ data: { offset, limit, total } });
+  assert.deepEqual(pagesPastTheEnd({ queue: page(5, 5), jobLog: page(10, 12) }, { queue: 5, jobLog: 10 }), { queue: 0 });
+  assert.deepEqual(pagesPastTheEnd({ queue: page(10, 7) }, { queue: 10 }), { queue: 5 });
+  assert.deepEqual(pagesPastTheEnd({ queue: page(5, 0) }, { queue: 5 }), { queue: 0 }, "an emptied list shows its first page");
+  assert.deepEqual(pagesPastTheEnd({ queue: page(0, 0) }, { queue: 0 }), {}, "the first page is never past the end");
+  assert.deepEqual(pagesPastTheEnd({ queue: page(5, 5) }, { queue: 0 }), {}, "a page not shown any more is left alone");
+  assert.deepEqual(pagesPastTheEnd({ queue: { status: "loading" } }, { queue: 5 }), {});
+});
+
 test("ui state holds one open menu, closed by a page or another view", async () => {
   const { createUIState } = await import("../../../src/controllers/runtime/ui-state.js");
   const ui = createUIState();

@@ -130,6 +130,15 @@ test("history pages ask the integration for the next page", async () => {
   await card.settle(24);
   assert.equal(card.all('[data-key="jobs"] .voc-job').length, 1);
   assert.ok(card.backend.calls.some((message) => message.type.endsWith("/jobs/list") && message.offset === 5 && message.limit === 5 && message.states?.includes("completed")));
+  // LAY-16: deleting the only job of the second page leads back to the first.
+  await card.click('[data-key="jobs"] .voc-job .voc-job-main');
+  await card.settle(24);
+  await card.click('[data-action="delete-job"]');
+  await card.click('[data-action="confirm-command"]');
+  await card.settle(48);
+  assert.equal(card.services("delete_job").length, 1);
+  assert.equal(card.all('[data-key="jobs"] .voc-job').length, 5, "the first page again");
+  assert.equal(card.root.querySelector(".voc-pagination"), null, "five jobs fit one page");
   card.unmount();
 });
 

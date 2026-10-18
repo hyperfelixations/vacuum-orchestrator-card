@@ -4,6 +4,18 @@
 // detail shows, the last command's notice and the focus the next render owes.
 // Nothing here is shared between cards. See internal dev doc §9 "UI-Zustand".
 
+// Pages shown past the end of their list, as deleting the last entry of a page leaves them, with
+// the offset of the last page there is (LAY-16).
+export function pagesPastTheEnd(slots, pages) {
+  const corrected = {};
+  for (const [scope, offset] of Object.entries(pages || {})) {
+    const page = slots?.[scope]?.data;
+    if (!page || !(offset > 0) || page.offset !== offset || !(page.limit > 0) || offset < page.total) continue;
+    corrected[scope] = page.total > 0 ? Math.floor((page.total - 1) / page.limit) * page.limit : 0;
+  }
+  return corrected;
+}
+
 export function createUIState() {
   let opened = 0;
   let state = Object.freeze({ view: null, overlays: Object.freeze([]), pages: Object.freeze({}), expanded: Object.freeze([]), menu: null, wide: false, selectedJob: null, setupDeferred: false, choices: Object.freeze({}), notice: null, focus: null });
