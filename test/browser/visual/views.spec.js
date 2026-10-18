@@ -6,7 +6,7 @@
 // changed image.
 
 const { test, expect } = require("../../helpers/playwright.js");
-const { BUSY, act, mountCard, named, setCardWidth } = require("../../helpers/browser-helpers.js");
+const { BUSY, act, mountCard, named, setCardWidth, waitForStableLayout } = require("../../helpers/browser-helpers.js");
 
 const WIDE = 900;
 const MEDIUM = 640;
@@ -674,5 +674,30 @@ test.describe("shell variants", () => {
     await mountCard(page, { ...BUSY, width: 420, configs: [{ ...BASE, views: ["queue", "rooms"] }, { ...BASE, views: ["robots", "history"], start_view: "robots", show: { panel: false } }] });
     expect(await page.evaluate(() => window.vocHarness.backend.calls.filter((message) => message.type === "vacuum_orchestrator/subscribe").length)).toBe(1);
     await shot(page, "two-cards-light.png");
+  });
+});
+
+// V6: large text (125 %, as the browser's zoom gives it) still wraps inside the card: no element
+// reaches past its edge and nothing scrolls sideways, except the tab strip, which scrolls by design.
+test.describe("large text", () => {
+  test("the queue at 125 %, narrow, German", async ({ page }) => {
+    const card = await mountCard(page, { ...BUSY, config: { ...BASE, language: "de" } });
+    await page.evaluate(() => {
+      for (const element of window.vocHarness.cards) Object.assign(element.style, { width: "304px", zoom: "1.25" });
+    });
+    await waitForStableLayout(page);
+    const overflow = await card.evaluate((element) => {
+      const root = element.shadowRoot.querySelector(".voc-root");
+      const edge = element.getBoundingClientRect().right + 0.5;
+      const past = [...element.shadowRoot.querySelectorAll("*")]
+        .filter((node) => !node.closest(".voc-tabs") && node.getClientRects().length && node.getBoundingClientRect().right > edge)
+        .map((node) => node.className || node.tagName);
+      const cut = [...element.shadowRoot.querySelectorAll(".voc-job-title")].filter((title) => title.scrollWidth > title.clientWidth + 1).map((title) => title.textContent);
+      return { sideways: root.scrollWidth > root.clientWidth, past, cut };
+    });
+    expect(overflow).toEqual({ sideways: false, past: [], cut: [] });
+    // In so little room a row's main action shows its icon; its label stays its accessible name.
+    await expect(named(card, ".voc-job", "Conservatory", ".voc-job-main-action")).toHaveAccessibleName("Freigeben …");
+    await shot(page, "queue-large-text-german-narrow-light.png");
   });
 });

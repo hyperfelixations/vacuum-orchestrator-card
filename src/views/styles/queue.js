@@ -120,6 +120,13 @@ export const QUEUE_CSS = `
   }
 }
 
+/* In very little room, as large text leaves a narrow card, a row's main action shows its icon so
+   the job's title and status keep the row; the label stays its accessible name. */
+@container voc-card (max-width: 339px) {
+  .voc-job-actions .voc-job-main-action { width: var(--voc-row-target); min-width: var(--voc-row-target); padding: 0; justify-content: center; }
+  .voc-job-actions .voc-job-main-action .voc-button-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
 /* LAY-03: a wide card shows the chosen job beside the list; the pane stays in view while the list
    scrolls. */
 .voc-queue--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; gap: 16px; }
