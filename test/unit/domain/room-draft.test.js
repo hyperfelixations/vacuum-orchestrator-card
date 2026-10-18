@@ -26,6 +26,20 @@ test("intervals are edited in hours, lists as comma-separated text", async () =>
   assert.equal(draft.meta.roomId, room.roomId);
 });
 
+// Plan V5: an interval reads in days and hours; both empty or zero switch it off.
+test("an interval is edited as days and hours and kept in hours", async () => {
+  const { createRoomDraft, updateRoomDraft, intervalParts, intervalOf, room } = await load();
+  const draft = createRoomDraft(room);
+  assert.deepEqual([intervalParts(48), intervalParts(36), intervalParts(null), intervalParts(0)], [{ days: 2, hours: 0 }, { days: 1, hours: 12 }, { days: null, hours: null }, { days: null, hours: null }]);
+  assert.equal(updateRoomDraft(draft, "vacuumHours:days", 7).vacuumHours, 168);
+  assert.equal(updateRoomDraft(draft, "vacuumHours:hours", 6).vacuumHours, 54);
+  assert.equal(updateRoomDraft(draft, "mopHours:hours", 5).mopHours, 5, "an interval that was off starts from nothing");
+  assert.equal(updateRoomDraft(updateRoomDraft(draft, "vacuumHours:days", null), "vacuumHours:hours", null).vacuumHours, null);
+  assert.equal(updateRoomDraft(draft, "vacuumHours:days", 0).vacuumHours, null, "zero days and hours is off");
+  assert.equal(updateRoomDraft(draft, "nameHours:days", 1), draft, "only an interval has parts");
+  assert.deepEqual([intervalOf("vacuumHours:days"), intervalOf("mopHours:hours"), intervalOf("vacuumHours"), intervalOf("overlay:minutes")], ["vacuumHours", "mopHours", null, null]);
+});
+
 test("an unchanged draft makes an empty patch", async () => {
   const { createRoomDraft, roomDraftToPatch, isRoomDirty, updateRoomDraft, room } = await load();
   const draft = createRoomDraft(room);

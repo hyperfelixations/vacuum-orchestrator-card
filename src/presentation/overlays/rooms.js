@@ -6,10 +6,22 @@ import { RELEASE_KINDS } from "../../domain/job-schema.js";
 import { entityName, list, robotsOf, roomsOf } from "../common/lookups.js";
 import { releaseKindLabel, t } from "../common/texts.js";
 import { entityField, field, pageErrors } from "./editor-fields.js";
-import { splitList } from "../../domain/room-draft.js";
+import { intervalParts, splitList } from "../../domain/room-draft.js";
 
 const KIND_ICONS = Object.freeze({ permanent: "mdi:lock-open-variant-outline", once: "mdi:numeric-1-circle-outline", timed: "mdi:timer-outline", queue_run: "mdi:playlist-play" });
 const camel = (value) => value.replace(/_([a-z])/g, (_match, letter) => letter.toUpperCase());
+
+// A due interval as days and hours beside each other; the integration's error stands below both.
+function intervalField(texts, draft, key, labelKey, error, hintKey = null) {
+  const value = intervalParts(draft[key]);
+  return {
+    ...field(texts, { key, labelKey, control: "duration", value: draft[key], error: error(key), hintKey, optional: true }),
+    parts: [
+      { key: `${key}:days`, label: t(texts, "room.days"), value: value.days },
+      { key: `${key}:hours`, label: t(texts, "room.hours"), value: value.hours, max: 23 },
+    ],
+  };
+}
 
 function roomOf(model, roomId) {
   return roomsOf(model).find((room) => room.roomId === roomId) || null;
@@ -138,8 +150,8 @@ export function buildRoomEditor({ model, texts, context, overlay }) {
         title: t(texts, "room.group.due"),
         fields: [
           field(texts, { key: "basis", labelKey: "room.basis", control: "segmented", value: draft.basis, options: ["calendar", "occupied"].map((value) => ({ value, label: t(texts, `room.basis.${value}`) })), hintKey: `room.basisHint.${draft.basis}`, error: error("basis") }),
-          field(texts, { key: "vacuumHours", labelKey: "room.vacuumHours", control: "text", inputType: "number", min: 0, step: 1, value: draft.vacuumHours ?? "", error: error("vacuumHours"), hintKey: "room.intervalHint", optional: true }),
-          field(texts, { key: "mopHours", labelKey: "room.mopHours", control: "text", inputType: "number", min: 0, step: 1, value: draft.mopHours ?? "", error: error("mopHours"), optional: true }),
+          intervalField(texts, draft, "vacuumHours", "room.vacuumEvery", error, "room.intervalHint"),
+          intervalField(texts, draft, "mopHours", "room.mopEvery", error),
           ...(occupied
             ? [
                 entityField(texts, model, { key: "occupancyEntityId", labelKey: "room.occupancyEntity", value: draft.occupancyEntityId ? [draft.occupancyEntityId] : [], query: queries.occupancyEntityId, domains: ["binary_sensor", "input_boolean", "sensor", "switch"], error: error("occupancyEntityId"), optional: false }),

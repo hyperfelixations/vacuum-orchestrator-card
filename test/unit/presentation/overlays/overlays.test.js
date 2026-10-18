@@ -371,6 +371,11 @@ test("room settings show detected robot targets and the occupancy fields only fo
   const vm = buildRoomEditor({ ...built, overlay: { draft } });
   assert.deepEqual(vm.detected.map((item) => item.key), [robotId(built.model, "Rocky")]);
   assert.equal(fieldsOf(vm, "due").occupancyEntityId, undefined);
+  // An interval reads in days and hours beside each other; an error of the integration stands below both.
+  const vacuum = fieldsOf(vm, "due").vacuumHours;
+  assert.deepEqual([vacuum.control, vacuum.label, vacuum.parts.map((part) => [part.key, part.label, part.value, part.max ?? null])], ["duration", "Vacuum every", [["vacuumHours:days", "days", 2, null], ["vacuumHours:hours", "hours", 0, 23]]]);
+  assert.deepEqual(fieldsOf(vm, "due").mopHours.parts.map((part) => part.value), [null, null]);
+  assert.equal(fieldsOf(buildRoomEditor({ ...built, overlay: { draft, errors: { vacuumHours: "invalid_value" } } }), "due").vacuumHours.error, said(built, "invalid_value"));
   const occupied = buildRoomEditor({ ...built, overlay: { draft: updateRoomDraft(draft, "basis", "occupied"), errors: { occupancyEntityId: "required_field", unoccupiedState: "invalid_value" } } });
   assert.deepEqual([fieldsOf(occupied, "due").occupancyEntityId.error, fieldsOf(occupied, "due").occupiedState.error, fieldsOf(occupied, "due").unoccupiedState.error], [said(built, "required_field"), null, said(built, "invalid_value")]);
   // ROOM-08: an own binding picks the robot's map and its segments by name; without a reported

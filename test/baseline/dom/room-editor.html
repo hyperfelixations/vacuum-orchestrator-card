@@ -66,16 +66,34 @@
 </div>
 <div class="voc-field-hint" id="voc-field-basis-hint">Time since the last cleaning.</div>
 </div>
-<div class="voc-field" data-key="field:vacuumHours" data-field-control="text">
-<label class="voc-field-label" id="voc-field-vacuumHours-label" for="voc-field-vacuumHours">Vacuum every (hours) <span class="voc-field-optional">optional</span>
-</label>
-<input class="voc-input" id="voc-field-vacuumHours" data-field="vacuumHours" aria-describedby="voc-field-vacuumHours-hint" type="number" min="0" step="1" value="48" autocomplete="off">
-<div class="voc-field-hint" id="voc-field-vacuumHours-hint">Leave empty to switch the due calculation off; 48 is two days.</div>
+<div class="voc-field" data-key="field:vacuumHours" data-field-control="duration">
+<div class="voc-field-label" id="voc-field-vacuumHours-label">Vacuum every <span class="voc-field-optional">optional</span>
 </div>
-<div class="voc-field" data-key="field:mopHours" data-field-control="text">
-<label class="voc-field-label" id="voc-field-mopHours-label" for="voc-field-mopHours">Mop every (hours) <span class="voc-field-optional">optional</span>
+<div class="voc-duration" role="group" aria-labelledby="voc-field-vacuumHours-label">
+<label class="voc-duration-part">
+<input class="voc-input" type="number" inputmode="numeric" id="voc-field-vacuumHours-days" data-field="vacuumHours:days" min="0" step="1" value="2" aria-describedby="voc-field-vacuumHours-hint">
+<span>days</span>
 </label>
-<input class="voc-input" id="voc-field-mopHours" data-field="mopHours" type="number" min="0" step="1" value="" autocomplete="off">
+<label class="voc-duration-part">
+<input class="voc-input" type="number" inputmode="numeric" id="voc-field-vacuumHours-hours" data-field="vacuumHours:hours" min="0" max="23" step="1" value="0" aria-describedby="voc-field-vacuumHours-hint">
+<span>hours</span>
+</label>
+</div>
+<div class="voc-field-hint" id="voc-field-vacuumHours-hint">Leave days and hours empty to switch the due calculation off.</div>
+</div>
+<div class="voc-field" data-key="field:mopHours" data-field-control="duration">
+<div class="voc-field-label" id="voc-field-mopHours-label">Mop every <span class="voc-field-optional">optional</span>
+</div>
+<div class="voc-duration" role="group" aria-labelledby="voc-field-mopHours-label">
+<label class="voc-duration-part">
+<input class="voc-input" type="number" inputmode="numeric" id="voc-field-mopHours-days" data-field="mopHours:days" min="0" step="1" value="">
+<span>days</span>
+</label>
+<label class="voc-duration-part">
+<input class="voc-input" type="number" inputmode="numeric" id="voc-field-mopHours-hours" data-field="mopHours:hours" min="0" max="23" step="1" value="">
+<span>hours</span>
+</label>
+</div>
 </div>
 </section>
 <section class="voc-block" data-key="group:conditions">

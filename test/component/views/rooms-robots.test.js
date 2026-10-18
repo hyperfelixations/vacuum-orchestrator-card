@@ -88,7 +88,13 @@ test("room settings save only what changed", async () => {
   const card = await rooms("The studio is included again");
   const dining = roomId(card, "Dining Room");
   await card.click(room(card, "Dining Room").querySelector('[data-action="edit-room"]'));
-  await card.type('[data-field="vacuumHours"]', "36");
+  // An interval that is off is empty; one day and twelve hours travel as 36 hours.
+  const parts = (interval) => [card.root.querySelector(`[data-field="${interval}:days"]`).value, card.root.querySelector(`[data-field="${interval}:hours"]`).value];
+  assert.deepEqual(parts("vacuumHours"), ["", ""]);
+  await card.type('[data-field="vacuumHours:days"]', "1");
+  assert.deepEqual(parts("vacuumHours"), ["1", "0"]);
+  await card.type('[data-field="vacuumHours:hours"]', "12");
+  assert.deepEqual(parts("vacuumHours"), ["1", "12"]);
   await card.click('[data-action="save-room"]');
   await card.settle(32);
   assert.deepEqual(card.commands("update_room").map((message) => message.parameters), [{ room_id: dining, configuration: { due_policy: { vacuum_seconds: 129600 } } }]);

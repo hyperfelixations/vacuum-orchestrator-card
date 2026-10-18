@@ -77,6 +77,14 @@ function entities(context, field) {
   return `<div class="voc-entities" data-control="entities">${selected ? `<div class="voc-entity-chips">${selected}</div>` : ""}<input class="voc-input" type="search" id="${fieldId(field.key)}" data-field="${e(field.queryKey)}" value="${e(field.query || "")}" placeholder="${e(context.t("field.searchEntities"))}" autocomplete="off" role="combobox" aria-expanded="${matches ? "true" : "false"}" aria-controls="${fieldId(field.key)}-matches"${attr("aria-describedby", describedBy(field))}>${matches ? `<div class="voc-entity-matches" id="${fieldId(field.key)}-matches" role="listbox" aria-label="${e(field.label)}">${matches}</div>` : ""}</div>`;
 }
 
+// One value in parts, each a number with its unit after it: "2 days 0 hours".
+function duration(field) {
+  const parts = field.parts
+    .map((part) => `<label class="voc-duration-part"><input class="voc-input" type="number" inputmode="numeric" id="${fieldId(part.key)}" data-field="${e(part.key)}" min="0"${attr("max", part.max)} step="1" value="${e(part.value ?? "")}"${attr("aria-describedby", describedBy(field))}${field.error ? ' aria-invalid="true"' : ""}><span>${e(part.label)}</span></label>`)
+    .join("");
+  return `<div class="voc-duration" role="group" aria-labelledby="${fieldId(field.key)}-label">${parts}</div>`;
+}
+
 const RENDERERS = Object.freeze({
   segmented: (_context, field) => segmented(field),
   radios: (_context, field) => radios(field),
@@ -86,6 +94,7 @@ const RENDERERS = Object.freeze({
   textarea: (_context, field) => text(field, true),
   switch: (_context, field) => toggle(field),
   entities: (context, field) => entities(context, field),
+  duration: (_context, field) => duration(field),
 });
 
 export function renderField(context, field) {

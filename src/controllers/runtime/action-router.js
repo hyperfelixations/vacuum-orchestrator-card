@@ -7,7 +7,7 @@
 
 import { CREATE_TARGET, QUEUE_TARGET, SETUP_TARGET, jobTarget, robotTarget, roomTarget, templateTarget, queueControl } from "../../domain/affordances.js";
 import { applyDraftChange, createDraft, draftFieldOf, draftToIntent, draftToTemplate, draftToUpdatePatch, isDirty, toggleRoom } from "../../domain/job-draft.js";
-import { createRoomDraft, isRoomDirty, newBinding, newRequirement, roomDraftToPatch, roomFieldOf, splitList, updateRoomDraft } from "../../domain/room-draft.js";
+import { createRoomDraft, intervalOf, isRoomDirty, newBinding, newRequirement, roomDraftToPatch, roomFieldOf, splitList, updateRoomDraft } from "../../domain/room-draft.js";
 import { createRobotDraft, isRobotDirty, robotDraftToConfiguration, robotFieldOf, updateRobotDraft } from "../../domain/robot-draft.js";
 import { formErrors, withoutFieldError } from "../../domain/validation.js";
 import { grantsOf, releaseField, releaseFieldOf, releaseGroupOf, releaseRows, updateReleaseRow, withReleaseRoom, withoutReleaseRow } from "../../domain/release-draft.js";
@@ -185,7 +185,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     const errors = ui.overlay?.errors;
     if (!errors) return;
     // A field whose error belongs to a value it forms together with others clears that too.
-    const next = [field, releaseGroupOf(field)].filter(Boolean).reduce(withoutFieldError, errors);
+    const next = [field, releaseGroupOf(field), intervalOf(field)].filter(Boolean).reduce(withoutFieldError, errors);
     if (next !== errors) ui.updateOverlay({ errors: Object.keys(next).length ? next : null });
   }
 

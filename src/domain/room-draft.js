@@ -33,7 +33,8 @@ function bindingDraft(binding) {
   return { robotId: binding.robotId, mapId: binding.mapId ?? "", targetIds: binding.targetIds.join(", ") };
 }
 
-// Interval values are edited in hours; null switches the due calculation off.
+// Interval values are kept in hours and edited as days and hours; null switches the due
+// calculation off.
 export function createRoomDraft(room) {
   const policy = room.duePolicy;
   const values = {
@@ -53,9 +54,33 @@ export function createRoomDraft(room) {
 }
 
 const UNSAFE = new Set(["__proto__", "constructor", "prototype", "meta"]);
+const INTERVALS = Object.freeze(["vacuumHours", "mopHours"]);
+const blank = (value) => value === null || value === undefined || value === "";
+
+// An interval kept in hours, read as whole days and the hours beyond them; off is empty.
+export function intervalParts(hours) {
+  if (blank(hours) || Number(hours) === 0) return { days: null, hours: null };
+  const total = Number(hours);
+  return { days: Math.floor(total / 24), hours: total % 24 };
+}
+
+// `vacuumHours:days`, a part of an interval, names the interval; anything else null.
+export function intervalOf(path) {
+  const [interval, part] = String(path).split(":");
+  return INTERVALS.includes(interval) && ["days", "hours"].includes(part) ? interval : null;
+}
+
+// Days and hours both empty or zero switch the interval off.
+function withIntervalPart(hours, part, value) {
+  const parts = { ...intervalParts(hours), [part]: value };
+  const total = Number(parts.days ?? 0) * 24 + Number(parts.hours ?? 0);
+  return (blank(parts.days) && blank(parts.hours)) || total === 0 ? null : total;
+}
 
 // `path` is a field name or a list entry path such as `requirements.0.acceptedStates`.
 export function updateRoomDraft(draft, path, value) {
+  const interval = intervalOf(path);
+  if (interval) return updateRoomDraft(draft, interval, withIntervalPart(draft[interval], String(path).split(":")[1], value));
   const parts = String(path).split(".");
   if (parts.some((part) => UNSAFE.has(part)) || !(parts[0] in draft)) return draft;
   const { meta, ...values } = draft;

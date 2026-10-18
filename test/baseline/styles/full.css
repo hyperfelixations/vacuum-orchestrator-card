@@ -984,6 +984,9 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-input[aria-invalid="true"] { border-color: color-mix(in srgb, var(--voc-error) 60%, transparent); }
 
 .voc-stepper { display: inline-flex; align-items: center; gap: 4px; }
+.voc-duration { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.voc-duration-part { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
+.voc-duration-part .voc-input { width: 72px; text-align: center; font-variant-numeric: tabular-nums; }
 .voc-stepper-input { width: 64px; text-align: center; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
 .voc-stepper-input::-webkit-inner-spin-button, .voc-stepper-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
@@ -1146,6 +1149,9 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-input[aria-invalid="true"] { border-color: color-mix(in srgb, var(--voc-error) 60%, transparent); }
 
 .voc-stepper { display: inline-flex; align-items: center; gap: 4px; }
+.voc-duration { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.voc-duration-part { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
+.voc-duration-part .voc-input { width: 72px; text-align: center; font-variant-numeric: tabular-nums; }
 .voc-stepper-input { width: 64px; text-align: center; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
 .voc-stepper-input::-webkit-inner-spin-button, .voc-stepper-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
@@ -1258,6 +1264,9 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-input[aria-invalid="true"] { border-color: color-mix(in srgb, var(--voc-error) 60%, transparent); }
 
 .voc-stepper { display: inline-flex; align-items: center; gap: 4px; }
+.voc-duration { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.voc-duration-part { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
+.voc-duration-part .voc-input { width: 72px; text-align: center; font-variant-numeric: tabular-nums; }
 .voc-stepper-input { width: 64px; text-align: center; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
 .voc-stepper-input::-webkit-inner-spin-button, .voc-stepper-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
