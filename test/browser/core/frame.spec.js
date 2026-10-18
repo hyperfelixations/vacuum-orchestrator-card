@@ -19,9 +19,8 @@ async function view(page, card, key) {
   await expect(card.locator(`[data-key="view:${key}"]`)).toBeVisible();
 }
 
-// Leaves the dialog or page on top: a dialog through its own back action, a page through its
-// back control.
-const leave = async (page, card) => act(page, (await card.locator(".voc-dialog").count()) ? card.locator('.voc-dialog-actions [data-action="back"]') : card.locator(".voc-back"));
+// Leaves the dialog or page on top through its one way back (LAY-19).
+const leave = async (page, card) => act(page, (await card.locator(".voc-dialog").count()) ? card.locator('.voc-dialog-actions [data-action="back"]') : card.locator('.voc-overlay [data-action="back"]'));
 
 // Opens a page or dialog from a view, checks the height and goes back to the view. A target is a
 // selector or a function of the card that finds it.
@@ -87,7 +86,7 @@ test("without a dashboard height the card keeps its standard height in every vie
   await view(page, card, "queue");
   await act(page, card.locator(".voc-primary-action"));
   await expectHeight(card, TEN_ROWS_PX, "the editor keeps it");
-  await act(page, card.locator(".voc-back"));
+  await act(page, card.locator('.voc-overlay [data-action="back"]'));
   await act(page, card.locator(".voc-queue-end"));
   await expectHeight(card, TEN_ROWS_PX, "a dialog keeps it");
 });
@@ -103,7 +102,7 @@ test("with rows: auto a short card is at least the floor high, also with a page 
   await act(page, named(card, ".voc-job", "Dining Room", ".voc-job-main"));
   await expect(card.locator('[data-key="overlay:job-detail"]')).toBeVisible();
   await expectHeight(card, 440, "the detail page keeps it");
-  await act(page, card.locator(".voc-back"));
+  await act(page, card.locator('.voc-overlay [data-action="back"]'));
   await expectHeight(card, 440, "the queue again");
 });
 
@@ -118,7 +117,7 @@ test("with rows: auto a tall card keeps its height while a page or dialog is ope
   await leave(page, card);
   await act(page, card.locator(".voc-primary-action"));
   await expectHeight(card, natural, "the long editor keeps the queue's height");
-  await act(page, card.locator(".voc-back"));
+  await act(page, card.locator('.voc-overlay [data-action="back"]'));
   await expect(card.locator("ha-card")).not.toHaveAttribute("data-frame", /.*/);
   await expectHeight(card, natural, "the queue again");
 });

@@ -163,8 +163,8 @@ test("an editor waits for its save, locked, and leaves with the answer", async (
   const page = card.root.querySelector('[data-key="overlay:job-editor"]');
   assert.equal(page.getAttribute("aria-busy"), "true");
   assert.equal(page.querySelector("fieldset.voc-layer").disabled, true);
-  await card.press('[data-key="overlay:job-editor"] .voc-back', "Escape");
-  await card.click('[data-key="overlay:job-editor"] .voc-back');
+  await card.press('[data-key="overlay:job-editor"] [data-action="back"]', "Escape");
+  await card.click('[data-key="overlay:job-editor"] [data-action="back"]');
   assert.equal(card.root.querySelector(".voc-overlay")?.dataset.key, "overlay:job-editor", "the page waits for its answer");
   release();
   await card.settle(32);

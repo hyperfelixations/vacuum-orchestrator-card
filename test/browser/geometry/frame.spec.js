@@ -55,7 +55,7 @@ test("a page's actions stand at one place, short or long, and a hairline does no
   await expect(card.locator(".voc-overlay-scroll")).not.toHaveAttribute("data-overflow-bottom", "");
   const actions = ".voc-overlay-actions .voc-button:last-child";
   const short = (await boxes(card, [actions]))[actions];
-  await act(page, card.locator(".voc-back"));
+  await act(page, card.locator('.voc-overlay [data-action="back"]'));
   await act(page, card.locator('[role=tab][data-view="queue"]'));
   await act(page, card.locator(".voc-primary-action"));
   // The everyday fields fit the frame; the folded options make the page long.
@@ -82,7 +82,7 @@ test("a page closed returns the view where it was; another tab starts at the top
   expect(left).toBeGreaterThan(0);
   await act(page, row);
   await expect(card.locator(".voc-root")).toHaveAttribute("data-state", "overlay");
-  await act(page, card.locator(".voc-back"));
+  await act(page, card.locator('.voc-overlay [data-action="back"]'));
   expect(await scrollTop(card, ".voc-body")).toBe(left);
   await act(page, card.locator('[role=tab][data-view="rooms"]'));
   expect(await scrollTop(card, ".voc-body")).toBe(0);

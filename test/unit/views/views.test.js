@@ -300,7 +300,8 @@ test("every page renders inside the shared frame, every dialog in the dialog fra
     assert.equal(frame.getAttribute("data-key"), `overlay:${overlay.key}`, overlay.key);
     assert.deepEqual([frame.getAttribute("role"), frame.getAttribute("aria-labelledby")], ["region", "voc-overlay-title"], overlay.key);
     assert.equal(host.querySelector("#voc-overlay-title").getAttribute("tabindex"), "-1");
-    assert.ok(host.querySelector('[data-action="back"]'), `${overlay.key} can be left`);
+    // LAY-19: a page leads back exactly once, from its footer where that has a way back.
+    assert.equal(host.querySelectorAll('[data-action="back"]').length, 1, `${overlay.key} leads back exactly once`);
     const parts = [...frame.querySelector(":scope > fieldset.voc-layer").children].map((child) => child.className);
     assert.deepEqual(parts, ["voc-overlay-head", "voc-overlay-scroll", "voc-overlay-actions"], `${overlay.key}: heading, one region that scrolls, the footer`);
     assert.equal(frame.querySelector(".voc-layer").disabled, false, overlay.key);
