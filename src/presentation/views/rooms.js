@@ -5,7 +5,7 @@
 import { roomAffordances } from "../../domain/affordances.js";
 import { DUE_OPERATIONS } from "../../domain/rooms.js";
 import { entityName, list, robotsOf, roomsOf } from "../common/lookups.js";
-import { dueReasonText, duration, moment, qualityLabel, releaseKindLabel, t } from "../common/texts.js";
+import { dueReasonText, duration, moment, qualityLabel, remainingText, t } from "../common/texts.js";
 
 const DUE_ICONS = Object.freeze({ vacuum: "mdi:robot-vacuum", mop: "mdi:water-outline" });
 
@@ -27,7 +27,8 @@ function dueLine(room, operation, { texts, model, timeFormat }) {
     status,
     reason: report.state === "unknown" ? dueReasonText(texts, report.reason) : null,
     share: share === null ? null : Math.max(0, Math.min(1, share)),
-    last: stamp ? t(texts, "rooms.last", { when: moment(texts, stamp.completedAt, timeFormat, model.nowMs) }) : t(texts, "rooms.lastNever"),
+    // Only a recorded cleaning has a line; "never cleaned" is the status's to say.
+    last: stamp ? t(texts, "rooms.last", { when: moment(texts, stamp.completedAt, timeFormat, model.nowMs) }) : null,
     quality: stamp?.quality ? qualityLabel(texts, stamp.quality) : null,
     qualityKey: stamp?.quality ?? null,
   };
@@ -37,25 +38,28 @@ function releaseState(room, texts, model) {
   const release = room.release;
   if (!room.enabled) return { tone: "muted", icon: "mdi:eye-off-outline", label: t(texts, "rooms.excluded") };
   if (room.areaMissing) return { tone: "attention", icon: "mdi:map-marker-alert-outline", label: t(texts, "rooms.areaMissing") };
-  if (room.released) {
-    const until = release?.kind === "timed" && release.expiresAt !== null ? t(texts, "rooms.releasedUntil", { when: moment(texts, release.expiresAt, "relative", model.nowMs) }) : release ? releaseKindLabel(texts, release.kind) : null;
-    return { tone: "ready", icon: "mdi:lock-open-variant-outline", label: until ? t(texts, "rooms.releasedKind", { kind: until }) : t(texts, "rooms.released") };
-  }
+  // A release says what is left of it (UI-07); when it ends is the integration's to decide.
+  if (room.released) return { tone: "ready", icon: "mdi:lock-open-variant-outline", label: releasedLabel(release, texts, model) };
   if (release?.reservedJobId && !release.consumed) return { tone: "running", icon: "mdi:lock-clock", label: t(texts, "rooms.reserved") };
   if (release?.consumed) return { tone: "neutral", icon: "mdi:lock-outline", label: t(texts, "rooms.consumed") };
   return { tone: "neutral", icon: "mdi:lock-outline", label: t(texts, "rooms.locked") };
+}
+
+function releasedLabel(release, texts, model) {
+  if (release?.kind === "timed" && release.expiresAt !== null) return t(texts, "rooms.releasedLeft", { time: remainingText(texts, (release.expiresAt - model.nowMs) / 1000) });
+  if (release?.kind === "once") return t(texts, "rooms.releasedOnce");
+  if (release?.kind === "queue_run") return t(texts, "rooms.releasedRun");
+  return t(texts, "rooms.released");
 }
 
 // The current state beside the accepted ones; whether the condition holds (including its maximum
 // age) is the integration's verdict, reported per job as readiness.
 function condition(requirement, model, texts) {
   const reading = model.entityReadings?.[requirement.entityId] ?? null;
-  return {
-    key: requirement.entityId,
-    name: entityName(requirement.entityId, model),
-    state: reading?.available ? reading.state : t(texts, "value.unknown"),
-    allowed: requirement.acceptedStates.join(", "),
-  };
+  const name = entityName(requirement.entityId, model);
+  const state = reading?.available ? reading.state : t(texts, "value.unknown");
+  const allowed = requirement.acceptedStates.join(", ");
+  return { key: requirement.entityId, name, state, allowed, text: t(texts, "rooms.condition", { entity: name, state, allowed }) };
 }
 
 const SORTERS = Object.freeze({
@@ -90,7 +94,8 @@ export function buildRoomsView({ model, texts, context, options = {}, ui = {}, t
         enabled: room.enabled,
         release: releaseState(room, texts, model),
         due: DUE_OPERATIONS.map((operation) => dueLine(room, operation, { texts, model, timeFormat })),
-        robots: reaching.map((robot) => robot.name),
+        // With one robot, naming it says nothing (UI-08).
+        robots: robots.length > 1 ? reaching.map((robot) => robot.name) : [],
         unreachable: room.enabled && reaching.length === 0,
         conditions: room.requirements.map((requirement) => condition(requirement, model, texts)),
         actions: roomAffordances(room, context),

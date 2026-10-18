@@ -59,6 +59,13 @@ export function duration(texts, milliseconds) {
   return typeof texts?.formatDuration === "function" ? texts.formatDuration(Math.max(0, milliseconds)) : String(milliseconds);
 }
 
+// What is left of a span, to the minute; under a minute, or past while the integration still
+// reports it, "< 1 min" and never "0 min" (UI-07).
+export function remainingText(texts, value) {
+  if (!Number.isFinite(value) || value < 60) return t(texts, "time.lessThanMinute");
+  return duration(texts, Math.floor(value / 60) * 60000);
+}
+
 export function seconds(texts, value) {
   return value === null || value === undefined ? "—" : duration(texts, value * 1000);
 }

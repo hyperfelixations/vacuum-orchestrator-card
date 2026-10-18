@@ -179,11 +179,23 @@ test("rooms show due verdicts, release, reaching robots and conditions as report
   assert.equal(byName.Studio.due[0].state, "due");
   assert.equal(byName.Studio.due[0].status, texts.t("rooms.due.never"));
   assert.equal(byName.Studio.due[0].share, 1);
-  assert.deepEqual(byName["Dining Room"].robots, ["Rocky"]);
+  assert.deepEqual(byName["Dining Room"].robots, [], "with one robot, naming it says nothing");
   assert.equal(byName.Conservatory.release.label, texts.t("rooms.locked"));
   assert.equal(byName.Conservatory.unreachable, true, "the conservatory lies on the other map");
-  assert.deepEqual(byName.Conservatory.conditions.map((item) => [item.name, item.state, item.allowed]), [["Conservatory Door", "off", "on"]]);
+  assert.deepEqual(byName.Conservatory.conditions.map((item) => item.text), [texts.t("rooms.condition", { entity: "Conservatory Door", state: "off", allowed: "on" })]);
+  assert.match(byName.Conservatory.conditions[0].text, / – required: on$/, "worded as on the detail page");
   assert.equal(byName.Conservatory.due[0].state, "disabled");
+  // UI-07, REL-05: a release says what is left of it; only a recorded cleaning has a line of its own.
+  assert.deepEqual([byName["Dining Room"].release.label, byName.Library.release.label], [texts.t("rooms.released"), texts.t("rooms.releasedOnce")]);
+  assert.match(byName.Studio.release.label, /^Released · \d+ h( \d+ min)? left$/);
+  assert.deepEqual([byName.Studio.due[0].last, byName.Conservatory.due[0].last, byName.Conservatory.due[1].last], [null, null, null], "nothing recorded, nothing to say");
+  assert.match(byName["Dining Room"].due[0].last, /^Last /);
+});
+
+test("what is left of a release is said in hours and minutes, never as nothing", async () => {
+  const { remainingText } = await import("../../../../src/presentation/common/texts.js");
+  const { texts } = await busy();
+  assert.deepEqual([5399, 1799, 3600, 59, 0, -3].map((seconds) => remainingText(texts, seconds)), ["1 h 29 min", "29 min", "1 h", "< 1 min", "< 1 min", "< 1 min"]);
 });
 
 test("room sorting and excluded rooms follow the view options", async () => {

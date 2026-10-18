@@ -25,7 +25,8 @@ test("rooms show the integration's due verdicts, release state and conditions", 
   assert.deepEqual(card.all(".voc-room-name").map((node) => node.textContent.trim()), ["Dining Room", "Studio", "Library", "Conservatory"]);
   assert.match(room(card, "Dining Room").querySelector('[data-key="due:vacuum"]').textContent, /Due in 2 days/);
   assert.match(room(card, "Studio").querySelector('[data-key="due:vacuum"]').textContent, /Never cleaned/);
-  assert.match(room(card, "Library").textContent, /For one job/);
+  assert.match(room(card, "Library").textContent, /Released · one job/);
+  assert.match(room(card, "Studio").textContent, /Released · \d+ h( \d+ min)? left/);
   assert.match(room(card, "Conservatory").textContent, /No robot reaches this room/);
   assert.match(room(card, "Conservatory").textContent, /Conservatory Door/);
   card.unmount();

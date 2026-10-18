@@ -9,7 +9,8 @@ import { ROOMS_CSS } from "./styles/rooms.js";
 function dueRow(line) {
   const bar = line.share === null ? "" : `<span class="voc-due-bar" aria-hidden="true"><span style="width:${Math.round(line.share * 100)}%"></span></span>`;
   const quality = line.quality ? `<span class="voc-due-quality" data-quality="${e(line.qualityKey)}">${e(line.quality)}</span>` : "";
-  return `<div class="voc-due" data-key="due:${e(line.key)}" data-due="${e(line.state)}"><span class="voc-due-label">${icon(line.icon)}${e(line.label)}</span><span class="voc-due-status">${e(line.status)}</span>${bar}<span class="voc-due-last">${e(line.last)}${quality ? " · " : ""}${quality}${line.reason ? ` · ${e(line.reason)}` : ""}</span></div>`;
+  const notes = [line.last ? e(line.last) : "", quality, line.reason ? e(line.reason) : ""].filter(Boolean).join(" · ");
+  return `<div class="voc-due" data-key="due:${e(line.key)}" data-due="${e(line.state)}"><span class="voc-due-label">${icon(line.icon)}${e(line.label)}</span><span class="voc-due-status">${e(line.status)}</span>${bar}${notes ? `<span class="voc-due-last">${notes}</span>` : ""}</div>`;
 }
 
 // The release control keeps the trailing place and switches with the room's state: a locked room
@@ -32,7 +33,7 @@ function roomCard(context, room) {
     : room.robots.length
       ? `<span class="voc-room-meta-item">${icon("mdi:robot-vacuum")}${e(room.robots.join(", "))}</span>`
       : "";
-  const conditions = room.conditions.map((entry) => `<span class="voc-room-meta-item" data-key="condition:${e(entry.key)}">${icon("mdi:door")}${e(context.t("rooms.condition", { entity: entry.name, state: entry.state, allowed: entry.allowed }))}</span>`).join("");
+  const conditions = room.conditions.map((entry) => `<span class="voc-room-meta-item" data-key="condition:${e(entry.key)}">${icon("mdi:door")}${e(entry.text)}</span>`).join("");
   const settings = button({ action: "edit-room", args: { roomId: room.roomId }, label: context.t("rooms.settings", { room: room.name }), iconName: "mdi:cog-outline", variant: "icon", decision: room.actions.edit, reasonText: context.reason(room.actions.edit) });
   return `<article class="voc-room" data-key="room:${e(room.roomId)}"${room.enabled ? "" : ' data-excluded="true"'}><header class="voc-room-head"><span class="voc-room-icon" aria-hidden="true">${icon(room.icon)}</span><h3 class="voc-room-name">${e(room.name)}</h3>${settings}</header><div class="voc-room-status">${pill(room.release.label, room.release.tone, { iconName: room.release.icon })}</div><div class="voc-room-due">${room.due.map(dueRow).join("")}</div>${robots || conditions ? `<div class="voc-room-meta">${robots}${conditions}</div>` : ""}<div class="voc-room-actions">${actions}</div></article>`;
 }
