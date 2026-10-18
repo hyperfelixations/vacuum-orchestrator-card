@@ -9,7 +9,7 @@ import { entityName, list, robotsOf, slotData } from "../common/lookups.js";
 import { adapterLabel, operationLabel, settingLabel, t } from "../common/texts.js";
 import { entityField, field, pageErrors } from "./editor-fields.js";
 
-export function buildRobotAdd({ model, texts, context }) {
+export function buildRobotAdd({ model, texts, context, ui = {} }) {
   const robots = robotsOf(model);
   const status = model.slots?.candidates?.status;
   const decision = candidateAffordance(context);
@@ -29,6 +29,10 @@ export function buildRobotAdd({ model, texts, context }) {
         // UI-04: by its integration, never by its entity ID.
         detail: [adapterLabel(texts, candidate.adapter), candidate.protocol ? t(texts, "robot.protocol.roborockV1") : null].filter(Boolean).join(" · "),
         roles: Object.keys(candidate.roles).map((role) => t(texts, `role.${role}`)),
+        // The entities found are counted and listed only on request (V6).
+        rolesKey: `candidate:${candidate.registryId}:roles`,
+        rolesOpen: list(ui?.expanded).includes(`candidate:${candidate.registryId}:roles`),
+        rolesLabel: t(texts, "robotAdd.roles", { count: Object.keys(candidate.roles).length }),
         ambiguous: candidate.ambiguousRoles.map((role) => t(texts, `role.${role}`)),
         configured,
         decision: configured ? { state: "hidden", reason: null } : decision,

@@ -17,7 +17,7 @@ function section(context, key, title, open, content) {
 export const robotAddOverlay = Object.freeze({
   key: "robot-add",
   scopes: () => [{ name: "candidates" }],
-  build: ({ model, texts, context }) => buildRobotAdd({ model, texts, context }),
+  build: ({ model, texts, context, ui }) => buildRobotAdd({ model, texts, context, ui }),
   render(context, vm) {
     let content;
     if (vm.error) content = errorState(context, vm.error);
@@ -26,7 +26,9 @@ export const robotAddOverlay = Object.freeze({
     else {
       content = `<div class="voc-candidates">${vm.candidates
         .map((candidate) => {
-          const roles = candidate.roles.length ? `<div class="voc-robot-chips">${candidate.roles.map((role) => chip(role)).join("")}</div>` : "";
+          const roles = candidate.roles.length
+            ? `<section class="voc-robot-capabilities" data-key="roles"><button type="button" class="voc-disclosure" data-action="toggle" data-args="${e(JSON.stringify({ key: candidate.rolesKey }))}" aria-expanded="${candidate.rolesOpen}">${icon(candidate.rolesOpen ? "mdi:chevron-up" : "mdi:chevron-down")}<span>${e(candidate.rolesLabel)}</span></button>${candidate.rolesOpen ? `<div class="voc-robot-chips">${candidate.roles.map((role) => chip(role)).join("")}</div>` : ""}</section>`
+            : "";
           const ambiguous = candidate.ambiguous.length ? `<div class="voc-robot-note" data-tone="attention">${icon("mdi:help-circle-outline")}<span>${e(context.t("robotAdd.ambiguous", { roles: candidate.ambiguous.join(", ") }))}</span></div>` : "";
           const action = candidate.configured
             ? `<span class="voc-pill voc-pill--muted">${e(context.t("robotAdd.configured"))}</span>`

@@ -138,6 +138,19 @@ test("the card's words follow the glossary", async () => {
   assert.equal(de["action.addToQueue"], "Einreihen", "a verb, not a place to go");
 });
 
+// V6: a result not fully observed says so in the words of its quality mark, without the jargon
+// "derived".
+test("an unobserved result is said in plain words", async () => {
+  const { en } = await import("../../../src/i18n/languages/en.js");
+  const { de } = await import("../../../src/i18n/languages/de.js");
+  assert.deepEqual([en["result.completed.derived"], de["result.completed.derived"]], ["Cleaned, not fully observed.", "Gereinigt, nicht vollständig beobachtet."]);
+  assert.deepEqual([en["completion.note.end_not_observed"], de["completion.note.end_not_observed"]], ["The end of the run was not observed.", "Das Ende des Laufs wurde nicht beobachtet."]);
+  for (const language of [en, de]) {
+    const words = Object.values(language).filter((value) => typeof value === "string").join(" | ");
+    assert.doesNotMatch(words, /derived|abgeleitet/i);
+  }
+});
+
 // V6: dialog titles share one form, and a cancel says what will happen, not what is.
 test("dialogs ask in one form and say what will happen", async () => {
   const { en } = await import("../../../src/i18n/languages/en.js");

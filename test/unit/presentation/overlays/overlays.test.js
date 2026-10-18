@@ -401,7 +401,12 @@ test("robot discovery marks configured vacuums; the profile explains each role",
   const { buildRobotAdd, buildRobotEditor } = await overlays("robots");
   const { createRobotDraft, updateRobotDraft } = await import("../../../../src/domain/robot-draft.js");
   const built = await modelFor("robot_choice", { from: "Either robot can start the dining room", needsEntityCatalog: true });
-  const add = buildRobotAdd(built);
+  const add = buildRobotAdd({ ...built, ui: {} });
+  // V6: the entities found for a vacuum are counted and listed only on request.
+  const [first] = add.candidates;
+  assert.deepEqual([first.rolesOpen, first.rolesLabel], [false, built.texts.t("robotAdd.roles", { count: first.roles.length })]);
+  assert.ok(first.roles.length > 1);
+  assert.equal(buildRobotAdd({ ...built, ui: { expanded: [first.rolesKey] } }).candidates[0].rolesOpen, true);
   assert.deepEqual(add.candidates.map((candidate) => [candidate.entityId, candidate.configured]), [["vacuum.rocky", true], ["vacuum.dusty", true]]);
   // UI-04: a vacuum is shown by its name and integration, never by its entity ID.
   assert.ok(add.candidates.every((candidate) => candidate.detail && !candidate.detail.includes(candidate.entityId)));
