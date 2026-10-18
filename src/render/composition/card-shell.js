@@ -77,6 +77,8 @@ function beneath(html, covered) {
 export function renderCard(context, vm, renderBody) {
   const header = vm.header;
   const rootAttributes = [
+    // LAY-08: the card's language, for hyphenation and screen readers.
+    attr("lang", vm.language ?? null),
     `data-state="${e(vm.body.kind)}"`,
     `data-tone="${e(vm.tone)}"`,
     attr("data-parts", header.parts),

@@ -498,6 +498,9 @@ test.describe("settings", () => {
     await page.emulateMedia({ colorScheme: "dark" });
     const card = await mountCard(page, { ...BUSY, config: { ...BASE, language: "de", start_view: "settings" } });
     await expect(card.locator('[data-key="queue"]')).toContainText("Nachlaufzeit");
+    // LAY-08: long German words break at syllables.
+    await expect(card.locator(".voc-facts dt").first()).toHaveCSS("hyphens", "auto");
+    await expect(card.locator(".voc-facts dd").first()).toHaveCSS("hyphens", "auto");
     await shot(page, "settings-narrow-dark.png", NARROW);
   });
 });

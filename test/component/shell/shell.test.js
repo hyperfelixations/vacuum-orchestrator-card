@@ -16,7 +16,12 @@ test("the card speaks the configured language", async () => {
   assert.equal(card.text(".voc-title"), "Reinigung");
   assert.equal(card.text(".voc-status-pill"), "Reinigt");
   assert.deepEqual(card.all('[role="tab"]').map((tab) => tab.getAttribute("title")), ["Warteschlange", "Räume", "Roboter", "Vorlagen", "Verlauf", "Einstellungen"]);
+  // LAY-08: the card names its language, for hyphenation and for screen readers.
+  assert.equal(card.root.querySelector(".voc-root").getAttribute("lang"), "de");
   card.unmount();
+  const english = await mountCard(BUSY);
+  assert.equal(english.root.querySelector(".voc-root").getAttribute("lang"), "en");
+  english.unmount();
 });
 
 test("header options set title, subtitle, icon and the accent line position", async () => {

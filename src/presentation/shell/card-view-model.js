@@ -60,6 +60,7 @@ export function buildCardViewModel({ model = {}, config = {}, texts, ui = {}, ta
 
   return {
     status,
+    language: texts.language,
     tone: tone.key,
     toneStyle: tone.style,
     accentLine: config.show?.accent_line !== false,
