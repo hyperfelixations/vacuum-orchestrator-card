@@ -224,13 +224,23 @@ test("a job is saved as a template under a name; the defaults page offers every 
   const drafted = buildSaveTemplate({ ...built, overlay: { editorId: 1, name: "Library" } });
   assert.deepEqual([drafted.job, drafted.lead, drafted.save.operation ?? drafted.save.state], [null, built.texts.t("saveTemplate.leadDraft"), "enabled"], "a draft is saved as the editor shows it");
   const defaults = buildJobDefaults({ ...built, overlay: { mode: "mop", vacuumPower: "standard", mopIntensity: "medium", mopRoute: "deep", passes: 1, settingsPolicy: "strict" } });
-  const fields = Object.fromEntries(defaults.fields.map((entry) => [entry.key, entry]));
-  assert.deepEqual(Object.keys(fields), ["overlay:mode", "overlay:vacuumPower", "overlay:mopIntensity", "overlay:mopRoute", "overlay:passes", "overlay:settingsPolicy"]);
+  // In boxes like the editor: what every job takes, what vacuuming and mopping take, then the
+  // rarely set rule, open while it is strict.
+  assert.deepEqual(defaults.groups.map((group) => [group.key, group.title, group.fields.map((entry) => entry.key), group.collapsible === true, group.open === true]), [
+    ["job", "Every job", ["overlay:mode", "overlay:passes"], false, false],
+    ["vacuum", "When vacuuming", ["overlay:vacuumPower"], false, false],
+    ["mop", "When mopping", ["overlay:mopIntensity", "overlay:mopRoute"], false, false],
+    ["more", "More options", ["overlay:settingsPolicy"], true, true],
+  ]);
+  const fields = Object.fromEntries(defaults.groups.flatMap((group) => group.fields).map((entry) => [entry.key, entry]));
+  assert.equal(fields["overlay:passes"].hint, built.texts.t("field.passesHint"), "the same hint as in the editor");
   assert.deepEqual(fields["overlay:vacuumPower"].options.map((option) => option.label), ["Quiet", "Standard", "High", "Max", "Max+"]);
   assert.equal(fields["overlay:mopRoute"].value, "deep");
   assert.deepEqual([defaults.invalid, defaults.save.state, defaults.pending], [null, "enabled", false]);
   const tooMany = buildJobDefaults({ ...built, overlay: { mode: "vacuum", passes: 4, errors: { "overlay:passes": "out_of_range" } } });
-  assert.equal(tooMany.fields.find((entry) => entry.key === "overlay:passes").error, said(built, "out_of_range"));
+  assert.equal(tooMany.groups[0].fields.find((entry) => entry.key === "overlay:passes").error, said(built, "out_of_range"));
+  assert.equal(tooMany.groups.at(-1).open, false, "the rule stays folded while it is the usual one");
+  assert.equal(buildJobDefaults({ ...built, overlay: { mode: "vacuum", passes: 1, settingsPolicy: "best_effort", moreOpen: true } }).groups.at(-1).open, true);
 });
 
 test("a running job shows its progress and no waiting reason; a job the integration no longer has is a missing page", async () => {

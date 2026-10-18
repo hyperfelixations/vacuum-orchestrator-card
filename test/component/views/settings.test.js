@@ -48,6 +48,10 @@ test("the job defaults are changed on their own page and shown again from the in
   assert.equal(card.text('[data-key="built-in"]'), "Built-in defaults");
   await card.click('[data-action="open-job-defaults"]');
   assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:job-defaults");
+  assert.deepEqual(card.all(".voc-form-group").map((node) => node.dataset.key), ["group:job", "group:vacuum", "group:mop", "group:more"]);
+  assert.equal(card.root.querySelector('[data-key="field:overlay:settingsPolicy"]'), null, "the usual rule stays folded");
+  await card.click('[data-key="group:more"] [data-action="set-overlay"]');
+  assert.ok(card.root.querySelector('[data-key="field:overlay:settingsPolicy"]'));
   await card.click('[data-key="field:overlay:mode"] [data-value="mop"]');
   await card.click('[data-key="field:overlay:mopRoute"] [data-value="deep_plus"]');
   await card.click('[data-action="save-job-defaults"]');

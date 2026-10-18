@@ -4,6 +4,7 @@ import { buildJobDefaults, buildSaveTemplate } from "../../presentation/overlays
 import { button } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
 import { dialog } from "./dialog.js";
+import { formGroup } from "./job-editor.js";
 import { frame } from "./frame.js";
 import { FORMS_CSS } from "../styles/forms.js";
 
@@ -27,7 +28,7 @@ export const jobDefaultsOverlay = Object.freeze({
   key: "job-defaults",
   build: ({ model, texts, context, overlay }) => buildJobDefaults({ model, texts, context, overlay }),
   render(context, vm) {
-    const content = `<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`;
+    const content = `<div class="voc-form">${vm.groups.map((entry) => formGroup(context, entry)).join("")}</div>`;
     return frame(context, { key: "job-defaults", title: vm.title, lead: vm.lead, invalid: vm.invalid, content, actions: actions(context, vm, "save-job-defaults") });
   },
   css: FORMS_CSS,

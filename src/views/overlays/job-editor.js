@@ -8,7 +8,8 @@ import { footerLead } from "../parts.js";
 import { frame } from "./frame.js";
 import { FORMS_CSS } from "../styles/forms.js";
 
-function group(context, entry) {
+// A box of fields under its heading; a collapsible one opens and closes with `moreOpen`.
+export function formGroup(context, entry) {
   const fields = entry.fields.map((field) => renderField(context, field)).join("");
   if (!entry.collapsible) return `<section class="voc-block voc-form-group" data-key="group:${e(entry.key)}"><h3 class="voc-block-title">${e(entry.title)}</h3>${fields}</section>`;
   const toggle = `<button type="button" class="voc-disclosure" data-action="set-overlay" data-args="${e(JSON.stringify({ moreOpen: !entry.open }))}" aria-expanded="${entry.open}">${icon(entry.open ? "mdi:chevron-up" : "mdi:chevron-down")}<span>${e(entry.title)}</span></button>`;
@@ -28,7 +29,7 @@ export function renderJobEditor(context, vm) {
   const actions = `${lead}${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${startNow}${save}`;
   // A lost hold heads the page with what can still be done (JOB-20, JOB-21).
   const hold = vm.hold ? `<div class="voc-notice voc-notice--warning" role="alert" data-key="hold">${icon("mdi:lock-alert-outline")}<span class="voc-notice-text">${e(vm.hold.text)}</span>${button({ action: vm.hold.action, label: vm.hold.label, variant: "text" })}</div>` : "";
-  return frame(context, { key: "job-editor", title: vm.title, invalid: vm.invalid, content: `${hold}<form class="voc-form" novalidate>${vm.groups.map((entry) => group(context, entry)).join("")}</form>`, actions });
+  return frame(context, { key: "job-editor", title: vm.title, invalid: vm.invalid, content: `${hold}<form class="voc-form" novalidate>${vm.groups.map((entry) => formGroup(context, entry)).join("")}</form>`, actions });
 }
 
 export const jobEditorOverlay = Object.freeze({

@@ -3,7 +3,7 @@
 // See internal dev doc §8 "Vorgaben" and "Auftragsdetail".
 
 import { CREATE_TARGET, QUEUE_TARGET, decide, jobTarget } from "../../domain/affordances.js";
-import { CLEANING_MODES, PASS_MAX, PASS_MIN, SETTING_FIELDS, SETTING_LADDERS, SETTINGS_POLICIES } from "../../domain/job-schema.js";
+import { CLEANING_MODES, PASS_MAX, PASS_MIN, SETTING_LADDERS, SETTINGS_POLICIES } from "../../domain/job-schema.js";
 import { findJob, list, roomIndex, jobTitle } from "../common/lookups.js";
 import { modeLabel, policyLabel, settingLabel, t } from "../common/texts.js";
 import { MODE_ICONS } from "../views/job-row.js";
@@ -30,19 +30,30 @@ export function buildSaveTemplate({ model, texts, context, overlay }) {
   };
 }
 
-// Every setting is shown whatever the mode: a default serves any mode that uses it.
+// Every setting is shown whatever the mode: a default serves any mode that uses it. The boxes
+// follow the editor: what every job takes, what vacuuming and mopping take, then the rarely set
+// rule, folded like in the editor while it is the usual one.
 export function buildJobDefaults({ model, texts, context, overlay }) {
   const { error, invalid } = pageErrors(texts, overlay);
   const segmented = (name, labelKey, options) => field(texts, { key: `overlay:${name}`, labelKey, control: "segmented", value: overlay[name], options, error: error(`overlay:${name}`) });
+  const ladder = (name) => segmented(name, `field.${name}`, SETTING_LADDERS[name].map((rung) => ({ value: rung, label: settingLabel(texts, name, rung) })));
+  const policy = field(texts, { key: "overlay:settingsPolicy", labelKey: "field.settingsPolicy", control: "segmented", value: overlay.settingsPolicy, options: SETTINGS_POLICIES.map((value) => ({ value, label: policyLabel(texts, value) })), hintKey: `field.settingsPolicyHint.${overlay.settingsPolicy === "strict" ? "strict" : "bestEffort"}`, error: error("overlay:settingsPolicy") });
   return {
     key: "job-defaults",
     title: t(texts, "jobDefaults.title"),
     lead: t(texts, "jobDefaults.lead"),
-    fields: [
-      segmented("mode", "field.mode", CLEANING_MODES.map((mode) => ({ value: mode, label: modeLabel(texts, mode), icon: MODE_ICONS[mode] }))),
-      ...SETTING_FIELDS.map((name) => segmented(name, `field.${name}`, SETTING_LADDERS[name].map((rung) => ({ value: rung, label: settingLabel(texts, name, rung) })))),
-      field(texts, { key: "overlay:passes", labelKey: "field.passes", control: "stepper", value: overlay.passes, min: PASS_MIN, max: PASS_MAX, error: error("overlay:passes") }),
-      field(texts, { key: "overlay:settingsPolicy", labelKey: "field.settingsPolicy", control: "segmented", value: overlay.settingsPolicy, options: SETTINGS_POLICIES.map((policy) => ({ value: policy, label: policyLabel(texts, policy) })), hintKey: `field.settingsPolicyHint.${overlay.settingsPolicy === "strict" ? "strict" : "bestEffort"}`, error: error("overlay:settingsPolicy") }),
+    groups: [
+      {
+        key: "job",
+        title: t(texts, "jobDefaults.group.job"),
+        fields: [
+          segmented("mode", "field.mode", CLEANING_MODES.map((mode) => ({ value: mode, label: modeLabel(texts, mode), icon: MODE_ICONS[mode] }))),
+          field(texts, { key: "overlay:passes", labelKey: "field.passes", control: "stepper", value: overlay.passes, min: PASS_MIN, max: PASS_MAX, hintKey: "field.passesHint", error: error("overlay:passes") }),
+        ],
+      },
+      { key: "vacuum", title: t(texts, "jobDefaults.group.vacuum"), fields: [ladder("vacuumPower")] },
+      { key: "mop", title: t(texts, "jobDefaults.group.mop"), fields: [ladder("mopIntensity"), ladder("mopRoute")] },
+      { key: "more", title: t(texts, "editor.group.more"), fields: [policy], collapsible: true, open: overlay.moreOpen === true || overlay.settingsPolicy === "strict" || Boolean(policy.error) },
     ],
     invalid,
     save: decide(context, { operation: "configure_job_defaults", target: QUEUE_TARGET }),

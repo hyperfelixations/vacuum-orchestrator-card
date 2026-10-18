@@ -51,7 +51,7 @@ test("content lines up with the header and the scrollbar sits at the card's edge
 test("a page's actions stand at one place, short or long, and a hairline does not move them", async ({ page }) => {
   const card = await mountCard(page, { ...BUSY, layout: "grid" });
   await act(page, card.locator('[role=tab][data-view="settings"]'));
-  await act(page, card.locator('[data-action="open-job-defaults"]'));
+  await act(page, card.locator('[data-action="open-setup"]'));
   await expect(card.locator(".voc-overlay-scroll")).not.toHaveAttribute("data-overflow-bottom", "");
   const actions = ".voc-overlay-actions .voc-button:last-child";
   const short = (await boxes(card, [actions]))[actions];
