@@ -21,8 +21,11 @@ export function automaticSubtitle(model, status, texts) {
     case "attention":
       return attentionSentence(model, texts);
     case "cleaning": {
+      // UI-03: the pill says the robot cleans; the subtitle names the job and the robot running it,
+      // and the state only where it is not plain cleaning (starting, cancelling).
       const job = list(slotData(model, "openJobs")?.jobs).find((entry) => entry.state !== "needs_attention");
-      return t(texts, "subtitle.activeJob", { job: jobTitle(job, roomIndex(model), model), state: jobStateLabel(texts, job?.state) });
+      const robot = job?.state === "running" && job.progress?.robotId ? robotName(job.progress.robotId, model) : "";
+      return t(texts, "subtitle.activeJob", { job: jobTitle(job, roomIndex(model), model), detail: robot || jobStateLabel(texts, job?.state) });
     }
     case "running":
       if (queue?.run?.phase === "standby" && queue.run.endsAt !== null) return t(texts, "subtitle.runEnding", { when: relative(texts, queue.run.endsAt, model.nowMs) });

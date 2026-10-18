@@ -78,7 +78,8 @@ test("controls take an accent from the tone that is never the error colour", asy
 test("the automatic subtitle names what the card is doing", async () => {
   const { automaticSubtitle } = await import("../../../../src/presentation/shell/header.js");
   const busy = await at(BUSY);
-  assert.equal(automaticSubtitle(busy.model, "cleaning", busy.texts), busy.texts.t("subtitle.activeJob", { job: "Studio", state: busy.texts.t("job.state.running") }));
+  // UI-03: the pill says "Cleaning"; the subtitle names the job and its robot instead.
+  assert.equal(automaticSubtitle(busy.model, "cleaning", busy.texts), busy.texts.t("subtitle.activeJob", { job: "Studio", detail: "Rocky" }));
   const recovery = await at(RECOVERY);
   assert.equal(automaticSubtitle(recovery.model, "attention", recovery.texts), recovery.texts.t("subtitle.recoveryOne", { robot: "Rocky" }));
   const station = await at(STATION);

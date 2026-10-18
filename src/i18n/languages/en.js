@@ -30,7 +30,7 @@ export const en = {
   "subtitle.recoveryMany": (v) => `${v.count} robots need recovery`,
   "subtitle.attentionJobs": (v) => plural(v.count, "1 job needs attention", `${v.count} jobs need attention`),
   "subtitle.attention": "Something needs attention",
-  "subtitle.activeJob": (v) => `${v.job} · ${v.state}`,
+  "subtitle.activeJob": (v) => `${v.job} · ${v.detail}`,
   "subtitle.runEnding": (v) => `Queue run ends ${v.when}`,
   "subtitle.waitingRunning": (v) => plural(v.count, "1 job waiting · queue running", `${v.count} jobs waiting · queue running`),
   "subtitle.running": "Queue running",
