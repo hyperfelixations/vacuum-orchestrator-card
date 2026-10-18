@@ -42,6 +42,7 @@ test("the entity search filters as you type and ArrowDown enters the matches", a
 
 test("a job built with the pointer reaches the integration", async ({ page }) => {
   const card = await mountCard(page, { recording: "queue_controls", from: "The queue runs again" });
+  const tabsBefore = await card.locator(".voc-tab-row").boundingBox();
   await card.locator(".voc-primary-action").click();
   await card.locator('[data-key="field:mode"] [data-value="mop"]').click();
   const dining = card.locator('[data-key="field:roomIds"] [data-value]', { hasText: "Dining Room" });
@@ -49,6 +50,12 @@ test("a job built with the pointer reaches the integration", async ({ page }) =>
   await dining.click();
   await card.locator('[data-action="save-draft"]').click();
   await expect(card.locator(".voc-notice")).toContainText("added");
+  // LAY-12: the notice floats over the card's foot and moves no control.
+  expect((await card.locator(".voc-tab-row").boundingBox()).y).toBe(tabsBefore.y);
+  const notice = await card.locator(".voc-notice").boundingBox();
+  const frame = await card.locator("ha-card").boundingBox();
+  expect(notice.y + notice.height).toBeLessThanOrEqual(frame.y + frame.height);
+  expect(notice.y).toBeGreaterThan(frame.y + frame.height / 2);
   const [call] = await serviceCalls(page, "create_job");
   expect(call).toMatchObject({ areas: [room], mode: "mop" });
 });

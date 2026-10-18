@@ -165,6 +165,16 @@ test.describe("the queue", () => {
     await shot(page, "queue-menu-narrow-light.png");
   });
 
+  test("a command's notice floats over the foot, medium", async ({ page }) => {
+    const card = await mountCard(page, { recording: "queue_controls", from: "The queue runs again", config: BASE });
+    await act(page, card.locator(".voc-primary-action"));
+    await act(page, card.locator('[data-key="field:mode"] [data-value="mop"]'));
+    await act(page, card.locator('[data-key="field:roomIds"] [data-value]', { hasText: "Dining Room" }));
+    await act(page, card.locator('[data-action="save-draft"]'));
+    await expect(card.locator(".voc-notice")).toContainText("added");
+    await shot(page, "queue-notice-medium-light.png", MEDIUM);
+  });
+
   test("read-only", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, admin: false, config: BASE });
     await expect(card.locator(".voc-subtitle")).toContainText("Read only: changes need an administrator.");
