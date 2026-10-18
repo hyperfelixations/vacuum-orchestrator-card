@@ -368,6 +368,10 @@ test("robot discovery marks configured vacuums; the profile explains each role",
   assert.deepEqual([picking.sections.roles.open, picking.sections.identity.open, picking.sections.timeouts.open], [true, true, false], "a section with an error opens");
   assert.equal(picking.sections.identity.fields.find((entry) => entry.key === "physicalRobotId").error, said(built, "invalid_value"));
   assert.equal(vm.remove.state, "enabled");
+  // UI-18: the areas are offered only once the robot is limited to some; none chosen is said.
+  assert.deepEqual([vm.areaScope.value, vm.areaScope.options.map((option) => option.value), vm.areas], ["follow", ["follow", "only"], null]);
+  const limited = buildRobotEditor({ ...built, overlay: { draft: updateRobotDraft(createRobotDraft(dusty), "areaScope", "only"), open: [] } });
+  assert.deepEqual([limited.areas.key, limited.areas.warning], ["targetAreas", built.texts.t("robotEditor.noAreaChosen")]);
   const cleaning = await busy({}, { needsEntityCatalog: true });
   const rocky = cleaning.model.slots.robots.data.items.find((robot) => robot.name === "Rocky");
   assert.equal(buildRobotEditor({ ...cleaning, overlay: { draft: createRobotDraft(rocky), open: [] } }).remove.reason, "robot_busy");

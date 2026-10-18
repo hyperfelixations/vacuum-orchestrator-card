@@ -103,11 +103,21 @@
 </div>
 </div>
 <div class="voc-overlay-actions">
-<button type="button" class="voc-button voc-button--quiet voc-action-start" data-action="disable-room" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000002&quot;}">
+<span class="voc-action-start voc-actions-lead">
+<span class="voc-actions-buttons">
+<button type="button" class="voc-button voc-button--text" data-action="disable-room" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000002&quot;}">
 <ha-icon icon="mdi:eye-off-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Exclude room</span>
 </button>
+</span>
+<div class="voc-menu-anchor" data-key="menu:room-editor">
+<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;room-editor&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions" title="More actions">
+<ha-icon icon="mdi:dots-horizontal" aria-hidden="true">
+</ha-icon>
+</button>
+</div>
+</span>
 <button type="button" class="voc-button voc-button--quiet" data-action="back">
 <span class="voc-button-label">Cancel</span>
 </button>

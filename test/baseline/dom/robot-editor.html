@@ -92,23 +92,19 @@
 </section>
 <section class="voc-block" data-key="group:areas">
 <h3 class="voc-block-title">Rooms by area</h3>
-<div class="voc-field" data-key="field:targetAreas" data-field-control="chips">
-<div class="voc-field-label" id="voc-field-targetAreas-label">Areas the robot cleans</div>
-<div class="voc-chips" role="listbox" aria-multiselectable="true" aria-labelledby="voc-field-targetAreas-label" aria-describedby="voc-field-targetAreas-hint" data-control="choice">
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="0" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;dining_room&quot;}" data-value="dining_room" data-key="option:dining_room">
-<span>Dining Room</span>
+<div class="voc-field" data-key="field:areaScope" data-field-control="segmented">
+<div class="voc-field-label" id="voc-field-areaScope-label">Areas it cleans</div>
+<div class="voc-segmented" role="radiogroup" aria-labelledby="voc-field-areaScope-label" aria-describedby="voc-field-areaScope-hint" data-control="choice">
+<button type="button" class="voc-option is-selected" role="radio" aria-checked="true" tabindex="0" data-action="set-field" data-args="{&quot;field&quot;:&quot;areaScope&quot;,&quot;value&quot;:&quot;follow&quot;}" data-value="follow" data-key="option:follow">
+<ha-icon icon="mdi:check" aria-hidden="true">
+</ha-icon>
+<span>As assigned in Home Assistant</span>
 </button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;studio&quot;}" data-value="studio" data-key="option:studio">
-<span>Studio</span>
-</button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;library&quot;}" data-value="library" data-key="option:library">
-<span>Library</span>
-</button>
-<button type="button" class="voc-option" role="option" aria-selected="false" tabindex="-1" data-action="toggle-value" data-args="{&quot;field&quot;:&quot;targetAreas&quot;,&quot;value&quot;:&quot;conservatory&quot;}" data-value="conservatory" data-key="option:conservatory">
-<span>Conservatory</span>
+<button type="button" class="voc-option" role="radio" aria-checked="false" tabindex="-1" data-action="set-field" data-args="{&quot;field&quot;:&quot;areaScope&quot;,&quot;value&quot;:&quot;only&quot;}" data-value="only" data-key="option:only">
+<span>Only these areas</span>
 </button>
 </div>
-<div class="voc-field-hint" id="voc-field-targetAreas-hint">For robots addressed by Home Assistant areas. Map segments are assigned in the room settings.</div>
+<div class="voc-field-hint" id="voc-field-areaScope-hint">It cleans every area Home Assistant assigns to it.</div>
 </div>
 </section>
 <section class="voc-block" data-key="section:roles">
@@ -551,11 +547,21 @@
 </div>
 </div>
 <div class="voc-overlay-actions">
-<button type="button" class="voc-button voc-button--danger voc-action-start" data-action="remove-robot" data-args="{&quot;robotId&quot;:&quot;01J00000000000000000000005&quot;}">
+<span class="voc-action-start voc-actions-lead">
+<span class="voc-actions-buttons">
+<button type="button" class="voc-button voc-button--danger" data-action="remove-robot" data-args="{&quot;robotId&quot;:&quot;01J00000000000000000000005&quot;}">
 <ha-icon icon="mdi:delete-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Remove robot</span>
 </button>
+</span>
+<div class="voc-menu-anchor" data-key="menu:robot-editor">
+<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;robot-editor&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions" title="More actions">
+<ha-icon icon="mdi:dots-horizontal" aria-hidden="true">
+</ha-icon>
+</button>
+</div>
+</span>
 <button type="button" class="voc-button voc-button--quiet" data-action="back">
 <span class="voc-button-label">Cancel</span>
 </button>

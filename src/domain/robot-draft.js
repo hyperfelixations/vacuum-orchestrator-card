@@ -34,6 +34,8 @@ export function createRobotDraft(robot, { roleEntities = {} } = {}) {
     fixedMode: isOperation(wire.fixed_mode) ? wire.fixed_mode : null,
     preference: Number.isInteger(wire.preference) ? wire.preference : 0,
     minimumBattery: Number.isInteger(wire.minimum_battery) ? wire.minimum_battery : null,
+    // UI-18: following Home Assistant's area assignments or only some areas, chosen explicitly.
+    areaScope: Array.isArray(wire.target_areas) && wire.target_areas.length ? "only" : "follow",
     targetAreas: Array.isArray(wire.target_areas) ? [...wire.target_areas] : [],
     protocol: wire.protocol ?? null,
     physicalRobotId: wire.physical_robot_id ?? null,
@@ -105,8 +107,8 @@ export function robotDraftToConfiguration(draft) {
   configuration.fixed_mode = draft.fixedMode;
   configuration.preference = Number(draft.preference);
   configuration.minimum_battery = draft.minimumBattery === null || draft.minimumBattery === "" ? null : Number(draft.minimumBattery);
-  // No area means no restriction, which the integration stores as null.
-  configuration.target_areas = draft.targetAreas.length ? [...draft.targetAreas] : null;
+  // Following Home Assistant, or no area chosen, is no restriction: the integration stores null.
+  configuration.target_areas = draft.areaScope === "only" && draft.targetAreas.length ? [...draft.targetAreas] : null;
   configuration.protocol = draft.protocol;
   if (draft.physicalRobotId) configuration.physical_robot_id = String(draft.physicalRobotId).trim();
   else delete configuration.physical_robot_id;

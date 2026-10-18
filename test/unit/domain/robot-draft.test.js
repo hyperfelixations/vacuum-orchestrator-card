@@ -50,7 +50,13 @@ test("edited fields replace their stored values; automatic roles leave the role 
   assert.equal(configuration.start_timeout_seconds, 300);
   assert.equal(configuration.robot_registry_id, robot.configuration.wire.robot_registry_id, "identity fields travel unchanged");
   assert.equal(configuration.target_areas, null, "no area restriction stays none");
-  assert.deepEqual(robotDraftToConfiguration(updateRobotDraft(draft, "targetAreas", ["dining_room"])).target_areas, ["dining_room"]);
+  // UI-18: following Home Assistant's assignments or only some areas is an explicit choice.
+  assert.equal(draft.areaScope, "follow");
+  const only = updateRobotDraft(updateRobotDraft(draft, "areaScope", "only"), "targetAreas", ["dining_room"]);
+  assert.deepEqual(robotDraftToConfiguration(only).target_areas, ["dining_room"]);
+  assert.equal(robotDraftToConfiguration(updateRobotDraft(only, "areaScope", "follow")).target_areas, null, "following keeps no restriction, whatever was picked");
+  assert.equal(robotDraftToConfiguration(updateRobotDraft(only, "targetAreas", [])).target_areas, null, "no area chosen is no restriction, as the integration stores it");
+  assert.equal(createRobotDraft({ ...robot, configuration: { ...robot.configuration, wire: { ...robot.configuration.wire, target_areas: ["studio"] } } }).areaScope, "only");
 });
 
 test("an error of configure_robot lands on the editor field its path names", async () => {

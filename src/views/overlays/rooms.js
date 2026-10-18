@@ -3,6 +3,7 @@
 import { buildRelease, buildRoomCreate, buildRoomEditor } from "../../presentation/overlays/rooms.js";
 import { button, e, icon } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
+import { footerLead } from "../parts.js";
 import { FORMS_CSS } from "../styles/forms.js";
 import { dialog } from "./dialog.js";
 import { block, frame } from "./frame.js";
@@ -56,7 +57,7 @@ function bindingRow(context, row) {
 export const roomEditorOverlay = Object.freeze({
   key: "room-editor",
   needsEntityCatalog: true,
-  build: ({ model, texts, context, overlay }) => buildRoomEditor({ model, texts, context, overlay }),
+  build: ({ model, texts, context, overlay, ui }) => ({ ...buildRoomEditor({ model, texts, context, overlay }), menuOpen: ui?.menu === "room-editor" }),
   render(context, vm) {
     const groups = vm.groups.map((group) => block(group.title, group.fields.map((field) => renderField(context, field)).join(""), { key: `group:${group.key}` })).join("");
     const conditions = block(context.t("room.group.conditions"), `${vm.requirements.map((row) => requirementRow(context, row)).join("")}${renderField(context, vm.requirementSearch)}`, { key: "group:conditions" });
@@ -64,7 +65,8 @@ export const roomEditorOverlay = Object.freeze({
     const detected = vm.detected.length ? `<ul class="voc-reasons">${vm.detected.map((item) => `<li data-key="detected:${e(item.key)}">${icon("mdi:information-outline")}<span>${e(item.text)}</span></li>`).join("")}</ul>` : "";
     const addBinding = vm.robots.map((robot) => button({ action: "add-binding", args: { robotId: robot.robotId }, label: context.t("room.addBinding", { robot: robot.name }), iconName: "mdi:plus", variant: "quiet", key: `add-binding:${robot.robotId}` })).join("");
     const targets = `<section class="voc-block" data-key="group:targets">${toggle}${vm.bindingsOpen ? `<p class="voc-overlay-lead">${e(context.t("room.targetsLead"))}</p>${detected}${vm.bindings.map((row) => bindingRow(context, row)).join("")}<div class="voc-inline-actions">${addBinding}</div>` : ""}</section>`;
-    const disable = vm.disable ? button({ action: "disable-room", args: { roomId: vm.roomId }, label: context.t("room.disable"), iconName: "mdi:eye-off-outline", variant: "quiet", decision: vm.disable, reasonText: context.reason(vm.disable), className: "voc-action-start" }) : "";
+    // On a narrow card excluding sits in a menu, so the footer stays one line (LAY-09).
+    const disable = footerLead(context, { items: [vm.disable ? { action: "disable-room", args: { roomId: vm.roomId }, label: context.t("room.disable"), iconName: "mdi:eye-off-outline", decision: vm.disable, reasonText: context.reason(vm.disable) } : null], key: "room-editor", label: context.t("action.moreActions"), open: vm.menuOpen === true });
     const actions = `${disable}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-room", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
     return frame(context, { key: "room-editor", title: vm.title, invalid: vm.invalid, content: `<div class="voc-form">${groups}${conditions}${targets}</div>`, actions });
   },

@@ -368,6 +368,17 @@ test.describe("robots", () => {
     await shot(page, "robots-return-medium-light.png", MEDIUM);
   });
 
+  // UI-18: the areas a robot cleans are an explicit choice; none chosen is said in words.
+  test("profile editor limited to some areas, narrow, German", async ({ page }) => {
+    const card = await mountCard(page, { ...TWO_ROBOTS_IDLE, config: { ...BASE, language: "de" } });
+    await open(page, card, "robots");
+    await act(page, named(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]'));
+    await act(page, card.locator('[data-key="field:areaScope"] [data-value="only"]'));
+    await expect(card.locator('[data-key="field:targetAreas"] .voc-field-warning')).toBeVisible();
+    await card.locator('[data-key="field:targetAreas"] .voc-field-warning').evaluate((node) => node.scrollIntoView({ block: "center" }));
+    await shot(page, "robot-editor-areas-german-narrow-light.png", NARROW);
+  });
+
   test("profile editor with roles", async ({ page }) => {
     const card = await mountCard(page, { ...TWO_ROBOTS_IDLE, config: BASE });
     await open(page, card, "robots");

@@ -3,7 +3,7 @@
 import { buildRobotAdd, buildRobotEditor } from "../../presentation/overlays/robots.js";
 import { button, chip, e, icon } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
-import { errorState, loadingState } from "../parts.js";
+import { errorState, footerLead, loadingState } from "../parts.js";
 import { FORMS_CSS } from "../styles/forms.js";
 import { block, frame } from "./frame.js";
 
@@ -60,19 +60,20 @@ function optionGroup(context, group, vm) {
 export const robotEditorOverlay = Object.freeze({
   key: "robot-editor",
   needsEntityCatalog: true,
-  build: ({ model, texts, context, overlay }) => buildRobotEditor({ model, texts, context, overlay }),
+  build: ({ model, texts, context, overlay, ui }) => ({ ...buildRobotEditor({ model, texts, context, overlay }), menuOpen: ui?.menu === "robot-editor" }),
   render(context, vm) {
     const s = vm.sections;
     const content = [
       block(context.t("robotEditor.group.general"), vm.general.map((field) => renderField(context, field)).join(""), { key: "group:general" }),
-      block(context.t("robotEditor.group.areas"), renderField(context, vm.areas), { key: "group:areas" }),
+      block(context.t("robotEditor.group.areas"), `${renderField(context, vm.areaScope)}${vm.areas ? renderField(context, vm.areas) : ""}`, { key: "group:areas" }),
       section(context, "roles", context.t("robotEditor.group.roles"), s.roles.open, `<p class="voc-overlay-lead">${e(context.t("robotEditor.rolesLead"))}</p><div class="voc-roles">${s.roles.rows.map((row) => roleRow(context, row)).join("")}</div>`),
       section(context, "requirements", context.t("robotEditor.group.requirements"), s.requirements.open, `${s.requirements.rows.map((row) => requirementRow(context, row)).join("")}${renderField(context, s.requirements.search)}`),
       section(context, "optionMaps", context.t("robotEditor.group.options"), s.options.open, `<p class="voc-overlay-lead">${e(context.t("robotEditor.optionsLead"))}</p>${s.options.groups.map((group) => optionGroup(context, group, vm)).join("")}`),
       section(context, "timeouts", context.t("robotEditor.group.timeouts"), s.timeouts.open, `<div class="voc-list-fields">${s.timeouts.fields.map((field) => renderField(context, field)).join("")}</div>`),
       section(context, "identity", context.t("robotEditor.group.identity"), s.identity.open, s.identity.fields.map((field) => renderField(context, field)).join("")),
     ].join("");
-    const remove = vm.remove ? button({ action: "remove-robot", args: { robotId: vm.robotId }, label: context.t("robotEditor.remove"), iconName: "mdi:delete-outline", variant: "danger", decision: vm.remove, reasonText: context.reason(vm.remove), className: "voc-action-start" }) : "";
+    // On a narrow card removing sits in a menu, so the footer stays one line (LAY-09).
+    const remove = footerLead(context, { items: [vm.remove ? { action: "remove-robot", args: { robotId: vm.robotId }, label: context.t("robotEditor.remove"), iconName: "mdi:delete-outline", decision: vm.remove, reasonText: context.reason(vm.remove), tone: "danger" } : null], key: "robot-editor", label: context.t("action.moreActions"), open: vm.menuOpen === true });
     const actions = `${remove}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-robot", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
     return frame(context, { key: "robot-editor", title: vm.title, lead: vm.lead, invalid: vm.invalid, content: `<div class="voc-form">${content}</div>`, actions });
   },

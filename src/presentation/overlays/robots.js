@@ -95,7 +95,13 @@ export function buildRobotEditor({ model, texts, context, overlay }) {
     field(texts, { key: "preference", labelKey: "robotEditor.preference", control: "text", inputType: "number", min: -100, max: 100, step: 1, value: draft.preference, error: error("preference"), hintKey: "robotEditor.preferenceHint" }),
     field(texts, { key: "minimumBattery", labelKey: "robotEditor.minimumBattery", control: "text", inputType: "number", min: 0, max: 100, step: 1, value: draft.minimumBattery ?? "", error: error("minimumBattery"), optional: true, hintKey: "robotEditor.minimumBatteryHint" }),
   ];
-  const areas = field(texts, { key: "targetAreas", labelKey: "robotEditor.targetAreas", control: "chips", value: draft.targetAreas, options: list(model.areas).map((area) => ({ value: area.areaId, label: area.name })), hintKey: "robotEditor.targetAreasHint", error: error("targetAreas") });
+  // UI-18: the areas are offered once the robot is limited to some; with none chosen it follows
+  // Home Assistant, as the integration stores it, and the field says so.
+  const limited = draft.areaScope === "only";
+  const areaScope = field(texts, { key: "areaScope", labelKey: "robotEditor.areaScope", control: "segmented", value: draft.areaScope, options: [{ value: "follow", label: t(texts, "robotEditor.areaScope.follow") }, { value: "only", label: t(texts, "robotEditor.areaScope.only") }], hintKey: limited ? null : "robotEditor.areaScopeHint", error: limited ? null : error("targetAreas") });
+  const areas = limited
+    ? { ...field(texts, { key: "targetAreas", labelKey: "robotEditor.targetAreas", control: "chips", value: draft.targetAreas, options: list(model.areas).map((area) => ({ value: area.areaId, label: area.name })), hintKey: "robotEditor.targetAreasHint", error: error("targetAreas") }), warning: draft.targetAreas.length ? null : t(texts, "robotEditor.noAreaChosen") }
+    : null;
   const requirements = draft.requirements.map((item, index) => ({
     key: `${index}:${item.entityId}`,
     index,
@@ -110,6 +116,7 @@ export function buildRobotEditor({ model, texts, context, overlay }) {
     title: t(texts, "robotEditor.title", { robot: robot?.name || draft.meta.robotId }),
     lead: robot ? t(texts, "robotEditor.lead", { entity: robot.configuration.entityId || "", adapter: adapterLabel(texts, draft.meta.adapter) }) : null,
     general,
+    areaScope,
     areas,
     sections: {
       roles: { open: open("roles"), rows: ROBOT_ROLES.map((role) => roleRow(texts, model, draft, overlay, role, error, model.robotsLive?.[draft.meta.robotId])) },
