@@ -96,3 +96,10 @@ test("a count of one is singular", async () => {
   assert.deepEqual([en["setup.step.rooms.done"]({ count: 1, total: 1 }), de["setup.step.rooms.done"]({ count: 1, total: 1 })], ["1 of 1 room reachable", "1 von 1 Raum erreichbar"]);
   assert.deepEqual([en["rooms.releasedCount"]({ count: 1 }), de["rooms.releasedCount"]({ count: 1 })], ["1 room released", "1 Raum freigegeben"]);
 });
+
+// V6: how sure a cleaning record is, in plain words rather than the jargon "Derived".
+test("the quality of a cleaning record is said in plain words", async () => {
+  const { en } = await import("../../../src/i18n/languages/en.js");
+  const { de } = await import("../../../src/i18n/languages/de.js");
+  assert.deepEqual([en["quality.confirmed"], en["quality.derived"], de["quality.confirmed"], de["quality.derived"]], ["Confirmed by the robot", "Not fully observed", "Vom Roboter bestätigt", "Nicht vollständig beobachtet"]);
+});
