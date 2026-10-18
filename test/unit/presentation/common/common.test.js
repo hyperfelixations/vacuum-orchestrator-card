@@ -152,11 +152,11 @@ test("trace details word commands, stages, robot states, settings and vendor sta
   assert.equal(detail("command", { command: "create_job_from_template", stage: "returned" }), "Job from template · done");
   assert.equal(detail("command", { command: "release_rooms", stage: "rejected", reason: "job_prerequisites" }), "Release rooms · its prerequisites are not met yet · refused");
   assert.equal(detail("storage", { stage: "committed" }), "saved");
-  assert.equal(detail("queue_run", { state: "running", stage: "idle_reset" }), "Running · wait reset");
+  assert.equal(detail("queue_run", { state: "running", stage: "idle_reset" }), "Running · grace period restarted");
   assert.equal(detail("robot_observation", { state: "busy", reason: "segment_cleaning", robot_id: rocky }), "Busy · Segment cleaning · Rocky");
   assert.equal(detail("robot_observation", { state: "available", reason: "docked", robot_id: rocky }), "Available · Docked · Rocky");
   assert.equal(detail("availability", { state: "offline", reason: "unavailable", robot_id: rocky }), "Offline · Unavailable · Rocky");
-  assert.equal(detail("setting", { reason: "vacuum_power", stage: "unchanged", robot_id: rocky }), "Suction · Rocky · already set");
+  assert.equal(detail("setting", { reason: "vacuum_power", stage: "unchanged", robot_id: rocky }), "Vacuum power · Rocky · already set");
   assert.equal(detail("setting", { reason: "cleaning_mode", stage: "confirmed" }), "Cleaning mode · confirmed");
   assert.equal(detail("physical_command", { reason: "returning", stage: "requested", robot_id: rocky }), "return to the dock · Rocky · requested");
   assert.equal(detail("recovery_resolved", { reason: "verified_stopped", stage: "abandoned", robot_id: rocky }), "confirmed stopped · Rocky · attempt given up");

@@ -120,6 +120,24 @@ test("template actions say what they do", async () => {
   assert.deepEqual([en["action.createFromTemplate"], de["action.createFromTemplate"]], [en["action.addToQueue"], de["action.addToQueue"]]);
 });
 
+// V6: one word per thing, the integration's own (Saugkraft, Wassermenge, Nachlaufzeit), the same in
+// settings, setup and editors; a dismissal is "Back", never a second "Cancel" beside "Cancel job".
+test("the card's words follow the glossary", async () => {
+  const { en } = await import("../../../src/i18n/languages/en.js");
+  const { de } = await import("../../../src/i18n/languages/de.js");
+  assert.deepEqual([en["field.vacuumPower"], en["field.mopIntensity"], de["field.vacuumPower"], de["field.mopIntensity"]], ["Vacuum power", "Water amount", "Saugkraft", "Wassermenge"]);
+  assert.deepEqual([en["settings.grace"], de["settings.grace"], en["queueSettings.grace"], de["queueSettings.grace"]], ["Grace period", "Nachlaufzeit", "Grace period (minutes)", "Nachlaufzeit (Minuten)"]);
+  assert.deepEqual([en["setup.step.queue.action"], de["setup.step.queue.action"]], ["Change grace period", "Nachlaufzeit ändern"]);
+  for (const language of [en, de]) {
+    assert.equal(language["setup.step.defaults.title"], language["settings.defaults"], "the setup step names the settings it opens");
+    for (const operation of ["vacuum", "mop", "vacuumAndMop"]) assert.equal(language[`operation.${operation}`], language[`mode.${operation}`]);
+    const words = Object.values(language).map((value) => (typeof value === "function" ? value({ value: 1, delay: 1, count: 1 }) : value)).join(" | ");
+    assert.doesNotMatch(words, /Wartezeit|wait time|Wait before a run/i);
+    assert.equal("action.cancel" in language, false);
+  }
+  assert.equal(de["action.addToQueue"], "Einreihen", "a verb, not a place to go");
+});
+
 // V6: dialog titles share one form, and a cancel says what will happen, not what is.
 test("dialogs ask in one form and say what will happen", async () => {
   const { en } = await import("../../../src/i18n/languages/en.js");

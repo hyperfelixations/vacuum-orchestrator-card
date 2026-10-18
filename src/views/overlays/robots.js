@@ -76,7 +76,7 @@ export const robotEditorOverlay = Object.freeze({
     ].join("");
     // On a narrow card removing sits in a menu, so the footer stays one line (LAY-09).
     const remove = footerLead(context, { items: [vm.remove ? { action: "remove-robot", args: { robotId: vm.robotId }, label: context.t("robotEditor.remove"), iconName: "mdi:delete-outline", decision: vm.remove, reasonText: context.reason(vm.remove), tone: "danger" } : null, vm.rename ? { action: "rename-robot", args: { robotId: vm.robotId }, label: context.t("action.rename"), iconName: "mdi:rename-outline", decision: vm.rename, reasonText: context.reason(vm.rename) } : null], key: "robot-editor", label: context.t("action.moreActions"), open: vm.menuOpen === true });
-    const actions = `${remove}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-robot", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
+    const actions = `${remove}${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${button({ action: "save-robot", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
     return frame(context, { key: "robot-editor", title: vm.title, lead: vm.lead, invalid: vm.invalid, content: `<div class="voc-form">${content}</div>`, actions });
   },
   css: `${FORMS_CSS}
@@ -94,7 +94,7 @@ export const renameRobotOverlay = Object.freeze({
   build: ({ model, texts, context, overlay }) => buildRenameRobot({ model, texts, context, overlay }),
   render(context, vm) {
     const decision = vm.pending ? { state: "disabled", reason: "command_pending" } : vm.save;
-    const actions = `${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-robot-name", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision, reasonText: context.reason(vm.save) })}`;
+    const actions = `${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${button({ action: "save-robot-name", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision, reasonText: context.reason(vm.save) })}`;
     return dialog(context, { key: "rename-robot", title: vm.title, invalid: vm.invalid, content: `<div class="voc-form">${renderField(context, vm.field)}</div>`, actions });
   },
   css: FORMS_CSS,

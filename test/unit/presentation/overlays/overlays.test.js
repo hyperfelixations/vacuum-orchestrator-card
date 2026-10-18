@@ -155,6 +155,10 @@ test("the detail page shows the waiting reason on three axes, unreleased rooms t
   const vm = buildJobDetail({ ...built, overlay: { jobId: conservatory.jobId }, config: {} });
   assert.equal(vm.title, "Conservatory");
   assert.equal(vm.position, 1);
+  // V6: the mode carries the same icon as in the queue row, and the water amount another one.
+  const { MODE_ICONS, SETTING_ICONS } = await import("../../../../src/presentation/views/job-row.js");
+  assert.equal(vm.modeIcon, MODE_ICONS.mop);
+  assert.notEqual(SETTING_ICONS.mopIntensity, MODE_ICONS.mop);
   assert.deepEqual(vm.waiting.job.items.map((item) => item.text), ["Waiting for release", "Conservatory Door: off – required: on"], "the room in the title is not repeated; the door names its state and the one required");
   assert.deepEqual([vm.waiting.job.ready, vm.waiting.robots.ready, vm.waiting.queue.ready], [false, false, true]);
   assert.deepEqual(vm.waiting.robots.items.map((item) => [item.never, item.text]), [[true, "Rocky does not reach this room"]], "the sentence names the robot");
@@ -180,7 +184,7 @@ test("the phases explain a robot that would apply a setting differently; the que
   const vm = buildJobDetail({ ...built, overlay: { jobId: dining.jobId }, config: {} });
   assert.deepEqual(vm.waiting.robots.items.map((item) => item.text), ["Rocky can take it now", "Dusty can take it now"]);
   assert.deepEqual(vm.waiting.queue.items.map((item) => item.text), ["The queue is not running", "Start delay ends in 5 seconds"]);
-  assert.deepEqual(vm.execution.map((group) => [group.key, group.robots.map((robot) => [robot.name, robot.reason, robot.settings])]), [["vacuum", [["Rocky", "Can take it now", null], ["Dusty", "Can take it now", "Suction: not adjustable"]]]]);
+  assert.deepEqual(vm.execution.map((group) => [group.key, group.robots.map((robot) => [robot.name, robot.reason, robot.settings])]), [["vacuum", [["Rocky", "Can take it now", null], ["Dusty", "Can take it now", "Vacuum power: not adjustable"]]]]);
 });
 
 test("the origin names its template while it exists; settings notes name each deviation", async () => {
@@ -193,7 +197,7 @@ test("the origin names its template while it exists; settings notes name each de
   assert.equal(originText(built.texts, normalizeJob(W.wireJob({ origin: { kind: "template", template_id: "template-gone" } })), built.model), "From a template", "a removed template is not named");
   assert.equal(originText(built.texts, normalizeJob(W.wireJob({ origin: null })), built.model), null);
   const note = settingsNote(built.texts, [{ field: "vacuumPower", requested: "maximum_plus", applied: "maximum" }, { field: "mopIntensity", requested: "high", applied: null }, { field: "mopRoute", requested: "deep", applied: "deep" }]);
-  assert.equal(note, `${built.texts.t("detail.settingFallback", { setting: "Suction", applied: "Max", requested: "Max+" })}, ${built.texts.t("detail.settingMissing", { setting: "Water" })}`);
+  assert.equal(note, `${built.texts.t("detail.settingFallback", { setting: "Vacuum power", applied: "Max", requested: "Max+" })}, ${built.texts.t("detail.settingMissing", { setting: "Water amount" })}`);
   assert.equal(settingsNote(built.texts, []), null);
 });
 

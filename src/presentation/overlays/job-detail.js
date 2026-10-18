@@ -9,7 +9,7 @@ import { isTerminalState } from "../../domain/job-schema.js";
 import { findJob, list, robotName, roomIndex, roomName, slotData } from "../common/lookups.js";
 import { attemptStateLabel, jobStateLabel, modeLabel, moment, operationLabel, outcomeText, qualityLabel, reasonText, settingLabel, settingName, t } from "../common/texts.js";
 import { traceRows } from "../common/trace.js";
-import { progressOf, readinessReasons, settingChips, stateTone } from "../views/job-row.js";
+import { MODE_ICONS, progressOf, readinessReasons, settingChips, stateTone } from "../views/job-row.js";
 import { waitingAxes } from "../views/waiting.js";
 
 export const TRACE_LIMIT = 12;
@@ -91,6 +91,7 @@ export function buildJobDetail({ model, texts, context, overlay, config, pane = 
     stateTone: stateTone(job.state),
     rooms: list(job.roomIds).map((roomId) => roomName(roomId, index, model)),
     mode: modeLabel(texts, job.mode),
+    modeIcon: MODE_ICONS[job.mode] || "mdi:robot-vacuum",
     settings: settingChips(job, texts),
     position,
     outcome: isTerminalState(job.state) ? null : outcomeText(texts, job.failureCode),

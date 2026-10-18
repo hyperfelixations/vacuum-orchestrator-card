@@ -28,7 +28,7 @@ export const releaseOverlay = Object.freeze({
     if (vm.missing) return dialog(context, { key: "release", title: vm.title, lead: context.t("release.missingRoom"), actions: button({ action: "back", label: context.t("action.back"), variant: "quiet" }) });
     const add = vm.addable.length ? `<div class="voc-release-add" role="group" aria-labelledby="voc-release-add-label"><span class="voc-field-label" id="voc-release-add-label">${e(context.t("release.addRoom"))}</span><div class="voc-chips">${vm.addable.map((room) => button({ action: "add-release-room", args: { roomId: room.roomId }, label: room.name, iconName: "mdi:plus", variant: "text" })).join("")}</div></div>` : "";
     const revoke = vm.revoke ? button({ action: "revoke-room", args: { roomId: vm.rows[0].roomId, close: true }, label: context.t("rooms.lock"), iconName: "mdi:lock-outline", variant: "quiet", decision: vm.revoke, reasonText: context.reason(vm.revoke), className: "voc-action-start" }) : "";
-    const actions = `${revoke}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "release-room", label: context.t("rooms.release"), iconName: "mdi:lock-open-variant-outline", variant: "primary", decision: vm.submit, reasonText: context.reason(vm.submit) })}`;
+    const actions = `${revoke}${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${button({ action: "release-room", label: context.t("rooms.release"), iconName: "mdi:lock-open-variant-outline", variant: "primary", decision: vm.submit, reasonText: context.reason(vm.submit) })}`;
     return dialog(context, { key: "release", title: vm.title, invalid: vm.invalid, content: `<div class="voc-form">${vm.rows.map((row) => releaseRow(context, vm, row)).join("")}${add}</div>`, actions });
   },
   css: `${FORMS_CSS}
@@ -67,7 +67,7 @@ export const roomEditorOverlay = Object.freeze({
     const targets = `<section class="voc-block" data-key="group:targets">${toggle}${vm.bindingsOpen ? `<p class="voc-overlay-lead">${e(context.t("room.targetsLead"))}</p>${detected}${vm.bindings.map((row) => bindingRow(context, row)).join("")}<div class="voc-inline-actions">${addBinding}</div>` : ""}</section>`;
     // On a narrow card excluding sits in a menu, so the footer stays one line (LAY-09).
     const disable = footerLead(context, { items: [vm.disable ? { action: "disable-room", args: { roomId: vm.roomId }, label: context.t("room.disable"), iconName: "mdi:eye-off-outline", decision: vm.disable, reasonText: context.reason(vm.disable) } : null], key: "room-editor", label: context.t("action.moreActions"), open: vm.menuOpen === true });
-    const actions = `${disable}${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-room", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
+    const actions = `${disable}${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${button({ action: "save-room", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
     return frame(context, { key: "room-editor", title: vm.title, invalid: vm.invalid, content: `<div class="voc-form">${groups}${conditions}${targets}</div>`, actions });
   },
   css: FORMS_CSS,
@@ -77,7 +77,7 @@ export const roomCreateOverlay = Object.freeze({
   key: "room-create",
   build: ({ model, texts, context, overlay }) => buildRoomCreate({ model, texts, context, overlay }),
   render(context, vm) {
-    const actions = `${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-new-room", label: context.t("action.createRoom"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
+    const actions = `${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${button({ action: "save-new-room", label: context.t("action.createRoom"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
     return frame(context, { key: "room-create", title: vm.title, lead: context.t("room.createLead"), invalid: vm.invalid, content: `<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions });
   },
 });

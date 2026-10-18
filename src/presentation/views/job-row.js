@@ -9,7 +9,7 @@ import { entityName, jobTitle, list, robotName, roomName, slotData } from "../co
 import { clockTime, dateTime, jobStateLabel, modeLabel, modeShortLabel, moment, number, operationLabel, outcomeText, readinessReasonText, relative, settingLabel, settingName, t } from "../common/texts.js";
 import { waitingStatus } from "./waiting.js";
 
-export const SETTING_ICONS = Object.freeze({ vacuumPower: "mdi:fan", mopIntensity: "mdi:water", mopRoute: "mdi:map-marker-path" });
+export const SETTING_ICONS = Object.freeze({ vacuumPower: "mdi:fan", mopIntensity: "mdi:water-percent", mopRoute: "mdi:map-marker-path" });
 export const MODE_ICONS = Object.freeze({ vacuum: "mdi:robot-vacuum", mop: "mdi:water-outline", vacuum_and_mop: "mdi:robot-vacuum-variant", vacuum_then_mop: "mdi:transfer-right" });
 
 export function stateTone(state) {

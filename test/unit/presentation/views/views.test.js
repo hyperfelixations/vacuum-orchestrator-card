@@ -268,7 +268,7 @@ test("a robot's faults say what is wrong and which cleaning they block", async (
   const station = await modelFor("attention", { from: "The station needs attention" });
   const [rocky] = buildRobotsView({ ...station, options: {}, ui: {} }).robots;
   const t = station.texts.t;
-  assert.deepEqual(rocky.faults, [{ key: "dirty_water_full", text: t("fault.dirty_water_full"), blocks: t("robot.faultBlocks", { operations: "Mopping, Vacuuming and mopping" }), tone: "attention" }]);
+  assert.deepEqual(rocky.faults, [{ key: "dirty_water_full", text: t("fault.dirty_water_full"), blocks: t("robot.faultBlocks", { operations: "Mop, Vacuum and mop" }), tone: "attention" }]);
   const broken = await modelFor("device_fault", { from: "The job waits for the fix" });
   const faults = buildRobotsView({ ...broken, options: {}, ui: {} }).robots[0].faults;
   assert.equal(faults.find((fault) => fault.key === "error").blocks, t("robot.faultBlocksAll"));

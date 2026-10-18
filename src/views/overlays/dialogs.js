@@ -91,7 +91,7 @@ export const queueSettingsOverlay = Object.freeze({
   dialog: true,
   build: ({ texts, context, overlay }) => buildQueueSettings({ texts, context, overlay }),
   render(context, vm) {
-    const actions = `${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${button({ action: "save-queue-settings", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
+    const actions = `${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${button({ action: "save-queue-settings", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
     return dialog(context, { key: "queue-settings", title: vm.title, lead: context.t("queueSettings.lead"), invalid: vm.invalid, content: `<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions });
   },
 });
@@ -103,7 +103,7 @@ export const recoveryOverlay = Object.freeze({
   render(context, vm) {
     const confirm = renderField(context, { key: "overlay:confirmStopped", label: context.t("recovery.confirmLabel"), control: "switch", value: vm.confirmStopped, switchLabel: context.t("recovery.confirmSwitch"), hint: context.t("recovery.confirmHint") });
     const content = `<div class="voc-block" data-key="recovery-facts"><p class="voc-overlay-lead">${e(vm.reason)}</p><p class="voc-overlay-lead">${e(context.t("recovery.explanation"))}</p>${vm.open ? confirm : ""}</div>`;
-    const actions = `${button({ action: "back", label: context.t("action.cancel"), variant: "quiet" })}${vm.open ? button({ action: "resolve-recovery", label: context.t("recovery.resolve"), iconName: "mdi:check", variant: "primary", decision: vm.decision, reasonText: context.reason(vm.decision) }) : ""}`;
+    const actions = `${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${vm.open ? button({ action: "resolve-recovery", label: context.t("recovery.resolve"), iconName: "mdi:check", variant: "primary", decision: vm.decision, reasonText: context.reason(vm.decision) }) : ""}`;
     return dialog(context, { key: "recovery", title: vm.title, content, actions });
   },
 });
