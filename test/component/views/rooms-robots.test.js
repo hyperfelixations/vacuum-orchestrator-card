@@ -32,6 +32,17 @@ test("rooms show the integration's due verdicts, release state and conditions", 
   card.unmount();
 });
 
+// REL-04: two released rooms are locked with one command, in the order the view lists them.
+test("released rooms are locked together", async () => {
+  const card = await rooms("The studio and the library are released");
+  assert.match(card.text('[data-key="lock-all"]'), /2 rooms released/);
+  await card.click('[data-key="lock-all"] [data-action="lock-rooms"]');
+  await card.settle(32);
+  assert.deepEqual(card.commands("revoke_rooms").map((message) => message.parameters), [{ rooms: [roomId(card, "Studio"), roomId(card, "Library")] }]);
+  assert.equal(card.root.querySelector('[data-key="lock-all"]'), null, "nothing left to lock");
+  card.unmount();
+});
+
 test("a timed release sends its duration; locking sends a revoke", async () => {
   const card = await rooms("The dining room is released");
   const [library, dining] = [roomId(card, "Library"), roomId(card, "Dining Room")];

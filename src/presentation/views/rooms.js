@@ -2,7 +2,7 @@
 // which robots reach it and its conditions. The bar position is the reported elapsed share of the
 // reported interval; the card computes no due date. See internal dev doc §8 "Räume".
 
-import { roomAffordances } from "../../domain/affordances.js";
+import { decide, roomAffordances } from "../../domain/affordances.js";
 import { DUE_OPERATIONS } from "../../domain/rooms.js";
 import { entityName, jobTitle, list, robotName, robotsOf, roomIndex, roomsOf, slotData } from "../common/lookups.js";
 import { dueReasonText, duration, moment, qualityLabel, remainingText, t } from "../common/texts.js";
@@ -107,8 +107,11 @@ export function buildRoomsView({ model, texts, context, options = {}, ui = {}, t
   const robots = robotsOf(model);
   const showExcluded = options.show_disabled === true || list(ui.expanded).includes("rooms:excluded");
   const visible = rooms.filter((room) => room.enabled || showExcluded).slice().sort(SORTERS[options.sort] || SORTERS.configured);
+  // REL-04: two or more released rooms are locked in one step.
+  const releasable = visible.filter((room) => room.enabled && room.released && roomAffordances(room, context).revoke.state === "enabled");
   return {
     key: "rooms",
+    lockAll: releasable.length > 1 ? { roomIds: releasable.map((room) => room.roomId), text: t(texts, "rooms.releasedCount", { count: releasable.length }), decision: decide(context, { operation: "revoke_rooms", target: "revoke_rooms" }) } : null,
     loading: !model.slots?.rooms?.data && (status === "loading" || status === "idle"),
     error: !model.slots?.rooms?.data ? model.slots?.rooms?.error ?? null : null,
     excludedCount: rooms.filter((room) => !room.enabled).length,

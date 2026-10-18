@@ -543,6 +543,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       if (ui.overlay?.kind === "release") ui.updateOverlay({ rooms: withoutReleaseRow(ui.overlay.rooms, index), errors: null, formError: null });
     },
     "release-room": ({ roomId }) => releaseRoom(roomId, ui.overlay?.kind === "release" ? ui.overlay : null),
+    // REL-04: every released room the view lists, locked with one command.
+    "lock-rooms": ({ roomIds = [] }) => (roomIds.length ? run("revoke_rooms", { rooms: [...roomIds] }, { target: "revoke_rooms", invalidates: ROOM_SCOPES, success: { key: "notice.roomsLocked" } }) : null),
     "revoke-room": ({ roomId, close = false }) => run("revoke_rooms", { rooms: [roomId] }, { target: roomTarget(roomId), invalidates: ROOM_SCOPES, closeOverlay: close, success: { key: "notice.roomLocked" } }),
     "edit-room": ({ roomId }) => {
       const room = findRoom(roomId);

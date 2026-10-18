@@ -49,11 +49,12 @@ function roomCard(context, room) {
 export function renderRooms(context, vm) {
   if (vm.error) return `<div class="voc-view voc-rooms" data-key="view:rooms">${errorState(context, vm.error)}</div>`;
   if (vm.loading) return `<div class="voc-view voc-rooms" data-key="view:rooms">${loadingState(context)}</div>`;
+  const lockAll = vm.lockAll ? `<div class="voc-rooms-bar" data-key="lock-all"><span>${icon("mdi:lock-open-variant-outline")}${e(vm.lockAll.text)}</span>${button({ action: "lock-rooms", args: { roomIds: vm.lockAll.roomIds }, label: context.t("rooms.lockAll"), iconName: "mdi:lock-outline", decision: vm.lockAll.decision, reasonText: context.reason(vm.lockAll.decision) })}</div>` : "";
   const cards = vm.rooms.length ? `<div class="voc-room-grid">${vm.rooms.map((room) => roomCard(context, room)).join("")}</div>` : emptyState("mdi:floor-plan", context.t("rooms.empty"));
   const excluded = vm.excludedCount
     ? `<div class="voc-view-footer" data-key="excluded">${button({ action: "toggle", args: { key: "rooms:excluded" }, label: context.t(vm.showExcluded ? "rooms.hideExcluded" : "rooms.showExcluded", { count: vm.excludedCount }), iconName: vm.showExcluded ? "mdi:eye-off-outline" : "mdi:eye-outline", variant: "quiet" })}</div>`
     : "";
-  return `<div class="voc-view voc-rooms" data-key="view:rooms">${cards}${excluded}</div>`;
+  return `<div class="voc-view voc-rooms" data-key="view:rooms">${lockAll}${cards}${excluded}</div>`;
 }
 
 export const roomsView = Object.freeze({

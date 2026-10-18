@@ -35,6 +35,9 @@ export const ROOMS_CSS = `
 .voc-room .voc-room-remedy { min-height: 28px; padding: 2px 8px; border-color: transparent; background: transparent; color: var(--voc-accent-ink); font-size: 11.5px; }
 .voc-room .voc-room-remedy ha-icon { --mdc-icon-size: 15px; }
 .voc-room .voc-room-remedy:hover { background: var(--voc-accent-soft); }
+.voc-rooms-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; font-size: 12px; font-weight: 750; color: var(--voc-muted); }
+.voc-rooms-bar > span { display: inline-flex; align-items: center; gap: 6px; }
+.voc-rooms-bar > span ha-icon { --mdc-icon-size: 16px; color: var(--voc-success); }
 .voc-room-meta-item[data-tone="running"] { color: var(--voc-accent-ink); font-weight: 750; }
 .voc-room-actions { display: flex; flex-wrap: wrap; gap: var(--voc-target-gap); margin: 0 -4px; }
 .voc-room-toggle { margin-left: auto; }

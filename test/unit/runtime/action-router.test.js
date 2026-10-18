@@ -636,6 +636,14 @@ test("an entity picker search is overlay state and a pick clears it", async () =
   assert.equal(ui.overlay.draft.roles.error.entity, null, "picking it again clears it");
 });
 
+// REL-04: several rooms are locked with one command.
+test("released rooms are locked together", async () => {
+  const { router, commands, ui } = await setup();
+  await router.handle("lock-rooms", { roomIds: ["room-library", "room-studio"] });
+  assert.deepEqual(commands[0], { operation: "revoke_rooms", parameters: { rooms: ["room-library", "room-studio"] }, target: "revoke_rooms", invalidates: ["rooms", "queue", "openJobs", "job", "execution"] });
+  assert.equal(ui.snapshot.notice.messageKey, "notice.roomsLocked");
+});
+
 // SET-10, SET-09: "Later" leaves the assistant for this session; "Done" ends it in the integration
 // and shows the queue, whose empty state offers the first job.
 test("the assistant is left for later or finished onto the queue", async () => {

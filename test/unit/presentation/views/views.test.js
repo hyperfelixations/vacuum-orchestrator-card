@@ -194,6 +194,8 @@ test("rooms show due verdicts, release, reaching robots and conditions as report
   assert.match(byName.Studio.release.label, /^Released · \d+ h( \d+ min)? left$/);
   assert.deepEqual([byName.Studio.due[0].last, byName.Conservatory.due[0].last, byName.Conservatory.due[1].last], [null, null, null], "nothing recorded, nothing to say");
   assert.match(byName["Dining Room"].due[0].last, /^Last /);
+  // REL-04: several released rooms are locked in one step.
+  assert.deepEqual([rooms.lockAll.roomIds, rooms.lockAll.text, rooms.lockAll.decision.state], [["Dining Room", "Studio", "Library"].map((name) => byName[name].roomId), texts.t("rooms.releasedCount", { count: 3 }), "enabled"]);
   // UI-07: what is being cleaned and what waits for a room stand on its card.
   assert.deepEqual(byName.Studio.work, [{ key: "cleaning", tone: "running", text: texts.t("rooms.cleaning", { robot: "Rocky" }) }]);
   assert.deepEqual(byName.Conservatory.work, [{ key: "waiting", tone: "neutral", text: texts.t("rooms.waiting", { count: 1 }) }]);
