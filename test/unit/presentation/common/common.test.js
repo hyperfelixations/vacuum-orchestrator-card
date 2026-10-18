@@ -85,21 +85,28 @@ test("names come from the integration, then Home Assistant, then the id", async 
   assert.equal(findJob(model, "job-nowhere"), null);
 });
 
-test("a robot's status line joins Home Assistant's state and battery with the lease", async () => {
+// UI-09, EXE-11: the state is the integration's vendor-neutral activity, Home Assistant's vacuum
+// state only where the integration has none.
+test("a robot's status line joins its activity and battery with the lease", async () => {
   const { robotStatus } = await import("../../../../src/presentation/common/robot-status.js");
   const { robotsOf } = await import("../../../../src/presentation/common/lookups.js");
   const en = await texts();
   const { model } = await modelFor("showcase", { from: BUSY });
   const [rocky] = robotsOf(model).map((robot) => robotStatus(robot, model, en));
-  assert.deepEqual([rocky.state, rocky.battery, rocky.tone], [en.t("vacuum.state.cleaning"), 100, "running"]);
-  assert.equal(rocky.summary, `Rocky · ${en.t("vacuum.state.cleaning")} · Battery 100 %`, "a percentage beside a job's progress names what it measures");
+  assert.deepEqual([rocky.state, rocky.battery, rocky.tone], [en.t("robot.phase.cleaning"), 100, "running"]);
+  assert.equal(rocky.summary, `Rocky · ${en.t("robot.phase.cleaning")} · Battery 100 %`, "a percentage beside a job's progress names what it measures");
   const choice = await modelFor("robot_choice", { from: "Either robot can start the dining room" });
   const [docked, dusty] = robotsOf(choice.model).map((robot) => robotStatus(robot, choice.model, en));
-  assert.deepEqual([docked.tone, docked.state, docked.battery], ["ready", en.t("vacuum.state.docked"), 100]);
+  assert.deepEqual([docked.tone, docked.state, docked.battery], ["ready", en.t("robot.phase.docked"), 100]);
   assert.deepEqual([dusty.name, dusty.battery], ["Dusty", null], "a robot without a battery reading shows none");
   const fault = await modelFor("device_fault", { from: "The job waits for the fix" });
   const [failing] = robotsOf(fault.model).map((robot) => robotStatus(robot, fault.model, en));
-  assert.deepEqual([failing.state, failing.tone], [en.t("vacuum.state.error"), "attention"], "an error outweighs the job the robot holds");
+  assert.deepEqual([failing.state, failing.tone], [en.t("robot.phase.error"), "attention"], "an error outweighs the job the robot holds");
+  const outside = await modelFor("external_run", { from: "The card opens" });
+  const [external] = robotsOf(outside.model).map((robot) => robotStatus(robot, outside.model, en));
+  assert.deepEqual([external.state, en.t("robot.phase.cleaningExternal")], [en.t("robot.phase.cleaningExternal"), "Cleaning outside Vacuum Orchestrator"]);
+  const unknown = robotStatus({ ...robotsOf(model)[0], activity: { phase: "unknown", external: false } }, model, en);
+  assert.equal(unknown.state, en.t("vacuum.state.cleaning"), "without an activity, Home Assistant's state");
 });
 
 test("trace rows word known events and states and keep unknown ones as reported", async () => {

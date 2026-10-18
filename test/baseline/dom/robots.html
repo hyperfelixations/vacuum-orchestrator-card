@@ -128,6 +128,8 @@
 </ha-icon>
 </button>
 </header>
+<div class="voc-robot-body">
+<div class="voc-robot-info">
 <div class="voc-robot-facts">
 <span class="voc-robot-fact" data-key="fact:room" title="Current room">
 <ha-icon icon="mdi:map-marker-outline" aria-hidden="true">
@@ -142,32 +144,18 @@
 </ha-icon>
 <span class="voc-sr-only">Selected map: </span>Main Floor</span>
 </div>
-<div class="voc-robot-note" data-key="active" data-tone="running">
-<ha-icon icon="mdi:progress-clock" aria-hidden="true">
-</ha-icon>
-<span>Working on a job.</span>
-</div>
-<div class="voc-robot-chips" data-key="operations">
-<span class="voc-chip">
-<span>Vacuuming</span>
-</span>
-<span class="voc-chip">
-<span>Mopping</span>
-</span>
-<span class="voc-chip">
-<span>Vacuuming and mopping</span>
-</span>
-</div>
 <div class="voc-robot-line" data-key="rooms">
 <ha-icon icon="mdi:floor-plan" aria-hidden="true">
 </ha-icon>
 <span>Dining Room, Studio, Library</span>
 </div>
-<div class="voc-robot-levels" data-key="levels">
-<span>Up to 3 passes</span>
-<span>Suction: Quiet, Standard, High, Max, Max+</span>
-<span>Water: Low, Medium, High</span>
-<span>Mop route: Fast, Standard, Deep, Deep+</span>
+<section class="voc-robot-capabilities" data-key="capabilities">
+<button type="button" class="voc-disclosure" data-action="toggle" data-args="{&quot;key&quot;:&quot;robot:01J00000000000000000000003:capabilities&quot;}" aria-expanded="false">
+<ha-icon icon="mdi:chevron-down" aria-hidden="true">
+</ha-icon>
+<span>What it can do</span>
+</button>
+</section>
 </div>
 <figure class="voc-robot-map" data-key="map">
 <img src="http://homeassistant.local:8123/api/image_proxy/image.rocky_main_floor?token=synthetic-map-token" alt="Rocky: Rocky Main Floor" loading="lazy">
@@ -180,6 +168,7 @@
 </button>
 </div>
 </figure>
+</div>
 </article>
 </div>
 </div>

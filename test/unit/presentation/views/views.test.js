@@ -227,6 +227,9 @@ test("robots show Home Assistant's live state beside the integration's profile f
   assert.equal(rocky.actions.returnToDock.state, "hidden", "Rocky cleans for a job");
   const stopped = await modelFor("queue_controls", { from: "Rocky stopped in the studio" });
   assert.equal(buildRobotsView({ ...stopped, options: {}, ui: {} }).robots[0].actions.returnToDock.state, "enabled");
+  // UI-09: what a robot can do is folded away until asked for.
+  assert.equal(rocky.capabilitiesOpen, false);
+  assert.equal(buildRobotsView({ ...built, options: {}, ui: { expanded: [`robot:${rocky.robotId}:capabilities`] } }).robots[0].capabilitiesOpen, true);
   const bare = buildRobotsView({ ...built, options: { show_map: false, show_capabilities: false }, ui: {} });
   assert.equal(bare.robots[0].map, null);
   assert.deepEqual(bare.robots[0].levels, []);
