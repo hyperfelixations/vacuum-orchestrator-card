@@ -31,6 +31,7 @@
     "test:browser:geometry:run": "playwright test test/browser/geometry --project=chromium",
     "test:browser:visual:run": "playwright test test/browser/visual --project=chromium",
     "test:browser:cross-engine:run": "playwright test --project=firefox-core --project=webkit-core",
+    "test:e2e": "npm run build && playwright test -c playwright.e2e.config.js",
     "test:node:run": "node --test \"test/**/*.test.js\"",
     "test:unit:run": "node --test \"test/unit/**/*.test.js\"",
     "test:component:run": "node --test \"test/component/**/*.test.js\"",

@@ -104,6 +104,8 @@ const NOT_RUN_SHAPING = {
   PORT: "the browser harness's static server",
   VACUUM_ORCHESTRATOR_CARD_BROWSER_COVERAGE: "the Chromium layer, set by run-coverage.mjs for Playwright",
   VACUUM_ORCHESTRATOR_CARD_BROWSER_COVERAGE_DIR: "the Chromium layer, set by run-coverage.mjs for Playwright",
+  VOI_CHECKOUT: "the smoke test in the real frontend (test/e2e), outside the layer runs",
+  VOI_PYTHON: "the smoke test in the real frontend (test/e2e), outside the layer runs",
 };
 
 test("every environment variable a test reads is either fixed for the layer runs or known not to shape them", () => {

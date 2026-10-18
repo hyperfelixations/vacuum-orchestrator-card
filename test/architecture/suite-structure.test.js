@@ -11,7 +11,7 @@ const { execFileSync } = require("node:child_process");
 
 const TEST_DIR = path.join(__dirname, "..");
 const ROOT = path.join(TEST_DIR, "..");
-const LAYERS = ["unit", "component", "contract", "architecture", "characterization", "property", "browser"];
+const LAYERS = ["unit", "component", "contract", "architecture", "characterization", "property", "browser", "e2e"];
 const SHARED = ["fixtures", "helpers", "manifests", "baseline"];
 const NODE_DIRECTORIES = new Set([
   "unit/application", "unit/backend", "unit/config", "unit/core", "unit/domain", "unit/i18n",
@@ -53,10 +53,13 @@ test("the test root holds only the declared layers and shared directories", () =
   assert.deepEqual(top.filter((name) => !LAYERS.includes(name) && !SHARED.includes(name)), []);
 });
 
+// Specs run in Playwright: the harness (`browser/`) or the real frontend (`e2e/`).
+const SPEC_LAYER = /^(browser|e2e)\//;
+
 test("node tests end in .test.js and browser specs in .spec.js, each in its own layer", () => {
   const misplaced = testFiles.filter((file) => {
     const name = rel(file);
-    return name.endsWith(".spec.js") ? !name.startsWith("browser/") : name.startsWith("browser/");
+    return name.endsWith(".spec.js") ? !SPEC_LAYER.test(name) : SPEC_LAYER.test(name);
   });
   assert.deepEqual(misplaced.map(rel), []);
 });
@@ -64,6 +67,7 @@ test("node tests end in .test.js and browser specs in .spec.js, each in its own 
 test("every test belongs to a registered owner directory", () => {
   const unknown = testFiles.map(rel).filter((name) => {
     const directory = name.split("/").slice(0, -1).join("/");
+    if (name.startsWith("e2e/")) return directory !== "e2e";
     return name.endsWith(".spec.js")
       ? !BROWSER_DIRECTORIES.includes(name.split("/")[1])
       : !NODE_DIRECTORIES.has(directory);
