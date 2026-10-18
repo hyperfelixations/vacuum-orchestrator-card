@@ -86,3 +86,13 @@ test("every text is a non-empty string or a function returning one", async () =>
   }
   assert.deepEqual(empty, []);
 });
+
+// UI-05: counts of one read as one, in both languages.
+test("a count of one is singular", async () => {
+  const { en } = await import("../../../src/i18n/languages/en.js");
+  const { de } = await import("../../../src/i18n/languages/de.js");
+  assert.deepEqual([en["robot.maxPasses"]({ count: 1 }), de["robot.maxPasses"]({ count: 1 }), en["robot.maxPasses"]({ count: 3 })], ["Up to 1 pass", "Bis zu 1 Durchgang", "Up to 3 passes"]);
+  assert.deepEqual([en["diagnostics.sinkFailures"]({ count: 1 }).startsWith("Vacuum Orchestrator could not save 1 change."), de["diagnostics.sinkFailures"]({ count: 2 }).startsWith("Vacuum Orchestrator konnte 2 Änderungen nicht speichern.")], [true, true]);
+  assert.deepEqual([en["setup.step.rooms.done"]({ count: 1, total: 1 }), de["setup.step.rooms.done"]({ count: 1, total: 1 })], ["1 of 1 room reachable", "1 von 1 Raum erreichbar"]);
+  assert.deepEqual([en["rooms.releasedCount"]({ count: 1 }), de["rooms.releasedCount"]({ count: 1 })], ["1 room released", "1 Raum freigegeben"]);
+});
