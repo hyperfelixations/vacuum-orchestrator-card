@@ -24,6 +24,14 @@ async function releaseDiningRoom(backend) {
   });
 }
 
+// The harness words states as Home Assistant does, so goldens show no raw keys (V6).
+test("the harness words entity states as Home Assistant does", () => {
+  const { formatLikeHomeAssistant: words } = require("../helpers/recorded-backend.js");
+  const door = { entity_id: "binary_sensor.door", state: "off", attributes: { device_class: "door" } };
+  assert.deepEqual([words(door, "en"), words(door, "de"), words(door, "en", "on")], ["Closed", "Geschlossen", "Open"]);
+  assert.deepEqual([words({ entity_id: "sensor.rocky_status", state: "segment_cleaning", attributes: {} }, "en"), words({ entity_id: "sensor.rocky_battery", state: "100", attributes: { unit_of_measurement: "%" } }, "en"), words({ entity_id: "vacuum.rocky", state: "docked", attributes: {} }, "de")], ["Segment cleaning", "100 %", "Angedockt"]);
+});
+
 test("hass holds states, entities, areas, actions and user as the frontend builds them", () => {
   const formatted = [];
   const backend = createRecordedBackend(recording("device_fault"), { from: "The card opens", language: "de", formatEntityState: (state, language) => (formatted.push(language), `${state.state}!`) });

@@ -86,8 +86,9 @@ function releasedLabel(release, texts, model) {
 function condition(requirement, model, texts) {
   const reading = model.entityReadings?.[requirement.entityId] ?? null;
   const name = entityName(requirement.entityId, model);
-  const state = reading?.available ? reading.state : t(texts, "value.unknown");
-  const allowed = requirement.acceptedStates.join(", ");
+  // In Home Assistant's own words where it words them (UI-04), else as reported.
+  const state = reading?.available ? reading.display || reading.state : t(texts, "value.unknown");
+  const allowed = requirement.acceptedStates.map((value) => reading?.values?.[value] || value).join(", ");
   return { key: requirement.entityId, name, state, allowed, text: t(texts, "rooms.condition", { entity: name, state, allowed }) };
 }
 

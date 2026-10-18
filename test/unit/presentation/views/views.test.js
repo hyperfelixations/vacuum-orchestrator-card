@@ -188,6 +188,10 @@ test("rooms show due verdicts, release, reaching robots and conditions as report
   assert.equal(byName.Studio.reach, null);
   assert.deepEqual(byName.Conservatory.conditions.map((item) => item.text), [texts.t("rooms.condition", { entity: "Conservatory Door", state: "off", allowed: "on" })]);
   assert.match(byName.Conservatory.conditions[0].text, / – required: on$/, "worded as on the detail page");
+  // UI-04: in Home Assistant's own words where it words them.
+  const { formatLikeHomeAssistant } = require("../../../helpers/recorded-backend.js");
+  const worded = buildRoomsView({ ...(await busy({}, { formatEntityState: formatLikeHomeAssistant })), options: {} }).rooms.find((room) => room.name === "Conservatory");
+  assert.equal(worded.conditions[0].text, texts.t("rooms.condition", { entity: "Conservatory Door", state: "Closed", allowed: "Open" }));
   assert.equal(byName.Conservatory.due[0].state, "disabled");
   // UI-07, REL-05: a release says what is left of it; only a recorded cleaning has a line of its own.
   assert.deepEqual([byName["Dining Room"].release.label, byName.Library.release.label], [texts.t("rooms.released"), texts.t("rooms.releasedOnce")]);

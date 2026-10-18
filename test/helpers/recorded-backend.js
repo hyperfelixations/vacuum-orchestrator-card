@@ -162,7 +162,7 @@
         callWS: (message) => connection.sendMessagePromise(message),
         callService,
       };
-      if (typeof options.formatEntityState === "function") hass.formatEntityState = (state) => options.formatEntityState(state, language);
+      if (typeof options.formatEntityState === "function") hass.formatEntityState = (state, value) => options.formatEntityState(state, language, value);
       return hass;
     }
 
@@ -392,7 +392,32 @@
     };
   }
 
-  const api = { createRecordedBackend, canonical };
+  // Home Assistant's own wording of a state, as far as the recordings need it: openings say open or
+  // closed, a vacuum its state, an enum value its words, a number its unit. The browser harness
+  // passes it, so goldens show what a user reads; Node tests keep the card's raw fallback.
+  const WORDS = {
+    en: { open: "Open", closed: "Closed", on: "On", off: "Off", unavailable: "Unavailable", unknown: "Unknown", cleaning: "Cleaning", docked: "Docked", returning: "Returning to dock", idle: "Idle", paused: "Paused", error: "Error" },
+    de: { open: "Offen", closed: "Geschlossen", on: "An", off: "Aus", unavailable: "Nicht verfügbar", unknown: "Unbekannt", cleaning: "Reinigt", docked: "Angedockt", returning: "Kehrt zur Station zurück", idle: "Untätig", paused: "Pausiert", error: "Fehler" },
+  };
+  const OPENINGS = new Set(["door", "window", "opening", "garage_door"]);
+  function formatLikeHomeAssistant(state, language, value) {
+    const words = WORDS[language] || WORDS.en;
+    const raw = value === undefined ? state?.state : value;
+    if (raw === undefined || raw === null) return "";
+    if (raw === "unavailable" || raw === "unknown") return words[raw];
+    const domain = String(state?.entity_id || "").split(".")[0];
+    if (domain === "binary_sensor") {
+      if (OPENINGS.has(state?.attributes?.device_class)) return raw === "on" ? words.open : raw === "off" ? words.closed : raw;
+      return raw === "on" ? words.on : raw === "off" ? words.off : raw;
+    }
+    if (domain === "vacuum" && words[raw]) return words[raw];
+    const unit = state?.attributes?.unit_of_measurement;
+    if (unit && value === undefined && Number.isFinite(Number(raw))) return `${raw} ${unit}`;
+    const text = String(raw).replace(/_/g, " ");
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  const api = { createRecordedBackend, canonical, formatLikeHomeAssistant };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.VocRecorded = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
