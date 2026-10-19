@@ -85,7 +85,7 @@ export function buildQueueView({ model, texts, context, options = {}, ui = {}, t
   const shown = ui?.wide ? detailJobId(model, options, ui.selectedJob) : null;
   const row = (job) => ({ ...buildJobRow(job, shared), selected: job.jobId === shown });
   const listed = listedJobs(model, options);
-  // The attention group's title already says what the row's state pill would (V6).
+  // The attention group's title already says what the row's state pill would.
   const [active, attention, waiting] = [listed.active.map(row), listed.attention.map((job) => ({ ...row(job), showState: false })), listed.waiting.map(row)];
   // The detail itself is built beside the list by the view (LAY-03).
   const detail = shown ? { jobId: shown, traceOpen: list(ui?.expanded).includes(`trace:${shown}`) } : null;

@@ -40,7 +40,7 @@ export function facts(rows) {
   return `<dl class="voc-facts">${items.map((row) => `<dt>${e(row.label)}</dt><dd${row.key ? ` data-key="fact:${e(row.key)}"` : ""}>${e(row.value)}</dd>`).join("")}</dl>`;
 }
 
-// A day heads its first entry (V6).
+// A day heads its first entry.
 export function traceList(rows) {
   return `<ol class="voc-trace">${rows.map((record, index) => `${index === 0 || rows[index - 1].day !== record.day ? `<li class="voc-trace-day">${e(record.day)}</li>` : ""}<li data-key="trace:${e(record.key)}" data-tone="${e(record.tone)}"><span class="voc-trace-time">${e(record.time)}</span><span class="voc-trace-event">${e(record.event)}</span>${record.detail ? `<span class="voc-trace-detail">${e(record.detail)}</span>` : ""}${record.count > 1 ? `<span class="voc-trace-count">×${e(record.count)}</span>` : ""}</li>`).join("")}</ol>`;
 }

@@ -150,8 +150,8 @@ test.describe("on a touch screen", () => {
   });
 });
 
-// V3c finding: an empty state as a view's only content stands in the middle of the frame, as the
-// onboarding does, rather than at its top above empty space.
+// An empty state as a view's only content stands in the middle of the frame, as the onboarding
+// does, not at its top above empty space.
 test("an empty state that is a view's only content stands in the middle of the frame", async ({ page }) => {
   const card = await mountCard(page, { recording: "queue_end", from: "The card opens", layout: "grid", width: 640 });
   await expect(card.locator(".voc-empty")).toBeVisible();
@@ -163,7 +163,7 @@ test("an empty state that is a view's only content stands in the middle of the f
   expect(Math.abs((empty.top - body.top - padTop) - (body.bottom - padBottom - empty.bottom))).toBeLessThan(2);
 });
 
-// V6 finding: quick starts that wrap line up under the first one, not under their label.
+// Quick starts that wrap line up under the first one, not under their label.
 test("wrapping quick starts line up under the first one", async ({ page }) => {
   const card = await mountCard(page, { ...BUSY, layout: "grid", width: 380 });
   const lefts = await card.evaluate((element) => [...element.shadowRoot.querySelectorAll(".voc-quick .voc-button")].map((button) => Math.round(button.getBoundingClientRect().left)));

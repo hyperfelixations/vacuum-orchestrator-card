@@ -33,7 +33,7 @@ test("status precedence: phase, attention, work in progress, queue mode, unfinis
   assert.equal(await statusOf((await at(STATION)).model), "attention", "attention outranks the pending assistant");
   assert.equal(await statusOf((await at(WAITING_FOR_WORK)).model), "running");
   assert.equal(await statusOf((await at(QUIET)).model), "idle");
-  // V6: jobs waiting on a queue that was not started are not "Ready"; the pill says the queue does not run.
+  // Jobs waiting on a queue that was not started are not "Ready"; the pill says the queue does not run.
   const held = await at(["robot_choice", { from: "Either robot can start the dining room" }]);
   assert.equal(await statusOf(held.model), "waiting");
   assert.deepEqual([held.texts.t("status.waiting"), held.texts.t("status.idle")], ["Not running", "Ready"]);
@@ -55,7 +55,7 @@ test("the integration's counts mark attention and work before the open jobs are 
   assert.equal(automaticSubtitle(queue({ attentionCount: 2 }), "attention", texts), texts.t("subtitle.attention"), "attention items are not jobs");
   assert.equal(cardStatus(queue({ activeCount: 1 })), "cleaning");
   assert.equal(cardStatus({ ...queue({}), live: { mode: "idle", attentionCount: 1, activeCount: 0 } }), "attention", "a live event is newer than the queue read");
-  // Plan R1.10, UI-03: beside the panel, which counts nothing and says how the queue rests, the
+  // UI-03: beside the panel, which counts nothing and says how the queue rests, the
   // subtitle has nothing to add; without the panel it says it.
   assert.equal(automaticSubtitle(queue({}), "idle", texts), texts.t("subtitle.nothingWaiting"));
   for (const [mode, status] of [["idle", "idle"], ["running", "running"], ["paused", "paused"]]) assert.equal(automaticSubtitle(queue({ mode }), status, texts, { panelShown: true }), "", status);
@@ -77,7 +77,7 @@ test("controls take an accent from the tone that is never the error colour", asy
   const accent = (status) => toneFor(status).style.match(/--voc-accent:([^;]+);/)?.[1];
   assert.equal(accent("paused"), "var(--warning-color, #ffa600)");
   assert.equal(accent("idle"), "var(--success-color, #43a047)");
-  // V6: a grey tone would grey out the controls too; they take the primary colour.
+  // A grey tone would grey out the controls too; they take the primary colour.
   for (const status of ["connecting", "notInstalled", "offline"]) assert.equal(accent(status), "var(--primary-color, #03a9f4)", status);
   for (const status of ["attention", "loadFailed", "checkFailed"]) {
     assert.match(toneFor(status).style, /--tone-color:var\(--error-color, #db4437\);/, status);
@@ -95,17 +95,17 @@ test("the automatic subtitle names what the card is doing", async () => {
   const recovery = await at(RECOVERY);
   assert.equal(automaticSubtitle(recovery.model, "attention", recovery.texts), recovery.texts.t("subtitle.recoveryOne", { robot: "Rocky" }));
   const station = await at(STATION);
-  // V6: a fault is named with its robot rather than as "something".
+  // A fault is named with its robot, not as "something".
   assert.equal(automaticSubtitle(station.model, "attention", station.texts), "Rocky · Dirty water tank full", "a station fault is no job");
   const waiting = await at(WAITING_FOR_WORK);
   assert.match(automaticSubtitle(waiting.model, "running", waiting.texts), /14/, "the run ends 14 minutes from now");
   const assistant = await at(ASSISTANT);
-  // V6: the pill and the tab say "Setup"; the subtitle names what to do there instead.
+  // The pill and the tab say "Setup"; the subtitle names what to do there.
   assert.equal(automaticSubtitle(assistant.model, "setup", assistant.texts), "4 optional steps to check");
   assert.equal(automaticSubtitle(assistant.model, "setup", assistant.texts, { panelShown: true }), "4 optional steps to check");
 });
 
-// V6 (UI-03): beside the panel, which counts the waiting jobs and says how the queue runs, the
+// UI-03: beside the panel, which counts the waiting jobs and says how the queue runs, the
 // subtitle names what the panel does not: the next job, or that the run waits for new work.
 test("beside the panel the subtitle names the next job instead of the count", async () => {
   const { automaticSubtitle } = await import("../../../../src/presentation/shell/header.js");
@@ -221,7 +221,7 @@ test("one warning is a sentence, several a count; a hint is appended to the subt
   const one = notices.buildNotices({ configDiagnostics: config({ page_size: 1 })._configDiagnostics, diagnostics: [createDiagnostic("hint.reconnecting")] });
   const block = notices.buildWarningBlock({ config: config(), notices: one, texts });
   assert.equal(block.visible, true);
-  // V6: a number out of range names the range it must lie in.
+  // A number out of range names the range it must lie in.
   assert.equal(block.text, "1 is not a valid value for page_size (5–100). Using 25.");
   const several = notices.buildNotices({ diagnostics: [createDiagnostic("backend.query_failed", { params: { scope: "rooms", code: "x" } }), createDiagnostic("backend.query_failed", { params: { scope: "robots", code: "x" } })] });
   assert.equal(notices.warningText(several.warnings, texts), texts.t("warning.several", { count: 2 }));
@@ -253,11 +253,11 @@ test("onboarding explains each unusable phase and offers Home Assistant's own pa
   const unloaded = await at(UNLOADED);
   const notLoaded = buildOnboarding({ model: unloaded.model, texts: unloaded.texts });
   assert.deepEqual(notLoaded.actions.map((action) => action.path), [INTEGRATION_PAGE_PATH]);
-  // V6: an entry that does not run may be disabled; the pill already says it is not loaded.
+  // An entry that does not run may be disabled; the pill already says it is not loaded.
   assert.deepEqual([notLoaded.title, notLoaded.note], ["Vacuum Orchestrator is not running", null]);
   const failing = { ...unloaded.model, phaseFailure: { ok: false, code: "unknown", detail: "Boom", channel: "ws" } };
   assert.equal(buildOnboarding({ model: failing, texts: unloaded.texts }).note, unloaded.texts.t("error.code.unknown", { detail: "Boom" }));
-  // V6: while the card cannot show the integration, the onboarding says why; the subtitle does not
+  // While the card cannot show the integration, the onboarding says why; the subtitle does not
   // say it a second time.
   const { automaticSubtitle, buildHeader } = await import("../../../../src/presentation/shell/header.js");
   assert.equal(automaticSubtitle(unloaded.model, "loadFailed", unloaded.texts), "");
@@ -275,7 +275,7 @@ test("a failed check names its failure and is not shown as a lost connection", a
   const texts = textService("en");
   const model = { phase: "check_failed", phaseFailure: { ok: false, code: "unknown", detail: "Boom", channel: "ws" }, permissions: { isAdmin: true } };
   const onboarding = buildOnboarding({ model, texts });
-  // V6: the card says when it tries again and offers to try at once.
+  // The card says when it tries again and offers to try at once.
   const { RETRY_MS } = await import("../../../../src/backend/session.js");
   assert.deepEqual([onboarding.title, onboarding.text, onboarding.note, onboarding.busy], [texts.t("onboarding.check_failed.title"), texts.t("onboarding.check_failed.text", { seconds: RETRY_MS / 1000 }), texts.t("error.code.unknown", { detail: "Boom" }), false]);
   assert.equal(onboarding.text, "Home Assistant answered with an error. The card tries again every 30 seconds.");

@@ -35,7 +35,7 @@ const decisions = new Map();
 function place(stage, image, viewportHeight) {
   const region = stage.closest?.("[data-frame]") ? stage.closest("[data-scroll]") : null;
   const share = Math.round(viewportHeight * MAP_VIEWPORT_SHARE);
-  // A stage in a robot's card has its own fixed height (plan R1.12).
+  // A stage in a robot's card has its own fixed height.
   const fixed = Number(stage.dataset.maxHeight);
   // In a page's region the map has what is left below what stands above it (the page's lead).
   const above = region ? stage.getBoundingClientRect().top - region.getBoundingClientRect().top + region.scrollTop : 0;

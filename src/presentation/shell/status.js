@@ -29,7 +29,7 @@ export function cardStatus(model = {}) {
   if (mode === "paused") return "paused";
   if (!queue) return "connecting";
   if (model.setup?.assistantPending) return "setup";
-  // Jobs waiting on a queue nobody started are not "ready" to run (V6).
+  // Jobs waiting on a queue nobody started are not "ready" to run.
   return (queue.total ?? model.live?.pendingJobs ?? 0) > 0 ? "waiting" : "idle";
 }
 

@@ -389,7 +389,7 @@ test.describe("robots", () => {
     await shot(page, "robots-medium-light.png", MEDIUM);
   });
 
-  // Plan R1.12: a tall map on a wide card turns to fill its column instead of standing narrow.
+  // A tall map on a wide card turns to fill its column instead of standing narrow.
   test("a tall map on a wide card", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await page.route("**/api/image_proxy/**", (route) => route.fulfill({ path: path.join(__dirname, "..", "..", "fixtures", "map-portrait.svg"), contentType: "image/svg+xml" }));
@@ -418,7 +418,7 @@ test.describe("robots", () => {
     await setCardWidth(page, NARROW);
     await act(page, named(card, ".voc-robot", "Rocky", '[data-action="open-map"]'));
     await expect(card.locator("[data-map-stage]")).toHaveAttribute("data-rotated", "true");
-    // The whole map stays in view below the page's lead (plan R1.13).
+    // The whole map stays in view below the page's lead.
     const [stageBox, regionBox] = await Promise.all([card.locator("[data-map-stage]").boundingBox(), card.locator(".voc-overlay-scroll").boundingBox()]);
     expect(stageBox.y + stageBox.height).toBeLessThanOrEqual(regionBox.y + regionBox.height + 1);
     await shot(page, "robot-map-narrow-light.png", NARROW);
@@ -553,8 +553,8 @@ test.describe("on a touch screen", () => {
     await shot(page, "queue-narrow-touch-light.png");
   });
 
-  // UI-22: a refused control has no hover on touch; tapped, it says why. Plan R1.2: the profile of
-  // a working robot opens for its next job; removing it waits.
+  // UI-22: a refused control has no hover on touch; tapped, it says why. The profile of a working
+  // robot opens for its next job; removing it waits.
   test("a tapped refused control says why", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await setCardWidth(page, NARROW);
@@ -726,7 +726,7 @@ test.describe("shell variants", () => {
   });
 });
 
-// V6: large text (125 %, as the browser's zoom gives it) still wraps inside the card: no element
+// Large text (125 %, as the browser's zoom gives it) still wraps inside the card: no element
 // reaches past its edge and nothing scrolls sideways, except the tab strip, which scrolls by design.
 test.describe("large text", () => {
   test("the queue at 125 %, narrow, German", async ({ page }) => {

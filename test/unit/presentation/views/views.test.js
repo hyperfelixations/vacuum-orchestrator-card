@@ -33,7 +33,7 @@ test("the queue groups recovery, work in progress, attention and waiting jobs", 
   const queue = buildQueueView({ ...built, options: {} });
   assert.deepEqual(queue.active.map((row) => row.title), ["Studio"]);
   assert.deepEqual(queue.waiting.map((row) => [row.title, row.position]), [["Conservatory", "1"], ["Library, thoroughly", "2"], ["Dining Room", "3"]]);
-  // V6: the panel's headline already counts the waiting jobs; the heading counts them only without it.
+  // The panel's headline already counts the waiting jobs; the heading counts them only without it.
   assert.equal(queue.waitingCount, null);
   assert.equal(buildQueueView({ ...built, options: {}, panelShown: false }).waitingCount, 3);
   assert.deepEqual(queue.templates.map((template) => template.name), ["Weekly clean", "Mop the dining room"]);
@@ -200,7 +200,7 @@ test("rooms show due verdicts, release, reaching robots and conditions as report
   assert.equal(byName.Studio.reach, null);
   assert.deepEqual(byName.Conservatory.conditions.map((item) => item.text), [texts.t("rooms.condition", { entity: "Conservatory Door", state: "off", allowed: "on" })]);
   assert.match(byName.Conservatory.conditions[0].text, / – required: on$/, "worded as on the detail page");
-  // Plan R1.9: an unmet condition says what it needs; a met one only says that it holds.
+  // An unmet condition says what it needs; a met one only says that it holds.
   assert.equal(byName.Conservatory.conditions[0].met, false);
   const open = buildRoomsView({ texts, context, model: { ...model, slots: { ...model.slots, rooms: { ...model.slots.rooms, data: { ...model.slots.rooms.data, items: model.slots.rooms.data.items.map((room) => ({ ...room, requirementStates: Object.fromEntries(room.requirements.map((item) => [item.entityId, "ready"])) })) } } } }, options: {} }).rooms.find((room) => room.name === "Conservatory");
   assert.deepEqual([open.conditions[0].met, open.conditions[0].text], [true, texts.t("rooms.conditionMet", { entity: "Conservatory Door", state: "off" })]);
@@ -208,7 +208,7 @@ test("rooms show due verdicts, release, reaching robots and conditions as report
   const { formatLikeHomeAssistant } = require("../../../helpers/recorded-backend.js");
   const worded = buildRoomsView({ ...(await busy({}, { formatEntityState: formatLikeHomeAssistant })), options: {} }).rooms.find((room) => room.name === "Conservatory");
   assert.equal(worded.conditions[0].text, texts.t("rooms.condition", { entity: "Conservatory Door", state: "Closed", allowed: "Open" }));
-  // Plan R1.8, UI-08: without any due rule or record, one line says so instead of two.
+  // UI-08: without any due rule or record, one line says so instead of two.
   assert.deepEqual(byName.Conservatory.due.map((line) => [line.key, line.state, line.status]), [["none", "disabled", texts.t("rooms.due.none")]]);
   assert.deepEqual(byName["Dining Room"].due.map((line) => line.key), ["vacuum", "mop"], "a room with a rule keeps both lines");
   // UI-07, REL-05: a release says what is left of it; only a recorded cleaning has a line of its own.
@@ -246,12 +246,12 @@ test("robots show Home Assistant's live state beside the integration's profile f
   const [rocky] = robots.robots;
   assert.equal(rocky.batteryText, "100 %");
   assert.equal(rocky.active, true);
-  // Plan R1.2: the integration takes profile changes during a job, for the robot's next one.
+  // The integration takes profile changes during a job, for the robot's next one.
   assert.deepEqual([rocky.actions.configure.state, rocky.actions.remove.reason], ["enabled", "robot_busy"]);
   assert.deepEqual(rocky.facts.map((fact) => fact.key), ["room", "status", "map"]);
   assert.equal(rocky.facts[0].value, "Studio", "the room the robot reports cleaning");
   assert.ok(rocky.map.picture.startsWith("/api/image_proxy/image.rocky_main_floor"));
-  // V6: maps by the names the integration gives them, without the robot's name before each.
+  // Maps by the names the integration gives them, without the robot's name before each.
   assert.deepEqual([rocky.map.label, rocky.mapChoices.map((choice) => choice.label)], ["Main Floor", ["Main Floor", "Lower Floor"]]);
   assert.deepEqual(rocky.rooms, ["Dining Room", "Studio", "Library"]);
   assert.equal(robots.newCandidates, 0);
@@ -259,7 +259,7 @@ test("robots show Home Assistant's live state beside the integration's profile f
   const stopped = await modelFor("queue_controls", { from: "Rocky stopped in the studio" });
   const [still] = buildRobotsView({ ...stopped, options: {}, ui: {} }).robots;
   assert.equal(still.actions.returnToDock.state, "enabled");
-  assert.equal(still.facts.some((fact) => fact.key === "status"), false, "a status that says what the pill says is not repeated (V6)");
+  assert.equal(still.facts.some((fact) => fact.key === "status"), false, "a status that says what the pill says is not repeated");
   // UI-10: the map opens enlarged, turned where that shows it larger unless the view says not to.
   assert.deepEqual(rocky.map.open, { action: "open-map", args: { robotId: rocky.robotId, entityId: rocky.map.entityId, rotation: "auto" } });
   assert.equal(buildRobotsView({ ...built, options: { map_rotation: "none" }, ui: {} }).robots[0].map.open.args.rotation, "none");
@@ -328,7 +328,7 @@ test("diagnostics show versions, runtime, setup and the trace; the tab turns on 
   assert.ok(facts[built.texts.t("diagnostics.setup")]);
   assert.equal(diagnostics.connection.tone, "ready");
   assert.ok(diagnostics.trace.length > 0);
-  // V6: the newest entries first; the rest on request.
+  // The newest entries first; the rest on request.
   const { TRACE_PREVIEW } = await view("diagnostics");
   assert.ok(diagnostics.trace.length <= TRACE_PREVIEW);
   const all = buildDiagnosticsView({ ...built, options: {}, ui: { expanded: [diagnostics.traceMore.key] } });
@@ -358,7 +358,7 @@ test("setup shows the integration's four steps with their facts; the open step i
   assert.match(step(setup, "queue").summary, /5 s/, "the start delay in seconds");
   const picked = buildSetupView({ ...assistant, ui: { choices: { "setup:step": "queue" } } });
   assert.deepEqual(picked.steps.filter((entry) => entry.current).map((entry) => entry.key), ["queue"], "a step the user opens is shown instead");
-  // PO 2026-10-18: each step leads on to the next by name; finishing the whole setup stands out
+  // Each step leads on to the next by name; finishing the whole setup stands out
   // only on the last step and is named so.
   assert.deepEqual(setup.steps.map((entry) => entry.next?.value ?? null), ["rooms", "defaults", "queue", null]);
   assert.equal(step(setup, "robots").next.label, assistant.texts.t("setup.next", { step: assistant.texts.t("setup.step.rooms.title") }));
@@ -371,7 +371,7 @@ test("setup shows the integration's four steps with their facts; the open step i
   assert.deepEqual([failed.loading, failed.error], [false, failure]);
   const empty = await modelFor("no_robot");
   assert.equal(step(buildSetupView(empty), "robots").note, empty.texts.t("setup.step.robots.none"));
-  // V6 (V5 finding): the lead and the robots step say what is true in each case: no robot taken
+  // The lead and the robots step say what is true in each case: no robot taken
   // over, nothing to add, or the steps opened again once the setup is finished.
   assert.equal(setup.lead, assistant.texts.t("setup.lead"));
   assert.deepEqual([buildSetupView(empty).lead, step(buildSetupView(empty), "robots").text], [empty.texts.t("setup.leadNoRobot"), empty.texts.t("setup.step.robots.textNone")]);

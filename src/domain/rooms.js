@@ -136,7 +136,7 @@ export function normalizeRoom(wire) {
     followAreaName: wire.follow_area_name !== false,
     bindings: Object.freeze(records(wire.bindings).map(binding).filter(Boolean)),
     requirements: Object.freeze(records(wire.requirements).map(normalizeRequirement).filter(Boolean)),
-    // Whether each condition holds now, by entity; the integration weighs it (plan R1.9).
+    // Whether each condition holds now, by entity; the integration weighs it.
     requirementStates: Object.freeze(Object.fromEntries(records(wire.requirement_states).filter((item) => text(item.entity_id)).map((item) => [text(item.entity_id), enumerated(item.state, isRequirementState) ?? "unknown"]))),
     release: release(wire.release),
     released: wire.released === true,

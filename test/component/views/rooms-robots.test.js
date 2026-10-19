@@ -123,7 +123,7 @@ test("a new room needs a name and is created without an area", async () => {
   card.unmount();
 });
 
-// Plan R1.2: a working robot's profile opens and says that changes apply from its next job; only
+// A working robot's profile opens and says that changes apply from its next job; only
 // removing it waits, and the refused button says why when tapped (UI-22).
 test("robots show live state, and a profile under a lease is changed for the next job", async () => {
   const card = await open("robots", BUSY);
@@ -174,7 +174,7 @@ test("a discovered vacuum is added from the robots view", async () => {
   card.unmount();
 });
 
-// Plan V5: releasing the conservatory from its job leaves the closed door; the dialog says so.
+// Releasing the conservatory from its job leaves the closed door; the dialog says so.
 test("a release opened from a job says what the job still waits for afterwards", async () => {
   const card = await open("queue", BUSY);
   await card.click(card.named(".voc-job", "Conservatory").querySelector('[data-action="open-release"]'));

@@ -29,7 +29,7 @@ export function buildRobotAdd({ model, texts, context, ui = {} }) {
         // UI-04: by its integration, never by its entity ID.
         detail: [adapterLabel(texts, candidate.adapter), candidate.protocol ? t(texts, "robot.protocol.roborockV1") : null].filter(Boolean).join(" · "),
         roles: Object.keys(candidate.roles).map((role) => t(texts, `role.${role}`)),
-        // The entities found are counted and listed only on request (V6).
+        // The entities found are counted and listed only on request.
         rolesKey: `candidate:${candidate.registryId}:roles`,
         rolesOpen: list(ui?.expanded).includes(`candidate:${candidate.registryId}:roles`),
         rolesLabel: t(texts, "robotAdd.roles", { count: Object.keys(candidate.roles).length }),
@@ -129,7 +129,7 @@ export function buildRobotEditor({ model, texts, context, overlay }) {
     robotId: draft.meta.robotId,
     title: t(texts, "robotEditor.title", { robot: robot?.name || draft.meta.robotId }),
     lead: robot ? profileLead(texts, model, robot, draft) : null,
-    // Plan R1.2: during a job the integration takes the change for the robot's next job.
+    // During a job the integration takes the change for the robot's next job.
     busy: robot?.active ? t(texts, "robotEditor.busy", { robot: robot.name }) : null,
     general,
     areaScope,

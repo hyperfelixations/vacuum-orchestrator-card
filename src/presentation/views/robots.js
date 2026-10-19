@@ -17,7 +17,7 @@ function readingText(reading) {
   return reading.display || `${reading.state}${reading.unit ? ` ${reading.unit}` : ""}`;
 }
 
-// The robot's own status sensor beside the state pill: shown only where it adds something (V6).
+// The robot's own status sensor beside the state pill: shown only where it adds something.
 function sameWords(a, b) {
   const plain = (text) => String(text ?? "").replace(/_/g, " ").trim().toLowerCase();
   return a !== null && plain(a) === plain(b);

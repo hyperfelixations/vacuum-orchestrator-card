@@ -29,7 +29,7 @@ function dueLine(room, operation, { texts, model, timeFormat }) {
     share: share === null ? null : Math.max(0, Math.min(1, share)),
     // Only a recorded cleaning has a line; "never cleaned" is the status's to say.
     last: stamp ? t(texts, "rooms.last", { when: moment(texts, stamp.completedAt, timeFormat, model.nowMs) }) : null,
-    // Plan R1.7: a cleaning seen to its end is the usual case; only an uncertain one says so.
+    // A cleaning seen to its end is the usual case; only an uncertain one says so.
     quality: stamp?.quality === "derived" ? qualityLabel(texts, stamp.quality) : null,
     qualityKey: stamp?.quality ?? null,
   };
@@ -97,7 +97,7 @@ function condition(room, requirement, model, texts) {
   // In Home Assistant's own words where it words them (UI-04), else as reported.
   const state = reading?.available ? reading.display || reading.state : t(texts, "value.unknown");
   const allowed = requirement.acceptedStates.map((value) => reading?.values?.[value] || value).join(", ");
-  // Plan R1.9: a condition the integration finds met only says that it holds.
+  // A condition the integration finds met only says that it holds.
   const met = room.requirementStates?.[requirement.entityId] === "ready";
   return { key: requirement.entityId, name, state, allowed, met, text: met ? t(texts, "rooms.conditionMet", { entity: name, state }) : t(texts, "rooms.condition", { entity: name, state, allowed }) };
 }

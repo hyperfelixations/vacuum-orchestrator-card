@@ -56,7 +56,7 @@ test("readings copy single values, use Home Assistant's formatter and report unu
   assert.equal(throwing.roles.battery.display, null);
 });
 
-// Plan R1.13: a map picture changes with each new image, as Home Assistant's own image card
+// A map picture changes with each new image, as Home Assistant's own image card
 // builds it, and says when that image came.
 test("a map picture follows each new image of its entity and says when it came", async () => {
   const { indexRegistry, robotLive } = await load();

@@ -24,7 +24,7 @@ async function releaseDiningRoom(backend) {
   });
 }
 
-// The harness words states as Home Assistant does, so goldens show no raw keys (V6).
+// The harness words states as Home Assistant does, so goldens show no raw keys.
 test("the harness words entity states as Home Assistant does", () => {
   const { formatLikeHomeAssistant: words } = require("../helpers/recorded-backend.js");
   const door = { entity_id: "binary_sensor.door", state: "off", attributes: { device_class: "door" } };

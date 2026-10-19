@@ -30,7 +30,7 @@ function robotCard(context, robot) {
     ? `<div class="voc-robot-line" data-key="rooms">${icon("mdi:floor-plan")}<span>${e(robot.rooms.join(", "))}</span></div>`
     : `<div class="voc-robot-line voc-room-warning" data-key="rooms">${icon("mdi:map-marker-question-outline")}<span>${e(context.t("robot.noRooms"))}</span></div>`;
   const choices = robot.mapChoices.length ? `<div class="voc-chips" data-key="map-choices">${robot.mapChoices.map((entry) => button({ action: "choose", args: { key: `map:${robot.robotId}`, value: entry.entityId }, label: entry.label, variant: "quiet", pressed: entry.selected, key: `map:${entry.entityId}` })).join("")}</div>` : "";
-  // Plan R1.12: the picture takes its column up to a fixed height and turns where that shows it larger.
+  // The picture takes its column up to a fixed height and turns where that shows it larger.
   const picture = robot.map ? `<div class="voc-map-stage voc-robot-map-stage" data-map-stage data-rotation="${e(robot.map.open.args.rotation)}" data-max-height="${ROBOT_MAP_HEIGHT}"><img src="${e(context.resolveUrl(robot.map.picture))}" alt="${e(context.t("robot.mapAlt", { robot: robot.name, map: robot.map.label }))}" loading="lazy"></div>` : "";
   const enlarge = robot.map ? `<button type="button" class="voc-robot-map-open" data-action="${e(robot.map.open.action)}" data-args="${e(JSON.stringify(robot.map.open.args))}" aria-label="${e(context.t("robot.mapOpen", { map: robot.map.label }))}" title="${e(context.t("robot.mapOpen", { map: robot.map.label }))}">${picture}</button>` : "";
   const map = robot.map ? `<figure class="voc-robot-map" data-key="map">${enlarge}${choices}</figure>` : "";

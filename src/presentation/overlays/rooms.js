@@ -81,7 +81,7 @@ export function buildRelease({ model, texts, context, overlay }) {
   const addable = roomsOf(model)
     .filter((room) => !taken.has(room.roomId) && roomAffordances(room, context).release.state === "enabled")
     .map((room) => ({ roomId: room.roomId, name: room.name }));
-  // Opened from a job: what it still waits for once these rooms are released (plan V5).
+  // Opened from a job: what it still waits for once these rooms are released.
   const job = overlay.jobId ? findJob(model, overlay.jobId) : null;
   const afterwards = job ? readinessReasons(readinessBeyondRooms(job.readiness, [...taken]), { index: roomIndex(model), model, texts }) : [];
   return {
@@ -144,8 +144,8 @@ export function buildRoomEditor({ model, texts, context, overlay }) {
   const detected = robotsOf(model)
     .filter((robot) => robot.capabilities?.targets?.[draft.meta.roomId])
     .map((robot) => ({ key: robot.robotId, text: t(texts, "room.detectedTarget", { robot: robot.name, targets: robot.capabilities.targets[draft.meta.roomId].map((target) => targetName(robot, target)).join(", ") }) }));
-  // Plan R1.6: segments of the area a robot leaves out (outdated or on another map), fixed in
-  // Home Assistant's assignment.
+  // Segments of the area a robot leaves out (outdated or on another map), fixed in Home
+  // Assistant's assignment.
   const ignored = robotsOf(model).flatMap((robot) => {
     const reach = list(robot.reach).find((entry) => entry.roomId === draft.meta.roomId);
     return reach?.ignored.length ? [{ key: robot.robotId, text: t(texts, "room.ignoredTargets", { robot: robot.name, count: reach.ignored.length }), assign: robot.configuration?.entityId ? { entityId: robot.configuration.entityId } : null }] : [];

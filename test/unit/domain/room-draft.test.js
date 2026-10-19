@@ -26,7 +26,7 @@ test("intervals are edited in hours, lists as comma-separated text", async () =>
   assert.equal(draft.meta.roomId, room.roomId);
 });
 
-// Plan V5: an interval reads in days and hours; both empty or zero switch it off.
+// An interval reads in days and hours; both empty or zero switch it off.
 test("an interval is edited as days and hours and kept in hours", async () => {
   const { createRoomDraft, updateRoomDraft, intervalParts, intervalOf, room } = await load();
   const draft = createRoomDraft(room);

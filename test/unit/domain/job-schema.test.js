@@ -1,4 +1,4 @@
-// The closed vocabularies of API V3 and their membership checks. Values are protocol
+// The closed vocabularies of API 4 and their membership checks. Values are protocol
 // identifiers; every list is frozen and every check refuses non-strings.
 
 const test = require("node:test");

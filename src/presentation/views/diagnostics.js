@@ -8,7 +8,7 @@ import { traceRows } from "../common/trace.js";
 import { INTEGRATION_PAGE_PATH } from "../common/links.js";
 
 export const TRACE_ROWS = 40;
-// The newest entries; the rest on request (V6).
+// The newest entries; the rest on request.
 export const TRACE_PREVIEW = 10;
 const TRACE_MORE_KEY = "diagnostics:trace";
 

@@ -97,11 +97,11 @@ test("a count of one is singular", async () => {
   assert.deepEqual([en["rooms.releasedCount"]({ count: 1 }), de["rooms.releasedCount"]({ count: 1 })], ["1 room released", "1 Raum freigegeben"]);
 });
 
-// V6: how sure a cleaning record is, in plain words rather than the jargon "Derived".
+// How sure a cleaning record is, in plain words, not the jargon "Derived".
 test("the quality of a cleaning record is said in plain words", async () => {
   const { en } = await import("../../../src/i18n/languages/en.js");
   const { de } = await import("../../../src/i18n/languages/de.js");
-  // Plan R1.7: VOI confirms a run it saw to its end, not only one the robot confirmed.
+  // VOI confirms a run it saw to its end, not only one the robot confirmed.
   assert.deepEqual([en["quality.confirmed"], en["quality.derived"], de["quality.confirmed"], de["quality.derived"]], ["Confirmed", "Not fully observed", "Bestätigt", "Nicht vollständig beobachtet"]);
   assert.deepEqual([en["result.completed.confirmed"], de["result.completed.confirmed"]], [en["result.completed"], de["result.completed"]], "a confirmed cleaning is plainly cleaned");
 });
@@ -114,7 +114,7 @@ test("the empty queue asks what to clean next", async () => {
   assert.deepEqual([en["queue.emptyReadOnly"], de["queue.emptyReadOnly"]], ["Nothing waits to be cleaned.", "Nichts wartet auf eine Reinigung."]);
 });
 
-// V6: template actions name their effect and match the editor's words for the same effect.
+// Template actions name their effect and match the editor's words for the same effect.
 test("template actions say what they do", async () => {
   const { en } = await import("../../../src/i18n/languages/en.js");
   const { de } = await import("../../../src/i18n/languages/de.js");
@@ -122,9 +122,9 @@ test("template actions say what they do", async () => {
   assert.deepEqual([en["action.createFromTemplate"], de["action.createFromTemplate"]], [en["action.addToQueue"], de["action.addToQueue"]]);
 });
 
-// V6: one word per thing, the integration's own (Saugkraft, Wassermenge, Nachlaufzeit), the same in
+// One word per thing, the integration's own (Saugkraft, Wassermenge, Nachlaufzeit), the same in
 // settings, setup and editors; a dismissal is "Back", never a second "Cancel" beside "Cancel job".
-// Plan R1.14: the robot editor keeps apart which rooms a robot cleans and how a room is sent to it.
+// The robot editor keeps apart which rooms a robot cleans and how a room is sent to it.
 test("the robot editor names which rooms apart from how rooms are sent", async () => {
   const { en } = await import("../../../src/i18n/languages/en.js");
   const { de } = await import("../../../src/i18n/languages/de.js");
@@ -149,7 +149,7 @@ test("the card's words follow the glossary", async () => {
   assert.equal(de["action.addToQueue"], "Einreihen", "a verb, not a place to go");
 });
 
-// V6: a result not fully observed says so in the words of its quality mark, without the jargon
+// A result not fully observed says so in the words of its quality mark, without the jargon
 // "derived".
 test("an unobserved result is said in plain words", async () => {
   const { en } = await import("../../../src/i18n/languages/en.js");
@@ -162,7 +162,7 @@ test("an unobserved result is said in plain words", async () => {
   }
 });
 
-// V6: dialog titles share one form, and a cancel says what will happen, not what is.
+// Dialog titles share one form, and a cancel says what will happen, not what is.
 test("dialogs ask in one form and say what will happen", async () => {
   const { en } = await import("../../../src/i18n/languages/en.js");
   assert.deepEqual([en["confirm.endQueue.title"], en["queueEnd.title"], en["confirm.cancelJob.title"]], ["End queue?", "End queue?", "Cancel job?"]);

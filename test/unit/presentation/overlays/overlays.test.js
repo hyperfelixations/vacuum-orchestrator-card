@@ -125,7 +125,7 @@ test("the room choice starts with all rooms; chosen, it mutes the single rooms a
   assert.equal(plain.options.some((option) => option.included), false);
   const all = roomsField(applyDraftChange(createDraft(), "allRooms", true));
   assert.deepEqual(all.value, ["all"]);
-  // V6: with "All rooms" the rooms are part of the job, shown as included rather than greyed out.
+  // With "All rooms" the rooms are part of the job, shown as included, not greyed out.
   assert.ok(all.options.slice(1).length > 0 && all.options.slice(1).every((option) => option.included && option.title === built.texts.t("editor.includedInAllRooms")));
   assert.equal(all.hint, built.texts.t("editor.allRoomsJob"));
   assert.equal(roomsField(applyDraftChange(createDraft({ kind: "template" }), "allRooms", true)).hint, built.texts.t("editor.allRoomsTemplate"));
@@ -156,7 +156,7 @@ test("the detail page shows the waiting reason on three axes, unreleased rooms t
   const vm = buildJobDetail({ ...built, overlay: { jobId: conservatory.jobId }, config: {} });
   assert.equal(vm.title, "Conservatory");
   assert.equal(vm.position, 1);
-  // V6: the mode carries the same icon as in the queue row, and the water amount another one.
+  // The mode carries the same icon as in the queue row, and the water amount another one.
   const { MODE_ICONS, SETTING_ICONS } = await import("../../../../src/presentation/views/job-row.js");
   assert.equal(vm.modeIcon, MODE_ICONS.mop);
   assert.notEqual(SETTING_ICONS.mopIntensity, MODE_ICONS.mop);
@@ -285,7 +285,7 @@ test("the small dialogs word their command and show the integration's verdict on
   assert.equal(dialogs.buildQueueSettings({ ...built, overlay: { delay: 5, minutes: "30" } }).fields[0].value, 30, "typed minutes select their quick choice");
 });
 
-// V4f, JOB-25, EXE-14, EXE-15: a finished job says how it ended and how sure the integration is,
+// JOB-25, EXE-14, EXE-15: a finished job says how it ended and how sure the integration is,
 // its notes in words and when it was corrected, and offers to correct it.
 const CORRECTED = "The library job is corrected";
 const finishedLibrary = async () => {
@@ -377,7 +377,7 @@ test("room settings show detected robot targets and the occupancy fields only fo
   // UI-04: a target by its segment's name, never its ID.
   assert.equal(vm.detected[0].text, built.texts.t("room.detectedTarget", { robot: "Rocky", targets: "Dining Room" }));
   assert.deepEqual(vm.ignored, []);
-  // Plan R1.6: a segment of the area that the robot leaves out is said where it can be fixed.
+  // A segment of the area that the robot leaves out is said where it can be fixed.
   const library = buildRoomEditor({ ...built, overlay: { draft: createRoomDraft(built.model.slots.rooms.data.items.find((entry) => entry.name === "Library")) } });
   assert.deepEqual(library.ignored.map((item) => [item.text, item.assign]), [[built.texts.t("room.ignoredTargets", { robot: "Rocky", count: 1 }), { entityId: "vacuum.rocky" }]]);
   assert.equal(library.bindingsOpen, true, "the section with the hint opens");
@@ -413,10 +413,10 @@ test("the enlarged map shows the chosen picture with its robot's name", async ()
   const rocky = built.model.slots.robots.data.items.find((robot) => robot.name === "Rocky");
   const [map] = built.model.robotsLive[rocky.robotId].maps;
   const vm = buildRobotMap({ ...built, overlay: { robotId: rocky.robotId, entityId: map.entityId, rotation: "auto" } });
-  // V6: a map by the name the integration gives it, not its image entity's name with the robot's.
+  // A map by the name the integration gives it, not its image entity's name with the robot's.
   assert.deepEqual([vm.key, vm.title, vm.rotation, vm.missing], ["robot-map", "Rocky · Main Floor", "auto", false]);
   assert.ok(vm.picture.startsWith("/api/image_proxy/"));
-  // Plan R1.13: the page says when the picture came, from the image entity's own time.
+  // The page says when the picture came, from the image entity's own time.
   const { moment } = await import("../../../../src/presentation/common/texts.js");
   assert.equal(vm.updated, built.texts.t("robot.mapUpdated", { when: moment(built.texts, map.updatedAt, "auto", built.model.nowMs) }));
   assert.equal(buildRobotMap({ ...built, model: { ...built.model, robotsLive: { [rocky.robotId]: { maps: [{ ...map, updatedAt: null }] } } }, overlay: { robotId: rocky.robotId, entityId: map.entityId } }).updated, null);
@@ -437,7 +437,7 @@ test("robot discovery marks configured vacuums; the profile explains each role",
   const { createRobotDraft, updateRobotDraft } = await import("../../../../src/domain/robot-draft.js");
   const built = await modelFor("robot_choice", { from: "Either robot can start the dining room", needsEntityCatalog: true });
   const add = buildRobotAdd({ ...built, ui: {} });
-  // V6: the entities found for a vacuum are counted and listed only on request.
+  // The entities found for a vacuum are counted and listed only on request.
   const [first] = add.candidates;
   assert.deepEqual([first.rolesOpen, first.rolesLabel], [false, built.texts.t("robotAdd.roles", { count: first.roles.length })]);
   assert.ok(first.roles.length > 1);
@@ -454,7 +454,7 @@ test("robot discovery marks configured vacuums; the profile explains each role",
   assert.deepEqual([battery.value, battery.placeholder], ["", "No minimum"]);
   const rockyRobot = built.model.slots.robots.data.items.find((robot) => robot.name === "Rocky");
   const rockyRoles = Object.fromEntries(buildRobotEditor({ ...built, overlay: { draft: createRobotDraft(rockyRobot), open: [] } }).sections.roles.rows.map((row) => [row.key, row]));
-  // Plan R1.2: a robot working on a job can be changed; the page says when the change applies.
+  // A robot working on a job can be changed; the page says when the change applies.
   const afternoon = await busy();
   const leased = afternoon.model.slots.robots.data.items.find((robot) => robot.name === "Rocky");
   const working = buildRobotEditor({ ...afternoon, overlay: { draft: createRobotDraft(leased), open: [] } });

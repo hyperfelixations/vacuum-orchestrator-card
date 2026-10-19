@@ -105,7 +105,7 @@ test("a robot's status line joins its activity and battery with the lease", asyn
   const outside = await modelFor("external_run", { from: "The card opens" });
   const [external] = robotsOf(outside.model).map((robot) => robotStatus(robot, outside.model, en));
   assert.deepEqual([external.state, en.t("robot.phase.cleaningExternal")], [en.t("robot.phase.cleaningExternal"), "Cleaning outside Vacuum Orchestrator"]);
-  // V6: a robot that cannot be reached has no current battery level; the last one is not shown.
+  // A robot that cannot be reached has no current battery level; the last one is not shown.
   const lost = await modelFor("recovery", { from: "The job needs clarification" });
   const [unreachable] = robotsOf(lost.model).map((robot) => robotStatus(robot, lost.model, en));
   assert.deepEqual([unreachable.battery, unreachable.summary], [null, `Rocky · ${unreachable.state}`]);
@@ -127,7 +127,7 @@ test("trace rows word known events and states and keep unknown ones as reported"
   const unknown = traceRows([{ sequence: 1, timestamp: NOW, event: "teleport", details: { state: "beamed" } }], { model, texts: en });
   assert.deepEqual([unknown[0].event, unknown[0].detail], ["teleport", "beamed"]);
   assert.equal(traceRows([{ sequence: 2, timestamp: NOW, event: "internal_error", details: {} }], { model, texts: en })[0].tone, "attention");
-  // V6: a job not started for missing prerequisites is no error, and its reason is worded.
+  // A job not started for missing prerequisites is no error, and its reason is worded.
   const [blocked] = traceRows([{ sequence: 3, timestamp: NOW, event: "dispatch_blocked", details: { state: "blocked", reason: "job_prerequisites" } }], { model, texts: en });
   assert.deepEqual([blocked.event, blocked.tone], [en.t("trace.event.dispatch_blocked"), "neutral"]);
   assert.match(blocked.detail, new RegExp(en.t("trace.reason.job_prerequisites")));
@@ -141,8 +141,8 @@ test("trace rows word known events and states and keep unknown ones as reported"
   assert.deepEqual(counted.map((row) => [row.event, row.count]), [[en.t("trace.event.dispatch_blocked"), 2], [en.t("trace.event.internal_error"), 1], [en.t("trace.event.dispatch_blocked"), 1]]);
 });
 
-// V6: an event log names the day once and each entry to the second; a run of the same entry is
-// counted rather than repeated.
+// An event log names the day once and each entry to the second; a run of the same entry is
+// counted, not repeated.
 test("trace rows carry the day apart from the time to the second and count a run of the same entry", async () => {
   const { model } = await modelFor("showcase", { from: BUSY });
   const { traceRows } = await import("../../../../src/presentation/common/trace.js");
@@ -156,8 +156,8 @@ test("trace rows carry the day apart from the time to the second and count a run
   assert.notEqual(rows[3].day, rows[0].day);
 });
 
-// V6 (UI-04): every value the integration traces is worded; a vendor's own robot status, which the
-// integration passes on as reported, is written out rather than shown as a code.
+// UI-04: every value the integration traces is worded; a vendor's own robot status, which the
+// integration passes on as reported, is written out, not shown as a code.
 test("trace details word commands, stages, robot states, settings and vendor statuses", async () => {
   const { model } = await modelFor("showcase", { from: BUSY });
   const { traceRows } = await import("../../../../src/presentation/common/trace.js");

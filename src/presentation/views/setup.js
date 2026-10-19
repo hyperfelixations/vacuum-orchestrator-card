@@ -93,8 +93,8 @@ export function buildSetupView({ model, texts, context, ui = {} }) {
     loading: false,
     pending: setup.assistantPending,
     finish: setup.assistantPending ? decide(context, { operation: "complete_setup", target: SETUP_TARGET }) : null,
-    // PO 2026-10-18: finishing the whole setup stands out only on the last step; before it,
-    // each step leads on to the next.
+    // Finishing the whole setup stands out only on the last step; before it, each step leads on
+    // to the next.
     finishPrimary: current === SETUP_STEPS.at(-1),
     // What the steps are for: taken over, taken over without a robot, or opened again.
     lead: t(texts, !setup.assistantPending ? "setup.leadGuide" : robotsOf(model).length ? "setup.lead" : "setup.leadNoRobot"),

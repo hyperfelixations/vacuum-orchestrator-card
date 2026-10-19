@@ -49,7 +49,7 @@ test("a loaded map in its stage is laid out turned or upright; a stage that may 
   assert.equal(upright.querySelector("img").style.transform, "");
 });
 
-// Plan R1.12: in a robot's card the map takes its column up to a fixed height, so a tall map on
+// In a robot's card the map takes its column up to a fixed height, so a tall map on
 // a wide card turns instead of standing narrow beside empty space.
 test("a stage with a fixed height measures against it rather than the viewport", async () => {
   const { placeMaps } = await load();

@@ -81,7 +81,7 @@ test("readiness keeps reason codes, unreleased rooms and requirement results", a
   assert.equal(normalizeReadiness(W.wireReadiness({ state: "maybe" })).state, "unknown");
 });
 
-// Plan V5, REL-07: what the explanation names besides the rooms a release dialog is releasing.
+// REL-07: what the explanation names besides the rooms a release dialog is releasing.
 test("the explanation beyond some rooms keeps the other rooms and every other reason", async () => {
   const { normalizeReadiness, readinessBeyondRooms } = await load();
   const both = normalizeReadiness(W.wireReadiness({ state: "blocked", reason_codes: ["room_not_released", "requirement_not_satisfied"], blocked_room_ids: ["room-conservatory", "room-studio"], requirements: [W.wireRequirementResult({ state: "blocked" })] }));
