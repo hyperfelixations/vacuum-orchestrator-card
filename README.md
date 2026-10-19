@@ -25,8 +25,8 @@ follows your dashboard's light or dark theme.
 - A job editor that shows only the settings the cleaning mode uses and the
   levels your robots offer for the chosen rooms, and starts a new job at once
   when a robot is free
-- Defaults for new jobs: mode, suction, water, mop route, passes and what
-  happens when a robot lacks a level
+- Defaults for new jobs: mode, vacuum power, water amount, mop route, passes
+  and what happens when a robot lacks a level
 - For every waiting job, whether it can start and what it is waiting for
 - Room cards with vacuum and mop due bars, the last cleaning and one-tap release
   or lock
@@ -96,12 +96,12 @@ The card then leads you to a working setup:
    dialog for adding it.
 3. **Could not start** — **Open integration** shows Home Assistant's error for
    it.
-4. **No robot or room yet** — the **Setup** tab lists nine steps. Two are
-   needed: add a robot and assign rooms to a robot. The others are optional:
-   check the job defaults, doors and conditions, release rooms, due dates and
-   presence, templates, the queue's wait time and the first job. The tab is
-   shown until a robot and a room it reaches exist; afterwards **View setup**
-   in the **Settings** tab opens the steps again.
+4. **Set up** — the **Setup** tab walks you through four steps: robots, rooms
+   and reach, defaults for new jobs and the queue. None is required: **Next**
+   leads to the following step, **Finish setup** ends the setup, and **Later**
+   sets it aside until the dashboard reloads. Rooms stay locked until you
+   release them. Afterwards **View setup** in the **Settings** tab opens the
+   steps again.
 
 See [Configuration](#configuration) below for every available option.
 
@@ -165,14 +165,14 @@ show:
 
 | View | What it shows | Shown without `views:` |
 | --- | --- | --- |
-| `setup` | The nine setup steps with the next action; optional steps are marked. | While the setup is unfinished |
+| `setup` | The four setup steps: robots, rooms and reach, defaults for new jobs, the queue. | While the setup is unfinished, for administrators |
 | `queue` | The queue run, jobs in progress and needing attention, the waiting jobs in order, and shortcuts to create a job from a template. | Always |
 | `rooms` | Room cards: due bars, last cleaning, release, reaching robots and conditions. | Always |
 | `robots` | Robot cards: live state, battery, capabilities, reachable rooms and map. | Always |
 | `templates` | Templates for recurring jobs. | Always |
 | `history` | Finished jobs and recorded cleaning runs. | Always |
-| `diagnostics` | Connection, versions, the setup checklist and the integration's event trace. | When something needs a look |
-| `settings` | The defaults for new jobs, how long a queue run waits for new work before it ends, and the versions of the integration and the card. | For administrators |
+| `diagnostics` | Connection, versions, the setup status and the integration's event trace. | When something needs a look |
+| `settings` | The defaults for new jobs, how long a queue run waits for new work before it ends, how long new and changed jobs wait before they start, and the versions of the integration and the card. | For administrators |
 
 A string and an object without `enabled` both switch a view on:
 
@@ -215,7 +215,7 @@ Options belong inside the corresponding `views:` entry.
 | `rooms` | `sort` | `configured` / `name` / `due` | `configured` | Orders the rooms as configured in the integration, by name, or most due first. |
 | `rooms` | `show_disabled` | `true` / `false` | `false` | Shows the rooms excluded from cleaning. |
 | `robots` | `show_map` | `true` / `false` | `true` | Shows the robot's map, when it has one. |
-| `robots` | `show_capabilities` | `true` / `false` | `true` | Shows the suction, water and mop route levels the robot offers. |
+| `robots` | `show_capabilities` | `true` / `false` | `true` | Shows the vacuum power, water amount and mop route levels the robot offers. |
 | `robots` | `map_rotation` | `auto` / `none` | `auto` | Turns the enlarged map a quarter where that shows it clearly larger. |
 | `history` | `source` | `jobs` / `runs` / `both` | `both` | Shows finished jobs, recorded cleaning runs, or both with a switch between them. |
 | `diagnostics` | `show_trace` | `true` / `false` | `true` | Shows the integration's event trace. |
@@ -363,9 +363,9 @@ Check the card's `type:` — it must be exactly
 `custom:vacuum-orchestrator-card` (the `custom:` prefix is required), and the
 resource must have loaded without a console error.
 
-**A button is greyed out.**
-Point at it with the mouse: its tooltip says why. Changes need an administrator
-account.
+**A button is dimmed.**
+Tap or click it: the card says why. Without an administrator account the card
+shows no buttons that change something and says so under its title.
 
 **“This card does not support the installed version.”**
 The installed integration is newer than this card. Update the card.
