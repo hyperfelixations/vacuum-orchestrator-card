@@ -3,7 +3,7 @@
 import { boolOption, enumOption } from "../config/option-schemas.js";
 import { buildRobotsView } from "../presentation/views/robots.js";
 import { button, chip, e, icon, pill } from "../render/primitives/markup.js";
-import { emptyState, errorState, loadingState } from "./parts.js";
+import { emptyState, errorState, itemMenu, loadingState } from "./parts.js";
 import { ROBOTS_CSS } from "./styles/robots.js";
 
 // The tallest a map picture stands in a robot's card.
@@ -31,11 +31,21 @@ function robotCard(context, robot) {
     : `<div class="voc-robot-line voc-room-warning" data-key="rooms">${icon("mdi:map-marker-question-outline")}<span>${e(context.t("robot.noRooms"))}</span></div>`;
   const choices = robot.mapChoices.length ? `<div class="voc-chips" data-key="map-choices">${robot.mapChoices.map((entry) => button({ action: "choose", args: { key: `map:${robot.robotId}`, value: entry.entityId }, label: entry.label, variant: "quiet", pressed: entry.selected, key: `map:${entry.entityId}` })).join("")}</div>` : "";
   // The picture takes its column up to a fixed height and turns where that shows it larger.
-  const picture = robot.map ? `<div class="voc-map-stage voc-robot-map-stage" data-map-stage data-rotation="${e(robot.map.open.args.rotation)}" data-max-height="${ROBOT_MAP_HEIGHT}"><img src="${e(context.resolveUrl(robot.map.picture))}" alt="${e(context.t("robot.mapAlt", { robot: robot.name, map: robot.map.label }))}" loading="lazy"></div>` : "";
+  const picture = robot.map ? `<div class="voc-map-stage voc-robot-map-stage" data-map-stage data-placed data-rotation="${e(robot.map.open.args.rotation)}" data-max-height="${ROBOT_MAP_HEIGHT}"><img data-placed src="${e(context.resolveUrl(robot.map.picture))}" alt="${e(context.t("robot.mapAlt", { robot: robot.name, map: robot.map.label }))}" loading="lazy"></div>` : "";
   const enlarge = robot.map ? `<button type="button" class="voc-robot-map-open" data-action="${e(robot.map.open.action)}" data-args="${e(JSON.stringify(robot.map.open.args))}" aria-label="${e(context.t("robot.mapOpen", { map: robot.map.label }))}" title="${e(context.t("robot.mapOpen", { map: robot.map.label }))}">${picture}</button>` : "";
   const map = robot.map ? `<figure class="voc-robot-map" data-key="map">${enlarge}${choices}</figure>` : "";
   const home = robot.actions.returnToDock.state === "hidden" ? "" : `<div class="voc-robot-actions" data-key="actions">${button({ action: "return-robot", args: { robotId: robot.robotId }, label: context.t("action.returnToDock"), iconName: "mdi:home-import-outline", variant: "text", decision: robot.actions.returnToDock, reasonText: context.reason(robot.actions.returnToDock) })}</div>`;
-  const configure = button({ action: "edit-robot", args: { robotId: robot.robotId }, label: context.t("robot.settings", { robot: robot.name }), iconName: "mdi:cog-outline", variant: "icon", decision: robot.actions.configure, reasonText: context.reason(robot.actions.configure) });
+  // UI-32: the robot's further actions in its menu, where its card keeps its actions.
+  const args = { robotId: robot.robotId };
+  const configure = itemMenu(context, {
+    key: `robot:${robot.robotId}`,
+    label: context.t("action.moreFor", { job: robot.name }),
+    items: [
+      { action: "edit-robot", args, iconName: "mdi:pencil-outline", labelKey: "action.edit", decision: robot.actions.configure },
+      { action: "remove-robot", args, iconName: "mdi:delete-outline", labelKey: "robotEditor.remove", decision: robot.actions.remove, tone: "danger" },
+    ],
+    open: robot.menuOpen === true,
+  });
   return `<article class="voc-robot" data-key="robot:${e(robot.robotId)}" data-tone="${e(robot.tone)}"><header class="voc-robot-head"><span class="voc-robot-icon" aria-hidden="true">${icon("mdi:robot-vacuum")}</span><div class="voc-robot-title"><h3 class="voc-robot-name">${e(robot.name)}</h3><div class="voc-robot-state">${pill(robot.state, robot.tone)}${robot.batteryText ? `<span class="voc-robot-battery">${icon("mdi:battery-outline")}${e(robot.batteryText)}</span>` : ""}</div></div>${configure}</header><div class="voc-robot-body"><div class="voc-robot-info">${facts ? `<div class="voc-robot-facts">${facts}</div>` : ""}${notes}${home}${rooms}${capabilities}</div>${map}</div></article>`;
 }
 

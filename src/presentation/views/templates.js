@@ -13,7 +13,7 @@ export function templatesAreEmpty(model) {
   return Boolean(data) && list(data.items).length === 0;
 }
 
-export function buildTemplatesView({ model, texts, context }) {
+export function buildTemplatesView({ model, texts, context, ui = {} }) {
   const status = model.slots?.templates?.status;
   const data = slotData(model, "templates");
   const index = roomIndex(model);
@@ -40,6 +40,7 @@ export function buildTemplatesView({ model, texts, context }) {
         settings: settingChips(intent, texts, { defaults: slotData(model, "queue")?.jobDefaults }),
         suppressed: template.automatic && template.suppressedRoomIds.length ? t(texts, "templates.suppressed", { rooms: rooms(template.suppressedRoomIds) }) : null,
         actions: templateAffordances(template, context),
+        menuOpen: ui.menu === `template:${template.templateId}`,
       };
     }),
   };

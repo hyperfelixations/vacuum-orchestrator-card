@@ -82,14 +82,24 @@ function worded(format, state, value) {
   }
 }
 
+function named(formatName, state) {
+  if (typeof formatName !== "function" || !state) return null;
+  try {
+    const name = formatName(state);
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 // `values`: further states of the entity a view names, such as those a condition accepts; each
 // is worded as Home Assistant words it.
-function entityReading(states, entityId, format, values) {
+function entityReading(states, entityId, format, values, formatName) {
   const state = states?.[entityId];
   return {
     state: state?.state ?? null,
     display: worded(format, state),
-    name: state?.attributes?.friendly_name || null,
+    name: named(formatName, state) || state?.attributes?.friendly_name || null,
     available: Boolean(state) && state.state !== "unavailable" && state.state !== "unknown",
     values: Object.fromEntries([...values].sort().map((value) => [value, worded(format, state, value)])),
   };
@@ -103,6 +113,14 @@ function entityCatalog(states) {
     .map((entityId) => ({ entityId, name: states[entityId]?.attributes?.friendly_name || entityId, domain: entityId.split(".")[0] }));
 }
 
+function watchedEntities(robotsLive, entityReadings) {
+  const ids = new Set(Object.keys(entityReadings));
+  for (const live of Object.values(robotsLive)) {
+    for (const item of [live.vacuum, ...Object.values(live.roles), ...live.maps]) if (item?.entityId) ids.add(item.entityId);
+  }
+  return [...ids].sort();
+}
+
 // `home`: Home Assistant's facts as `readHomeAssistant` returns them.
 export function buildCardDomainModel({ snapshot = null, requests = {}, home = null, nowMs = 0, needsEntityCatalog = false } = {}) {
   const slots = slotsFrom(snapshot, requests);
@@ -113,8 +131,9 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
   const robotsLive = {};
   for (const robot of robots || []) robotsLive[robot.robotId] = robotLive(robot, registry, states, candidates.get(robot.configuration.registryId), home?.formatState ?? null);
   const entityReadings = {};
-  for (const [entityId, values] of referencedEntities(slots)) entityReadings[entityId] = entityReading(states, entityId, home?.formatState ?? null, values);
-  const canCommand = home?.admin !== false;
+  for (const [entityId, values] of referencedEntities(slots)) entityReadings[entityId] = entityReading(states, entityId, home?.formatState ?? null, values, home?.formatName ?? null);
+  // The integration decides who may command; until it said so, nothing is withheld.
+  const canCommand = slots.setup?.data?.mayCommand !== false;
 
   const model = {
     phase: snapshot?.phase ?? "probing",
@@ -134,6 +153,8 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
     entityReadings,
     areas: areaCatalog(home?.areas),
     entityCatalog: needsEntityCatalog ? entityCatalog(states) : [],
+    // The entity states this model read; a change elsewhere does not change it.
+    watched: { entityIds: watchedEntities(robotsLive, entityReadings), allStates: needsEntityCatalog },
     // The integration's setup status, or null until read.
     setup: slots.setup?.data ?? null,
     nowMs,

@@ -29,7 +29,7 @@ test("the facts are taken from the hass object without copying its state objects
 test("missing parts read as unknown, not as permissions or offers", async () => {
   const { readHomeAssistant } = await load();
   const home = readHomeAssistant(null);
-  assert.deepEqual({ ...home }, { states: null, areas: null, admin: null, operations: [], formatState: null });
+  assert.deepEqual({ ...home }, { states: null, areas: null, admin: null, operations: [], formatState: null, formatName: null });
   assert.equal(readHomeAssistant({ user: {} }).admin, null);
 });
 
@@ -39,4 +39,19 @@ test("while the integration is loaded its card commands are offered beside its r
   const loaded = readHomeAssistant({ services, config: { components: ["vacuum_orchestrator"] } });
   assert.deepEqual(loaded.operations, ["complete_setup", "hold_job", "release_job_hold", "release_rooms", "renew_job_hold", "revoke_rooms", "run_queue"]);
   assert.deepEqual(readHomeAssistant({ services, config: { components: [] } }).operations, ["run_queue"]);
+});
+
+test("a new hass counts as a change only where the card read it (UI-31)", async () => {
+  const { hassChanged } = await load();
+  const vacuum = { state: "docked" };
+  const states = { "vacuum.rocky": vacuum, "sensor.outdoor": { state: "12" } };
+  const hass = { states, areas: {}, user: {}, themes: {}, services: {}, config: {}, connection: {} };
+  const watched = { entityIds: ["vacuum.rocky"], allStates: false };
+  assert.equal(hassChanged(hass, { ...hass, states: { ...states, "sensor.outdoor": { state: "13" } } }, watched), false, "a state no view shows");
+  assert.equal(hassChanged(hass, { ...hass, states: { ...states, "vacuum.rocky": { state: "cleaning" } } }, watched), true, "the robot's state");
+  assert.equal(hassChanged(hass, { ...hass, areas: {} }, watched), true, "a replaced registry part");
+  assert.equal(hassChanged(hass, { ...hass, states: { ...states } }, { ...watched, allStates: true }), true, "an editor lists every entity");
+  assert.equal(hassChanged(hass, hass, watched), false);
+  assert.equal(hassChanged(null, hass, watched), true, "the first hass");
+  assert.equal(hassChanged(hass, { ...hass }, null), true, "before the first model");
 });

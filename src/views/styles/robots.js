@@ -2,7 +2,8 @@
 // robot takes the whole width; a card wide enough sets its map beside its facts.
 
 export const ROBOTS_CSS = `
-.voc-robot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); align-items: start; gap: 8px; }
+/* LAY-15: the cards of a row are equally tall. */
+.voc-robot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); align-items: stretch; gap: 8px; }
 .voc-robot { display: grid; gap: 8px; align-content: start; min-width: 0; padding: 10px 10px 10px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); container: voc-robot / inline-size; }
 .voc-robot-body, .voc-robot-info { display: grid; gap: 8px; align-content: start; min-width: 0; }
 .voc-robot-capabilities { display: grid; gap: 6px; }

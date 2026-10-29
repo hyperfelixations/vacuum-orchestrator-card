@@ -21,7 +21,7 @@ test("the catalog names the 13 actions, 16 commands, 6 card commands, 12 queries
   assert.equal(ACTIONS.length, 13);
   assert.ok(Object.isFrozen(ACTIONS));
   assert.ok(ACTIONS.includes("end_queue") && ACTIONS.includes("return_robot") && ACTIONS.includes("correct_job"));
-  assert.equal(CONFIGURATION_COMMANDS.length, 16);
+  assert.equal(CONFIGURATION_COMMANDS.length, 17);
   assert.ok(CONFIGURATION_COMMANDS.includes("rename_robot") && !CONFIGURATION_COMMANDS.includes("release_room"));
   assert.deepEqual([...CARD_COMMANDS], ["complete_setup", "hold_job", "renew_job_hold", "release_job_hold", "release_rooms", "revoke_rooms"]);
   assert.equal(CONFIGURATION_QUERIES.length, 12);

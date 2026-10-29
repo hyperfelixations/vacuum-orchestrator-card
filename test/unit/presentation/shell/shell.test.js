@@ -163,12 +163,15 @@ test("the panel shows the waiting count, the run line, up to three robots and th
   assert.match(buildPanel({ model: waiting.model, config: config(), texts: waiting.texts, context: waiting.context }).runLine, /14/);
 });
 
-test("by default the five everyday views show; settings for administrators, diagnostics and setup only when needed", async () => {
+test("by default the five everyday views show; settings for who may command, diagnostics and setup only when needed", async () => {
   const { model, texts, VIEWS, config } = await shell();
   const { buildTabs } = await import("../../../../src/presentation/shell/tabs.js");
   const tabs = buildTabs({ definitions: VIEWS, model, config: config(), ui: {}, texts });
   assert.deepEqual(tabs.tabs.map((tab) => tab.key), ["queue", "rooms", "robots", "templates", "history", "settings"]);
-  const reader = await shell(BUSY, { admin: false });
+  const member = await shell(BUSY, { admin: false });
+  const memberTabs = buildTabs({ definitions: VIEWS, model: member.model, config: config(), ui: {}, texts });
+  assert.ok(memberTabs.tabs.some((tab) => tab.key === "settings"), "no administrator is needed");
+  const reader = await shell(["read_only_user", { from: "The card opens for a read-only user" }]);
   const readerTabs = buildTabs({ definitions: VIEWS, model: reader.model, config: config(), ui: {}, texts });
   assert.deepEqual(readerTabs.tabs.map((tab) => tab.key), ["queue", "rooms", "robots", "templates", "history"], "who may change nothing sees no settings");
   const forced = buildTabs({ definitions: VIEWS, model: reader.model, config: config({ views: ["queue", { type: "settings", enabled: true }] }), ui: {}, texts });
@@ -186,8 +189,8 @@ test("by default the five everyday views show; settings for administrators, diag
   const busyTabs = buildTabs({ definitions: VIEWS, model: running, config: config(), ui: {}, texts });
   assert.deepEqual([busyTabs.tabs.some((tab) => tab.key === "setup"), busyTabs.active], [true, "queue"], "offered, but the running work is shown first");
   // UI-22: who may change nothing cannot finish the setup and is not offered it.
-  const reading = await shell(ASSISTANT, { admin: false });
-  const readingTabs = buildTabs({ definitions: VIEWS, model: reading.model, config: config(), ui: {}, texts });
+  const reading = { ...assistant.model, permissions: { canCommand: false, isAdmin: false } };
+  const readingTabs = buildTabs({ definitions: VIEWS, model: reading, config: config(), ui: {}, texts });
   assert.deepEqual([readingTabs.tabs.some((tab) => tab.key === "setup"), readingTabs.active], [false, "queue"]);
 });
 

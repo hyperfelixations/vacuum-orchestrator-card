@@ -49,15 +49,15 @@ test("in a sections grid cell the card keeps the cell's height in every view and
     { key: "job-defaults", from: "settings", open: '[data-action="open-job-defaults"]' },
     { key: "queue-settings", from: "settings", open: '[data-action="open-queue-settings"]' },
     { key: "release", from: "rooms", open: (card) => named(card, ".voc-room", "Conservatory", '[data-action="open-release"]') },
-    { key: "room-editor", from: "rooms", open: (card) => named(card, ".voc-room", "Dining Room", '[data-action="edit-room"]') },
+    { key: "room-editor", from: "rooms", open: [(card) => named(card, ".voc-room", "Dining Room", ".voc-menu-button"), (card) => named(card, ".voc-room", "Dining Room", '[role="menu"] [data-action="edit-room"]')] },
     { key: "robot-add", from: "robots", open: ".voc-primary-action" },
-    { key: "template", from: "templates", open: (card) => named(card, ".voc-template", "Weekly clean", '[data-action="edit-template"]') },
+    { key: "template", from: "templates", open: [(card) => named(card, ".voc-template", "Weekly clean", ".voc-menu-button"), (card) => named(card, ".voc-template", "Weekly clean", '[role="menu"] [data-action="edit-template"]')] },
   ];
   for (const entry of overlays) await overlay(page, card, entry);
   // A direct start and a robot's profile need a free robot: either robot can start the dining room.
   card = await mountCard(page, { recording: "robot_choice", from: "Either robot can start the dining room", layout: "grid", config: ALL_VIEWS });
   await overlay(page, card, { key: "start-job", from: "queue", open: (card) => named(card, ".voc-job", "Dining Room", '[data-action="start-job"]') });
-  await overlay(page, card, { key: "robot-editor", from: "robots", open: (card) => named(card, ".voc-robot", "Dusty", '[data-action="edit-robot"]') });
+  await overlay(page, card, { key: "robot-editor", from: "robots", open: [(card) => named(card, ".voc-robot", "Dusty", ".voc-menu-button"), (card) => named(card, ".voc-robot", "Dusty", '[role="menu"] [data-action="edit-robot"]')] });
 });
 
 test("the cell's rows set the height; rows: auto gives the card its own height", async ({ page }) => {

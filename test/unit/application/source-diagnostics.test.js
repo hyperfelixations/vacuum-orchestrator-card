@@ -48,7 +48,7 @@ test("the same failure in two slots is reported once, and the lists are frozen",
 test("a user who may change nothing gets one read-only hint", async () => {
   const { modelFor } = require("../../helpers/model.js");
   const { collectSourceDiagnostics: sourceDiagnostics } = await import("../../../src/application/source-diagnostics.js");
-  const reader = await modelFor("showcase", { from: "A busy afternoon", admin: false });
+  const reader = await modelFor("read_only_user", { from: "The card opens for a read-only user" });
   assert.deepEqual(sourceDiagnostics(reader.model).hints.map((hint) => hint.code), ["hint.read_only"]);
   const admin = await modelFor("showcase", { from: "A busy afternoon" });
   assert.deepEqual(sourceDiagnostics(admin.model).hints, []);

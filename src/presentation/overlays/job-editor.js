@@ -157,7 +157,7 @@ export function buildJobEditor({ model, texts, context, overlay, menu = null }) 
     ],
     invalid,
     save: { label: t(texts, kind === "template" || draft.meta.id ? "action.save" : "action.addToQueue"), decision: decide(context, { operation, target }) },
-    startNow: newJob && preview?.startableNow === true ? { label: t(texts, "action.startNow"), decision: decide(context, { operation: "create_job", target }) } : null,
+    startNow: newJob && (preview?.startableNow === true || preview?.startWarning === "battery_low") ? { label: t(texts, "action.startNow"), decision: decide(context, { operation: "create_job", target }), lowBattery: preview.startableNow !== true } : null,
     pending: list(model.pending).includes(target),
     remove: removeControl({ model, texts, context, draft, holdId: overlay.holdId ?? null }),
     hold: holdNotice(texts, overlay),
@@ -185,11 +185,11 @@ function removeControl({ model, texts, context, draft, holdId }) {
   if (!id) return null;
   if (kind === "template") {
     const template = (model.slots?.templates?.data?.items || []).find((entry) => entry.templateId === id);
-    return template ? { action: "remove-template", args: { templateId: id }, label: t(texts, "action.deleteTemplate"), decision: templateAffordances(template, context).remove } : null;
+    return template ? { action: "remove-template", args: { templateId: id }, label: t(texts, "action.delete"), decision: templateAffordances(template, context).remove } : null;
   }
   const job = findJob(model, id);
   if (!job) return null;
   const verdict = jobAffordances(job, context).delete;
   const decision = holdId && verdict.reason === "job_held" ? decide(context, { operation: "delete_job", target: jobTarget(id) }) : verdict;
-  return { action: "delete-job", args: { jobId: id }, label: t(texts, "action.deleteJob"), decision };
+  return { action: "delete-job", args: { jobId: id }, label: t(texts, "action.delete"), decision };
 }

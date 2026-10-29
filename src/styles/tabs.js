@@ -37,7 +37,8 @@ export const TABS_CSS = `
 }
 
 .voc-tab ha-icon { --mdc-icon-size: 17px; }
-.voc-tab:hover { background: var(--voc-chip-bg); color: var(--primary-text-color); }
+@media (hover: hover) { .voc-tab:hover { background: var(--voc-chip-bg); color: var(--primary-text-color); } }
+.voc-tab:active { background: color-mix(in srgb, var(--primary-text-color) 14%, transparent); }
 .voc-tab[aria-selected="true"] { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
 .voc-tab[data-unavailable="true"] { opacity: .6; }
 `;

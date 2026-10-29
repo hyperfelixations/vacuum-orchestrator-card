@@ -109,7 +109,8 @@ test("a job ready but for the queue offers to start now", async () => {
   const { buildQueueView } = await view("queue");
   const built = await modelFor("robot_choice", { from: "Either robot can start the dining room" });
   const [row] = buildQueueView({ ...built, options: {} }).waiting;
-  assert.deepEqual([row.status.code, row.status.tone, row.status.text, row.main.key], ["queue_idle", "ready", "Ready · starts once the queue runs", "start"]);
+  // QUE-13: the job the queue would start first says so.
+  assert.deepEqual([row.status.code, row.status.tone, row.status.text, row.main.key], ["queue_idle", "ready", "Ready · up next", "start"]);
 });
 
 test("a job another card edits says so and cannot be edited here", async () => {
@@ -173,7 +174,10 @@ test("an empty queue says so and offers templates", async () => {
 // UI-22: who may change nothing is not asked what to clean next and offered no button for it.
 test("an empty queue tells a read-only user only that nothing waits", async () => {
   const { buildQueueView } = await view("queue");
-  const quiet = await modelFor("showcase", { from: "A quiet afternoon", requests: TEMPLATES, admin: false });
+  const { affordanceContext } = await import("../../../../src/domain/affordances.js");
+  const shown = await modelFor("showcase", { from: "A quiet afternoon", requests: TEMPLATES });
+  // A read-only user as the integration names one (ACT-07): commands hidden, the queue still shown.
+  const quiet = { ...shown, context: affordanceContext({ canCommand: false, operations: shown.model.operations }) };
   const queue = buildQueueView({ ...quiet, options: {} });
   assert.deepEqual([queue.create.state, queue.emptyText], ["hidden", quiet.texts.t("queue.emptyReadOnly")]);
   assert.deepEqual(queue.templates, [], "no quick start whose button would be hidden");
@@ -203,7 +207,8 @@ test("rooms show due verdicts, release, reaching robots and conditions as report
   // An unmet condition says what it needs; a met one only says that it holds.
   assert.equal(byName.Conservatory.conditions[0].met, false);
   const open = buildRoomsView({ texts, context, model: { ...model, slots: { ...model.slots, rooms: { ...model.slots.rooms, data: { ...model.slots.rooms.data, items: model.slots.rooms.data.items.map((room) => ({ ...room, requirementStates: Object.fromEntries(room.requirements.map((item) => [item.entityId, "ready"])) })) } } } }, options: {} }).rooms.find((room) => room.name === "Conservatory");
-  assert.deepEqual([open.conditions[0].met, open.conditions[0].text], [true, texts.t("rooms.conditionMet", { entity: "Conservatory Door", state: "off" })]);
+  // Those that hold read as one line that names them when tapped.
+  assert.deepEqual([open.conditions.length, open.conditions[0].met, open.conditions[0].text, open.conditions[0].explain], [1, true, texts.t("rooms.conditionsMet", { count: 1 }), texts.t("rooms.conditionMet", { entity: "Conservatory Door", state: "off" })]);
   // UI-04: in Home Assistant's own words where it words them.
   const { formatLikeHomeAssistant } = require("../../../helpers/recorded-backend.js");
   const worded = buildRoomsView({ ...(await busy({}, { formatEntityState: formatLikeHomeAssistant })), options: {} }).rooms.find((room) => room.name === "Conservatory");
@@ -217,10 +222,12 @@ test("rooms show due verdicts, release, reaching robots and conditions as report
   assert.deepEqual([byName.Studio.due[0].last, byName.Conservatory.due[0].last], [null, null], "nothing recorded, nothing to say");
   assert.match(byName["Dining Room"].due[0].last, /^Last /);
   // REL-04: several released rooms are locked in one step.
-  assert.deepEqual([rooms.lockAll.roomIds, rooms.lockAll.text, rooms.lockAll.decision.state], [["Dining Room", "Studio", "Library"].map((name) => byName[name].roomId), texts.t("rooms.releasedCount", { count: 3 }), "enabled"]);
-  // UI-07: what is being cleaned and what waits for a room stand on its card.
-  assert.deepEqual(byName.Studio.work, [{ key: "cleaning", tone: "running", text: texts.t("rooms.cleaning", { robot: "Rocky" }) }]);
-  assert.deepEqual(byName.Conservatory.work, [{ key: "waiting", tone: "neutral", text: texts.t("rooms.waiting", { count: 1 }) }]);
+  const released = rooms.rooms.filter((room) => ["Dining Room", "Studio", "Library"].includes(room.name)).map((room) => room.roomId);
+  assert.deepEqual([rooms.lockAll.roomIds, rooms.lockAll.text, rooms.lockAll.decision.state], [released, texts.t("rooms.releasedCount", { count: 3 }), "enabled"]);
+  // UI-07: what is being cleaned, where the robot is and what waits for a room stand on its card.
+  const work = (room) => room.work.map((entry) => [entry.kind, entry.tone, entry.text]);
+  assert.deepEqual(work(byName.Studio), [["cleaning", "running", texts.t("rooms.cleaning", { robot: "Rocky" })], ["here", "running", texts.t("rooms.robotHere", { robot: "Rocky" })]]);
+  assert.deepEqual(work(byName.Conservatory), [["waiting", "neutral", texts.t("rooms.waiting", { count: 1 })]]);
   assert.deepEqual([texts.t("rooms.waiting", { count: 1 }), texts.t("rooms.waiting", { count: 2 })], ["1 job waiting", "2 jobs waiting"]);
 });
 
@@ -230,13 +237,13 @@ test("what is left of a release is said in hours and minutes, never as nothing",
   assert.deepEqual([5399, 1799, 3600, 59, 0, -3].map((seconds) => remainingText(texts, seconds)), ["1 h 29 min", "29 min", "1 h", "< 1 min", "< 1 min", "< 1 min"]);
 });
 
-test("room sorting and excluded rooms follow the view options", async () => {
+// ROOM-13: the integration orders the rooms; the card keeps its order.
+test("rooms come in the integration's order", async () => {
   const { buildRoomsView } = await view("rooms");
   const built = await busy();
-  const byName = buildRoomsView({ ...built, options: { sort: "name" } }).rooms.map((room) => room.name);
-  assert.deepEqual(byName, [...byName].sort((a, b) => a.localeCompare(b)));
-  const byDue = buildRoomsView({ ...built, options: { sort: "due" } }).rooms;
-  assert.equal(byDue[0].due.filter((line) => line.state === "due").length >= byDue.at(-1).due.filter((line) => line.state === "due").length, true);
+  const listed = buildRoomsView({ ...built, options: {} }).rooms.map((room) => room.name);
+  assert.deepEqual(listed, built.model.slots.rooms.data.items.filter((room) => room.enabled).map((room) => room.name));
+  assert.equal(built.model.slots.rooms.data.order, "due");
 });
 
 test("robots show Home Assistant's live state beside the integration's profile facts", async () => {
@@ -310,6 +317,9 @@ test("history pages through all jobs or through cleaning runs", async () => {
   assert.deepEqual(log.jobs.map((row) => row.state), ["failed", "cancelled", "completed"], "finished only, newest first");
   const failed = log.jobs.find((row) => row.state === "failed");
   assert.deepEqual([failed.actions.retry.state, failed.outcome], ["enabled", jobs.texts.t("failure.start_not_observed")]);
+  // UI-32: the row whose menu the card holds open says so.
+  const opened = buildHistoryView({ ...jobs, options: {}, ui: { menu: `job:${failed.jobId}` } });
+  assert.deepEqual(opened.jobs.map((row) => row.menuOpen), log.jobs.map((row) => row.jobId === failed.jobId));
   const runs = await busy({ runs: { name: "runs", params: { offset: 0, limit: 25 } } });
   const runList = buildHistoryView({ ...runs, options: { source: "runs" }, ui: {} });
   assert.deepEqual(runList.segments, [], "a single source needs no switch");
@@ -350,8 +360,8 @@ test("setup shows the integration's four steps with their facts; the open step i
   assert.deepEqual(setup.steps.map((step) => [step.key, step.current]), [["robots", true], ["rooms", false], ["defaults", false], ["queue", false]]);
   const step = (vm, key) => vm.steps.find((entry) => entry.key === key);
   assert.deepEqual([step(setup, "robots").summary, step(setup, "robots").candidates], [assistant.texts.t("setup.step.robots.done", { robots: "Rocky" }), []]);
-  // Each robot taken over can be renamed right in the assistant.
-  assert.deepEqual(step(setup, "robots").robots.map((robot) => [robot.name, robot.rename.action, robot.rename.decision.state]), [["Rocky", "rename-robot", "enabled"]]);
+  // Each robot taken over opens its editor right from the assistant, its name first (UI-32).
+  assert.deepEqual(step(setup, "robots").robots.map((robot) => [robot.name, robot.edit.action, robot.edit.decision.state]), [["Rocky", "edit-robot", "enabled"]]);
   assert.deepEqual(step(setup, "rooms").uncovered.map((room) => room.name), ["Conservatory"]);
   assert.deepEqual([step(setup, "defaults").builtIn, step(setup, "defaults").link.action], [true, "open-job-defaults"]);
   assert.match(step(setup, "queue").summary, /15 min/);
@@ -405,7 +415,8 @@ test("settings show the queue's start delay and wait time, the job defaults and 
   const queue = built.model.slots.queue;
   const immediate = buildSettingsView({ ...built, model: { ...built.model, slots: { ...built.model.slots, queue: { ...queue, data: { ...queue.data, graceSeconds: 0 } } } } });
   assert.equal(immediate.queue.facts[0].value, built.texts.t("settings.graceOff"));
-  const locked = buildSettingsView(await busy({}, { admin: false }));
+  const reader = await busy();
+  const locked = buildSettingsView({ ...reader, model: { ...reader.model, permissions: { canCommand: false, isAdmin: false } }, context: affordanceContext({ canCommand: false, operations: reader.model.operations }) });
   assert.deepEqual([locked.queue.decision.state, locked.queue.decision.reason, locked.about.open], ["hidden", "read_only", null]);
   const missing = buildSettingsView({ ...built, context: affordanceContext({ operations: [] }) });
   assert.equal(missing.queue.decision.reason, "operation_missing");

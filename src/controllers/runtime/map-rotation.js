@@ -49,13 +49,17 @@ function place(stage, image, viewportHeight) {
   decisions.set(key, changedEnough(previous, box) ? { ...box, rotate } : { ...previous, rotate });
   const layout = mapLayout({ ...box, ...size, rotate });
   const px = (value) => `${Math.round(value)}px`;
-  stage.dataset.rotated = String(rotate);
-  stage.style.height = px(layout.stageHeight);
-  image.style.width = px(layout.width);
-  image.style.height = px(layout.height);
-  image.style.left = px((box.boxWidth - layout.width) / 2);
-  image.style.top = px(rotate ? (layout.width - layout.height) / 2 : 0);
-  image.style.transform = rotate ? "rotate(90deg)" : "";
+  // Only what changed is written: a write lays the page out again (UI-31).
+  const set = (node, property, value) => {
+    if (node.style[property] !== value) node.style[property] = value;
+  };
+  if (stage.dataset.rotated !== String(rotate)) stage.dataset.rotated = String(rotate);
+  set(stage, "height", px(layout.stageHeight));
+  set(image, "width", px(layout.width));
+  set(image, "height", px(layout.height));
+  set(image, "left", px((box.boxWidth - layout.width) / 2));
+  set(image, "top", px(rotate ? (layout.width - layout.height) / 2 : 0));
+  set(image, "transform", rotate ? "rotate(90deg)" : "");
 }
 
 export function placeMaps(root, { viewportHeight }) {

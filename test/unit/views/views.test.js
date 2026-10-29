@@ -44,7 +44,7 @@ function assertMarkupContract(host, label) {
 test("the registry declares every view and page once with build and render", async () => {
   const { VIEWS, OVERLAYS, VIEW_TYPES, viewFor, overlayFor, optionSchemaForView, VIEW_CSS } = await import("../../../src/views/registry.js");
   assert.deepEqual(VIEW_TYPES, ["setup", "queue", "rooms", "robots", "templates", "history", "diagnostics", "settings"]);
-  assert.equal(OVERLAYS.length, 19);
+  assert.equal(OVERLAYS.length, 20);
   assert.equal(overlayFor("setup-guide").key, "setup-guide");
   assert.equal(overlayFor("cancel-job").key, "cancel-job");
   assert.equal(overlayFor("correct-job").key, "correct-job");
@@ -59,7 +59,7 @@ test("the registry declares every view and page once with build and render", asy
   assert.equal(viewFor("rooms").key, "rooms");
   assert.equal(overlayFor("release").key, "release");
   assert.equal(viewFor("garden"), null);
-  assert.deepEqual(Object.keys(optionSchemaForView("rooms")), ["sort", "show_disabled"]);
+  assert.deepEqual(Object.keys(optionSchemaForView("rooms")), ["show_disabled"]);
   assert.equal(new Set(VIEW_CSS).size, VIEW_CSS.length);
 });
 
@@ -157,10 +157,9 @@ test("every view renders keyed markup with named controls", async () => {
   }
 });
 
-// The row layout keys off `data-actions`. The main action of the job's state comes first, set apart
-// from the managing icons that end the row; on a narrow card the menu holding them takes their place
-// (LAY-09).
-test("a job row states how many actions it carries: its main action, the managing icons, their menu", async () => {
+// The row layout keys off `data-actions`: the main action of the job's state, then the menu of its
+// further actions (UI-32, LAY-09).
+test("a job row states whether it carries actions: its main action, then its menu", async () => {
   const { viewFor } = await import("../../../src/views/registry.js");
   const queue = viewFor("queue");
   const options = { show_active: true, show_attention: true, show_templates: true };
@@ -178,25 +177,27 @@ test("a job row states how many actions it carries: its main action, the managin
     return { rows, built };
   };
   const { rows: either, built: choice } = await layoutOf("robot_choice", "Either robot can start the dining room");
-  assert.deepEqual(either[`job:${jobIn(choice.model, "Dining Room").jobId}`], { layout: "several", sequence: ["start-job", "voc-job-actions-gap", "voc-job-manage", "voc-menu-anchor"], manage: ["move-job", "move-job", "edit-job"], menu: [["toggle-menu", "false"]] });
+  assert.deepEqual(either[`job:${jobIn(choice.model, "Dining Room").jobId}`], { layout: "some", sequence: ["start-job", "voc-menu-anchor"], manage: [], menu: [["toggle-menu", "false"]] });
   const { rows: busyRows, built } = await layoutOf("showcase", BUSY);
-  assert.deepEqual(busyRows[`job:${jobIn(built.model, "Studio").jobId}`], { layout: "one", sequence: ["cancel-job"], manage: [], menu: [] });
+  // A cleaning job is cancelled from its row; saving it as a template is in its menu.
+  assert.deepEqual(busyRows[`job:${jobIn(built.model, "Studio").jobId}`], { layout: "some", sequence: ["cancel-job", "voc-menu-anchor"], manage: [], menu: [["toggle-menu", "false"]] });
   const { rows: stuck } = await layoutOf("recovery", "The job needs clarification");
-  const attentionRow = Object.entries(stuck).find(([, row]) => row.layout === "none");
-  assert.ok(attentionRow, "a job that needs clarification offers no row action");
-  assert.equal(attentionRow[1].sequence, null);
+  // A job that needs clarification has no main action; the robot's alert resolves it.
+  const attentionRow = Object.values(stuck).find((row) => row.sequence?.[0] === "voc-menu-anchor");
+  assert.ok(attentionRow, "a job that needs clarification offers only its menu");
+  assert.deepEqual(attentionRow.sequence, ["voc-menu-anchor"]);
 });
 
-// A room's release control keeps the trailing place and switches with the room's state.
-test("a room card ends with the control that switches its release", async () => {
+// UI-32: a room card ends with the control that switches its release, then its menu.
+test("a room card ends with the control that switches its release, then its menu", async () => {
   const { viewFor } = await import("../../../src/views/registry.js");
   const rooms = viewFor("rooms");
   const built = await busy();
   const { document, context } = await renderContext(built.texts);
-  const host = parse(document, rooms.render(context, rooms.build({ ...built, options: { sort: "configured", show_disabled: false }, config: {}, ui: { choices: {}, expanded: [] } })));
-  const actionsOf = (roomId) => [...host.querySelectorAll(`[data-key="room:${roomId}"] .voc-room-actions > button`)].map((node) => [node.dataset.action, node.classList.contains("voc-room-toggle")]);
-  assert.deepEqual(actionsOf(roomId(built.model, "Dining Room")), [["create-job", false], ["revoke-room", true]]);
-  assert.deepEqual(actionsOf(roomId(built.model, "Conservatory")), [["create-job", false], ["open-release", true]]);
+  const host = parse(document, rooms.render(context, rooms.build({ ...built, options: { show_disabled: false }, config: {}, ui: { choices: {}, expanded: [] } })));
+  const actionsOf = (roomId) => [...host.querySelectorAll(`[data-key="room:${roomId}"] .voc-room-actions > button, [data-key="room:${roomId}"] .voc-room-actions > .voc-menu-anchor > button`)].map((node) => [node.dataset.action, node.classList.contains("voc-room-toggle")]);
+  assert.deepEqual(actionsOf(roomId(built.model, "Dining Room")), [["revoke-room", true], ["toggle-menu", false]]);
+  assert.deepEqual(actionsOf(roomId(built.model, "Conservatory")), [["open-release", true], ["toggle-menu", false]]);
 });
 
 // UI-20: locking a released room and excluding a room are undone in one step, so neither is a
@@ -250,7 +251,7 @@ test("the detail page sets its one destructive action apart, ends with the run a
   assert.deepEqual(footer(waiting), [["delete-job", "wide"], ["open-save-template", "wide"], ["toggle-menu", "lead"], ["edit-job", "end"], ["start-job", "end"]]);
   const menu = await pageFor("robot_choice", "Either robot can start the dining room", "Dining Room", { menuOpen: true });
   assert.deepEqual([...menu.querySelectorAll('[role="menuitem"]')].map((node) => [node.dataset.action, node.dataset.tone ?? null]), [["open-save-template", null], ["delete-job", "danger"]]);
-  assert.deepEqual([...waiting.querySelectorAll('[data-key="position"] [data-action="move-job"]')].map((node) => JSON.parse(node.dataset.args).direction), ["top", "bottom"]);
+  assert.deepEqual([...waiting.querySelectorAll('[data-key="position"] [data-action="move-job"]')].map((node) => JSON.parse(node.dataset.args).direction), ["top", "up", "down", "bottom"]);
   const running = await pageFor("showcase", BUSY, "Studio");
   assert.deepEqual(footer(running), [["cancel-job", "lead"], ["open-save-template", "wide"], ["toggle-menu", "lead"]], "a running job's cancel stays in sight");
   assert.equal(running.querySelector('[data-key="position"]'), null);
@@ -278,13 +279,14 @@ test("every page renders inside the shared frame, every dialog in the dialog fra
     "room-editor": { draft: createRoomDraft(room), bindingsOpen: true },
     "room-create": { name: "" },
     "robot-add": {},
-    "rename-robot": { robotId: robot.robotId, name: "" },
+    "low-battery-start": { robotId: robot.robotId, command: { operation: "start_job", parameters: {}, options: { target: "job:none" } } },
+    "room-order": { order: "due", initial: "due" },
     "robot-map": { robotId: robot.robotId, entityId: "image.none", rotation: "auto" },
     "robot-editor": { draft: createRobotDraft(robot), open: ["roles", "requirements", "optionMaps", "timeouts", "identity"] },
   };
   const { document, context } = await renderContext(built.texts);
   const dialogs = OVERLAYS.filter((overlay) => isDialog(overlay.key)).map((overlay) => overlay.key);
-  assert.deepEqual(dialogs.sort(), ["cancel-job", "confirm", "correct-job", "queue-end", "queue-settings", "recovery", "release", "rename-robot", "save-template", "start-job"]);
+  assert.deepEqual(dialogs.sort(), ["cancel-job", "confirm", "correct-job", "low-battery-start", "queue-end", "queue-settings", "recovery", "release", "room-order", "save-template", "start-job"]);
   for (const overlay of OVERLAYS) {
     const vm = overlay.build({ ...built, overlay: { kind: overlay.key, ...pages[overlay.key] }, config: {}, ui: {} });
     const host = parse(document, overlay.render(context, vm));

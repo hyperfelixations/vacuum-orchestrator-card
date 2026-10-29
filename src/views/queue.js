@@ -26,7 +26,7 @@ export function renderQueue(context, vm) {
   if (vm.devices.length) parts.push(`<div class="voc-alerts" data-key="devices">${vm.devices.map((item) => `<div class="voc-alert" data-key="device:${e(item.key)}" role="status">${icon("mdi:alert-outline")}<div class="voc-alert-text"><strong>${e(item.title)}</strong><span>${e(item.what)}</span>${item.effect ? `<span>${e(item.effect)}</span>` : ""}</div></div>`).join("")}</div>`);
   if (vm.attentionNeeded) parts.push(`<div class="voc-alert" data-key="attention" role="status">${icon("mdi:alert-outline")}<div class="voc-alert-text"><strong>${e(context.t("attention.title"))}</strong><span>${e(context.t("attention.text"))}</span></div></div>`);
   if (vm.active.length) parts.push(group(context.t("queue.active"), vm.active.map((row) => jobRow(context, row)).join(""), { key: "active" }));
-  if (vm.attention.length) parts.push(group(context.t("queue.attention"), vm.attention.map((row) => jobRow(context, row, { rowActions: [] })).join(""), { key: "attention-jobs" }));
+  if (vm.attention.length) parts.push(group(context.t("queue.attention"), vm.attention.map((row) => jobRow(context, row, { main: false })).join(""), { key: "attention-jobs" }));
   if (vm.empty) {
     const create = button({ action: "create-job", label: context.t("action.createJob"), iconName: "mdi:plus", variant: "primary", decision: vm.create, reasonText: context.reason(vm.create) });
     parts.push(emptyState("mdi:playlist-check", vm.emptyText, `${create}${templateButtons(context, vm)}`));

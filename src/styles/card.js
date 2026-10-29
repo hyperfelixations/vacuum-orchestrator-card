@@ -66,6 +66,9 @@ ha-icon {
   text-align: center;
 }
 
+/* A phrase of a phrased line keeps together while it fits the line. */
+.voc-phrase { display: inline-block; max-width: 100%; }
+
 .voc-sr-only,
 .voc-live-region {
   position: absolute;

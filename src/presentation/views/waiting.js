@@ -3,6 +3,7 @@
 // order, is the integration's; the card words each code and names the rooms, robots and entities
 // it is about. See internal dev doc §8 "Wartegrund".
 
+import { PHRASE_SEPARATOR } from "../../core/text.js";
 import { entityName, list, robotName, roomName, robotsOf, roomsOf } from "../common/lookups.js";
 import { reasonText, relative, t } from "../common/texts.js";
 
@@ -94,7 +95,7 @@ export function blockerText(blocker, context) {
   const scope = { ...context, roomIds, robotId: robotIds[0] ?? null };
   if (ENTITY_CODES.has(code)) {
     const phrases = list(blocker.entityIds).map((entityId) => entityPhrase(code, entityId, scope));
-    if (phrases.length) return phrases.join(" · ");
+    if (phrases.length) return phrases.join(PHRASE_SEPARATOR);
   }
   const vars = {
     rooms: namesRooms(context.title, rooms, texts?.language) ? "" : rooms.join(", "),
@@ -110,6 +111,9 @@ export function blockerText(blocker, context) {
   return text === key ? reasonText(texts, code) : text;
 }
 
+// A ready job the queue would start first says so; the others say they are queued (QUE-13).
+const ORDERED = new Set(["queue_idle", "queue_paused"]);
+
 // The job's status line from the integration's main reason, or null when nothing holds it back.
 // Robot reasons stand after "Job ready" while the job itself could start: the job and the robots
 // are separate questions (UI-06). Without a connection no countdown runs.
@@ -122,7 +126,7 @@ export function waitingStatus(job, context) {
   }
   const text = blockerText(waiting, context);
   if (JOB_CODES.has(code)) return { code, icon: ICONS[code] ?? "mdi:lock-outline", tone: TONES[code] ?? "blocked", text, until: waiting.until };
-  if (QUEUE_CODES.has(code)) return { code, icon: ICONS[code], tone: TONES[code], text, until: waiting.until };
+  if (QUEUE_CODES.has(code)) return { code, icon: ICONS[code], tone: TONES[code], text: ORDERED.has(code) ? t(context.texts, `waiting.${code}.${waiting.queue?.next ? "next" : "queued"}`) : text, until: waiting.until };
   return { code, icon: ROBOT_ALERTS.has(code) ? "mdi:robot-vacuum-alert" : "mdi:robot-vacuum", tone: "waiting", text: t(context.texts, "waiting.jobReady", { reason: text }), until: waiting.until };
 }
 

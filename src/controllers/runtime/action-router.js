@@ -5,7 +5,7 @@
 // own message. A command belongs to the page or dialog it was sent from, which waits for the
 // answer. See internal dev doc §9 "Aktionsvertrag" and "Command-Lebenszyklus".
 
-import { CREATE_TARGET, QUEUE_TARGET, SETUP_TARGET, jobTarget, robotTarget, roomTarget, templateTarget, queueControl } from "../../domain/affordances.js";
+import { CREATE_TARGET, QUEUE_TARGET, ROOMS_TARGET, SETUP_TARGET, jobTarget, robotTarget, roomTarget, templateTarget, queueControl } from "../../domain/affordances.js";
 import { applyDraftChange, createDraft, draftFieldOf, draftToIntent, draftToTemplate, draftToUpdatePatch, isDirty, toggleRoom } from "../../domain/job-draft.js";
 import { createRoomDraft, intervalOf, isRoomDirty, newBinding, newRequirement, roomDraftToPatch, roomFieldOf, splitList, updateRoomDraft } from "../../domain/room-draft.js";
 import { createRobotDraft, isRobotDirty, robotDraftToConfiguration, robotFieldOf, updateRobotDraft } from "../../domain/robot-draft.js";
@@ -187,6 +187,19 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
     // A field whose error belongs to a value it forms together with others clears that too.
     const next = [field, releaseGroupOf(field), intervalOf(field)].filter(Boolean).reduce(withoutFieldError, errors);
     if (next !== errors) ui.updateOverlay({ errors: Object.keys(next).length ? next : null });
+  }
+
+  // The robot a start of `jobId` would take below its battery minimum, as the integration names
+  // it; null when it names none (JOB-27).
+  function lowBatteryRobot(jobId, robotId) {
+    const start = findJob(getModel(), jobId)?.actions?.start;
+    if (start?.warning !== "battery_low") return null;
+    return robotId ? (start.robotIds.includes(robotId) ? robotId : null) : start.robotIds[0] ?? null;
+  }
+
+  // A start below the battery minimum asks first; the dialog carries the start (JOB-27).
+  function confirmLowBattery(robotId, command) {
+    ui.openOverlay({ kind: "low-battery-start", robotId, command });
   }
 
   // A destructive command asks first; the confirmation page carries the command.
@@ -427,7 +440,14 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       setValue(field, Math.min(max, Math.max(min, base + step)));
     },
     "save-draft": () => saveDraft(),
-    "start-draft": () => saveDraft({ start: true }),
+    // Below a robot's battery minimum the start asks first, then creates the job anyway (JOB-27).
+    "start-draft": ({ lowBattery = false } = {}) => {
+      const draft = ui.overlay?.draft;
+      if (!lowBattery || !draft) return saveDraft({ start: true });
+      const robotId = (getModel()?.slots?.preview?.data?.robots || []).find((item) => item.reason === "battery_below_minimum")?.robotId ?? null;
+      confirmLowBattery(robotId, { operation: "create_job", parameters: { ...draftToIntent(draft), start: true, allow_low_battery: true }, options: { target: CREATE_TARGET, invalidates: QUEUE_SCOPES, closeOverlay: 2, success: { key: "notice.jobStarted" } } });
+      return null;
+    },
     "move-job": ({ jobId, direction }) => run("move_job", { job_id: jobId, direction }, { target: jobTarget(jobId), invalidates: ["queue"] }),
     "start-job": ({ jobId, robotId = null, choose = true }) => {
       const robots = getModel()?.slots?.robots?.data?.items || [];
@@ -436,7 +456,14 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
         return null;
       }
       const parameters = robotId ? { job_id: jobId, robot_id: robotId } : { job_id: jobId };
-      return run("start_job", parameters, { target: jobTarget(jobId), invalidates: QUEUE_SCOPES, closeOverlay: ui.overlay?.kind === "start-job", success: { key: "notice.jobStarted" } });
+      const options = { target: jobTarget(jobId), invalidates: QUEUE_SCOPES, closeOverlay: ui.overlay?.kind === "start-job", success: { key: "notice.jobStarted" } };
+      // A robot below its battery minimum starts only once the person said so (JOB-27).
+      const low = lowBatteryRobot(jobId, robotId);
+      if (low) {
+        confirmLowBattery(low, { operation: "start_job", parameters: { ...parameters, allow_low_battery: true }, options: { ...options, closeOverlay: ui.overlay?.kind === "start-job" ? 2 : 1 } });
+        return null;
+      }
+      return run("start_job", parameters, options);
     },
     // A started job asks what its robot does next; a waiting one is only withdrawn. Without the
     // question the integration's default applies: the robot stays.
@@ -611,7 +638,8 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       const overlay = ui.overlay;
       if (overlay?.kind !== "robot-editor") return null;
       const robotId = overlay.draft.meta.robotId;
-      return submit("configure_robot", { robot_id: robotId, configuration: robotDraftToConfiguration(overlay.draft) }, robotFieldOf, { target: robotTarget(robotId), invalidates: ROBOT_SCOPES, closeOverlay: true, success: { key: "notice.robotSaved" } });
+      // The name is part of the profile; the setup names the robot as well.
+      return submit("configure_robot", { robot_id: robotId, configuration: robotDraftToConfiguration(overlay.draft) }, robotFieldOf, { target: robotTarget(robotId), invalidates: [...ROBOT_SCOPES, "setup"], closeOverlay: true, success: { key: "notice.robotSaved" } });
     },
     "remove-robot": ({ robotId }) => confirmOr(
       { operation: "remove_robot", parameters: { robot_id: robotId }, options: { target: robotTarget(robotId), invalidates: ROBOT_SCOPES, closeOverlay: ui.overlay?.kind === "robot-editor", success: { key: "notice.robotRemoved" } } },
@@ -621,16 +649,18 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       if (entityId) platform.moreInfo?.(entityId);
     },
     "open-map": ({ robotId, entityId, rotation }) => ui.openOverlay({ kind: "robot-map", robotId, entityId, rotation: rotation === "none" ? "none" : "auto" }),
-    // A robot's own name; left empty, Home Assistant's name again.
-    "rename-robot": ({ robotId }) => {
-      const robot = findIn(getModel(), "robots", "robotId", robotId);
-      if (robot) ui.openOverlay({ kind: "rename-robot", robotId, name: robot.nameSource === "custom" ? robot.name : "" });
+    "open-room-order": () => {
+      const order = getModel()?.slots?.rooms?.data?.order;
+      if (order) ui.openOverlay({ kind: "room-order", order, initial: order });
     },
-    "save-robot-name": () => {
+    "save-room-order": () => {
       const overlay = ui.overlay;
-      if (overlay?.kind !== "rename-robot") return null;
-      const name = String(overlay.name ?? "").trim();
-      return submit("rename_robot", { robot_id: overlay.robotId, name: name || null }, pageFields({ name: "overlay:name" }), { target: robotTarget(overlay.robotId), invalidates: [...ROBOT_SCOPES, "setup"], closeOverlay: true, success: { key: "notice.robotRenamed" } });
+      if (overlay?.kind !== "room-order") return null;
+      if (overlay.order === overlay.initial) {
+        ui.closeOverlay();
+        return null;
+      }
+      return run("configure_room_order", { room_order: overlay.order }, { target: ROOMS_TARGET, invalidates: ["rooms"], closeOverlay: true, success: { key: "notice.roomOrderSaved" } });
     },
     "open-queue-settings": () => {
       const queue = getModel()?.slots?.queue?.data;

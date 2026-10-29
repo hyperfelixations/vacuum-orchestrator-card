@@ -52,17 +52,19 @@ test("an installed but unconfigured integration offers Home Assistant's setup di
   card.unmount();
 });
 
-// SET-07, SET-10: the assistant renames the robot taken over, sets the start delay and records its
-// end in the integration, with exactly the commands the integration recorded.
-test("the assistant renames the robot, sets the start delay and finishes", async () => {
+// SET-07, SET-10: the assistant names the robot taken over in its editor (UI-32), sets the start
+// delay and records its end in the integration, with exactly the commands the integration recorded.
+test("the assistant names the robot, sets the start delay and finishes", async () => {
   const card = await mountCard({ recording: "setup", from: "The assistant opens" });
-  const robot = card.root.querySelector('[data-key="step:robots"] [data-action="rename-robot"]');
+  const robot = card.root.querySelector('[data-key="step:robots"] [data-action="edit-robot"]');
   const robotId = JSON.parse(robot.dataset.args).robotId;
   await card.click(robot);
-  await card.type('[data-field="overlay:name"]', "Rocky downstairs");
-  await card.click('[data-action="save-robot-name"]');
   await card.settle(32);
-  assert.deepEqual(card.commands("rename_robot").map((message) => message.parameters), [{ robot_id: robotId, name: "Rocky downstairs" }]);
+  await card.type('[data-field="name"]', "Rocky downstairs");
+  await card.click('[data-action="save-robot"]');
+  await card.settle(32);
+  const [named] = card.commands("configure_robot").map((message) => message.parameters);
+  assert.deepEqual([named.robot_id, named.configuration.name], [robotId, "Rocky downstairs"]);
   assert.match(card.text('[data-key="step:robots"]'), /Rocky downstairs/);
   await card.click('[data-key="step:robots"] [data-key="setup-next"]');
   assert.equal(card.root.querySelector('[aria-current="step"]').dataset.key, "step:rooms", "Next opens the following step");

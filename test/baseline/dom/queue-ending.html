@@ -8,7 +8,10 @@
 </div>
 <div class="voc-title-block">
 <div class="voc-title">Cleaning</div>
-<div class="voc-subtitle">Studio · Rocky</div>
+<div class="voc-subtitle">
+<span class="voc-phrase">Studio ·</span>
+<span class="voc-phrase">Rocky</span>
+</div>
 </div>
 <div class="voc-status-pill">Cleaning</div>
 </div>
@@ -104,7 +107,7 @@
 <div class="voc-view voc-queue" data-key="view:queue">
 <section class="voc-group" data-key="active">
 <h3 class="voc-group-title">In progress</h3>
-<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000016" data-state="running" data-tone="running" data-actions="one">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000016" data-state="running" data-tone="running" data-actions="some">
 <div class="voc-job-lead" aria-hidden="true">
 <ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
 </ha-icon>
@@ -113,11 +116,16 @@
 <span class="voc-job-title-line">
 <span class="voc-job-title">Studio</span>
 </span>
+<span class="voc-job-body">
 <span class="voc-job-meta">
 <span class="voc-job-mode">Vacuum</span>
 </span>
 <span class="voc-job-progress">
-<span class="voc-job-progress-line">Rocky · started at 9:26&nbsp;AM</span>
+<span class="voc-job-progress-line">
+<span class="voc-phrase">Rocky ·</span>
+<span class="voc-phrase">started at 9:26&nbsp;AM</span>
+</span>
+</span>
 </span>
 </button>
 <div class="voc-job-actions">
@@ -126,19 +134,26 @@
 </ha-icon>
 <span class="voc-button-label">Cancel job</span>
 </button>
+<div class="voc-menu-anchor" data-key="menu:job:00000000-0000-4000-8000-000000000016">
+<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;job:00000000-0000-4000-8000-000000000016&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Studio" title="More actions for Studio">
+<ha-icon icon="mdi:dots-horizontal" aria-hidden="true">
+</ha-icon>
+</button>
+</div>
 </div>
 </article>
 </section>
 <section class="voc-group" data-key="waiting">
 <h3 class="voc-group-title">Waiting</h3>
-<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000056" data-state="queued" data-tone="neutral" data-actions="several">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000068" data-state="queued" data-tone="neutral" data-actions="some">
 <div class="voc-job-lead" aria-hidden="true">
 <span class="voc-job-position">1</span>
 </div>
-<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000056&quot;}" aria-label="Open Library">
+<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000068&quot;}" aria-label="Open Library">
 <span class="voc-job-title-line">
 <span class="voc-job-title">Library</span>
 </span>
+<span class="voc-job-body">
 <span class="voc-job-meta">
 <span class="voc-job-mode">
 <ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
@@ -151,40 +166,30 @@
 <span class="voc-job-status" data-tone="muted" data-code="queue_ending">
 <ha-icon icon="mdi:flag-checkered" aria-hidden="true">
 </ha-icon>
-<span>Does not start in this queue run</span>
+<span>
+<span class="voc-phrase">Does not start in this queue run</span>
+</span>
+</span>
 </span>
 </button>
 <div class="voc-job-actions">
-<span class="voc-job-manage">
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000056&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Move up" aria-disabled="true" title="The job is already first in the queue">
-<ha-icon icon="mdi:arrow-up" aria-hidden="true">
-</ha-icon>
-</button>
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000056&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Move down" title="Move down">
-<ha-icon icon="mdi:arrow-down" aria-hidden="true">
-</ha-icon>
-</button>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000056&quot;}" aria-label="Edit" title="Edit">
-<ha-icon icon="mdi:pencil-outline" aria-hidden="true">
-</ha-icon>
-</button>
-</span>
-<div class="voc-menu-anchor" data-key="menu:job:00000000-0000-4000-8000-000000000056">
-<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;job:00000000-0000-4000-8000-000000000056&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Library" title="More actions for Library">
+<div class="voc-menu-anchor" data-key="menu:job:00000000-0000-4000-8000-000000000068">
+<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;job:00000000-0000-4000-8000-000000000068&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Library" title="More actions for Library">
 <ha-icon icon="mdi:dots-horizontal" aria-hidden="true">
 </ha-icon>
 </button>
 </div>
 </div>
 </article>
-<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000036" data-state="queued" data-tone="neutral" data-actions="several">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000040" data-state="queued" data-tone="neutral" data-actions="some">
 <div class="voc-job-lead" aria-hidden="true">
 <span class="voc-job-position">2</span>
 </div>
-<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000036&quot;}" aria-label="Open Dining Room">
+<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000040&quot;}" aria-label="Open Dining Room">
 <span class="voc-job-title-line">
 <span class="voc-job-title">Dining Room</span>
 </span>
+<span class="voc-job-body">
 <span class="voc-job-meta">
 <span class="voc-job-mode">
 <ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
@@ -193,40 +198,30 @@
 <span class="voc-job-status" data-tone="muted" data-code="queue_ending">
 <ha-icon icon="mdi:flag-checkered" aria-hidden="true">
 </ha-icon>
-<span>Does not start in this queue run</span>
+<span>
+<span class="voc-phrase">Does not start in this queue run</span>
+</span>
+</span>
 </span>
 </button>
 <div class="voc-job-actions">
-<span class="voc-job-manage">
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000036&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Move up" title="Move up">
-<ha-icon icon="mdi:arrow-up" aria-hidden="true">
-</ha-icon>
-</button>
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000036&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Move down" title="Move down">
-<ha-icon icon="mdi:arrow-down" aria-hidden="true">
-</ha-icon>
-</button>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000036&quot;}" aria-label="Edit" title="Edit">
-<ha-icon icon="mdi:pencil-outline" aria-hidden="true">
-</ha-icon>
-</button>
-</span>
-<div class="voc-menu-anchor" data-key="menu:job:00000000-0000-4000-8000-000000000036">
-<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;job:00000000-0000-4000-8000-000000000036&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Dining Room" title="More actions for Dining Room">
+<div class="voc-menu-anchor" data-key="menu:job:00000000-0000-4000-8000-000000000040">
+<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;job:00000000-0000-4000-8000-000000000040&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Dining Room" title="More actions for Dining Room">
 <ha-icon icon="mdi:dots-horizontal" aria-hidden="true">
 </ha-icon>
 </button>
 </div>
 </div>
 </article>
-<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000243" data-state="queued" data-tone="neutral" data-actions="several">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000307" data-state="queued" data-tone="neutral" data-actions="some">
 <div class="voc-job-lead" aria-hidden="true">
 <span class="voc-job-position">3</span>
 </div>
-<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000243&quot;}" aria-label="Open Dining Room">
+<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000307&quot;}" aria-label="Open Dining Room">
 <span class="voc-job-title-line">
 <span class="voc-job-title">Dining Room</span>
 </span>
+<span class="voc-job-body">
 <span class="voc-job-meta">
 <span class="voc-job-mode">
 <ha-icon icon="mdi:water-outline" aria-hidden="true">
@@ -235,40 +230,30 @@
 <span class="voc-job-status" data-tone="muted" data-code="queue_ending">
 <ha-icon icon="mdi:flag-checkered" aria-hidden="true">
 </ha-icon>
-<span>Does not start in this queue run</span>
+<span>
+<span class="voc-phrase">Does not start in this queue run</span>
+</span>
+</span>
 </span>
 </button>
 <div class="voc-job-actions">
-<span class="voc-job-manage">
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000243&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Move up" title="Move up">
-<ha-icon icon="mdi:arrow-up" aria-hidden="true">
-</ha-icon>
-</button>
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000243&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Move down" title="Move down">
-<ha-icon icon="mdi:arrow-down" aria-hidden="true">
-</ha-icon>
-</button>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000243&quot;}" aria-label="Edit" title="Edit">
-<ha-icon icon="mdi:pencil-outline" aria-hidden="true">
-</ha-icon>
-</button>
-</span>
-<div class="voc-menu-anchor" data-key="menu:job:00000000-0000-4000-8000-000000000243">
-<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;job:00000000-0000-4000-8000-000000000243&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Dining Room" title="More actions for Dining Room">
+<div class="voc-menu-anchor" data-key="menu:job:00000000-0000-4000-8000-000000000307">
+<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;job:00000000-0000-4000-8000-000000000307&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Dining Room" title="More actions for Dining Room">
 <ha-icon icon="mdi:dots-horizontal" aria-hidden="true">
 </ha-icon>
 </button>
 </div>
 </div>
 </article>
-<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000620" data-state="queued" data-tone="neutral" data-actions="several">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000888" data-state="queued" data-tone="neutral" data-actions="some">
 <div class="voc-job-lead" aria-hidden="true">
 <span class="voc-job-position">4</span>
 </div>
-<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000620&quot;}" aria-label="Open Studio">
+<button type="button" class="voc-job-main" data-action="open-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000888&quot;}" aria-label="Open Studio">
 <span class="voc-job-title-line">
 <span class="voc-job-title">Studio</span>
 </span>
+<span class="voc-job-body">
 <span class="voc-job-meta">
 <span class="voc-job-mode">
 <ha-icon icon="mdi:water-outline" aria-hidden="true">
@@ -277,26 +262,15 @@
 <span class="voc-job-status" data-tone="muted" data-code="queue_ending">
 <ha-icon icon="mdi:flag-checkered" aria-hidden="true">
 </ha-icon>
-<span>Does not start in this queue run</span>
+<span>
+<span class="voc-phrase">Does not start in this queue run</span>
+</span>
+</span>
 </span>
 </button>
 <div class="voc-job-actions">
-<span class="voc-job-manage">
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000620&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Move up" title="Move up">
-<ha-icon icon="mdi:arrow-up" aria-hidden="true">
-</ha-icon>
-</button>
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000620&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Move down" aria-disabled="true" title="The job is already last in the queue">
-<ha-icon icon="mdi:arrow-down" aria-hidden="true">
-</ha-icon>
-</button>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000620&quot;}" aria-label="Edit" title="Edit">
-<ha-icon icon="mdi:pencil-outline" aria-hidden="true">
-</ha-icon>
-</button>
-</span>
-<div class="voc-menu-anchor" data-key="menu:job:00000000-0000-4000-8000-000000000620">
-<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;job:00000000-0000-4000-8000-000000000620&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Studio" title="More actions for Studio">
+<div class="voc-menu-anchor" data-key="menu:job:00000000-0000-4000-8000-000000000888">
+<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;job:00000000-0000-4000-8000-000000000888&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Studio" title="More actions for Studio">
 <ha-icon icon="mdi:dots-horizontal" aria-hidden="true">
 </ha-icon>
 </button>
@@ -312,7 +286,7 @@
 </ha-icon>
 <span class="voc-button-label">Mop the studio</span>
 </button>
-<button type="button" class="voc-button voc-button--text" data-action="create-from-template" data-args="{&quot;templateId&quot;:&quot;00000000-0000-4000-8000-000000000412&quot;}" data-key="template:00000000-0000-4000-8000-000000000412">
+<button type="button" class="voc-button voc-button--text" data-action="create-from-template" data-args="{&quot;templateId&quot;:&quot;00000000-0000-4000-8000-000000000566&quot;}" data-key="template:00000000-0000-4000-8000-000000000566">
 <ha-icon icon="mdi:content-copy" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Library twice</span>

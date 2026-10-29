@@ -9,7 +9,7 @@ module.exports = Object.freeze({
   viewOptions: {
     setup: [],
     queue: ["show_active", "show_attention", "show_templates"],
-    rooms: ["sort", "show_disabled"],
+    rooms: ["show_disabled"],
     robots: ["show_map", "show_capabilities", "map_rotation"],
     templates: [],
     history: ["source"],
@@ -19,7 +19,7 @@ module.exports = Object.freeze({
   modes: ["vacuum", "mop", "vacuum_and_mop", "vacuum_then_mop"],
   states: ["queued", "dispatching", "running", "canceling", "completed", "failed", "cancelled", "needs_attention"],
   actions: ["create_job", "update_job", "delete_job", "move_job", "start_job", "cancel_job", "retry_job", "correct_job", "run_queue", "pause_queue", "resume_queue", "end_queue", "return_robot"],
-  commands: ["configure_queue", "configure_job_defaults", "create_room", "update_room", "disable_room", "enable_room", "add_robot", "configure_robot", "remove_robot", "rename_robot", "resolve_recovery", "save_template", "save_job_as_template", "remove_template", "create_job_from_template", "reset_template_demand"],
+  commands: ["configure_queue", "configure_room_order", "configure_job_defaults", "create_room", "update_room", "disable_room", "enable_room", "add_robot", "configure_robot", "remove_robot", "rename_robot", "resolve_recovery", "save_template", "save_job_as_template", "remove_template", "create_job_from_template", "reset_template_demand"],
   cardCommands: ["complete_setup", "hold_job", "renew_job_hold", "release_job_hold", "release_rooms", "revoke_rooms"],
   // Commands sent without a control of their own; none since the job editor renews its hold.
   withoutControl: [],

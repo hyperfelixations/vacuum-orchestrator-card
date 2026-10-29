@@ -5,7 +5,7 @@
 // against the card, and controls that never take the error colour.
 
 const { test, expect } = require("../../helpers/playwright.js");
-const { BUSY, mountCard, named } = require("../../helpers/browser-helpers.js");
+const { BUSY, fromMenu, mountCard, named } = require("../../helpers/browser-helpers.js");
 
 const INTERACTIVE = "button, a[href], input, textarea, select, [role=button], [role=tab], [role=option], [role=radio], [role=switch]";
 
@@ -167,7 +167,7 @@ test("the choice after a cancel is a named radio group operated with arrow keys"
 test("role choices in the robot profile are named radio groups", async ({ page }) => {
   const card = await mountCard(page, { recording: "robot_choice", from: "The card opens" });
   await card.locator('[role=tab][data-view="robots"]').click();
-  await named(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]').click();
+  for (const step of fromMenu(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]')) await step.click();
   await card.locator('[data-action="toggle-section"][data-args*="roles"]').click();
   const battery = card.locator('[data-key="role:battery"] [role=radiogroup]');
   await expect(battery).toHaveAccessibleName("Battery");
@@ -226,7 +226,9 @@ test.describe("in a sections grid cell", () => {
     await card.locator(".voc-primary-action").focus();
     await page.keyboard.press("Tab");
     await expect(card.locator(".voc-body")).toBeFocused();
-    for (let step = 0; step < 14; step += 1) {
+    // Through the body's controls, never past them.
+    const controls = await card.locator(".voc-body button:visible").count();
+    for (let step = 0; step < Math.min(14, controls - 1); step += 1) {
       await page.keyboard.press("Tab");
       const { top, bottom } = await focusInView(card);
       expect(top, `after ${step + 1} Tab presses`).toBeGreaterThanOrEqual(16);

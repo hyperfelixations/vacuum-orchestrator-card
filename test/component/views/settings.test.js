@@ -43,6 +43,21 @@ test("the start delay is changed in seconds and shown again from the integration
   card.unmount();
 });
 
+// ROOM-13: the integration orders the rooms; the card only sends the choice.
+test("the rooms' order is chosen in a dialog, sent and shown again from the integration's answer", async () => {
+  const card = await settings("Jobs start 30 seconds after they could", { config: { start_view: "settings" } });
+  assert.equal(card.text('[data-key="rooms"] [data-key="fact:roomOrder"]'), "By due");
+  await card.click('[data-key="rooms"] [data-action="open-room-order"]');
+  assert.equal(card.root.querySelector(".voc-dialog").dataset.key, "overlay:room-order");
+  await card.click('[data-key="field:overlay:order"] [data-value="name"]');
+  await card.click('[data-action="save-room-order"]');
+  await card.settle(32);
+  assert.deepEqual(card.commands("configure_room_order").map((message) => message.parameters), [{ room_order: "name" }]);
+  assert.equal(card.root.querySelector(".voc-dialog"), null);
+  assert.equal(card.text('[data-key="rooms"] [data-key="fact:roomOrder"]'), "By name");
+  card.unmount();
+});
+
 test("the job defaults are changed on their own page and shown again from the integration's answer", async () => {
   const card = await settings("The queue waits 30 minutes", { config: { start_view: "settings" } });
   assert.equal(card.text('[data-key="built-in"]'), "Built-in defaults");
@@ -97,10 +112,11 @@ test("about names integration, API and card versions and opens the integration i
 
 // UI-22: who may change nothing sees the settings without controls and one note why.
 test("a user who may not change settings sees them only when enabled, without controls, and is told why once", async () => {
-  const automatic = await mountCard({ ...BUSY, admin: false });
+  const readOnly = Object.freeze({ recording: "read_only_user", from: "The card opens for a read-only user" });
+  const automatic = await mountCard(readOnly);
   assert.equal(automatic.root.querySelector('[role=tab][data-view="settings"]'), null);
   automatic.unmount();
-  const card = await mountCard({ ...BUSY, admin: false, config: { views: ["queue", { type: "settings", enabled: true }], start_view: "settings" } });
+  const card = await mountCard({ ...readOnly, config: { views: ["queue", { type: "settings", enabled: true }], start_view: "settings" } });
   assert.equal(card.root.querySelector('[data-key="queue"] [data-action="open-queue-settings"]'), null);
   assert.equal(card.root.querySelector('[data-action="open-job-defaults"]'), null);
   assert.match(card.text(".voc-subtitle"), /Read only/);

@@ -40,8 +40,8 @@ function robotsStep(model, texts, context, step) {
     // Without a robot and nothing to add, the step does not ask to add one.
     text: t(texts, names.length ? "setup.step.robots.more" : candidates.length ? "setup.step.robots.text" : "setup.step.robots.textNone"),
     note: candidates.length || names.length ? null : t(texts, "setup.step.robots.none"),
-    // Each robot taken over can be renamed here.
-    robots: step.robotIds.map((robotId) => ({ key: robotId, robotId, name: robots.find((robot) => robot.robotId === robotId)?.name ?? robotId, rename: { action: "rename-robot", decision: decide(context, { operation: "rename_robot", target: robotTarget(robotId) }) } })),
+    // Each robot taken over opens its editor here, its name the first field (UI-32).
+    robots: step.robotIds.map((robotId) => ({ key: robotId, robotId, name: robots.find((robot) => robot.robotId === robotId)?.name ?? robotId, edit: { action: "edit-robot", decision: decide(context, { operation: "configure_robot", target: robotTarget(robotId) }) } })),
     candidates: candidates.map((candidate) => ({ key: candidate.registryId, entityId: candidate.entityId, name: candidate.name, detail: adapterLabel(texts, candidate.adapter), decision })),
   };
 }

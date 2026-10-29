@@ -36,6 +36,17 @@ function queueBlock(context, vm) {
   return section(context, { key: "queue", iconName: "mdi:format-list-numbered", title: context.t("settings.queue"), action: vm.queue ? (id) => change(context, "open-queue-settings", vm.queue.decision, id) : "", content });
 }
 
+function roomsBlock(context, vm) {
+  if (!vm.rooms) return "";
+  return section(context, {
+    key: "rooms",
+    iconName: "mdi:sort",
+    title: context.t("settings.rooms"),
+    action: (id) => change(context, "open-room-order", vm.rooms.decision, id),
+    content: `<p class="voc-overlay-lead">${e(context.t("settings.roomsHint"))}</p>${facts(vm.rooms.facts)}`,
+  });
+}
+
 // "About": the integration and the card, with the ways into the setup and Home Assistant.
 function aboutBlock(context, vm) {
   const actions = [
@@ -47,14 +58,14 @@ function aboutBlock(context, vm) {
 }
 
 export function renderSettings(context, vm) {
-  return `<div class="voc-view voc-settings" data-key="view:settings">${defaultsBlock(context, vm)}${queueBlock(context, vm)}${aboutBlock(context, vm)}</div>`;
+  return `<div class="voc-view voc-settings" data-key="view:settings">${defaultsBlock(context, vm)}${queueBlock(context, vm)}${roomsBlock(context, vm)}${aboutBlock(context, vm)}</div>`;
 }
 
 export const settingsView = Object.freeze({
   key: "settings",
   icon: "mdi:cog-outline",
   requires: ["get_queue"],
-  defaultEnabled: (model) => model.permissions?.isAdmin === true,
+  defaultEnabled: (model) => model.permissions?.canCommand !== false,
   optionsSchema: Object.freeze({}),
   primary: null,
   scopes: () => [],

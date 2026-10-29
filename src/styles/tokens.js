@@ -32,6 +32,9 @@ export const TOKENS_CSS = `
   -webkit-tap-highlight-color: transparent;
 }
 
+/* A tap is a tap: no wait for a double-tap zoom. */
+:host button, :host a, :host [role="tab"], :host [role="menuitem"], :host [role="radio"], :host [role="option"], :host [role="switch"], :host [role="checkbox"] { touch-action: manipulation; }
+
 @media (pointer: coarse) {
   :host {
     --voc-control: 40px;

@@ -47,7 +47,7 @@ export function buildHistoryView({ model, texts, context, options = {}, ui = {},
   const segments = historySegments(options.source);
   const segment = activeSegment(options.source, ui);
   const index = roomIndex(model);
-  const shared = { model, texts, index, context, timeFormat };
+  const shared = { model, texts, index, context, timeFormat, menu: ui?.menu ?? null };
   const view = { key: "history", segment, segments: segments.length > 1 ? segments.map((key) => ({ key, label: t(texts, `history.segment.${key}`), selected: key === segment })) : [] };
   if (segment === "jobs") {
     const { data, loading, error } = slotState(model, "jobLog");

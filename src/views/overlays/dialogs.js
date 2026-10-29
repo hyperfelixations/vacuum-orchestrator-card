@@ -1,7 +1,7 @@
 // Card dialogs: confirmation, cancelling a started job, ending the queue, robot choice for a
 // direct start, the queue's waiting time and recovery resolution.
 
-import { buildCancelJob, buildConfirm, buildCorrectJob, buildQueueEnd, buildQueueSettings, buildRecovery, buildStartJob } from "../../presentation/overlays/dialogs.js";
+import { buildCancelJob, buildConfirm, buildLowBatteryStart, buildCorrectJob, buildQueueEnd, buildQueueSettings, buildRoomOrder, buildRecovery, buildStartJob } from "../../presentation/overlays/dialogs.js";
 import { argsAttr, button, decisionAttributes, e, icon } from "../../render/primitives/markup.js";
 import { renderField } from "../controls/fields.js";
 import { loadingState } from "../parts.js";
@@ -12,7 +12,8 @@ export const DIALOGS_CSS = `
 .voc-choices { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .voc-choice { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--voc-icon-target); padding: 10px 12px; border: 1px solid var(--divider-color); border-radius: 12px; background: transparent; color: var(--primary-text-color); font: inherit; text-align: start; cursor: pointer; }
 .voc-choice > ha-icon { --mdc-icon-size: 22px; color: var(--voc-muted); }
-.voc-choice:hover { background: var(--voc-chip-bg); }
+@media (hover: hover) { .voc-choice:hover { background: var(--voc-chip-bg); } }
+.voc-choice:active { background: color-mix(in srgb, var(--primary-text-color) 14%, transparent); }
 .voc-choice:focus-visible { outline: 2px solid var(--voc-accent-ink); outline-offset: 2px; }
 .voc-choice:disabled, .voc-choice[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
 .voc-choice--primary { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); }
@@ -24,14 +25,25 @@ export const DIALOGS_CSS = `
 .voc-choice-note[data-eligible="true"] { color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); }
 `;
 
+// A question before a command: going back changes nothing, as in every dialog (UI-21), and is
+// the safe answer; the confirming button runs the command the dialog carries.
+function confirmation(context, vm) {
+  const actions = `${button({ action: "back", label: context.t("action.back"), variant: "quiet", extra: " data-autofocus" })}${button({ action: "confirm-command", label: vm.confirmLabel, iconName: vm.confirmIcon, variant: vm.tone === "danger" ? "danger" : "primary", decision: vm.pending ? { state: "disabled", reason: "command_pending" } : null })}`;
+  return dialog(context, { key: vm.key, title: vm.title, lead: vm.text, actions });
+}
+
 export const confirmOverlay = Object.freeze({
   key: "confirm",
   dialog: true,
   build: ({ model, texts, overlay }) => buildConfirm({ model, texts, overlay }),
-  render(context, vm) {
-    const actions = `${button({ action: "back", label: context.t("action.keep"), variant: "quiet", extra: " data-autofocus" })}${button({ action: "confirm-command", label: vm.confirmLabel, iconName: vm.confirmIcon, variant: vm.tone === "danger" ? "danger" : "primary", decision: vm.pending ? { state: "disabled", reason: "command_pending" } : null })}`;
-    return dialog(context, { key: "confirm", title: vm.title, lead: vm.text, actions });
-  },
+  render: confirmation,
+});
+
+export const lowBatteryStartOverlay = Object.freeze({
+  key: "low-battery-start",
+  dialog: true,
+  build: ({ model, texts, overlay }) => buildLowBatteryStart({ model, texts, overlay }),
+  render: confirmation,
 });
 
 // A choice before a command: going back on the left, the confirming action on the right.
@@ -93,6 +105,16 @@ export const queueSettingsOverlay = Object.freeze({
   render(context, vm) {
     const actions = `${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${button({ action: "save-queue-settings", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
     return dialog(context, { key: "queue-settings", title: vm.title, lead: context.t("queueSettings.lead"), invalid: vm.invalid, content: `<div class="voc-form">${vm.fields.map((field) => renderField(context, field)).join("")}</div>`, actions });
+  },
+});
+
+export const roomOrderOverlay = Object.freeze({
+  key: "room-order",
+  dialog: true,
+  build: ({ texts, context, overlay }) => buildRoomOrder({ texts, context, overlay }),
+  render(context, vm) {
+    const actions = `${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${button({ action: "save-room-order", label: context.t("action.save"), iconName: "mdi:check", variant: "primary", decision: vm.save, reasonText: context.reason(vm.save) })}`;
+    return dialog(context, { key: "room-order", title: vm.title, lead: context.t("roomOrder.lead"), content: `<div class="voc-form">${renderField(context, vm.field)}</div>`, actions });
   },
 });
 

@@ -27,6 +27,9 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* A tap is a tap: no wait for a double-tap zoom. */
+:host button, :host a, :host [role="tab"], :host [role="menuitem"], :host [role="radio"], :host [role="option"], :host [role="switch"], :host [role="checkbox"] { touch-action: manipulation; }
+
 @media (pointer: coarse) {
   :host {
     --voc-control: 40px;
@@ -99,6 +102,9 @@ ha-icon {
   line-height: 1.3;
   text-align: center;
 }
+
+/* A phrase of a phrased line keeps together while it fits the line. */
+.voc-phrase { display: inline-block; max-width: 100%; }
 
 .voc-sr-only,
 .voc-live-region {
@@ -344,7 +350,8 @@ ha-icon {
 }
 
 .voc-tab ha-icon { --mdc-icon-size: 17px; }
-.voc-tab:hover { background: var(--voc-chip-bg); color: var(--primary-text-color); }
+@media (hover: hover) { .voc-tab:hover { background: var(--voc-chip-bg); color: var(--primary-text-color); } }
+.voc-tab:active { background: color-mix(in srgb, var(--primary-text-color) 14%, transparent); }
 .voc-tab[aria-selected="true"] { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
 .voc-tab[data-unavailable="true"] { opacity: .6; }
 
@@ -373,13 +380,21 @@ button { font: inherit; color: inherit; }
 }
 
 .voc-button ha-icon { --mdc-icon-size: 17px; }
-.voc-button:hover { background: color-mix(in srgb, var(--primary-text-color) 7%, transparent); }
 .voc-button--primary { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
-.voc-button--primary:hover { background: color-mix(in srgb, var(--voc-accent) 28%, transparent); }
 .voc-button--quiet { background: transparent; }
 .voc-button--danger { border-color: color-mix(in srgb, var(--voc-error) 45%, transparent); color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
 .voc-button--icon { width: var(--voc-icon-target); min-width: var(--voc-icon-target); min-height: var(--voc-icon-target); padding: 0; border-color: transparent; background: transparent; color: var(--voc-muted); }
-.voc-button--icon:hover { background: var(--voc-chip-bg); color: var(--primary-text-color); }
+
+/* Hover only where a pointer hovers; a touch screen keeps it on the tapped control. */
+@media (hover: hover) {
+  .voc-button:hover { background: color-mix(in srgb, var(--primary-text-color) 7%, transparent); }
+  .voc-button--primary:hover { background: color-mix(in srgb, var(--voc-accent) 28%, transparent); }
+  .voc-button--icon:hover { background: var(--voc-chip-bg); color: var(--primary-text-color); }
+}
+
+/* Pressed at once, before the card answers (UI-31). */
+.voc-button:not([disabled]):not([aria-disabled="true"]):active { background: color-mix(in srgb, var(--primary-text-color) 14%, transparent); }
+.voc-button--primary:not([disabled]):not([aria-disabled="true"]):active { background: color-mix(in srgb, var(--voc-accent) 38%, transparent); }
 .voc-button[disabled] { cursor: default; opacity: .4; }
 .voc-button[aria-disabled="true"] { cursor: not-allowed; opacity: .4; }
 .voc-button[aria-pressed="true"] { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
@@ -461,7 +476,9 @@ button { font: inherit; color: inherit; }
   cursor: pointer;
 }
 .voc-menu-item ha-icon { --mdc-icon-size: 18px; color: var(--voc-muted); }
-.voc-menu-item:hover, .voc-menu-item:focus-visible { background: color-mix(in srgb, var(--primary-text-color) 8%, transparent); }
+.voc-menu-item:focus-visible { background: color-mix(in srgb, var(--primary-text-color) 8%, transparent); }
+@media (hover: hover) { .voc-menu-item:hover { background: color-mix(in srgb, var(--primary-text-color) 8%, transparent); } }
+.voc-menu-item:not([aria-disabled="true"]):active { background: color-mix(in srgb, var(--primary-text-color) 14%, transparent); }
 .voc-menu-item:focus-visible { outline: 2px solid var(--voc-focus); outline-offset: -2px; }
 .voc-menu-item[data-tone="danger"], .voc-menu-item[data-tone="danger"] ha-icon { color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
 .voc-menu-item[aria-disabled="true"], .voc-menu-item[aria-disabled="true"] ha-icon { color: var(--voc-faint); cursor: default; }
@@ -473,7 +490,7 @@ button { font: inherit; color: inherit; }
 .voc-overlay-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .voc-overlay-title:focus { outline: none; }
 .voc-overlay-title { flex: 1; min-width: 0; margin: 0; font-size: 17px; font-weight: 900; line-height: 1.15; overflow-wrap: anywhere; }
-.voc-overlay-lead { margin: 0; color: var(--voc-muted); font-size: 12.5px; font-weight: 650; line-height: 1.35; }
+.voc-overlay-lead { margin: 0; color: var(--voc-muted); font-size: 12.5px; font-weight: 650; line-height: 1.35; text-wrap: pretty; }
 .voc-overlay-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding-top: 4px; }
 .voc-overlay-actions .voc-action-start { margin-right: auto; }
 .voc-actions-lead, .voc-actions-buttons { display: inline-flex; align-items: center; gap: 8px; }
@@ -655,7 +672,7 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 .voc-setup-mark { display: inline-flex; align-items: center; min-height: 18px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--voc-hairline); font-size: 10.5px; font-weight: 800; color: var(--voc-muted); }
 .voc-setup-mark[data-tone="default"] { border-color: var(--voc-accent-border); color: var(--voc-accent-ink); }
 .voc-setup-open { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
-.voc-setup-open:hover { text-decoration: underline; }
+@media (hover: hover) { .voc-setup-open:hover { text-decoration: underline; } }
 .voc-setup-open:focus-visible { outline: 2px solid var(--voc-accent-ink); outline-offset: 2px; border-radius: 4px; }
 .voc-setup-body { display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); }
 .voc-setup-text { margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.4; }
@@ -675,7 +692,9 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
   position: relative;
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) auto;
-  gap: 6px;
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  row-gap: 2px;
   align-items: center;
   min-width: 0;
   padding: 6px 6px 6px 8px;
@@ -701,13 +720,18 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 }
 @keyframes voc-progress { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
-.voc-job-lead { display: flex; justify-content: center; color: var(--voc-faint); }
+.voc-job-lead { grid-column: 1; grid-row: 1; display: flex; justify-content: center; color: var(--voc-faint); }
 .voc-job-lead ha-icon { --mdc-icon-size: 18px; }
 .voc-job-position { font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--voc-faint); }
 
 .voc-job-main {
+  grid-column: 2 / -1;
+  grid-row: 1 / span 2;
   display: grid;
-  gap: 3px;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
+  row-gap: 2px;
+  align-items: center;
   min-width: 0;
   padding: 2px 4px;
   border: 0;
@@ -717,16 +741,21 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
   text-align: left;
   cursor: pointer;
 }
+.voc-job-main:active { background: color-mix(in srgb, var(--primary-text-color) 8%, transparent); }
 
-.voc-job-title-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.voc-job-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 850; line-height: 1.2; }
+.voc-job-title-line { grid-column: 1 / -1; grid-row: 1; display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* At most two lines, so a long room list stays readable without pushing the row apart; the end
+   padding, taken back by the margin, keeps glyphs that reach past their advance clear of the clip. */
+.voc-job-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-width: 0; overflow: hidden; overflow-wrap: anywhere; padding-inline-end: 0.1em; margin-inline-end: -0.1em; font-size: 13.5px; font-weight: 850; line-height: 1.2; }
+.voc-job-body { grid-column: 1; grid-row: 2; display: grid; gap: 3px; min-width: 0; }
+.voc-job[data-actions="none"] .voc-job-body { grid-column: 1 / -1; }
 .voc-job-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; font-size: 11.5px; font-weight: 700; line-height: 16px; color: var(--voc-muted); }
 .voc-job-meta .voc-chip { padding: 0 6px; line-height: 14px; }
 .voc-job-mode { display: inline-flex; align-items: center; gap: 3px; }
 .voc-job-mode ha-icon { --mdc-icon-size: 14px; }
 .voc-job-rooms { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .voc-job-status, .voc-job-outcome { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 11.5px; font-weight: 750; line-height: 1.25; }
-.voc-job-status span, .voc-job-outcome span { min-width: 0; overflow-wrap: anywhere; }
+.voc-job-status span, .voc-job-outcome span { min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
 .voc-job-status ha-icon, .voc-job-outcome ha-icon { --mdc-icon-size: 14px; }
 .voc-job-status[data-tone="ready"] { color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); }
 .voc-job-status[data-tone="delay"] { color: color-mix(in srgb, var(--voc-info) 82%, var(--primary-text-color)); }
@@ -735,19 +764,20 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 .voc-job-status[data-tone="muted"] { color: var(--voc-faint); }
 .voc-job-status[data-tone="attention"], .voc-job-outcome { color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
 .voc-job-progress { display: grid; gap: 3px; min-width: 0; font-size: 11.5px; font-weight: 700; line-height: 16px; color: var(--voc-muted); }
-.voc-job-progress-line { min-width: 0; overflow-wrap: anywhere; }
+.voc-job-progress-line { min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
 .voc-job-percents { display: flex; flex-wrap: wrap; gap: 2px 12px; }
 .voc-job-percent { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .voc-progress { position: relative; display: block; width: 72px; height: 4px; border-radius: 2px; overflow: hidden; background: color-mix(in srgb, var(--voc-info) 18%, transparent); }
 .voc-progress > span { display: block; height: 100%; border-radius: 2px; background: var(--voc-info); }
 .voc-job-actions .voc-job-main-action { min-height: var(--voc-row-target); padding-inline: 10px; }
 .voc-job[data-actions="none"] { grid-template-columns: 30px minmax(0, 1fr); }
-.voc-job-actions { display: flex; align-items: center; gap: var(--voc-target-gap); }
-.voc-job-actions .voc-button--icon { width: var(--voc-row-target); min-width: var(--voc-row-target); min-height: var(--voc-row-target); }
-.voc-job-actions-gap { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--voc-hairline); }
-.voc-job-manage { display: contents; }
-.voc-job .voc-menu-anchor { display: none; }
+/* Above the row's button, in the column its subgrid leaves free; with its menu open above the
+   actions of the rows below as well. */
+.voc-job-actions { grid-column: 3; grid-row: 2; position: relative; z-index: 1; display: flex; align-items: center; gap: var(--voc-target-gap); }
+.voc-job-actions:has(.voc-menu) { z-index: 4; }
 .voc-job .voc-menu-button { width: var(--voc-row-target); min-width: var(--voc-row-target); min-height: var(--voc-row-target); }
+.voc-job[data-title="fits"] .voc-job-title-line { grid-column: 1; }
+.voc-job[data-title="fits"] .voc-job-actions { grid-row: 1 / span 2; }
 
 .voc-alerts { display: grid; gap: 6px; }
 .voc-alert {
@@ -772,15 +802,6 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 
 @container voc-card (max-width: 559px) {
   .voc-job { grid-template-columns: 22px minmax(0, 1fr) auto; }
-  .voc-job .voc-job-manage, .voc-job .voc-job-actions-gap { display: none; }
-  .voc-job .voc-menu-anchor { display: inline-flex; }
-}
-
-@supports not (container-type: inline-size) {
-  @media (max-width: 699px) {
-  .voc-job .voc-job-manage, .voc-job .voc-job-actions-gap { display: none; }
-  .voc-job .voc-menu-anchor { display: inline-flex; }
-  }
 }
 
 /* In very little room, as large text leaves a narrow card, a row's main action shows its icon so
@@ -794,11 +815,6 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
    scrolls. */
 .voc-queue--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; gap: 16px; }
 .voc-queue-list { display: grid; gap: 12px; min-width: 0; container: voc-list / inline-size; }
-/* Beside the detail the list is as narrow as a narrow card: rows keep their main action and menu. */
-@container voc-list (max-width: 559px) {
-  .voc-job .voc-job-manage, .voc-job .voc-job-actions-gap { display: none; }
-  .voc-job .voc-menu-anchor { display: inline-flex; }
-}
 .voc-job[data-selected="true"] { border-color: var(--voc-accent-border); box-shadow: inset 3px 0 0 var(--voc-accent-ink); }
 .voc-detail-pane { position: sticky; top: 0; display: grid; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--voc-hairline); border-radius: 16px; background: var(--ha-card-background, var(--card-background-color, transparent)); }
 .voc-pane-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -806,14 +822,13 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 .voc-pane-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding-top: 10px; border-top: 1px solid var(--voc-hairline); }
 .voc-pane-actions .voc-action-start { margin-right: auto; }
 
-.voc-room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); align-items: start; gap: 8px; }
+.voc-room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); align-items: stretch; gap: 8px; }
 .voc-room { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 10px 10px 8px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); }
 .voc-room[data-excluded="true"] { opacity: .65; }
 .voc-room-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .voc-room-icon { display: flex; flex: none; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 10px; background: var(--voc-panel); color: var(--voc-muted); }
 .voc-room-icon ha-icon { --mdc-icon-size: 17px; }
 .voc-room-name { flex: 1; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 900; }
-.voc-room-head .voc-button--icon { margin: -4px -4px -4px 0; }
 .voc-room-status { display: flex; flex-wrap: wrap; gap: 4px; margin-top: -2px; }
 
 .voc-room-due { display: grid; gap: 6px; }
@@ -822,7 +837,11 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 .voc-due-label ha-icon { --mdc-icon-size: 14px; }
 .voc-due--none { display: flex; gap: 4px; font-size: 12px; font-weight: 650; color: var(--voc-faint); }
 .voc-due--none ha-icon { --mdc-icon-size: 14px; }
-.voc-due-status { justify-self: end; font-size: 12px; font-weight: 800; }
+.voc-due-status { justify-self: end; display: inline-flex; align-items: center; gap: 4px; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-size: 12px; font-weight: 800; text-align: right; }
+button.voc-due-status { cursor: help; }
+.voc-due-basis { display: inline-flex; color: var(--voc-faint); }
+.voc-due-basis ha-icon { --mdc-icon-size: 14px; }
+.voc-due-mark { margin-left: -2px; color: var(--voc-muted); }
 .voc-due-bar { grid-column: 1 / -1; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--primary-text-color) 9%, transparent); overflow: hidden; }
 .voc-due-bar span { display: block; height: 100%; border-radius: inherit; background: color-mix(in srgb, var(--voc-success) 75%, transparent); }
 .voc-due[data-due="due"] .voc-due-bar span { background: var(--voc-warning); }
@@ -830,7 +849,6 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 .voc-due[data-due="unknown"] .voc-due-bar span { background: var(--voc-faint); }
 .voc-due[data-due="disabled"] .voc-due-status { color: var(--voc-faint); font-weight: 700; }
 .voc-due-last { grid-column: 1 / -1; font-size: 11px; font-weight: 650; color: var(--voc-muted); }
-.voc-due-quality[data-quality="confirmed"] { color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); font-weight: 750; }
 
 .voc-room-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; font-weight: 650; color: var(--voc-muted); }
 .voc-room-meta-item { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
@@ -840,18 +858,20 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 .voc-room-remedies { display: flex; flex-wrap: wrap; gap: 2px 4px; width: 100%; padding-left: 10px; }
 .voc-room .voc-room-remedy { min-height: 28px; padding: 2px 8px; border-color: transparent; background: transparent; color: var(--voc-accent-ink); font-size: 11.5px; }
 .voc-room .voc-room-remedy ha-icon { --mdc-icon-size: 15px; }
-.voc-room .voc-room-remedy:hover { background: var(--voc-accent-soft); }
+@media (hover: hover) { .voc-room .voc-room-remedy:hover { background: var(--voc-accent-soft); } }
 .voc-rooms-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; font-size: 12px; font-weight: 750; color: var(--voc-muted); }
 .voc-rooms-bar > span { display: inline-flex; align-items: center; gap: 6px; }
 .voc-rooms-bar > span ha-icon { --mdc-icon-size: 16px; color: var(--voc-success); }
 .voc-room-meta-item[data-tone="running"] { color: var(--voc-accent-ink); font-weight: 750; }
 .voc-room-meta-item[data-met="false"] { color: var(--voc-warning-ink); }
-.voc-room-actions { display: flex; flex-wrap: wrap; gap: var(--voc-target-gap); margin: 0 -4px; }
-.voc-room-toggle { margin-left: auto; }
+button.voc-room-conditions { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: help; }
+/* At the card's foot whatever the card above holds, so the actions of a row line up. */
+.voc-room-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--voc-target-gap); margin: auto -4px 0; }
 .voc-room-actions .voc-button { padding: 4px 10px; }
 .voc-view-footer { display: flex; justify-content: center; }
 
-.voc-robot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); align-items: start; gap: 8px; }
+/* LAY-15: the cards of a row are equally tall. */
+.voc-robot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); align-items: stretch; gap: 8px; }
 .voc-robot { display: grid; gap: 8px; align-content: start; min-width: 0; padding: 10px 10px 10px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); container: voc-robot / inline-size; }
 .voc-robot-body, .voc-robot-info { display: grid; gap: 8px; align-content: start; min-width: 0; }
 .voc-robot-capabilities { display: grid; gap: 6px; }
@@ -889,8 +909,9 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 .voc-alert--info { background: color-mix(in srgb, var(--voc-info) 8%, transparent); border-color: color-mix(in srgb, var(--voc-info) 38%, transparent); }
 .voc-alert--info > ha-icon { color: color-mix(in srgb, var(--voc-info) 80%, var(--primary-text-color)); }
 
-.voc-template-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); align-items: start; gap: 8px; }
-.voc-template { display: grid; gap: 8px; align-content: start; min-width: 0; padding: 10px 10px 10px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); }
+/* LAY-15: the cards of a row are equally tall and end with their actions. */
+.voc-template-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); align-items: stretch; gap: 8px; }
+.voc-template { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 10px 10px 10px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); }
 .voc-template[data-tone="muted"] { opacity: .72; }
 .voc-template-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .voc-template-icon { display: flex; flex: none; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 12px; background: var(--voc-panel); border: 1px solid var(--voc-hairline); color: var(--voc-muted); }
@@ -899,8 +920,8 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 .voc-template-title { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .voc-template-name { margin: 0; font-size: 14.5px; font-weight: 900; overflow-wrap: anywhere; }
 .voc-template-meta { font-size: 12px; font-weight: 700; color: var(--voc-muted); overflow-wrap: anywhere; }
-.voc-template-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; }
-.voc-template-create { margin-left: auto; }
+.voc-template-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; margin-top: auto; }
+.voc-template-actions { display: inline-flex; align-items: center; gap: var(--voc-target-gap); margin-left: auto; }
 .voc-template-note { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 10px; background: var(--voc-panel); font-size: 12px; font-weight: 700; color: var(--voc-muted); }
 .voc-template-note > ha-icon { --mdc-icon-size: 15px; }
 .voc-template-note > span { flex: 1 1 160px; min-width: 0; }
@@ -933,6 +954,7 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 .voc-field-label { font-size: 12px; font-weight: 800; color: var(--primary-text-color); }
 .voc-field-optional { font-weight: 650; color: var(--voc-faint); }
 .voc-field-hint { font-size: 11.5px; font-weight: 600; line-height: 1.35; color: var(--voc-muted); }
+.voc-field-hint, .voc-field-warning > span, .voc-field-error { text-wrap: pretty; }
 .voc-field-warning { display: flex; align-items: flex-start; gap: 6px; font-size: 11.5px; font-weight: 750; line-height: 1.35; color: var(--voc-warning-ink); }
 .voc-field-warning ha-icon { --mdc-icon-size: 15px; flex: none; margin-top: 1px; }
 .voc-field-error { font-size: 11.5px; font-weight: 750; line-height: 1.35; color: color-mix(in srgb, var(--voc-error) 85%, var(--primary-text-color)); }
@@ -963,7 +985,7 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
   font-weight: 800;
 }
 .voc-option ha-icon { --mdc-icon-size: 16px; }
-.voc-option:hover { color: var(--primary-text-color); }
+@media (hover: hover) { .voc-option:hover { color: var(--primary-text-color); } }
 .voc-option.is-selected { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
 .voc-option[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 /* A room "All rooms" includes: part of the job, not chosen on its own and not disabled. */
@@ -1012,7 +1034,9 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-entity-remove { width: var(--voc-chip-target); min-width: var(--voc-chip-target); min-height: var(--voc-chip-target); color: inherit; }
 .voc-entity-matches { display: grid; gap: 2px; padding: 4px; border-radius: 12px; border: 1px solid var(--voc-hairline); background: var(--ha-card-background, var(--card-background-color)); }
 .voc-entity-match { display: grid; gap: 1px; padding: 6px 9px; border: 0; border-radius: 9px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
-.voc-entity-match:hover, .voc-entity-match:focus-visible { background: var(--voc-chip-bg); }
+.voc-entity-match:focus-visible { background: var(--voc-chip-bg); }
+@media (hover: hover) { .voc-entity-match:hover { background: var(--voc-chip-bg); } }
+.voc-entity-match:active { background: color-mix(in srgb, var(--primary-text-color) 14%, transparent); }
 .voc-entity-name { font-size: 12.5px; font-weight: 800; }
 .voc-entity-id { font-size: 11px; font-weight: 600; color: var(--voc-muted); }
 
@@ -1079,7 +1103,8 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-choices { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .voc-choice { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--voc-icon-target); padding: 10px 12px; border: 1px solid var(--divider-color); border-radius: 12px; background: transparent; color: var(--primary-text-color); font: inherit; text-align: start; cursor: pointer; }
 .voc-choice > ha-icon { --mdc-icon-size: 22px; color: var(--voc-muted); }
-.voc-choice:hover { background: var(--voc-chip-bg); }
+@media (hover: hover) { .voc-choice:hover { background: var(--voc-chip-bg); } }
+.voc-choice:active { background: color-mix(in srgb, var(--primary-text-color) 14%, transparent); }
 .voc-choice:focus-visible { outline: 2px solid var(--voc-accent-ink); outline-offset: 2px; }
 .voc-choice:disabled, .voc-choice[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
 .voc-choice--primary { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); }
@@ -1099,6 +1124,7 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-field-label { font-size: 12px; font-weight: 800; color: var(--primary-text-color); }
 .voc-field-optional { font-weight: 650; color: var(--voc-faint); }
 .voc-field-hint { font-size: 11.5px; font-weight: 600; line-height: 1.35; color: var(--voc-muted); }
+.voc-field-hint, .voc-field-warning > span, .voc-field-error { text-wrap: pretty; }
 .voc-field-warning { display: flex; align-items: flex-start; gap: 6px; font-size: 11.5px; font-weight: 750; line-height: 1.35; color: var(--voc-warning-ink); }
 .voc-field-warning ha-icon { --mdc-icon-size: 15px; flex: none; margin-top: 1px; }
 .voc-field-error { font-size: 11.5px; font-weight: 750; line-height: 1.35; color: color-mix(in srgb, var(--voc-error) 85%, var(--primary-text-color)); }
@@ -1129,7 +1155,7 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
   font-weight: 800;
 }
 .voc-option ha-icon { --mdc-icon-size: 16px; }
-.voc-option:hover { color: var(--primary-text-color); }
+@media (hover: hover) { .voc-option:hover { color: var(--primary-text-color); } }
 .voc-option.is-selected { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
 .voc-option[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 /* A room "All rooms" includes: part of the job, not chosen on its own and not disabled. */
@@ -1178,7 +1204,9 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-entity-remove { width: var(--voc-chip-target); min-width: var(--voc-chip-target); min-height: var(--voc-chip-target); color: inherit; }
 .voc-entity-matches { display: grid; gap: 2px; padding: 4px; border-radius: 12px; border: 1px solid var(--voc-hairline); background: var(--ha-card-background, var(--card-background-color)); }
 .voc-entity-match { display: grid; gap: 1px; padding: 6px 9px; border: 0; border-radius: 9px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
-.voc-entity-match:hover, .voc-entity-match:focus-visible { background: var(--voc-chip-bg); }
+.voc-entity-match:focus-visible { background: var(--voc-chip-bg); }
+@media (hover: hover) { .voc-entity-match:hover { background: var(--voc-chip-bg); } }
+.voc-entity-match:active { background: color-mix(in srgb, var(--primary-text-color) 14%, transparent); }
 .voc-entity-name { font-size: 12.5px; font-weight: 800; }
 .voc-entity-id { font-size: 11px; font-weight: 600; color: var(--voc-muted); }
 
@@ -1218,6 +1246,7 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-field-label { font-size: 12px; font-weight: 800; color: var(--primary-text-color); }
 .voc-field-optional { font-weight: 650; color: var(--voc-faint); }
 .voc-field-hint { font-size: 11.5px; font-weight: 600; line-height: 1.35; color: var(--voc-muted); }
+.voc-field-hint, .voc-field-warning > span, .voc-field-error { text-wrap: pretty; }
 .voc-field-warning { display: flex; align-items: flex-start; gap: 6px; font-size: 11.5px; font-weight: 750; line-height: 1.35; color: var(--voc-warning-ink); }
 .voc-field-warning ha-icon { --mdc-icon-size: 15px; flex: none; margin-top: 1px; }
 .voc-field-error { font-size: 11.5px; font-weight: 750; line-height: 1.35; color: color-mix(in srgb, var(--voc-error) 85%, var(--primary-text-color)); }
@@ -1248,7 +1277,7 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
   font-weight: 800;
 }
 .voc-option ha-icon { --mdc-icon-size: 16px; }
-.voc-option:hover { color: var(--primary-text-color); }
+@media (hover: hover) { .voc-option:hover { color: var(--primary-text-color); } }
 .voc-option.is-selected { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
 .voc-option[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 /* A room "All rooms" includes: part of the job, not chosen on its own and not disabled. */
@@ -1297,7 +1326,9 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-entity-remove { width: var(--voc-chip-target); min-width: var(--voc-chip-target); min-height: var(--voc-chip-target); color: inherit; }
 .voc-entity-matches { display: grid; gap: 2px; padding: 4px; border-radius: 12px; border: 1px solid var(--voc-hairline); background: var(--ha-card-background, var(--card-background-color)); }
 .voc-entity-match { display: grid; gap: 1px; padding: 6px 9px; border: 0; border-radius: 9px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
-.voc-entity-match:hover, .voc-entity-match:focus-visible { background: var(--voc-chip-bg); }
+.voc-entity-match:focus-visible { background: var(--voc-chip-bg); }
+@media (hover: hover) { .voc-entity-match:hover { background: var(--voc-chip-bg); } }
+.voc-entity-match:active { background: color-mix(in srgb, var(--primary-text-color) 14%, transparent); }
 .voc-entity-name { font-size: 12.5px; font-weight: 800; }
 .voc-entity-id { font-size: 11px; font-weight: 600; color: var(--voc-muted); }
 

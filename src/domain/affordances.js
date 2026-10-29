@@ -39,6 +39,8 @@ const HIDDEN = Object.freeze({ state: "hidden", reason: null });
 const READ_ONLY = Object.freeze({ state: "hidden", reason: "read_only" });
 const ENABLED = Object.freeze({ state: "enabled", reason: null });
 const disabled = (reason) => Object.freeze({ state: "disabled", reason });
+// Offered, with what a person confirms first and the robots it is about.
+const warned = (warning, robotIds) => Object.freeze({ state: "enabled", reason: null, warning, robotIds: Object.freeze([...(robotIds || [])]) });
 const refused = (reason, detail) => Object.freeze({ state: "disabled", reason, source: "integration", detail: detail ?? null });
 
 // `context`: { canCommand, connected, operations: Set of the operations the integration offers
@@ -71,7 +73,7 @@ export function decide(context, { visible = true, operation, target = null }) {
 // apply; otherwise the card's own reasons first, then the integration's.
 export function offer(context, verdict, { operation, target = null }) {
   if (!verdict || (!verdict.available && NOT_APPLICABLE.has(verdict.reason))) return HIDDEN;
-  return local(context, operation, target) ?? (verdict.available ? ENABLED : refused(verdict.reason, verdict.detail));
+  return local(context, operation, target) ?? (verdict.available ? (verdict.warning ? warned(verdict.warning, verdict.robotIds) : ENABLED) : refused(verdict.reason, verdict.detail));
 }
 
 export const jobTarget = (jobId) => `job:${jobId}`;
@@ -79,6 +81,7 @@ export const roomTarget = (roomId) => `room:${roomId}`;
 export const robotTarget = (robotId) => `robot:${robotId}`;
 export const templateTarget = (templateId) => `template:${templateId}`;
 export const QUEUE_TARGET = "queue";
+export const ROOMS_TARGET = "rooms";
 export const CREATE_TARGET = "create";
 export const SETUP_TARGET = "setup";
 

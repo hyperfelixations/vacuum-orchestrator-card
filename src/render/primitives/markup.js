@@ -2,7 +2,7 @@
 // the boundary; commands are `data-action` plus JSON `data-args`, interpreted by the element.
 // See internal dev doc §9 "Markup-Vertrag".
 
-import { escapeHtml } from "../../core/text.js";
+import { PHRASE_SEPARATOR, escapeHtml } from "../../core/text.js";
 
 export const e = (value) => escapeHtml(value === null || value === undefined ? "" : String(value));
 
@@ -40,6 +40,13 @@ export function button({ action, args = null, label, iconName = null, variant = 
   const classes = ["voc-button", `voc-button--${variant}`, className].filter(Boolean).join(" ");
   const content = variant === "icon" ? icon(iconName) : `${icon(iconName)}<span class="voc-button-label">${e(label)}</span>`;
   return `<button type="button" class="${classes}" data-action="${e(action)}"${argsAttr(args)}${key ? ` data-key="${e(key)}"` : ""}${variant === "icon" ? ` aria-label="${e(label)}"` : ""}${pressed === null ? "" : ` aria-pressed="${pressed}"`}${decisionAttributes(decision, reasonText)}${decision?.state === "disabled" || (variant !== "icon" && !tooltip) ? "" : ` title="${e(label)}"`}${extra}>${content}</button>`;
+}
+
+// A line of phrases that breaks between its phrases before it breaks inside one; each phrase keeps
+// its separator, so no line starts with one.
+export function phrased(text) {
+  const phrases = String(text ?? "").split(PHRASE_SEPARATOR);
+  return phrases.map((phrase, index) => `<span class="voc-phrase">${e(phrase)}${index < phrases.length - 1 ? e(PHRASE_SEPARATOR.trimEnd()) : ""}</span>`).join(" ");
 }
 
 export function pill(text, tone = "neutral", { iconName = null, className = "" } = {}) {

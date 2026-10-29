@@ -15,6 +15,8 @@ const titles = (card, group) => card.all(`[data-key="${group}"] .voc-job`).map(t
 const rowOf = (card, name) => card.named(".voc-job", name);
 const jobIdOf = (card, name) => rowOf(card, name).dataset.key.replace(/^job:/, "");
 const inRow = (card, name, selector) => rowOf(card, name).querySelector(selector);
+// A row's further action, from its menu (UI-32).
+const fromMenu = (card, name, selector) => card.menuItem(rowOf(card, name), selector);
 function chip(card, name) {
   const node = card.all('[data-field-control="chips"] [data-value]').find((item) => item.textContent.trim() === name);
   if (!node) throw new Error(`no room chip ${name}`);
@@ -26,7 +28,7 @@ test("moving a job sends one move and the queue shows the integration's new orde
   assert.deepEqual(titles(card, "waiting"), ["Dining Room", "Library"]);
   const library = jobIdOf(card, "Library");
   const node = rowOf(card, "Library");
-  await card.click(inRow(card, "Library", `[data-action="move-job"][data-args*='"up"']`));
+  await card.click(await fromMenu(card, "Library", `[data-action="move-job"][data-args*='"up"']`));
   await card.settle(32);
   assert.deepEqual(card.services("move_job").map((call) => call.data), [{ job_id: library, direction: "up" }]);
   assert.deepEqual(titles(card, "waiting"), ["Library", "Dining Room"]);
@@ -36,7 +38,7 @@ test("moving a job sends one move and the queue shows the integration's new orde
 
 test("the first row cannot move up and says why", async () => {
   const card = await at("Rocky cleans while two jobs wait");
-  const up = inRow(card, "Dining Room", `[data-action="move-job"][data-args*='"up"']`);
+  const up = await fromMenu(card, "Dining Room", `[data-action="move-job"][data-args*='"up"']`);
   assert.equal(up.getAttribute("aria-disabled"), "true");
   assert.ok(up.getAttribute("title"));
   await card.click(up);
@@ -135,7 +137,7 @@ test("leaving a changed editor asks; Escape asks the same", async () => {
 test("a refusal keeps the editor open with the reason; saving again sends only the changed field", async () => {
   const card = await at("A job for every room waits");
   const library = jobIdOf(card, "Library");
-  await card.click(inRow(card, "Library", '[data-action="edit-job"]'));
+  await card.click(await fromMenu(card, "Library", '[data-action="edit-job"]'));
   await card.click('[data-key="field:passes"] [data-action="step-field"][data-args*=\'"step":1\']');
   await card.settle(32);
   card.backend.failNext({ service: "update_job" }, haError.serviceValidation("job_not_editable"));
@@ -157,7 +159,7 @@ test("a refusal keeps the editor open with the reason; saving again sends only t
 // UI-16: the editor waits for its save with every control locked; Back and Escape wait too.
 test("an editor waits for its save, locked, and leaves with the answer", async () => {
   const card = await at("A job for every room waits");
-  await card.click(inRow(card, "Library", '[data-action="edit-job"]'));
+  await card.click(await fromMenu(card, "Library", '[data-action="edit-job"]'));
   await card.click('[data-key="field:passes"] [data-action="step-field"][data-args*=\'"step":1\']');
   await card.settle(32);
   const release = card.backend.hold();
@@ -376,13 +378,23 @@ test("a quick start creates a job from its template", async () => {
   card.unmount();
 });
 
-// UI-22: read only is said once in the subtitle instead of on every greyed-out control.
+// UI-22: read only is said once in the subtitle instead of on every greyed-out control. The
+// integration says who may command (ACT-07).
 test("a read-only user sees the queue without commands and is told why once", async () => {
+  const card = await mountCard(Object.freeze({ recording: "read_only_user", from: "The card opens for a read-only user" }));
+  assert.deepEqual(titles(card, "waiting"), ["Studio", "Library"]);
+  assert.equal(inRow(card, "Library", ".voc-menu-button"), null, "a row with nothing to manage has no menu");
+  assert.equal(card.root.querySelector('[data-action="create-job"], [data-action="start-job"], [aria-disabled="true"]'), null);
+  assert.match(card.text(".voc-subtitle"), /Read only for your account/);
+  card.unmount();
+});
+
+// UI-14: the card serves every household member, administrator or not.
+test("a user who is no administrator commands like one", async () => {
   const card = await mountCard({ ...BUSY, admin: false });
-  assert.equal(inRow(card, "Conservatory", '[data-action="edit-job"]'), null);
-  assert.equal(inRow(card, "Conservatory", ".voc-menu-button"), null, "a row with nothing to manage has no menu");
-  assert.equal(card.root.querySelector('[data-action="create-job"], [aria-disabled="true"]'), null);
-  assert.match(card.text(".voc-subtitle"), /Read only: changes need an administrator/);
+  assert.ok(inRow(card, "Dining Room", ".voc-menu-button"));
+  assert.ok(card.root.querySelector('[data-action="create-job"]'));
+  assert.doesNotMatch(card.text(".voc-subtitle") ?? "", /Read only/);
   card.unmount();
 });
 
@@ -394,15 +406,15 @@ test("the busy afternoon is everyday use: one job cleaning, three waiting, nothi
   card.unmount();
 });
 
-// LAY-09, WAI-ARIA APG "Menu Button": the row's menu holds its managing actions, Escape or a click
-// beside it closes it, and an item does what its icon does on a wide card. Focus follows in the
-// browser, where the narrow card shows the menu (test/browser/accessibility).
-test("a row's menu holds its managing actions, closes with Escape or a click beside it and runs its item", async () => {
+// UI-32, WAI-ARIA APG "Menu Button": the row's menu holds every further action of the job, the
+// destructive one last; Escape or a click beside it closes it, and an item runs its action. Focus
+// follows in the browser (test/browser/accessibility).
+test("a row's menu holds the job's further actions, closes with Escape or a click beside it and runs its item", async () => {
   const card = await at("A job for every room waits");
   const button = () => inRow(card, "Library", ".voc-menu-button");
   await card.click(button());
   assert.deepEqual([button().getAttribute("aria-expanded"), button().getAttribute("aria-controls")], ["true", card.root.querySelector('[role="menu"]').id]);
-  assert.deepEqual(card.all('[role="menu"] [role="menuitem"]').map((node) => node.textContent.trim()), ["Move up", "Move down", "Edit"]);
+  assert.deepEqual(card.all('[role="menu"] [role="menuitem"]').map((node) => node.textContent.trim()), ["Move up", "Move down", "Edit", "Save as template", "Delete"]);
   await card.press('[role="menu"] [role="menuitem"]', "Escape");
   assert.equal(card.root.querySelector('[role="menu"]'), null);
   await card.click(button());
@@ -437,7 +449,7 @@ test("a job's release frees each of its locked rooms in its own way with one com
 // the held job cannot be deleted; the editor holding it still may, with its hold.
 test("leaving a waiting job's editor gives its hold back", async () => {
   const card = await mountCard({ recording: "edit_hold", from: "A dining room job waits" });
-  await card.click(inRow(card, "Dining Room", '[data-action="edit-job"]'));
+  await card.click(await fromMenu(card, "Dining Room", '[data-action="edit-job"]'));
   await card.settle(32);
   assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:job-editor");
   const [held] = card.commands("hold_job");

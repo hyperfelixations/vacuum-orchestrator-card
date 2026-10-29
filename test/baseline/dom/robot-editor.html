@@ -22,6 +22,12 @@
 <div class="voc-form">
 <section class="voc-block" data-key="group:general">
 <h3 class="voc-block-title">General</h3>
+<div class="voc-field" data-key="field:name" data-field-control="text">
+<label class="voc-field-label" id="voc-field-name-label" for="voc-field-name">Name <span class="voc-field-optional">optional</span>
+</label>
+<input class="voc-input" id="voc-field-name" data-field="name" placeholder="Dusty" aria-describedby="voc-field-name-hint" type="text" value="" autocomplete="off">
+<div class="voc-field-hint" id="voc-field-name-hint">Leave it empty to use the name from Home Assistant.</div>
+</div>
 <div class="voc-field" data-key="field:enabled" data-field-control="switch">
 <label class="voc-field-label voc-sr-only" id="voc-field-enabled-label" for="voc-field-enabled">Use this robot</label>
 <label class="voc-switch">
@@ -548,11 +554,6 @@
 <ha-icon icon="mdi:delete-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Remove robot</span>
-</button>
-<button type="button" class="voc-button voc-button--text" data-action="rename-robot" data-args="{&quot;robotId&quot;:&quot;01J00000000000000000000005&quot;}">
-<ha-icon icon="mdi:rename-outline" aria-hidden="true">
-</ha-icon>
-<span class="voc-button-label">Rename</span>
 </button>
 </span>
 <div class="voc-menu-anchor" data-key="menu:robot-editor">

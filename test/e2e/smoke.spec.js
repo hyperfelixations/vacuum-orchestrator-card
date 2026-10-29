@@ -57,7 +57,9 @@ test.describe.serial("[ha-frontend] smoke", () => {
     await card.locator('[role="tab"][data-view="robots"]').click();
     const picture = card.locator(".voc-robot-map img").first();
     await expect.poll(() => picture.evaluate((image) => image.complete && image.naturalWidth), { timeout: READY_MS }).toBeGreaterThan(0);
-    await card.locator('[data-action="edit-robot"]').first().click();
+    // UI-32: the profile is in the robot's menu.
+    await card.locator(".voc-robot .voc-menu-button").first().click();
+    await card.locator('.voc-robot [role="menu"] [data-action="edit-robot"]').first().click();
     await expect(card.locator(".voc-overlay")).toBeVisible();
     expect(Math.abs((await frame.boundingBox()).height - resting), "a page keeps the card's height (LAY-17)").toBeLessThanOrEqual(1);
     await card.locator('.voc-overlay [data-action="back"]').first().click();

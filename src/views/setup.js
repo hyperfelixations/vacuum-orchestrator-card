@@ -25,7 +25,7 @@ function link(context, step) {
 const BODIES = Object.freeze({
   robots: (context, step) =>
     itemList([
-      ...step.robots.map((robot) => item(`robot:${robot.key}`, robot.name, "", button({ action: robot.rename.action, args: { robotId: robot.robotId }, label: context.t("action.rename"), iconName: "mdi:rename-outline", decision: robot.rename.decision, reasonText: context.reason(robot.rename.decision) }))),
+      ...step.robots.map((robot) => item(`robot:${robot.key}`, robot.name, "", button({ action: robot.edit.action, args: { robotId: robot.robotId }, label: context.t("action.edit"), iconName: "mdi:pencil-outline", decision: robot.edit.decision, reasonText: context.reason(robot.edit.decision) }))),
       ...step.candidates.map((candidate) => item(`candidate:${candidate.key}`, candidate.name, candidate.detail, button({ action: "add-candidate", args: { entityId: candidate.entityId }, label: context.t("action.addRobot"), iconName: "mdi:plus", variant: "primary", decision: candidate.decision, reasonText: context.reason(candidate.decision) }))),
     ]),
   rooms: (context, step) =>

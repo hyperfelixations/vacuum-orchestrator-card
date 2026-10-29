@@ -14,6 +14,8 @@ const ACTION = Object.freeze({
   retry: { action: "retry-job", iconName: "mdi:restore", labelKey: "action.retry", variant: "primary" },
   saveAsTemplate: { action: "open-save-template", iconName: "mdi:content-save-outline", labelKey: "action.saveAsTemplate" },
   moveTop: { action: "move-job", args: { direction: "top" }, iconName: "mdi:arrow-collapse-up", labelKey: "action.moveTop", variant: "icon" },
+  moveUp: { action: "move-job", args: { direction: "up" }, iconName: "mdi:arrow-up", labelKey: "action.moveUp", variant: "icon" },
+  moveDown: { action: "move-job", args: { direction: "down" }, iconName: "mdi:arrow-down", labelKey: "action.moveDown", variant: "icon" },
   moveBottom: { action: "move-job", args: { direction: "bottom" }, iconName: "mdi:arrow-collapse-down", labelKey: "action.moveBottom", variant: "icon" },
 });
 
@@ -55,7 +57,8 @@ function footer(context, vm) {
 // The queue position with the controls that change it.
 function position(context, vm) {
   if (!vm.position) return "";
-  const moves = ["moveTop", "moveBottom"].map((key) => actionButton(context, vm, key)).join("");
+  // One step as in the row's menu, or to either end (UI-32).
+  const moves = ["moveTop", "moveUp", "moveDown", "moveBottom"].map((key) => actionButton(context, vm, key)).join("");
   return `<div class="voc-detail-position" data-key="position"><span>${e(context.t("detail.position", { position: vm.position }))}</span>${moves}</div>`;
 }
 

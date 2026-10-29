@@ -109,8 +109,12 @@ function stamps(wire) {
   return Object.freeze(Object.fromEntries(DUE_OPERATIONS.map((operation) => [operation, stamp(value[operation])])));
 }
 
+const UNKNOWN_DUE = Object.freeze({ state: "unknown", reason: null, elapsedSeconds: null, remainingSeconds: null, dueAt: null, quality: null, partial: false, overdue: false, overdueSeconds: null, urgency: null });
+
+// `partial`: the integration counted only what it surely observed (DUE-03); `overdue` and
+// `urgency` are its own verdicts (DUE-04, DUE-05).
 function dueReport(wire) {
-  if (!isRecord(wire)) return Object.freeze({ state: "unknown", reason: null, elapsedSeconds: null, remainingSeconds: null, dueAt: null, quality: null });
+  if (!isRecord(wire)) return UNKNOWN_DUE;
   return Object.freeze({
     state: enumerated(wire.state, isDueState) ?? "unknown",
     reason: text(wire.reason),
@@ -118,7 +122,17 @@ function dueReport(wire) {
     remainingSeconds: finite(wire.remaining_seconds),
     dueAt: instant(wire.due_at),
     quality: enumerated(wire.quality, isCompletionQuality),
+    partial: wire.observation === "partial",
+    overdue: wire.overdue === true,
+    overdueSeconds: finite(wire.overdue_seconds),
+    urgency: finite(wire.urgency),
   });
+}
+
+// How the integration lists its rooms (ROOM-13).
+export const ROOM_ORDERS = Object.freeze(["due", "name"]);
+export function normalizeRoomOrder(value) {
+  return ROOM_ORDERS.includes(value) ? value : "due";
 }
 
 export function normalizeRoom(wire) {

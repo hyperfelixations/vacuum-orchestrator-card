@@ -12,6 +12,8 @@ export function normalizeSetup(wire) {
   return Object.freeze({
     assistantPending: wire.assistant_pending === true,
     completedAt: instant(wire.completed_at),
+    // Whether the integration lets this user command it; Home Assistant's read-only users not.
+    mayCommand: wire.permissions?.command !== false,
     steps: Object.freeze({
       robots: Object.freeze({ robotIds: strings(step("robots").robot_ids) }),
       rooms: Object.freeze({ roomIds: strings(step("rooms").room_ids), unreachableRoomIds: strings(step("rooms").unreachable_room_ids) }),

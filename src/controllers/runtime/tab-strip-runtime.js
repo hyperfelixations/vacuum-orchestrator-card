@@ -27,6 +27,8 @@ export function revealOffset({ left, right, scrollLeft, clientWidth, scrollWidth
 export function createTabStripRuntime({ root, platform }) {
   let stopObserving = null;
   let shownView = null;
+  // The last fit: the row it was measured for and its compaction level.
+  let compacted = null;
 
   const measure = (strip) => ({ scrollLeft: strip.scrollLeft, clientWidth: strip.clientWidth, scrollWidth: strip.scrollWidth });
 
@@ -45,23 +47,43 @@ export function createTabStripRuntime({ root, platform }) {
     strip.scrollLeft = revealOffset({ left, right: left + tabBox.width, scrollLeft: strip.scrollLeft, clientWidth: strip.clientWidth, scrollWidth: strip.scrollWidth });
   }
 
-  // Measured from the labelled layout every time, so the result depends only on the width.
-  function compact(strip) {
+  // What the row's fit depends on: its width, its tabs and their labels, and the action.
+  const rowKey = (strip, row) =>
+    [strip.clientWidth, ...[...strip.querySelectorAll('[role="tab"]'), row.querySelector(".voc-primary-action")]
+      .map((node) => (node ? `${node.dataset.view ?? ""}:${node.getAttribute("aria-selected") ?? ""}:${node.textContent.trim()}` : ""))]
+      .join("|");
+
+  // Measured from the labelled layout, so the result depends only on the width; measured again
+  // only when the row or the fonts change, since measuring a row it just changed lays out the
+  // whole page (UI-31).
+  function compact(strip, force) {
     const row = strip.closest(".voc-tab-row") || strip;
-    row.removeAttribute("data-compact");
-    for (const level of COMPACT_LEVELS) {
-      if (!stripOverflow({ ...measure(strip), scrollLeft: 0 }).end) return;
-      row.setAttribute("data-compact", level);
+    const key = rowKey(strip, row);
+    if (!force && compacted?.key === key) {
+      if (row.getAttribute("data-compact") !== compacted.level) {
+        if (compacted.level) row.setAttribute("data-compact", compacted.level);
+        else row.removeAttribute("data-compact");
+      }
+      return;
     }
+    row.removeAttribute("data-compact");
+    let fitted = null;
+    for (const level of COMPACT_LEVELS) {
+      if (!stripOverflow({ ...measure(strip), scrollLeft: 0 }).end) break;
+      row.setAttribute("data-compact", level);
+      fitted = level;
+    }
+    compacted = { key, level: fitted };
   }
 
   function sync({ force = false } = {}) {
     const strip = root.querySelector(".voc-tabs");
     if (!strip) {
       shownView = null;
+      compacted = null;
       return;
     }
-    compact(strip);
+    compact(strip, force);
     const active = strip.querySelector('[role="tab"][aria-selected="true"]')?.dataset.view ?? null;
     if (force || active !== shownView) reveal(strip);
     shownView = active;
@@ -88,6 +110,7 @@ export function createTabStripRuntime({ root, platform }) {
       stopObserving?.();
       stopObserving = null;
       shownView = null;
+      compacted = null;
     },
     // After every render: the edges, and the active tab when it changed.
     sync,

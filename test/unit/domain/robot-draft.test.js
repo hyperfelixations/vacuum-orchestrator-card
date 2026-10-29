@@ -31,6 +31,21 @@ test("an unchanged draft gives back the stored definition", async () => {
   assert.deepEqual(configuration, JSON.parse(JSON.stringify(robot.configuration.wire)));
 });
 
+// ROB-02, UI-32: the profile names the robot; empty clears a stored name, so Home Assistant's applies.
+test("the robot's own name travels with its profile; empty returns to Home Assistant's", async () => {
+  const { createRobotDraft, robotDraftToConfiguration, isRobotDirty, updateRobotDraft, robot } = await load();
+  const draft = createRobotDraft(robot);
+  assert.equal(draft.name, "", "a robot named as in Home Assistant has no name of its own");
+  const named = updateRobotDraft(draft, "name", " Rocky downstairs ");
+  assert.equal(isRobotDirty(named), true);
+  assert.equal(robotDraftToConfiguration(named).name, "Rocky downstairs");
+  assert.equal(Object.hasOwn(robotDraftToConfiguration(draft), "name"), false, "nothing to clear, nothing sent");
+  const custom = { ...robot, name: "Rocky downstairs", nameSource: "custom", configuration: { ...robot.configuration, wire: { ...robot.configuration.wire, name: "Rocky downstairs" } } };
+  const kept = createRobotDraft(custom);
+  assert.equal(kept.name, "Rocky downstairs");
+  assert.equal(robotDraftToConfiguration(updateRobotDraft(kept, "name", "  ")).name, null, "an emptied name is cleared");
+});
+
 test("a time limit the integration does not report stays empty rather than a card value", async () => {
   const { createRobotDraft, robot } = await load();
   const { start_timeout_seconds: _gone, ...wire } = robot.configuration.wire;
