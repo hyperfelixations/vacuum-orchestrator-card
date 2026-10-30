@@ -2,6 +2,8 @@
 
 const { defineConfig, devices } = require("@playwright/test");
 const PORT = 4173;
+// A cold engine on a shared runner: one browser at a time, more time (internal dev doc §10).
+const CROSS_ENGINE = { workers: 1, timeout: 60_000, expect: { timeout: 15_000 } };
 
 module.exports = defineConfig({
   testDir: "./test/browser",
@@ -15,8 +17,8 @@ module.exports = defineConfig({
   expect: { toHaveScreenshot: { maxDiffPixels: 200 } },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "firefox-core", testMatch: /core[\\/].*\.spec\.js/, use: { ...devices["Desktop Firefox"] } },
-    { name: "webkit-core", testMatch: /core[\\/].*\.spec\.js/, use: { ...devices["Desktop Safari"] } },
+    { name: "firefox-core", testMatch: /core[\\/].*\.spec\.js/, ...CROSS_ENGINE, use: { ...devices["Desktop Firefox"] } },
+    { name: "webkit-core", testMatch: /core[\\/].*\.spec\.js/, ...CROSS_ENGINE, use: { ...devices["Desktop Safari"] } },
   ],
   webServer: {
     command: "node test/helpers/static-server.js",

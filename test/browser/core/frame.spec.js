@@ -34,6 +34,8 @@ async function overlay(page, card, { from, open, key }) {
 }
 
 test("in a sections grid cell the card keeps the cell's height in every view and overlay", async ({ page }) => {
+  // Every view and overlay, each step waited for: far more steps than any other spec here.
+  test.slow();
   let card = await mountCard(page, { ...BUSY, layout: "grid", config: ALL_VIEWS });
   await expect(card.locator("ha-card")).toHaveAttribute("data-frame", "fill");
   for (const key of ALL_VIEWS.views) {
