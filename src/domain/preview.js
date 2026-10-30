@@ -42,5 +42,7 @@ export function normalizePreview(wire) {
     unreachableRoomIds: strings(wire.unreachable_room_ids),
     startableNow: wire.startable_now === true,
     reason: text(wire.reason),
+    // A start a person may still confirm: below the battery minimum (JOB-27).
+    startWarning: text(wire.start_warning),
   });
 }

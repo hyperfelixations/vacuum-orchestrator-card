@@ -8,7 +8,10 @@
 </div>
 <div class="voc-title-block">
 <div class="voc-title">Cleaning</div>
-<div class="voc-subtitle">Studio · Rocky</div>
+<div class="voc-subtitle">
+<span class="voc-phrase">Studio ·</span>
+<span class="voc-phrase">Rocky</span>
+</div>
 </div>
 <div class="voc-status-pill">Cleaning</div>
 </div>
@@ -51,11 +54,19 @@
 </div>
 <div class="voc-detail-position" data-key="position">
 <span>Position 1 in the queue</span>
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;,&quot;direction&quot;:&quot;top&quot;}" aria-label="Move to top" aria-disabled="true" title="The job is already first in the queue">
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000066&quot;,&quot;direction&quot;:&quot;top&quot;}" aria-label="Move to top" aria-disabled="true" title="The job is already first in the queue">
 <ha-icon icon="mdi:arrow-collapse-up" aria-hidden="true">
 </ha-icon>
 </button>
-<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;,&quot;direction&quot;:&quot;bottom&quot;}" aria-label="Move to bottom" title="Move to bottom">
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000066&quot;,&quot;direction&quot;:&quot;up&quot;}" aria-label="Move up" aria-disabled="true" title="The job is already first in the queue">
+<ha-icon icon="mdi:arrow-up" aria-hidden="true">
+</ha-icon>
+</button>
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000066&quot;,&quot;direction&quot;:&quot;down&quot;}" aria-label="Move down" title="Move down">
+<ha-icon icon="mdi:arrow-down" aria-hidden="true">
+</ha-icon>
+</button>
+<button type="button" class="voc-button voc-button--icon" data-action="move-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000066&quot;,&quot;direction&quot;:&quot;bottom&quot;}" aria-label="Move to bottom" title="Move to bottom">
 <ha-icon icon="mdi:arrow-collapse-down" aria-hidden="true">
 </ha-icon>
 </button>
@@ -81,7 +92,7 @@
 </ul>
 </div>
 <div class="voc-inline-actions">
-<button type="button" class="voc-button voc-button--text" data-action="open-release" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000005&quot;,&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;}" data-key="release:00000000-0000-4000-8000-000000000005">
+<button type="button" class="voc-button voc-button--text" data-action="open-release" data-args="{&quot;roomId&quot;:&quot;00000000-0000-4000-8000-000000000005&quot;,&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000066&quot;}" data-key="release:00000000-0000-4000-8000-000000000005">
 <ha-icon icon="mdi:lock-open-variant-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Release Conservatory…</span>
@@ -134,25 +145,25 @@
 <div class="voc-overlay-actions">
 <span class="voc-action-start voc-actions-lead">
 <span class="voc-actions-buttons">
-<button type="button" class="voc-button voc-button--danger" data-action="delete-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;}">
+<button type="button" class="voc-button voc-button--danger" data-action="delete-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000066&quot;}">
 <ha-icon icon="mdi:delete-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Delete</span>
 </button>
-<button type="button" class="voc-button voc-button--text" data-action="open-save-template" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;}">
+<button type="button" class="voc-button voc-button--text" data-action="open-save-template" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000066&quot;}">
 <ha-icon icon="mdi:content-save-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Save as template</span>
 </button>
 </span>
-<div class="voc-menu-anchor" data-key="menu:detail:00000000-0000-4000-8000-000000000062">
-<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;detail:00000000-0000-4000-8000-000000000062&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Conservatory" title="More actions for Conservatory">
+<div class="voc-menu-anchor" data-key="menu:detail:00000000-0000-4000-8000-000000000066">
+<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;detail:00000000-0000-4000-8000-000000000066&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Conservatory" title="More actions for Conservatory">
 <ha-icon icon="mdi:dots-horizontal" aria-hidden="true">
 </ha-icon>
 </button>
 </div>
 </span>
-<button type="button" class="voc-button voc-button--text" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000062&quot;}">
+<button type="button" class="voc-button voc-button--text" data-action="edit-job" data-args="{&quot;jobId&quot;:&quot;00000000-0000-4000-8000-000000000066&quot;}">
 <ha-icon icon="mdi:pencil-outline" aria-hidden="true">
 </ha-icon>
 <span class="voc-button-label">Edit</span>

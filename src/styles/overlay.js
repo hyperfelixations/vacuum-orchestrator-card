@@ -9,7 +9,7 @@ export const OVERLAY_CSS = `
 .voc-overlay-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .voc-overlay-title:focus { outline: none; }
 .voc-overlay-title { flex: 1; min-width: 0; margin: 0; font-size: 17px; font-weight: 900; line-height: 1.15; overflow-wrap: anywhere; }
-.voc-overlay-lead { margin: 0; color: var(--voc-muted); font-size: 12.5px; font-weight: 650; line-height: 1.35; }
+.voc-overlay-lead { margin: 0; color: var(--voc-muted); font-size: 12.5px; font-weight: 650; line-height: 1.35; text-wrap: pretty; }
 .voc-overlay-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding-top: 4px; }
 .voc-overlay-actions .voc-action-start { margin-right: auto; }
 .voc-actions-lead, .voc-actions-buttons { display: inline-flex; align-items: center; gap: 8px; }

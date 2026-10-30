@@ -2,10 +2,12 @@
 // choosing a robot for a direct start, resolving a robot's recovery and the queue's quiet period.
 // Each shows the integration's facts and sends one command.
 
-import { QUEUE_TARGET, decide, jobTarget, recoveryAffordance } from "../../domain/affordances.js";
+import { QUEUE_TARGET, ROOMS_TARGET, decide, jobTarget, recoveryAffordance } from "../../domain/affordances.js";
+import { ROOM_ORDERS } from "../../domain/rooms.js";
 import { QUEUE_GRACE_MAX_SECONDS, START_DELAY_MAX_SECONDS } from "../../domain/job-schema.js";
 import { findJob, list, robotName, robotsOf, roomIndex, slotData, jobTitle } from "../common/lookups.js";
-import { reasonText, seconds, t } from "../common/texts.js";
+import { number, reasonText, seconds, t } from "../common/texts.js";
+import { numericReading } from "../../application/ha-entities.js";
 import { pageErrors } from "./editor-fields.js";
 import { readinessReasons } from "../views/job-row.js";
 
@@ -20,6 +22,24 @@ export function buildConfirm({ model, texts, overlay }) {
     // The confirming button repeats the icon of the action it confirms.
     confirmIcon: overlay.icon || "mdi:check",
     tone: overlay.tone || "danger",
+    pending: list(model.pending).includes(overlay.command?.options?.target),
+  };
+}
+
+// JOB-27: a start below a robot's battery minimum, with the reading Home Assistant reports and the
+// minimum of the robot's profile where both are known.
+export function buildLowBatteryStart({ model, texts, overlay }) {
+  const robot = robotsOf(model).find((entry) => entry.robotId === overlay.robotId) ?? null;
+  const name = robot?.name ?? robotName(overlay.robotId, model);
+  const battery = numericReading(model.robotsLive?.[overlay.robotId]?.roles?.battery);
+  const minimum = robot?.configuration?.minimumBattery ?? null;
+  return {
+    key: "low-battery-start",
+    title: t(texts, "confirm.lowBattery.title"),
+    text: battery !== null && minimum !== null ? t(texts, "confirm.lowBattery.text", { robot: name, battery: number(texts, battery), minimum: number(texts, minimum) }) : t(texts, "confirm.lowBattery.textUnknown", { robot: name }),
+    confirmLabel: t(texts, "confirm.lowBattery.confirm"),
+    confirmIcon: "mdi:battery-alert-variant-outline",
+    tone: "primary",
     pending: list(model.pending).includes(overlay.command?.options?.target),
   };
 }
@@ -127,6 +147,16 @@ export function buildQueueSettings({ texts, context, overlay }) {
     ],
     invalid,
     save: decide(context, { operation: "configure_queue", target: QUEUE_TARGET }),
+  };
+}
+
+// How the rooms view lists rooms; the integration orders them (ROOM-13).
+export function buildRoomOrder({ texts, context, overlay }) {
+  return {
+    key: "room-order",
+    title: t(texts, "roomOrder.title"),
+    field: { key: "overlay:order", label: t(texts, "settings.roomOrder"), control: "segmented", value: overlay.order, options: ROOM_ORDERS.map((value) => ({ value, label: t(texts, `settings.roomOrder.${value}`), icon: value === "due" ? "mdi:sort-clock-descending-outline" : "mdi:sort-alphabetical-ascending" })) },
+    save: decide(context, { operation: "configure_room_order", target: ROOMS_TARGET }),
   };
 }
 

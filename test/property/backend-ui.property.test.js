@@ -98,13 +98,19 @@ test("rendered queue rows never show a control the decisions hide", async () => 
     },
     verify({ wire, state, canCommand, main }) {
       const actions = jobAffordances(normalizeJob(wire), affordanceContext({ canCommand, operations: OPERATIONS }));
-      const row = { jobId: "j", position: state === "queued" ? "2" : "", title: "<Job>", rooms: "", showRooms: false, modeIcon: "mdi:robot-vacuum", modeLabel: "Vacuum", state, stateLabel: state, stateTone: "neutral", showState: false, status: null, progress: null, settings: [], outcome: null, pending: false, actions, main: main ? { key: main, decision: actions[main] } : null, menuOpen: false, time: "" };
+      const menu = [
+        { key: "moveUp", action: "move-job", decision: actions.moveUp },
+        { key: "moveDown", action: "move-job", decision: actions.moveDown },
+        { key: "edit", action: "edit-job", decision: actions.edit },
+      ].map((item) => ({ ...item, args: { jobId: "j" }, iconName: "mdi:dots-horizontal", labelKey: "action.edit" }));
+      const row = { jobId: "j", position: state === "queued" ? "2" : "", title: "<Job>", rooms: "", showRooms: false, modeIcon: "mdi:robot-vacuum", modeLabel: "Vacuum", state, stateLabel: state, stateTone: "neutral", showState: false, status: null, progress: null, settings: [], outcome: null, pending: false, actions, main: main ? { key: main, decision: actions[main] } : null, menu, menuOpen: false, time: "" };
       const host = document.createElement("div");
       host.innerHTML = jobRow(context, row);
       const shown = [...host.querySelectorAll("[data-action]")].map((node) => node.dataset.action).filter((action) => action !== "open-job");
-      const manage = Object.entries({ moveUp: "move-job", moveDown: "move-job", edit: "edit-job" }).filter(([control]) => actions[control].state !== "hidden").map(([, action]) => action);
+      const offered = menu.filter((item) => item.decision.state !== "hidden");
       const shownMain = main && actions[main].state !== "hidden" ? [{ start: "start-job", delete: "delete-job", cancel: "cancel-job" }[main]] : [];
-      assert.deepEqual(shown, [...shownMain, ...manage, ...(manage.length ? ["toggle-menu"] : [])], "the main action, the managing icons, the menu holding them on a narrow card");
+      // The menu lists its items only while open; closed, its button stands for them (UI-32).
+      assert.deepEqual(shown, [...shownMain, ...(offered.length ? ["toggle-menu"] : [])], "the main action, then the menu of the further actions");
       assert.equal(host.querySelectorAll(".voc-job-main-action").length, shownMain.length, "at most one main action");
       assert.equal(host.querySelector(".voc-job-title").textContent, "<Job>");
     },

@@ -5,33 +5,43 @@
 import { decide, roomAffordances } from "../../domain/affordances.js";
 import { DUE_OPERATIONS } from "../../domain/rooms.js";
 import { entityName, jobTitle, list, robotName, robotsOf, roomIndex, roomsOf, slotData } from "../common/lookups.js";
-import { dueReasonText, duration, moment, qualityLabel, remainingText, t } from "../common/texts.js";
+import { moment, remainingText, spanText, t } from "../common/texts.js";
 
 const DUE_ICONS = Object.freeze({ vacuum: "mdi:robot-vacuum", mop: "mdi:water-outline" });
+// What a room's intervals count, named by an icon beside the time (DUE-01).
+const BASIS = Object.freeze({ calendar: { icon: "mdi:calendar-clock", labelKey: "rooms.basis.calendar" }, occupied: { icon: "mdi:account-clock", labelKey: "rooms.basis.occupied" } });
+
+// The integration's verdict in words (DUE-03, DUE-04): due in a time, due, overdue for a time, or
+// never cleaned. A calendar due date counts down with the clock; occupied time with the reports.
+function dueStatus(report, calendar, { texts, model }) {
+  if (report.state === "disabled") return t(texts, "rooms.due.disabled");
+  if (report.state === "unknown") return t(texts, "rooms.due.unknown");
+  if (report.state === "due") {
+    if (report.reason === "never_cleaned") return t(texts, "rooms.due.never");
+    return report.overdue && report.overdueSeconds !== null ? t(texts, "rooms.due.overdue", { time: spanText(texts, report.overdueSeconds * 1000, { days: calendar }) }) : t(texts, "rooms.due.now");
+  }
+  const remaining = report.dueAt !== null ? Math.max(0, report.dueAt - model.nowMs) : report.remainingSeconds !== null ? report.remainingSeconds * 1000 : null;
+  return remaining === null ? t(texts, "rooms.due.fresh") : t(texts, "rooms.due.in", { time: spanText(texts, remaining, { days: calendar }) });
+}
 
 function dueLine(room, operation, { texts, model, timeFormat }) {
   const report = room.due[operation];
   const stamp = room.lastCleaning[operation];
-  const known = report.elapsedSeconds !== null && report.remainingSeconds !== null && report.elapsedSeconds + report.remainingSeconds > 0;
-  const share = report.state === "due" ? 1 : known ? report.elapsedSeconds / (report.elapsedSeconds + report.remainingSeconds) : null;
-  let status;
-  if (report.state === "disabled") status = t(texts, "rooms.due.disabled");
-  else if (report.state === "due") status = report.reason === "never_cleaned" ? t(texts, "rooms.due.never") : report.dueAt !== null ? t(texts, "rooms.due.since", { when: moment(texts, report.dueAt, "relative", model.nowMs) }) : t(texts, "rooms.due.now");
-  else if (report.state === "fresh") status = report.dueAt !== null ? t(texts, "rooms.due.at", { when: moment(texts, report.dueAt, "relative", model.nowMs) }) : report.remainingSeconds !== null ? t(texts, "rooms.due.inOccupied", { time: duration(texts, report.remainingSeconds * 1000) }) : t(texts, "rooms.due.fresh");
-  else status = t(texts, "rooms.due.unknown");
+  const basis = BASIS[room.duePolicy.basis] ?? BASIS.calendar;
+  const timed = report.state === "due" || report.state === "fresh";
   return {
     key: operation,
     icon: DUE_ICONS[operation],
     label: t(texts, `rooms.operation.${operation}`),
     state: report.state,
-    status,
-    reason: report.state === "unknown" ? dueReasonText(texts, report.reason) : null,
-    share: share === null ? null : Math.max(0, Math.min(1, share)),
+    overdue: report.overdue,
+    status: dueStatus(report, room.duePolicy.basis !== "occupied", { texts, model }),
+    basis: timed && report.reason !== "never_cleaned" ? { icon: basis.icon, label: t(texts, basis.labelKey) } : null,
+    // Counted from what was surely observed: the time carries a mark that explains itself.
+    partial: report.partial ? t(texts, "rooms.due.partial") : null,
+    share: report.urgency === null ? (report.state === "due" ? 1 : null) : Math.max(0, Math.min(1, report.urgency)),
     // Only a recorded cleaning has a line; "never cleaned" is the status's to say.
     last: stamp ? t(texts, "rooms.last", { when: moment(texts, stamp.completedAt, timeFormat, model.nowMs) }) : null,
-    // A cleaning seen to its end is the usual case; only an uncertain one says so.
-    quality: stamp?.quality === "derived" ? qualityLabel(texts, stamp.quality) : null,
-    qualityKey: stamp?.quality ?? null,
   };
 }
 
@@ -57,14 +67,16 @@ function reachOf(room, robots, texts) {
   };
 }
 
-// What is happening to a room now (UI-07): a started job cleaning it, with its robot, and the
-// queued jobs that wait for it.
+// What is happening to a room now (UI-07): a started job cleaning it, with its robot; the robot
+// that reports being in it; the jobs that wait for it, as the integration counts them.
 function workOf(room, { texts, model }) {
   const started = list(slotData(model, "openJobs")?.jobs).filter((job) => STARTED.has(job.state) && list(job.roomIds).includes(room.roomId));
-  const waiting = list(slotData(model, "queue")?.jobs).filter((job) => job.state === "queued" && list(job.roomIds).includes(room.roomId));
+  const here = robotsOf(model).filter((robot) => robot.currentRoomId === room.roomId || started.some((job) => job.progress?.roomId === room.roomId && job.progress?.robotId === robot.robotId));
+  const waiting = list(room.waitingJobIds).length;
   return [
-    ...started.map((job) => ({ key: "cleaning", tone: "running", text: job.progress?.robotId ? t(texts, "rooms.cleaning", { robot: robotName(job.progress.robotId, model) }) : t(texts, "rooms.cleaningNow") })),
-    ...(waiting.length ? [{ key: "waiting", tone: "neutral", text: t(texts, "rooms.waiting", { count: waiting.length }) }] : []),
+    ...started.map((job) => ({ key: `cleaning:${job.jobId}`, kind: "cleaning", tone: "running", text: job.progress?.robotId ? t(texts, "rooms.cleaning", { robot: robotName(job.progress.robotId, model) }) : t(texts, "rooms.cleaningNow") })),
+    ...here.map((robot) => ({ key: `here:${robot.robotId}`, kind: "here", tone: "running", text: t(texts, "rooms.robotHere", { robot: robot.name }) })),
+    ...(waiting ? [{ key: "waiting", kind: "waiting", tone: "neutral", text: t(texts, "rooms.waiting", { count: waiting }) }] : []),
   ];
 }
 
@@ -97,19 +109,30 @@ function condition(room, requirement, model, texts) {
   // In Home Assistant's own words where it words them (UI-04), else as reported.
   const state = reading?.available ? reading.display || reading.state : t(texts, "value.unknown");
   const allowed = requirement.acceptedStates.map((value) => reading?.values?.[value] || value).join(", ");
-  // A condition the integration finds met only says that it holds.
   const met = room.requirementStates?.[requirement.entityId] === "ready";
-  return { key: requirement.entityId, name, state, allowed, met, text: met ? t(texts, "rooms.conditionMet", { entity: name, state }) : t(texts, "rooms.condition", { entity: name, state, allowed }) };
+  return { key: requirement.entityId, met, text: met ? t(texts, "rooms.conditionMet", { entity: name, state }) : t(texts, "rooms.condition", { entity: name, state, allowed }) };
 }
 
-const SORTERS = Object.freeze({
-  configured: () => 0,
-  name: (one, other) => one.name.localeCompare(other.name),
-  due: (one, other) => dueRank(other) - dueRank(one) || one.name.localeCompare(other.name),
-});
+// A condition that holds asks nothing of a person: those that hold read as one line that names
+// them when tapped; each one that fails stands on its own.
+function conditionsOf(room, model, texts) {
+  const items = room.requirements.map((requirement) => condition(room, requirement, model, texts));
+  const met = items.filter((item) => item.met);
+  return [
+    ...items.filter((item) => !item.met),
+    ...(met.length ? [{ key: "met", met: true, text: t(texts, "rooms.conditionsMet", { count: met.length }), explain: met.map((item) => item.text).join(" · ") }] : []),
+  ];
+}
 
-function dueRank(room) {
-  return DUE_OPERATIONS.reduce((rank, operation) => rank + (room.due[operation].state === "due" ? 2 : room.due[operation].state === "unknown" ? 1 : 0), 0);
+// UI-32: the room's further actions in its menu.
+function menuOf(room, actions) {
+  const args = { roomId: room.roomId };
+  return [
+    { key: "createJob", action: "create-job", args: { roomIds: [room.roomId] }, iconName: "mdi:plus", labelKey: "action.createJob", decision: actions.createJob },
+    { key: "edit", action: "edit-room", args, iconName: "mdi:pencil-outline", labelKey: "action.edit", decision: actions.edit },
+    // UI-20: excluding is undone by including again; it is no destructive action.
+    { key: "disable", action: "disable-room", args, iconName: "mdi:eye-off-outline", labelKey: "action.exclude", decision: actions.disable },
+  ];
 }
 
 export function buildRoomsView({ model, texts, context, options = {}, ui = {}, timeFormat = "auto" }) {
@@ -117,7 +140,8 @@ export function buildRoomsView({ model, texts, context, options = {}, ui = {}, t
   const status = model.slots?.rooms?.status;
   const robots = robotsOf(model);
   const showExcluded = options.show_disabled === true || list(ui.expanded).includes("rooms:excluded");
-  const visible = rooms.filter((room) => room.enabled || showExcluded).slice().sort(SORTERS[options.sort] || SORTERS.configured);
+  // In the integration's order (ROOM-13).
+  const visible = rooms.filter((room) => room.enabled || showExcluded);
   // REL-04: two or more released rooms are locked in one step.
   const releasable = visible.filter((room) => room.enabled && room.released && roomAffordances(room, context).revoke.state === "enabled");
   return {
@@ -129,6 +153,7 @@ export function buildRoomsView({ model, texts, context, options = {}, ui = {}, t
     showExcluded,
     rooms: visible.map((room) => {
       const reaching = robots.filter((robot) => Object.hasOwn(robot.capabilities?.targets || {}, room.roomId));
+      const actions = roomAffordances(room, context);
       return {
         key: room.roomId,
         roomId: room.roomId,
@@ -141,9 +166,11 @@ export function buildRoomsView({ model, texts, context, options = {}, ui = {}, t
         robots: robots.length > 1 ? reaching.map((robot) => robot.name) : [],
         unreachable: room.enabled && reaching.length === 0,
         reach: room.enabled && reaching.length === 0 ? reachOf(room, robots, texts) : null,
-        conditions: room.requirements.map((requirement) => condition(room, requirement, model, texts)),
+        conditions: conditionsOf(room, model, texts),
         work: workOf(room, { texts, model }),
-        actions: roomAffordances(room, context),
+        actions,
+        menu: menuOf(room, actions),
+        menuOpen: ui.menu === `room:${room.roomId}`,
       };
     }),
   };

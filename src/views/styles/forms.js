@@ -10,6 +10,7 @@ export const FORMS_CSS = `
 .voc-field-label { font-size: 12px; font-weight: 800; color: var(--primary-text-color); }
 .voc-field-optional { font-weight: 650; color: var(--voc-faint); }
 .voc-field-hint { font-size: 11.5px; font-weight: 600; line-height: 1.35; color: var(--voc-muted); }
+.voc-field-hint, .voc-field-warning > span, .voc-field-error { text-wrap: pretty; }
 .voc-field-warning { display: flex; align-items: flex-start; gap: 6px; font-size: 11.5px; font-weight: 750; line-height: 1.35; color: var(--voc-warning-ink); }
 .voc-field-warning ha-icon { --mdc-icon-size: 15px; flex: none; margin-top: 1px; }
 .voc-field-error { font-size: 11.5px; font-weight: 750; line-height: 1.35; color: color-mix(in srgb, var(--voc-error) 85%, var(--primary-text-color)); }
@@ -40,7 +41,7 @@ export const FORMS_CSS = `
   font-weight: 800;
 }
 .voc-option ha-icon { --mdc-icon-size: 16px; }
-.voc-option:hover { color: var(--primary-text-color); }
+@media (hover: hover) { .voc-option:hover { color: var(--primary-text-color); } }
 .voc-option.is-selected { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
 .voc-option[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 /* A room "All rooms" includes: part of the job, not chosen on its own and not disabled. */
@@ -89,7 +90,9 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-entity-remove { width: var(--voc-chip-target); min-width: var(--voc-chip-target); min-height: var(--voc-chip-target); color: inherit; }
 .voc-entity-matches { display: grid; gap: 2px; padding: 4px; border-radius: 12px; border: 1px solid var(--voc-hairline); background: var(--ha-card-background, var(--card-background-color)); }
 .voc-entity-match { display: grid; gap: 1px; padding: 6px 9px; border: 0; border-radius: 9px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
-.voc-entity-match:hover, .voc-entity-match:focus-visible { background: var(--voc-chip-bg); }
+.voc-entity-match:focus-visible { background: var(--voc-chip-bg); }
+@media (hover: hover) { .voc-entity-match:hover { background: var(--voc-chip-bg); } }
+.voc-entity-match:active { background: color-mix(in srgb, var(--primary-text-color) 14%, transparent); }
 .voc-entity-name { font-size: 12.5px; font-weight: 800; }
 .voc-entity-id { font-size: 11px; font-weight: 600; color: var(--voc-muted); }
 

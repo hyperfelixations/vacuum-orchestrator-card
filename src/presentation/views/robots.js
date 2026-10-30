@@ -86,6 +86,7 @@ export function buildRobotsView({ model, texts, context, options = {}, ui = {} }
         map: map ? { entityId: map.entityId, picture: map.picture, label: mapLabel(robot, map), open: { action: "open-map", args: { robotId: robot.robotId, entityId: map.entityId, rotation: options.map_rotation === "none" ? "none" : "auto" } } } : null,
         mapChoices: maps.length > 1 ? maps.map((entry) => ({ entityId: entry.entityId, label: mapLabel(robot, entry), selected: entry.entityId === map?.entityId })) : [],
         actions: robotAffordances(robot, context),
+        menuOpen: ui.menu === `robot:${robot.robotId}`,
       };
     }),
   };

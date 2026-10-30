@@ -8,7 +8,10 @@
 </div>
 <div class="voc-title-block">
 <div class="voc-title">Cleaning</div>
-<div class="voc-subtitle">Studio · Rocky</div>
+<div class="voc-subtitle">
+<span class="voc-phrase">Studio ·</span>
+<span class="voc-phrase">Rocky</span>
+</div>
 </div>
 <div class="voc-status-pill">Cleaning</div>
 </div>
@@ -118,10 +121,12 @@
 </ha-icon>100 %</span>
 </div>
 </div>
-<button type="button" class="voc-button voc-button--icon" data-action="edit-robot" data-args="{&quot;robotId&quot;:&quot;01J00000000000000000000003&quot;}" aria-label="Settings for Rocky" title="Settings for Rocky">
-<ha-icon icon="mdi:cog-outline" aria-hidden="true">
+<div class="voc-menu-anchor" data-key="menu:robot:01J00000000000000000000003">
+<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;robot:01J00000000000000000000003&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Rocky" title="More actions for Rocky">
+<ha-icon icon="mdi:dots-horizontal" aria-hidden="true">
 </ha-icon>
 </button>
+</div>
 </header>
 <div class="voc-robot-body">
 <div class="voc-robot-info">
@@ -154,8 +159,8 @@
 </div>
 <figure class="voc-robot-map" data-key="map">
 <button type="button" class="voc-robot-map-open" data-action="open-map" data-args="{&quot;robotId&quot;:&quot;01J00000000000000000000003&quot;,&quot;entityId&quot;:&quot;image.rocky_main_floor&quot;,&quot;rotation&quot;:&quot;auto&quot;}" aria-label="Open Main Floor enlarged" title="Open Main Floor enlarged">
-<div class="voc-map-stage voc-robot-map-stage" data-map-stage="" data-rotation="auto" data-max-height="260">
-<img src="http://homeassistant.local:8123/api/image_proxy/image.rocky_main_floor?token=synthetic-map-token&amp;state=2026-03-14T08%3A00%3A00%2B00%3A00" alt="Rocky: Main Floor" loading="lazy" data-waiting="true">
+<div class="voc-map-stage voc-robot-map-stage" data-map-stage="" data-placed="" data-rotation="auto" data-max-height="260">
+<img data-placed="" src="http://homeassistant.local:8123/api/image_proxy/image.rocky_main_floor?token=synthetic-map-token&amp;state=2026-03-14T08%3A00%3A00%2B00%3A00" alt="Rocky: Main Floor" loading="lazy" data-waiting="true">
 </div>
 </button>
 <div class="voc-chips" data-key="map-choices">

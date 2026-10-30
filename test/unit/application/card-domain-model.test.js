@@ -58,13 +58,16 @@ test("slots follow the card's requests; an unloaded scope is an idle slot", asyn
   assert.equal(model.nowMs, 5);
 });
 
-test("rights and offered operations come from Home Assistant", async () => {
+// ACT-07, UI-14: the integration says who may command; Home Assistant's admin flag only opens
+// what Home Assistant keeps for administrators.
+test("who may command comes from the integration, the offered operations from Home Assistant", async () => {
   const { buildCardDomainModel, requests, snapshot, home } = await fixture({ admin: false });
   const model = buildCardDomainModel({ snapshot, requests, home });
-  assert.deepEqual({ ...model.permissions }, { canCommand: false, isAdmin: false });
+  assert.deepEqual({ ...model.permissions }, { canCommand: true, isAdmin: false }, "an administrator is not needed");
   assert.deepEqual(model.operations, ["create_job", "run_queue"]);
-  const unknownUser = buildCardDomainModel({ snapshot, requests, home: { ...home, admin: null } });
-  assert.deepEqual({ ...unknownUser.permissions }, { canCommand: true, isAdmin: false });
+  const { modelFor } = require("../../helpers/model.js");
+  const reader = await modelFor("read_only_user", { from: "The card opens for a read-only user" });
+  assert.equal(reader.model.permissions.canCommand, false, "a read-only user, as the integration says");
 });
 
 test("robot live state uses the configured roles, else discovery, and never an opted-out role", async () => {

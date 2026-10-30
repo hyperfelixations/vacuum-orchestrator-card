@@ -3,7 +3,7 @@
 // renderer is injected; the composition layer does not know the view registry. See internal dev
 // doc §9 "Shell-Markup".
 
-import { attr, button, e, icon } from "../primitives/markup.js";
+import { attr, button, e, icon, phrased } from "../primitives/markup.js";
 
 const WARNING_ICON = '<path fill-rule="evenodd" d="M12 2.5 1.5 21h21zM11 9.5h2v5.5h-2zm0 7h2v2h-2z"/>';
 
@@ -20,7 +20,7 @@ function renderHeader(context, vm) {
   const parts = [];
   if (header.hasIcon) parts.push(`<div class="voc-icon-badge" aria-hidden="true">${icon(header.icon)}</div>`);
   if (header.hasTitle || header.hasSubtitle) {
-    parts.push(`<div class="voc-title-block">${header.hasTitle ? `<div class="voc-title">${e(header.title)}</div>` : ""}${header.hasSubtitle ? `<div class="voc-subtitle">${e(header.subtitle)}</div>` : ""}</div>`);
+    parts.push(`<div class="voc-title-block">${header.hasTitle ? `<div class="voc-title">${e(header.title)}</div>` : ""}${header.hasSubtitle ? `<div class="voc-subtitle">${phrased(header.subtitle)}</div>` : ""}</div>`);
   }
   if (header.hasPill) parts.push(`<div class="voc-status-pill">${e(header.pill)}</div>`);
   const action = actionInHeader(vm) ? primaryButton(context, vm) : "";

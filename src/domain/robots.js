@@ -19,6 +19,7 @@ const ROBOT_FIELDS = new Set([
   "maps",
   "maps_unavailable_reason",
   "active",
+  "current_room_id",
   "activity",
   "faults",
   "actions",
@@ -154,6 +155,8 @@ export function normalizeRobot(wire) {
     maps: Object.freeze(records(wire.maps).map(map).filter(Boolean)),
     mapsUnavailableReason: text(wire.maps_unavailable_reason),
     active: bool(wire.active) === true,
+    // The room the robot reports being in, when the integration can name it.
+    currentRoomId: text(wire.current_room_id),
     activity: activity(wire.activity),
     faults: Object.freeze(records(wire.faults).map(fault).filter(Boolean)),
     actions: normalizeActions(wire.actions),

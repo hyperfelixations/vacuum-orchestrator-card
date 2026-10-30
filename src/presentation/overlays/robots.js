@@ -103,6 +103,7 @@ export function buildRobotEditor({ model, texts, context, overlay }) {
   const open = (key, ...fields) => list(overlay.open).includes(key) || [key, ...fields].some(any);
   const actions = robot ? robotAffordances(robot, context) : null;
   const general = [
+    field(texts, { key: "name", labelKey: "robotEditor.name", control: "text", value: draft.name, placeholder: robot?.haName || "", optional: true, hintKey: "robotEditor.nameHint", error: error("name") }),
     field(texts, { key: "enabled", labelKey: "robotEditor.enabled", control: "switch", value: draft.enabled, switchLabel: t(texts, "robotEditor.enabledSwitch"), error: error("enabled") }),
     field(texts, { key: "allowedOperations", labelKey: "robotEditor.allowedOperations", control: "chips", value: draft.allowedOperations, options: OPERATIONS.map((value) => ({ value, label: operationLabel(texts, value) })), error: error("allowedOperations") }),
     field(texts, { key: "fixedMode", labelKey: "robotEditor.fixedMode", control: "segmented", value: draft.fixedMode, options: [{ value: null, label: t(texts, "robotEditor.notFixed") }, ...OPERATIONS.map((value) => ({ value, label: operationLabel(texts, value) }))], hintKey: "robotEditor.fixedModeHint", error: error("fixedMode") }),
@@ -150,21 +151,6 @@ export function buildRobotEditor({ model, texts, context, overlay }) {
     invalid,
     save: actions?.configure ?? decide(context, { operation: "configure_robot", target: robotTarget(draft.meta.robotId) }),
     remove: actions?.remove ?? null,
-    rename: robot ? decide(context, { operation: "rename_robot", target: robotTarget(robot.robotId) }) : null,
-  };
-}
-
-// A robot's own name; the field left empty takes Home Assistant's name again.
-export function buildRenameRobot({ model, texts, context, overlay }) {
-  const robot = robotsOf(model).find((entry) => entry.robotId === overlay.robotId) || null;
-  const { error, invalid } = pageErrors(texts, overlay);
-  return {
-    key: "rename-robot",
-    title: t(texts, "renameRobot.title", { robot: robot?.name || overlay.robotId }),
-    field: field(texts, { key: "overlay:name", labelKey: "renameRobot.name", control: "text", value: String(overlay.name ?? ""), placeholder: robot?.haName || "", hintKey: "renameRobot.hint", optional: true, error: error("overlay:name") }),
-    invalid,
-    save: decide(context, { operation: "rename_robot", target: robotTarget(overlay.robotId) }),
-    pending: list(model.pending).includes(robotTarget(overlay.robotId)),
   };
 }
 

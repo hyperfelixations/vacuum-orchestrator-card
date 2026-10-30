@@ -24,6 +24,7 @@ export const ACTIONS = Object.freeze(["create_job", "update_job", "delete_job", 
 // own WebSocket types, which report stable error codes.
 export const CONFIGURATION_COMMANDS = Object.freeze([
   "configure_queue",
+  "configure_room_order",
   "configure_job_defaults",
   "create_room",
   "update_room",

@@ -503,3 +503,133 @@ test("the tab row is measured again once a web font has loaded, until it disconn
   fonts.dispatchEvent(new dom.window.Event("loadingdone"));
   assert.equal(row.hasAttribute("data-compact"), false);
 });
+
+// UI-32: a title that fits on one line beside the actions keeps them beside it.
+test("a title fits on one line clear of the actions' column, within half a pixel", async () => {
+  const { titleFits } = await import("../../../src/controllers/runtime/row-fit-runtime.js");
+  assert.equal(titleFits({ lines: 1, end: 300, limit: 300 }), true);
+  assert.equal(titleFits({ lines: 1, end: 300.5, limit: 300 }), true);
+  assert.equal(titleFits({ lines: 1, end: 301, limit: 300 }), false);
+  assert.equal(titleFits({ lines: 2, end: 120, limit: 300 }), false, "a wrapped title never fits");
+});
+
+// One jsdom row: `geometry` sets the title's lines and the ends of title line and actions.
+function fitRow(dom, root, { key, pill = false, actions = true }) {
+  const row = dom.window.document.createElement("article");
+  row.className = "voc-job";
+  row.dataset.key = key;
+  row.innerHTML = `<button class="voc-job-main"><span class="voc-job-title-line"><span class="voc-job-title">${key}</span>${pill ? '<span class="voc-pill">Failed</span>' : ""}</span></button>${actions ? '<div class="voc-job-actions"><button>Start now</button></div>' : ""}`;
+  root.append(row);
+  return row;
+}
+
+test("job rows keep their actions beside a title that fits, else below it, read before any is written", async () => {
+  const { createRowFitRuntime } = await import("../../../src/controllers/runtime/row-fit-runtime.js");
+  const dom = new JSDOM('<!doctype html><div id="host"></div>');
+  const root = dom.window.document.getElementById("host").attachShadow({ mode: "open" });
+  const short = fitRow(dom, root, { key: "Studio" });
+  const long = fitRow(dom, root, { key: "Library, thoroughly", pill: true });
+  const bare = fitRow(dom, root, { key: "Dining Room", actions: false });
+  bare.setAttribute("data-title", "fits");
+  // The title's text ends where its key says; the pill 60 px later; the actions start at 300.
+  const textEnd = { Studio: 120, "Library, thoroughly": 260 };
+  let lines = 1;
+  let writes = 0;
+  let readAfterWrite = false;
+  dom.window.Range.prototype.getClientRects = function () {
+    if (writes) readAfterWrite = true;
+    return Array.from({ length: lines }, (_, line) => ({ top: line * 16 }));
+  };
+  dom.window.Range.prototype.getBoundingClientRect = function () { return { right: textEnd[this.startContainer.textContent] }; };
+  for (const pill of root.querySelectorAll(".voc-pill")) pill.getBoundingClientRect = () => ({ right: textEnd["Library, thoroughly"] + 60 });
+  for (const actions of root.querySelectorAll(".voc-job-actions")) actions.getBoundingClientRect = () => ({ left: 306 });
+  for (const row of [short, long]) {
+    Object.defineProperty(row, "clientWidth", { get: () => 400 });
+    const set = row.setAttribute.bind(row);
+    row.setAttribute = (name, value) => {
+      writes += 1;
+      set(name, value);
+    };
+  }
+  const style = dom.window.getComputedStyle.bind(dom.window);
+  dom.window.getComputedStyle = (node) => (node.classList.contains("voc-job") ? { columnGap: "6px" } : style(node));
+  const runtime = createRowFitRuntime({ root, platform: { observeResize: () => () => {} } });
+  runtime.sync();
+  assert.deepEqual([short, long, bare].map((row) => row.getAttribute("data-title")), ["fits", "wraps", null], "the pill counts to the title line; a row without actions has no form");
+  assert.equal(readAfterWrite, false);
+  // A wrapped title never fits, however short its last line.
+  lines = 2;
+  textEnd.Studio = 121;
+  short.querySelector(".voc-job-title").textContent = "Studio";
+  runtime.sync({ force: true });
+  assert.equal(short.getAttribute("data-title"), "wraps");
+});
+
+test("a job row is measured again only when its width, title or actions change, or a font loads (UI-31)", async () => {
+  const { createRowFitRuntime } = await import("../../../src/controllers/runtime/row-fit-runtime.js");
+  const dom = new JSDOM('<!doctype html><div id="host"></div>');
+  const host = dom.window.document.getElementById("host");
+  const root = host.attachShadow({ mode: "open" });
+  const row = fitRow(dom, root, { key: "Studio" });
+  let width = 400;
+  let measures = 0;
+  Object.defineProperty(row, "clientWidth", { get: () => width });
+  dom.window.Range.prototype.getClientRects = () => {
+    measures += 1;
+    return [{ top: 0 }];
+  };
+  dom.window.Range.prototype.getBoundingClientRect = () => ({ right: 120 });
+  row.querySelector(".voc-job-actions").getBoundingClientRect = () => ({ left: width - 100 });
+  const fonts = new dom.window.EventTarget();
+  Object.defineProperty(dom.window.document, "fonts", { value: fonts });
+  let resized = null;
+  let observing = 0;
+  const runtime = createRowFitRuntime({ root, platform: { observeResize: (element, fn) => { assert.equal(element, host); observing += 1; resized = fn; return () => { observing -= 1; }; } } });
+  runtime.connect();
+  runtime.sync();
+  assert.deepEqual([row.getAttribute("data-title"), measures], ["fits", 1]);
+  // A render that leaves the row as it was keeps its form without reading the layout.
+  row.removeAttribute("data-title");
+  runtime.sync();
+  assert.deepEqual([row.getAttribute("data-title"), measures], ["fits", 1]);
+  width = 200;
+  resized();
+  assert.deepEqual([row.getAttribute("data-title"), measures], ["wraps", 2], "a narrower card measures again");
+  row.querySelector(".voc-job-actions button").textContent = "Cancel job";
+  runtime.sync();
+  assert.equal(measures, 3, "changed actions measure again");
+  fonts.dispatchEvent(new dom.window.Event("loadingdone"));
+  assert.equal(measures, 4, "a loaded font measures again");
+  runtime.disconnect();
+  fonts.dispatchEvent(new dom.window.Event("loadingdone"));
+  assert.deepEqual([measures, observing], [4, 0]);
+});
+
+test("the tab row is not measured again while nothing it depends on changed (UI-31)", async () => {
+  const { createTabStripRuntime } = await import("../../../src/controllers/runtime/tab-strip-runtime.js");
+  const dom = new JSDOM('<!doctype html><div id="host"></div>');
+  const root = dom.window.document.getElementById("host").attachShadow({ mode: "open" });
+  root.innerHTML = '<div class="voc-tab-row"><div class="voc-tabs"><button role="tab" data-view="queue" aria-selected="true">Queue</button></div></div>';
+  const row = root.querySelector(".voc-tab-row");
+  const strip = root.querySelector(".voc-tabs");
+  let measures = 0;
+  Object.defineProperty(strip, "clientWidth", { get: () => 300 });
+  Object.defineProperty(strip, "scrollWidth", {
+    get: () => {
+      measures += 1;
+      return row.hasAttribute("data-compact") ? 300 : 400;
+    },
+  });
+  Object.defineProperty(strip, "scrollLeft", { get: () => 0, set: () => {} });
+  const runtime = createTabStripRuntime({ root, platform: { observeResize: () => () => {} } });
+  runtime.sync();
+  assert.equal(row.getAttribute("data-compact"), "labels");
+  const first = measures;
+  // A render that leaves the row as it was: the attribute stands, only the edges are marked.
+  runtime.sync();
+  assert.equal(row.getAttribute("data-compact"), "labels");
+  assert.equal(measures - first, 1, "only the edge marks read the row");
+  root.querySelector('[role="tab"]').textContent = "Warteschlange";
+  runtime.sync();
+  assert.ok(measures - first > 2, "a changed label is measured again");
+});

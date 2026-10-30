@@ -24,7 +24,7 @@ export function renderHistory(context, vm) {
   if (vm.error) return wrap(errorState(context, vm.error));
   if (vm.loading) return wrap(loadingState(context));
   let list;
-  if (vm.segment === "jobs") list = vm.jobs.length ? `<div class="voc-list" data-key="jobs">${vm.jobs.map((row) => jobRow(context, row, { rowActions: ["main"], log: true })).join("")}</div>` : emptyState("mdi:history", context.t("history.jobsEmpty"));
+  if (vm.segment === "jobs") list = vm.jobs.length ? `<div class="voc-list" data-key="jobs">${vm.jobs.map((row) => jobRow(context, row, { log: true })).join("")}</div>` : emptyState("mdi:history", context.t("history.jobsEmpty"));
   else list = vm.runs.length ? `<div class="voc-list" data-key="runs">${vm.runs.map(runRow).join("")}</div>` : emptyState("mdi:history", context.t("history.runsEmpty"));
   return wrap(`${list}${pagination(context, vm.pagination, vm.scope)}`);
 }

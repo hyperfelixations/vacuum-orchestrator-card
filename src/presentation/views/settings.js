@@ -1,10 +1,10 @@
 // The settings view: the integration-wide settings — the defaults for new jobs, the queue's start
-// delay and its wait before a run ends — and "About": the integration, where it lives in Home
-// Assistant, and the running card. Robots, rooms and templates keep their own views. See internal
+// delay and its wait before a run ends, the order of the rooms — and "About": the integration,
+// where it lives in Home Assistant, and the running card. Robots, rooms and templates keep their own views. See internal
 // dev doc §8 "Einstellungen".
 
 import { CARD_VERSION } from "../../core/card-metadata.js";
-import { QUEUE_TARGET, decide } from "../../domain/affordances.js";
+import { QUEUE_TARGET, ROOMS_TARGET, decide } from "../../domain/affordances.js";
 import { MODE_SETTINGS } from "../../domain/job-schema.js";
 import { INTEGRATION_PAGE_PATH } from "../common/links.js";
 import { slotData } from "../common/lookups.js";
@@ -23,6 +23,8 @@ function defaultsFacts(texts, defaults) {
 
 export function buildSettingsView({ model, texts, context }) {
   const queue = slotData(model, "queue");
+  // How the rooms view lists rooms belongs to the rooms' read model (ROOM-13).
+  const rooms = slotData(model, "rooms");
   const status = model.slots?.queue?.status ?? "idle";
   const graceSeconds = queue?.graceSeconds;
   const delaySeconds = queue?.startDelaySeconds;
@@ -44,6 +46,12 @@ export function buildSettingsView({ model, texts, context }) {
             { key: "startDelay", label: t(texts, "settings.startDelay"), value: Number.isFinite(delaySeconds) ? (delaySeconds > 0 ? seconds(texts, delaySeconds) : t(texts, "settings.startDelayOff")) : null },
           ],
           decision: decide(context, { operation: "configure_queue", target: QUEUE_TARGET }),
+        }
+      : null,
+    rooms: rooms
+      ? {
+          facts: [{ key: "roomOrder", label: t(texts, "settings.roomOrder"), value: t(texts, `settings.roomOrder.${rooms.order}`) }],
+          decision: decide(context, { operation: "configure_room_order", target: ROOMS_TARGET }),
         }
       : null,
     about: {

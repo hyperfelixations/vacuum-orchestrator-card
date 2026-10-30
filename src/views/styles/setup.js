@@ -18,7 +18,7 @@ export const SETUP_CSS = `
 .voc-setup-mark { display: inline-flex; align-items: center; min-height: 18px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--voc-hairline); font-size: 10.5px; font-weight: 800; color: var(--voc-muted); }
 .voc-setup-mark[data-tone="default"] { border-color: var(--voc-accent-border); color: var(--voc-accent-ink); }
 .voc-setup-open { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
-.voc-setup-open:hover { text-decoration: underline; }
+@media (hover: hover) { .voc-setup-open:hover { text-decoration: underline; } }
 .voc-setup-open:focus-visible { outline: 2px solid var(--voc-accent-ink); outline-offset: 2px; border-radius: 4px; }
 .voc-setup-body { display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--voc-chip-bg); border: 1px solid var(--voc-hairline); }
 .voc-setup-text { margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.4; }

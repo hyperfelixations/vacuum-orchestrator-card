@@ -24,6 +24,12 @@ function named(card, selector, name, inner = null) {
   return inner ? item.locator(inner) : item;
 }
 
+// The steps that open an element's menu and choose `item` in it (UI-32): its menu button, then
+// the item; each a locator to click, as `act` takes them.
+function fromMenu(card, selector, name, item) {
+  return [named(card, selector, name, ".voc-menu-button"), named(card, selector, name, `[role="menu"] ${item}`)];
+}
+
 // The card reads the clocks through its platform adapter, so the page reads the recording's
 // time: the recording sets `window.__vocNow` and moves it as it plays, and a golden does not
 // change with the day it is recorded.
@@ -108,4 +114,4 @@ function commands(page, command) {
   return page.evaluate((name) => window.vocHarness.backend.calls.filter((message) => message.command === name).map((message) => message.parameters), command);
 }
 
-module.exports = { BUSY, named, mountCard, gotoHarness, waitForStableLayout, setCardWidth, act, serviceCalls, commands, MOUNT_WIDTH };
+module.exports = { BUSY, named, fromMenu, mountCard, gotoHarness, waitForStableLayout, setCardWidth, act, serviceCalls, commands, MOUNT_WIDTH };

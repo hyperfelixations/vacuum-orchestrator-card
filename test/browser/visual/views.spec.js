@@ -7,7 +7,7 @@
 
 const path = require("node:path");
 const { test, expect } = require("../../helpers/playwright.js");
-const { BUSY, act, mountCard, named, setCardWidth, waitForStableLayout } = require("../../helpers/browser-helpers.js");
+const { BUSY, act, fromMenu, mountCard, named, setCardWidth, waitForStableLayout } = require("../../helpers/browser-helpers.js");
 
 const WIDE = 900;
 const MEDIUM = 640;
@@ -35,6 +35,7 @@ const HALFWAY = { recording: "start_delay", from: "Rocky is halfway through" };
 const TWO_ROOMS = { recording: "start_delay", from: "The job waits for its two rooms" };
 const EDITED_ELSEWHERE = { recording: "job_hold", from: "Another card edits the job" };
 const FAULT = { recording: "device_fault", from: "The job waits for the fix" };
+const READ_ONLY = { recording: "read_only_user", from: "The card opens for a read-only user" };
 
 // The stage carries the page background and the gutter a dashboard card sits in, and it is wide
 // enough to contain the card's own shadow.
@@ -80,6 +81,8 @@ test.describe("the queue", () => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await expect(named(card, ".voc-job", "Library, thoroughly", ".voc-job-status")).toHaveText("Job ready · Rocky is busy");
     await expect(card.locator('[data-key="grace"]')).toHaveCount(0);
+    // UI-32: titles that fit leave the actions beside them, centred on the row.
+    await expect(card.locator('.voc-job[data-title="fits"]')).toHaveCount(4);
     await shot(page, "queue-medium-light.png", MEDIUM);
   });
 
@@ -162,7 +165,7 @@ test.describe("the queue", () => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await setCardWidth(page, NARROW);
     await act(page, named(card, ".voc-job", "Library, thoroughly", ".voc-menu-button"));
-    await expect(card.locator('[role="menu"] [role="menuitem"]')).toHaveText(["Move up", "Move down", "Edit"]);
+    await expect(card.locator('[role="menu"] [role="menuitem"]')).toHaveText(["Move up", "Move down", "Edit", "Save as template", "Delete"]);
     await shot(page, "queue-menu-narrow-light.png");
   });
 
@@ -171,6 +174,16 @@ test.describe("the queue", () => {
     await expect(card.locator('[data-key="waiting"] .voc-job')).toHaveCount(6);
     await expect(card.locator(".voc-body")).toHaveAttribute("data-overflow-bottom", "");
     await shot(page, "queue-seven-jobs-medium-light.png", MEDIUM);
+  });
+
+  // UI-32: a title too long for a line beside the actions runs across the row above them.
+  test("a long title above its row's actions, narrow, German", async ({ page }) => {
+    const card = await mountCard(page, { recording: "showcase", from: "Seven jobs are open", config: { ...BASE, language: "de" } });
+    await setCardWidth(page, NARROW);
+    await expect(named(card, ".voc-job", "Library before the reading group on Saturday")).toHaveAttribute("data-title", "wraps");
+    await expect(named(card, ".voc-job", "Library, thoroughly")).toHaveAttribute("data-title", "fits");
+    await scrollTo(card, ".voc-body", 1);
+    await shot(page, "queue-long-title-german-narrow-light.png");
   });
 
   test("a command's notice floats over the foot, medium", async ({ page }) => {
@@ -183,16 +196,17 @@ test.describe("the queue", () => {
     await shot(page, "queue-notice-medium-light.png", MEDIUM);
   });
 
+  // ACT-07: a user the integration lets only read sees the queue without its controls.
   test("read-only", async ({ page }) => {
-    const card = await mountCard(page, { ...BUSY, admin: false, config: BASE });
-    await expect(card.locator(".voc-subtitle")).toContainText("Read only: changes need an administrator.");
-    await expect(named(card, ".voc-job", "Conservatory", '[data-action="edit-job"]')).toHaveCount(0);
+    const card = await mountCard(page, { ...READ_ONLY, config: BASE });
+    await expect(card.locator(".voc-subtitle")).toContainText("Read only for your account");
+    await expect(named(card, ".voc-job", "Library", ".voc-menu-button")).toHaveCount(0);
     await shot(page, "queue-read-only-medium-light.png", MEDIUM);
   });
 
   test("read-only, narrow, dark", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
-    const card = await mountCard(page, { ...BUSY, admin: false, config: BASE });
+    const card = await mountCard(page, { ...READ_ONLY, config: BASE });
     await setCardWidth(page, NARROW);
     await expect(card.locator(".voc-job .voc-menu-button")).toHaveCount(0);
     await shot(page, "queue-read-only-narrow-dark.png");
@@ -227,7 +241,7 @@ test.describe("job pages", () => {
   test("template editor, narrow", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await open(page, card, "templates");
-    await act(page, named(card, ".voc-template", "Weekly clean", '[data-action="edit-template"]'));
+    for (const step of fromMenu(card, ".voc-template", "Weekly clean", '[data-action="edit-template"]')) await act(page, step);
     await expect(card.locator('[data-action="remove-template"]')).toBeVisible();
     await shot(page, "template-editor-narrow-light.png", NARROW);
   });
@@ -235,7 +249,7 @@ test.describe("job pages", () => {
   // The fullest footer: on a narrow card, saving as a template and removing share a menu.
   test("waiting job editor with its menu, narrow, German", async ({ page }) => {
     const card = await mountCard(page, { recording: "edit_hold", from: "A dining room job waits", config: { ...BASE, language: "de" } });
-    await act(page, named(card, ".voc-job", "Dining Room", '[data-action="edit-job"]'));
+    for (const step of fromMenu(card, ".voc-job", "Dining Room", '[data-action="edit-job"]')) await act(page, step);
     await setCardWidth(page, NARROW);
     await act(page, card.locator('[data-key="menu:editor"] .voc-menu-button'));
     await expect(card.locator('.voc-menu [data-action="delete-job"]')).toBeVisible();
@@ -317,6 +331,15 @@ test.describe("job pages", () => {
     await shot(page, "start-robot-medium-light.png", MEDIUM);
   });
 
+  // JOB-27: below the robot's minimum battery a start is offered and asks first.
+  test("starting below the minimum battery", async ({ page }) => {
+    const card = await mountCard(page, { recording: "low_battery", from: "The job waits for the battery and offers a start", config: BASE });
+    await act(page, card.locator('.voc-job [data-action="start-job"]').first());
+    await expect(card.locator('[data-key="overlay:low-battery-start"]')).toBeVisible();
+    await expect(card.locator('[data-key="overlay:low-battery-start"] [data-action="back"]')).toHaveText("Back");
+    await shot(page, "low-battery-start-medium-light.png", MEDIUM);
+  });
+
   test("defaults for new jobs", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: { ...BASE, start_view: "settings" } });
     await act(page, card.locator('[data-action="open-job-defaults"]'));
@@ -338,6 +361,15 @@ test.describe("rooms", () => {
     await open(page, card, "rooms");
     await expect(named(card, ".voc-room", "Conservatory")).toContainText("No robot reaches this room");
     await shot(page, "rooms-wide-light.png", WIDE);
+  });
+
+  // DUE-03, DUE-04: an overdue room leads; a partly observed use carries its mark.
+  test("an overdue and a partly observed room, medium", async ({ page }) => {
+    const card = await mountCard(page, { recording: "long_history", from: "The dining room is overdue and the studio partly observed", config: { ...BASE, start_view: "rooms" } });
+    await expect(card.locator(".voc-room").first().locator(".voc-room-name")).toHaveText("Dining Room");
+    await expect(named(card, ".voc-room", "Dining Room", '[data-due][data-overdue="true"]')).toBeVisible();
+    await expect(named(card, ".voc-room", "Studio", ".voc-due-status[data-explain] .voc-due-mark")).toHaveText("*");
+    await shot(page, "rooms-due-medium-light.png", MEDIUM);
   });
 
   test("dark, narrow", async ({ page }) => {
@@ -374,7 +406,7 @@ test.describe("rooms", () => {
   test("room settings", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await open(page, card, "rooms");
-    await act(page, named(card, ".voc-room", "Dining Room", '[data-action="edit-room"]'));
+    for (const step of fromMenu(card, ".voc-room", "Dining Room", '[data-action="edit-room"]')) await act(page, step);
     await act(page, card.locator('[data-action="set-overlay"][data-args*="bindingsOpen"]'));
     await expect(card.locator('[data-key^="detected:"]').first()).toBeVisible();
     await shot(page, "room-editor-medium-light.png", MEDIUM);
@@ -442,7 +474,7 @@ test.describe("robots", () => {
   test("a room bound to a segment of another map", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await open(page, card, "rooms");
-    await act(page, named(card, ".voc-room", "Conservatory", '[data-action="edit-room"]'));
+    for (const step of fromMenu(card, ".voc-room", "Conservatory", '[data-action="edit-room"]')) await act(page, step);
     await act(page, card.locator('[data-key="group:targets"] .voc-disclosure'));
     await act(page, card.locator('[data-action="add-binding"]').first());
     await act(page, card.locator('[data-key="field:bindings.0.mapId"] [data-value="1"]'));
@@ -463,7 +495,7 @@ test.describe("robots", () => {
   test("profile editor limited to some areas, narrow, German", async ({ page }) => {
     const card = await mountCard(page, { ...TWO_ROBOTS_IDLE, config: { ...BASE, language: "de" } });
     await open(page, card, "robots");
-    await act(page, named(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]'));
+    for (const step of fromMenu(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]')) await act(page, step);
     await act(page, card.locator('[data-key="field:areaScope"] [data-value="only"]'));
     await expect(card.locator('[data-key="field:targetAreas"] .voc-field-warning')).toBeVisible();
     await card.locator('[data-key="field:targetAreas"] .voc-field-warning').evaluate((node) => node.scrollIntoView({ block: "center" }));
@@ -473,10 +505,22 @@ test.describe("robots", () => {
   test("profile editor with roles", async ({ page }) => {
     const card = await mountCard(page, { ...TWO_ROBOTS_IDLE, config: BASE });
     await open(page, card, "robots");
-    await act(page, named(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]'));
+    for (const step of fromMenu(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]')) await act(page, step);
     await act(page, card.locator('[data-action="toggle-section"][data-args*="roles"]'));
     await expect(card.locator('[data-key="role:status"]')).toContainText("Found: Rocky Status");
     await shot(page, "robot-editor-medium-light.png", MEDIUM);
+  });
+
+  // UI-32: the profile opens with the robot's own name; empty, it follows Home Assistant's.
+  test("profile editor opening with the name, narrow", async ({ page }) => {
+    const card = await mountCard(page, { ...TWO_ROBOTS_IDLE, config: BASE });
+    await setCardWidth(page, NARROW);
+    await open(page, card, "robots");
+    for (const step of fromMenu(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]')) await act(page, step);
+    const name = card.locator('[data-field="name"]');
+    await expect(name).toHaveValue("");
+    await expect(name).toHaveAttribute("placeholder", "Rocky");
+    await shot(page, "robot-editor-name-narrow-light.png");
   });
 
   test("discovered vacuums", async ({ page }) => {
@@ -503,6 +547,15 @@ test.describe("templates, history and diagnostics", () => {
     await shot(page, "history-jobs-medium-light.png", MEDIUM);
   });
 
+  // UI-32: a finished job's further actions are in its menu, correcting its result first.
+  test("history of jobs with a row's menu open, narrow", async ({ page }) => {
+    const card = await mountCard(page, { recording: "long_history", from: "Rocky has cleaned six times", config: { ...BASE, start_view: "history" } });
+    await setCardWidth(page, NARROW);
+    await act(page, card.locator('[data-key="jobs"] .voc-job .voc-menu-button').first());
+    await expect(card.locator('[role="menu"] [role="menuitem"]')).toHaveText(["Correct result", "Save as template", "Delete"]);
+    await shot(page, "history-menu-narrow-light.png");
+  });
+
   test("history of cleaning runs, dark", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     const card = await mountCard(page, { ...BUSY, config: BASE });
@@ -527,6 +580,16 @@ test.describe("settings", () => {
     await shot(page, "settings-medium-light.png", MEDIUM);
   });
 
+  // ROOM-13: how the integration orders the rooms, set for every card.
+  test("the rooms' order, medium", async ({ page }) => {
+    const card = await mountCard(page, { recording: "settings_controls", from: "Rooms are listed by name", config: { ...BASE, start_view: "settings" } });
+    const rooms = card.locator('[data-key="rooms"]');
+    await expect(rooms).toContainText("By name");
+    await rooms.scrollIntoViewIfNeeded();
+    await waitForStableLayout(page);
+    await shot(page, "settings-rooms-medium-light.png", MEDIUM);
+  });
+
   test("dark, narrow, German", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     const card = await mountCard(page, { ...BUSY, config: { ...BASE, language: "de", start_view: "settings" } });
@@ -547,9 +610,9 @@ test.describe("on a touch screen", () => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await setCardWidth(page, NARROW);
     expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
-    await expect(named(card, ".voc-job", "Studio")).toHaveAttribute("data-actions", "one");
-    const more = await named(card, ".voc-job", "Library, thoroughly", ".voc-menu-button").boundingBox();
-    expect(more.height).toBeGreaterThanOrEqual(44);
+    for (const target of [named(card, ".voc-job", "Studio", ".voc-job-main-action"), named(card, ".voc-job", "Library, thoroughly", ".voc-menu-button")]) {
+      expect((await target.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    }
     await shot(page, "queue-narrow-touch-light.png");
   });
 
@@ -559,7 +622,8 @@ test.describe("on a touch screen", () => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await setCardWidth(page, NARROW);
     await open(page, card, "robots");
-    await act(page, card.locator('.voc-robot [data-action="edit-robot"]').first());
+    await act(page, card.locator(".voc-robot .voc-menu-button").first());
+    await act(page, card.locator('.voc-robot [role="menu"] [data-action="edit-robot"]').first());
     await expect(card.locator('[data-key="busy"]')).toBeVisible();
     // LAY-12: only the card's own notice floats; a page's notes stand in its flow.
     expect(await card.locator('[data-key="busy"]').evaluate((node) => getComputedStyle(node).position)).toBe("static");
@@ -674,7 +738,7 @@ test.describe("in a sections grid cell", () => {
   test("the robot editor scrolled to its middle", async ({ page }) => {
     const card = await mountCard(page, { ...TWO_ROBOTS_IDLE, layout: "grid", config: BASE });
     await open(page, card, "robots");
-    await act(page, named(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]'));
+    for (const step of fromMenu(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]')) await act(page, step);
     await scrollTo(card, ".voc-overlay-scroll", 0.5);
     await expect(card.locator(".voc-overlay-scroll")).toHaveAttribute("data-overflow-bottom", "");
     await shot(page, "frame-robot-editor-medium-light.png", MEDIUM);

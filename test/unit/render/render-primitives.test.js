@@ -21,6 +21,17 @@ test("every variable text is escaped, in content and in attributes", async () =>
   assert.equal(pill(""), "");
 });
 
+// A line of phrases wraps between them; its text, escaped, reads as before.
+test("a line of phrases keeps each phrase with its separator and escapes it", async () => {
+  const { phrased } = await markup();
+  const host = documentOf().body;
+  host.innerHTML = phrased("Rocky · started at 11:14 · <b>");
+  assert.deepEqual([...host.querySelectorAll(".voc-phrase")].map((node) => node.textContent), ["Rocky ·", "started at 11:14 ·", "<b>"]);
+  assert.equal(host.textContent, "Rocky · started at 11:14 · <b>");
+  host.innerHTML = phrased("Ready");
+  assert.equal(host.querySelectorAll(".voc-phrase").length, 1);
+});
+
 test("an icon button is named for assistive technology; a text button shows its label", async () => {
   const { button } = await markup();
   const iconButton = button({ action: "edit-job", args: { jobId: "j" }, label: "Edit", iconName: "mdi:pencil", variant: "icon" });
@@ -89,6 +100,21 @@ test("the morph does not overwrite what the user is typing, and syncs everything
   assert.equal(document.activeElement, typing);
   assert.equal(other.value, "y");
   assert.equal(box.checked, true);
+});
+
+test("the morph keeps what the runtime controllers set and markup never renders (UI-31)", async () => {
+  const { morphElement } = await import("../../../src/render/primitives/morph.js");
+  const document = documentOf();
+  const live = document.createElement("div");
+  live.innerHTML = `<div class="row" data-compact="labels" data-overflow-end></div><div data-placed style="height: 40px"></div><div class="bar" style="width: 20%"></div>`;
+  const [row, placed, bar] = live.children;
+  const next = document.createElement("div");
+  next.innerHTML = `<div class="row"></div><div data-placed></div><div class="bar"></div>`;
+  morphElement(live, next);
+  assert.equal(row.getAttribute("data-compact"), "labels");
+  assert.equal(row.hasAttribute("data-overflow-end"), true);
+  assert.equal(placed.getAttribute("style"), "height: 40px", "a placed node keeps the size its controller gave it");
+  assert.equal(bar.hasAttribute("style"), false, "a style markup gave is markup's to take back");
 });
 
 test("the morph leaves the content of custom elements to them", async () => {

@@ -21,6 +21,8 @@ const templateId = (card, name) => template(card, name).dataset.key.replace(/^te
 test("a template creates a job, allows a used due period again and is edited in the job editor", async () => {
   const card = await templates("The daily template made a job");
   const daily = templateId(card, "Dining room daily");
+  // LAY-15: the card ends with its actions; what it already did stands above them.
+  assert.deepEqual([...template(card, "Dining room daily").children].map((node) => node.className), ["voc-template-head", "voc-template-note", "voc-template-foot"]);
   await card.click(template(card, "Dining room daily").querySelector('[data-action="reset-template-demand"]'));
   await card.settle(32);
   assert.deepEqual(card.commands("reset_template_demand").map((message) => message.parameters), [{ template_id: daily }]);
@@ -28,7 +30,7 @@ test("a template creates a job, allows a used due period again and is edited in 
   await card.click(template(card, "Dining room daily").querySelector('[data-action="create-from-template"]'));
   await card.settle(32);
   assert.deepEqual(card.commands("create_job_from_template").map((message) => message.parameters), [{ template_id: daily }]);
-  await card.click(template(card, "Dining room daily").querySelector('[data-action="edit-template"]'));
+  await card.click(await card.menuItem(template(card, "Dining room daily"), '[data-action="edit-template"]'));
   await card.settle(32);
   await card.click('[data-key="field:automatic"] input');
   await card.click('[data-action="save-draft"]');
@@ -78,7 +80,7 @@ test("a new job's draft is saved as a template from its editor", async () => {
 test("a template is removed from its editor after a confirmation", async () => {
   const card = await templates("The studio has a template");
   const weekly = templateId(card, "Studio weekly");
-  await card.click(template(card, "Studio weekly").querySelector('[data-action="edit-template"]'));
+  await card.click(await card.menuItem(template(card, "Studio weekly"), '[data-action="edit-template"]'));
   await card.settle(32);
   await card.click('[data-action="remove-template"]');
   await card.click('[data-action="confirm-command"]');

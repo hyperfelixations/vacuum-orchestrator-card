@@ -19,6 +19,10 @@ follows your dashboard's light or dark theme.
 - The cleaning queue at a glance: start, pause, resume or end it, reorder
   waiting jobs, start one right away, retry, edit or delete jobs, or save one as
   a template
+- Every job, room, template and robot keeps its main action at hand and its
+  other actions in its **⋯** menu
+- A job can start below its robot's minimum battery once you confirm it; the
+  queue itself never starts one there
 - Cancelling a running job asks whether the robot returns to its dock or stays
   where it is; a waiting job does not start while you are asked whether to
   delete it
@@ -28,8 +32,9 @@ follows your dashboard's light or dark theme.
 - Defaults for new jobs: mode, vacuum power, water amount, mop route, passes
   and what happens when a robot lacks a level
 - For every waiting job, whether it can start and what it is waiting for
-- Room cards with vacuum and mop due bars, the last cleaning and one-tap release
-  or lock
+- Room cards with vacuum and mop due bars, when each room is due or since when
+  it is overdue, the last cleaning, the robot that is in the room and one-tap
+  release or lock; the most due room first, or by name
 - Robot cards with live state, battery, capabilities, reachable rooms and map,
   and a button that sends an idle robot back to its dock
 - Templates for recurring jobs, a history of jobs and cleaning runs, and a
@@ -48,7 +53,8 @@ follows your dashboard's light or dark theme.
   to get it.
 
   [![Add Vacuum Orchestrator to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration)
-- **An administrator account to change anything.** Other users see the card
+- **A Home Assistant account that may control the robot.** Every user can
+  operate the card; users in Home Assistant's **Read only** group see it
   read-only.
 - **A current browser.** The layout uses CSS container queries, so any currently
   supported version of Chrome, Edge, Firefox, or Safari.
@@ -165,14 +171,14 @@ show:
 
 | View | What it shows | Shown without `views:` |
 | --- | --- | --- |
-| `setup` | The four setup steps: robots, rooms and reach, defaults for new jobs, the queue. | While the setup is unfinished, for administrators |
+| `setup` | The four setup steps: robots, rooms and reach, defaults for new jobs, the queue. | While the setup is unfinished, for users who may control the robot |
 | `queue` | The queue run, jobs in progress and needing attention, the waiting jobs in order, and shortcuts to create a job from a template. | Always |
-| `rooms` | Room cards: due bars, last cleaning, release, reaching robots and conditions. | Always |
+| `rooms` | Room cards: due bars, last cleaning, release, reaching robots and conditions, in the order set under **Settings**. | Always |
 | `robots` | Robot cards: live state, battery, capabilities, reachable rooms and map. | Always |
 | `templates` | Templates for recurring jobs. | Always |
 | `history` | Finished jobs and recorded cleaning runs. | Always |
 | `diagnostics` | Connection, versions, the setup status and the integration's event trace. | When something needs a look |
-| `settings` | The defaults for new jobs, how long a queue run waits for new work before it ends, how long new and changed jobs wait before they start, and the versions of the integration and the card. | For administrators |
+| `settings` | The defaults for new jobs, how long a queue run waits for new work before it ends, how long new and changed jobs wait before they start, the order of the rooms, and the versions of the integration and the card. | For users who may control the robot |
 
 A string and an object without `enabled` both switch a view on:
 
@@ -190,15 +196,15 @@ views:
   - queue
   - type: rooms
     options:
-      sort: due
+      show_disabled: true
   - type: diagnostics
     enabled: auto
 ```
 
 `enabled` accepts `true`, `false`, or `auto`. Leaving it out means `true`;
 `auto` follows the last column of the table above. `settings` with
-`enabled: true` appears for every user, read-only for those who are not
-administrators.
+`enabled: true` appears for every user, read-only for users in Home Assistant's
+**Read only** group.
 
 Once you write a `views:` section, it is the full list: the card shows exactly
 those views, in exactly that order, and adds nothing on its own.
@@ -212,7 +218,6 @@ Options belong inside the corresponding `views:` entry.
 | `queue` | `show_active` | `true` / `false` | `true` | Shows the jobs in progress. |
 | `queue` | `show_attention` | `true` / `false` | `true` | Shows the jobs that need attention. |
 | `queue` | `show_templates` | `true` / `false` | `true` | Shows the template shortcuts below the queue. |
-| `rooms` | `sort` | `configured` / `name` / `due` | `configured` | Orders the rooms as configured in the integration, by name, or most due first. |
 | `rooms` | `show_disabled` | `true` / `false` | `false` | Shows the rooms excluded from cleaning. |
 | `robots` | `show_map` | `true` / `false` | `true` | Shows the robot's map, when it has one. |
 | `robots` | `show_capabilities` | `true` / `false` | `true` | Shows the vacuum power, water amount and mop route levels the robot offers. |
@@ -290,7 +295,6 @@ views:
       show_templates: false
   - type: rooms
     options:
-      sort: due
       show_disabled: false
   - type: robots
     options:
@@ -364,8 +368,19 @@ Check the card's `type:` — it must be exactly
 resource must have loaded without a console error.
 
 **A button is dimmed.**
-Tap or click it: the card says why. Without an administrator account the card
-shows no buttons that change something and says so under its title.
+Tap or click it: the card says why. If your Home Assistant account may only
+read, the card shows no buttons that change something and says so under its
+title.
+
+**A due time carries an asterisk (\*).**
+Vacuum Orchestrator could not observe the whole time since the last cleaning,
+for example while a presence sensor was unavailable. The time counts only what
+it surely observed, so the room may be due earlier. Tap the time for the reason.
+
+**The card stops at the option `sort`.**
+The order of the rooms is a setting of the integration and applies to every
+card: **Settings** tab → **Rooms** → **Change**. Remove `sort` from the rooms
+view's options.
 
 **“This card does not support the installed version.”**
 The installed integration is newer than this card. Update the card.

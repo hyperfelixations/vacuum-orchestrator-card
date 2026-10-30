@@ -51,6 +51,15 @@ async function mountCard({ recording, from, config = {}, language = "en", admin,
     await settle(16);
   }
 
+  // An element's further action (UI-32): opens the menu of `scope` and finds `selector` in it.
+  async function menuItem(scope, selector) {
+    const owner = find(scope);
+    await click(owner.querySelector(".voc-menu-button"));
+    const item = owner.querySelector(`[role="menu"] ${selector}`);
+    if (!item) throw new Error(`no menu item ${selector}`);
+    return item;
+  }
+
   // Keyboard operation goes through the card's own keydown listener.
   async function press(selector, key, init = {}) {
     const node = find(selector);
@@ -104,6 +113,7 @@ async function mountCard({ recording, from, config = {}, language = "en", admin,
       return card.hass;
     },
     click,
+    menuItem,
     press,
     type,
     updateHass,

@@ -6,6 +6,9 @@
 // attributes (`value`, `checked`) and are not written into a control the user is editing.
 
 const VALUE_ELEMENTS = new Set(["INPUT", "TEXTAREA"]);
+// Set by the runtime controllers on rendered nodes and never rendered by markup: a render keeps
+// them, so a controller that finds them right changes nothing and the page is not laid out again.
+const RUNTIME_ATTRIBUTES = new Set(["data-compact", "data-overflow-start", "data-overflow-end", "data-overflow-top", "data-overflow-bottom", "data-placement", "data-rotated", "data-title", "data-waiting"]);
 
 function keyOf(node) {
   return node.nodeType === 1 ? node.getAttribute("data-key") : null;
@@ -18,7 +21,9 @@ function sameKind(current, next) {
 }
 
 function syncAttributes(current, next) {
-  for (const { name } of [...current.attributes]) if (!next.hasAttribute(name)) current.removeAttribute(name);
+  // A node marked `data-placed` is sized by its controller; markup gives it no style.
+  const kept = (name) => RUNTIME_ATTRIBUTES.has(name) || (name === "style" && next.hasAttribute("data-placed"));
+  for (const { name } of [...current.attributes]) if (!next.hasAttribute(name) && !kept(name)) current.removeAttribute(name);
   for (const { name, value } of [...next.attributes]) if (current.getAttribute(name) !== value) current.setAttribute(name, value);
 }
 

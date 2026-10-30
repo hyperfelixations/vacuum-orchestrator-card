@@ -12,7 +12,7 @@ import { affordanceContext } from "../domain/affordances.js";
 import { acquireSession } from "../backend/session-registry.js";
 import { FRAME_MIN_PX, GRID_OPTIONS, frameMode, standardHeightPx } from "./card-layout.js";
 import { buildCardDomainModel } from "../application/card-domain-model.js";
-import { readHomeAssistant } from "../backend/home-assistant.js";
+import { hassChanged, readHomeAssistant } from "../backend/home-assistant.js";
 import { buildCardViewModel } from "../presentation/shell/card-view-model.js";
 import { buildTabs } from "../presentation/shell/tabs.js";
 import { messageForConfigError, renderMessage } from "../presentation/shell/notices.js";
@@ -30,6 +30,7 @@ import { placeMenus } from "../controllers/runtime/menu-placement.js";
 import { placeMaps } from "../controllers/runtime/map-rotation.js";
 import { createScrollRuntime } from "../controllers/runtime/scroll-runtime.js";
 import { createLayoutRuntime } from "../controllers/runtime/layout-runtime.js";
+import { createRowFitRuntime } from "../controllers/runtime/row-fit-runtime.js";
 import { createTabStripRuntime } from "../controllers/runtime/tab-strip-runtime.js";
 import { createUIState, pagesPastTheEnd } from "../controllers/runtime/ui-state.js";
 import { createActionRouter } from "../controllers/runtime/action-router.js";
@@ -95,9 +96,10 @@ export class VacuumOrchestratorCard extends HTMLElement {
       onControlKey: (event) => this._onControlKey(event),
     });
     this._tabStrip = createTabStripRuntime({ root: this.shadowRoot, platform: this._platform });
+    this._rowFit = createRowFitRuntime({ root: this.shadowRoot, platform: this._platform });
     this._scroll = createScrollRuntime({ root: this.shadowRoot, platform: this._platform });
     this._layoutTier = createLayoutRuntime({ root: this.shadowRoot, platform: this._platform, onWide: (wide) => this._ui.setWide(wide) });
-    this._clock = createClockRuntime({ platform: this._platform, now: () => this._now(), onTick: () => this._renderSafely() });
+    this._clock = createClockRuntime({ platform: this._platform, now: () => this._now(), onTick: () => this._scheduleRender() });
     this._renderer = createRenderController({ computeViewModel: () => this._computeViewModel(), renderView: (viewModel) => this._renderView(viewModel) });
   }
 
@@ -121,13 +123,17 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._renderSafely();
   }
 
+  // Home Assistant hands over a new hass on every state change of the instance; only one the
+  // card read renders it again (UI-31).
   set hass(value) {
+    const previous = this._hass;
     this._hass = value;
     try {
       this._syncSession();
     } catch (error) {
       this._diagnostics.reportRenderFailure(error);
     }
+    if (this._model && !hassChanged(previous, value, this._model.watched)) return;
     this._scheduleRender();
   }
 
@@ -151,6 +157,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._interaction.connect();
     this._keyboard.connect();
     this._tabStrip.connect();
+    this._rowFit.connect();
     this._scroll.connect();
     this._layoutTier.connect();
     // A card that changes size lays its map pictures out again, also within a width tier.
@@ -169,6 +176,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._interaction.disconnect();
     this._keyboard.disconnect();
     this._tabStrip.disconnect();
+    this._rowFit.disconnect();
     this._scroll.disconnect();
     this._layoutTier.disconnect();
     this._stopMapResize?.();
@@ -376,6 +384,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._applyFrame(viewModel.body.kind === "overlay");
     this._scroll.capture();
     this._mount.mount(context, { css: STYLES, html: renderCard(context, viewModel, renderBody) });
+    this._rowFit.sync();
     this._scroll.sync(this._scrollStack(viewModel));
     placeMenus(this.shadowRoot);
     this._placeMaps();

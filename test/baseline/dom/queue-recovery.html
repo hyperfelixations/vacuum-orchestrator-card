@@ -8,7 +8,9 @@
 </div>
 <div class="voc-title-block">
 <div class="voc-title">Cleaning</div>
-<div class="voc-subtitle">Rocky needs recovery</div>
+<div class="voc-subtitle">
+<span class="voc-phrase">Rocky needs recovery</span>
+</div>
 </div>
 <div class="voc-status-pill">Attention</div>
 </div>
@@ -117,7 +119,7 @@
 </div>
 <section class="voc-group" data-key="attention-jobs">
 <h3 class="voc-group-title">Needs attention</h3>
-<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000010" data-state="needs_attention" data-tone="attention" data-actions="none">
+<article class="voc-job" data-key="job:00000000-0000-4000-8000-000000000010" data-state="needs_attention" data-tone="attention" data-actions="some">
 <div class="voc-job-lead" aria-hidden="true">
 <ha-icon icon="mdi:robot-vacuum" aria-hidden="true">
 </ha-icon>
@@ -126,6 +128,7 @@
 <span class="voc-job-title-line">
 <span class="voc-job-title">Library</span>
 </span>
+<span class="voc-job-body">
 <span class="voc-job-meta">
 <span class="voc-job-mode">Vacuum</span>
 </span>
@@ -134,7 +137,16 @@
 </ha-icon>
 <span>The connection to the robot was lost.</span>
 </span>
+</span>
 </button>
+<div class="voc-job-actions">
+<div class="voc-menu-anchor" data-key="menu:job:00000000-0000-4000-8000-000000000010">
+<button type="button" class="voc-button voc-button--icon voc-menu-button" data-action="toggle-menu" data-args="{&quot;key&quot;:&quot;job:00000000-0000-4000-8000-000000000010&quot;}" aria-haspopup="menu" aria-expanded="false" aria-label="More actions for Library" title="More actions for Library">
+<ha-icon icon="mdi:dots-horizontal" aria-hidden="true">
+</ha-icon>
+</button>
+</div>
+</div>
 </article>
 </section>
 </div>

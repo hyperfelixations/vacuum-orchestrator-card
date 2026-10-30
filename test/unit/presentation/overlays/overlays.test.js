@@ -343,7 +343,8 @@ test("a release lists each room with its own kind; a timed one asks for its dura
   assert.deepEqual(one.rows[0].kind.options.map((option) => option.value), ["permanent", "once", "timed", "queue_run"]);
   assert.deepEqual([one.rows[0].duration, one.rows[0].removable], [null, false], "one room, no duration for a run-long release");
   assert.equal(one.revoke.state, "hidden");
-  assert.deepEqual(one.addable.map((room) => room.name), ["Dining Room", "Studio", "Library"], "every other room can join");
+  // Every other room can join, in the integration's room order (ROOM-13).
+  assert.deepEqual(one.addable.map((room) => room.name), built.model.slots.rooms.data.items.map((room) => room.name).filter((name) => name !== "Conservatory"));
   // Opened from a job, the dialog says what the job still waits for once its rooms are released.
   const waiting = jobIn(built.model, "Conservatory");
   const fromJob = buildRelease({ ...built, overlay: { jobId: waiting.jobId, rooms: [{ roomId: conservatory, kind: "queue_run", hours: 2, minutes: 0 }] } });
@@ -360,7 +361,7 @@ test("a release lists each room with its own kind; a timed one asks for its dura
   assert.equal(two.rows[0].error, said(built, "room_unavailable"), "a room the integration refuses names its row");
   assert.equal(two.rows[1].current, "For a set time", "the release it replaces");
   assert.equal(two.revoke, null, "locking is for one room");
-  assert.deepEqual(two.addable.map((room) => room.name), ["Dining Room", "Library"]);
+  assert.deepEqual(two.addable.map((room) => room.name), built.model.slots.rooms.data.items.map((room) => room.name).filter((name) => ["Dining Room", "Library"].includes(name)));
   const quick = buildRelease({ ...built, overlay: { rooms: [{ roomId: studio, kind: "timed", hours: 4, minutes: 0 }] } });
   assert.equal(quick.rows[0].duration.quick.value, 240);
   assert.equal(buildRelease({ ...built, overlay: { rooms: [{ roomId: "room-gone", kind: "queue_run" }] } }).missing, true);
@@ -423,13 +424,15 @@ test("the enlarged map shows the chosen picture with its robot's name", async ()
   assert.equal(buildRobotMap({ ...built, overlay: { robotId: rocky.robotId, entityId: "image.gone", rotation: "auto" } }).missing, true);
 });
 
-// A robot's own name, or Home Assistant's when left empty.
-test("renaming a robot offers Home Assistant's name as the one left empty", async () => {
-  const { buildRenameRobot } = await overlays("robots");
+// ROB-02, UI-32: the robot's own name is the editor's first field; left empty, Home Assistant's.
+test("the robot editor names the robot first, offering Home Assistant's name as the one left empty", async () => {
+  const { buildRobotEditor } = await overlays("robots");
+  const { createRobotDraft } = await import("../../../../src/domain/robot-draft.js");
   const built = await modelFor("setup", { from: "The assistant opens" });
   const [rocky] = built.model.slots.robots.data.items;
-  const vm = buildRenameRobot({ ...built, overlay: { robotId: rocky.robotId, name: "" } });
-  assert.deepEqual([vm.key, vm.title, vm.field.key, vm.field.placeholder, vm.field.hint, vm.save.state], ["rename-robot", built.texts.t("renameRobot.title", { robot: "Rocky" }), "overlay:name", rocky.haName, built.texts.t("renameRobot.hint"), "enabled"]);
+  const vm = buildRobotEditor({ ...built, overlay: { draft: createRobotDraft(rocky), open: [] } });
+  const [name] = vm.general;
+  assert.deepEqual([name.key, name.value, name.placeholder, name.hint], ["name", "", rocky.haName, built.texts.t("robotEditor.nameHint")]);
 });
 
 test("robot discovery marks configured vacuums; the profile explains each role", async () => {
@@ -469,7 +472,7 @@ test("robot discovery marks configured vacuums; the profile explains each role",
   assert.equal(error.entity.error, said(built, "required_field"));
   assert.deepEqual([picking.sections.roles.open, picking.sections.identity.open, picking.sections.timeouts.open], [true, true, false], "a section with an error opens");
   assert.equal(picking.sections.identity.fields.find((entry) => entry.key === "physicalRobotId").error, said(built, "invalid_value"));
-  assert.deepEqual([vm.remove.state, vm.rename.state], ["enabled", "enabled"]);
+  assert.equal(vm.remove.state, "enabled");
   // UI-18: the areas are offered only once the robot is limited to some; none chosen is said.
   assert.deepEqual([vm.areaScope.value, vm.areaScope.options.map((option) => option.value), vm.areas], ["follow", ["follow", "only"], null]);
   const limited = buildRobotEditor({ ...built, overlay: { draft: updateRobotDraft(createRobotDraft(dusty), "areaScope", "only"), open: [] } });

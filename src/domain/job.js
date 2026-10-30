@@ -39,6 +39,7 @@ const JOB_FIELDS = new Set([
   "retries_job_id",
   "failure_code",
   "corrected_at",
+  "finished_at",
   "after_cancel",
   "readiness",
 ]);
@@ -94,7 +95,9 @@ function robotsAxis(wire) {
 function waiting(wire) {
   const primary = normalizeBlocker(wire);
   if (!primary) return null;
-  return Object.freeze({ ...primary, job: axis(wire.job), robots: robotsAxis(wire.robots), queue: axis(wire.queue) });
+  const queue = axis(wire.queue);
+  // Whether the queue would start this job first (QUE-13).
+  return Object.freeze({ ...primary, job: axis(wire.job), robots: robotsAxis(wire.robots), queue: queue && Object.freeze({ ...queue, next: wire.queue.next === true }) });
 }
 
 function fault(wire) {
@@ -114,6 +117,8 @@ function progress(wire) {
     phasePercent: finite(wire.phase_percent),
     percent: finite(wire.percent),
     fault: fault(wire.fault),
+    // The job's room the robot reports being in.
+    roomId: text(wire.room_id),
   });
 }
 
@@ -172,6 +177,8 @@ export function normalizeJob(wire) {
     retriesJobId: text(wire.retries_job_id),
     failureCode: text(wire.failure_code),
     correctedAt: instant(wire.corrected_at),
+    // When a finished job reached its final state; a correction keeps it (JOB-28).
+    finishedAt: instant(wire.finished_at),
     // While canceling: whether the robot stays where it stopped or returns to its dock.
     afterCancel: enumerated(wire.after_cancel, isAfterCancel),
     readiness: normalizeReadiness(wire.readiness),

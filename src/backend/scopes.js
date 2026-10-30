@@ -11,7 +11,7 @@ import { TERMINAL_STATES } from "../domain/job-schema.js";
 import { normalizePreview } from "../domain/preview.js";
 import { normalizeQueuePage } from "../domain/queue.js";
 import { normalizeCandidate, normalizeRobot } from "../domain/robots.js";
-import { normalizeRoom } from "../domain/rooms.js";
+import { normalizeRoom, normalizeRoomOrder } from "../domain/rooms.js";
 import { normalizeRun } from "../domain/runs.js";
 import { normalizeSetup } from "../domain/setup.js";
 import { normalizeTemplate } from "../domain/templates.js";
@@ -67,12 +67,14 @@ async function guarded(request, guard, detail) {
 }
 
 // Every page of a configuration query collection, de-duplicated by id in first-seen order.
-async function collection(transport, query, idOf, normalize) {
+// `facts`: what a collection says about itself besides its items, from its first page.
+async function collection(transport, query, idOf, normalize, facts = () => ({})) {
   const { key, guard } = QUERY_COLLECTIONS[query];
   const byId = new Map();
   const views = [];
   let offset = 0;
   let total = 0;
+  let own = {};
   for (let pageIndex = 0; pageIndex < MAX_COLLECTION_PAGES; pageIndex += 1) {
     const result = await guarded(transport.ws(messages.query(query, { offset, limit: PAGE_LIMIT })), guard, query);
     if (!result.ok) return result;
@@ -80,9 +82,10 @@ async function collection(transport, query, idOf, normalize) {
     total = result.data.total;
     for (const item of result.data[key].map(normalize).filter(Boolean)) if (!byId.has(idOf(item))) byId.set(idOf(item), item);
     offset += result.data[key].length;
-    if (result.data[key].length === 0 || offset >= total) return done(Object.freeze({ items: Object.freeze([...byId.values()]), total, complete: true }), oldestView(views));
+    if (pageIndex === 0) own = facts(result.data);
+    if (result.data[key].length === 0 || offset >= total) return done(Object.freeze({ ...own, items: Object.freeze([...byId.values()]), total, complete: true }), oldestView(views));
   }
-  return done(Object.freeze({ items: Object.freeze([...byId.values()]), total, complete: false }), oldestView(views));
+  return done(Object.freeze({ ...own, items: Object.freeze([...byId.values()]), total, complete: false }), oldestView(views));
 }
 
 export async function loadQueue(transport, { offset = 0, limit = 25 } = {}) {
@@ -99,6 +102,7 @@ export async function loadOpenJobs(transport) {
   const views = [];
   let offset = 0;
   let total = 0;
+  let own = {};
   for (let pageIndex = 0; pageIndex < MAX_COLLECTION_PAGES; pageIndex += 1) {
     const result = await guarded(transport.ws(messages.jobsList({ offset, limit: PAGE_LIMIT, states: OPEN_JOB_STATES })), guards.jobsPage, "jobs/list");
     if (!result.ok) return result;
@@ -125,7 +129,7 @@ export async function loadJob(transport, { jobId }) {
   return job ? done(job, viewOf(result.data)) : invalid("job/get");
 }
 
-export const loadRooms = (transport) => collection(transport, "get_rooms", (room) => room.roomId, normalizeRoom);
+export const loadRooms = (transport) => collection(transport, "get_rooms", (room) => room.roomId, normalizeRoom, (wire) => ({ order: normalizeRoomOrder(wire.room_order) }));
 export const loadRobots = (transport) => collection(transport, "get_robots", (robot) => robot.robotId, normalizeRobot);
 export const loadCandidates = (transport) => collection(transport, "get_robot_candidates", (candidate) => candidate.registryId, normalizeCandidate);
 export const loadTemplates = (transport) => collection(transport, "get_templates", (template) => template.templateId, normalizeTemplate);

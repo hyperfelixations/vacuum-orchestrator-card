@@ -53,7 +53,7 @@ test("a row's menu is operated by keyboard", async ({ page }) => {
   await button.focus();
   await page.keyboard.press("Enter");
   const items = card.locator('[role="menu"] [role="menuitem"]');
-  await expect(items).toHaveText(["Move up", "Move down", "Edit"]);
+  await expect(items).toHaveText(["Move up", "Move down", "Edit", "Save as template", "Delete"]);
   await expect(items.first()).toBeFocused();
   await page.keyboard.press("ArrowUp");
   await expect(items.last()).toBeFocused();
@@ -67,12 +67,12 @@ test("a row's menu is operated by keyboard", async ({ page }) => {
   await expect(card.locator('[role="menu"]')).toHaveCount(0);
 });
 
-// UI-22: a user who may change nothing tabs through no locked controls and reads why once.
+// UI-22: a user the integration lets only read tabs through no locked controls and reads why once.
 test("a read-only user meets no locked controls and reads why in the header", async ({ page }) => {
-  const card = await mountCard(page, { ...BUSY, admin: false });
+  const card = await mountCard(page, { recording: "read_only_user", from: "The card opens for a read-only user" });
   await expect(card.locator('[aria-disabled="true"], button[disabled]')).toHaveCount(0);
-  await expect(named(card, ".voc-job", "Conservatory", '[data-action="edit-job"]')).toHaveCount(0);
-  await expect(card.locator(".voc-subtitle")).toContainText("Read only: changes need an administrator.");
+  await expect(named(card, ".voc-job", "Library", ".voc-menu-button")).toHaveCount(0);
+  await expect(card.locator(".voc-subtitle")).toContainText("Read only for your account");
 });
 
 // A row that does not fit first drops the inactive labels, then the primary action's label; the

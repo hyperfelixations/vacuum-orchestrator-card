@@ -683,20 +683,6 @@ test("a robot's map opens enlarged as a page", async () => {
   assert.deepEqual(shown(ui.overlay), { kind: "robot-map", robotId: "robot-rocky", entityId: "image.rocky_main_floor", rotation: "none" });
 });
 
-// A robot's own name travels as given; an empty one returns to Home Assistant's name.
-test("a robot is renamed, or given Home Assistant's name back", async () => {
-  const { router, ui, commands } = await setup();
-  router.handle("rename-robot", { robotId: "robot-dusty" });
-  assert.deepEqual(shown(ui.overlay), { kind: "rename-robot", robotId: "robot-dusty", name: "" });
-  router.input("overlay:name", " Rocky downstairs ");
-  await router.handle("save-robot-name");
-  assert.deepEqual(commands[0], { operation: "rename_robot", parameters: { robot_id: "robot-dusty", name: "Rocky downstairs" }, target: "robot:robot-dusty", invalidates: ["robots", "candidates", "rooms", "queue", "openJobs", "execution", "registry", "setup"] });
-  assert.equal(ui.overlay, null);
-  router.handle("rename-robot", { robotId: "robot-dusty" });
-  router.input("overlay:name", "  ");
-  await router.handle("save-robot-name");
-  assert.deepEqual(commands[1].parameters, { robot_id: "robot-dusty", name: null });
-});
 
 test("the queue quiet period is edited in minutes and sent in seconds", async () => {
   const verdict = (_operation, parameters) => (parameters.grace_seconds > 86400 ? rejects(["grace_seconds", "out_of_range"]) : ACCEPTS);

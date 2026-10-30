@@ -106,6 +106,30 @@ test("no workflow step runs a script that records the integration", () => {
   assert.deepEqual(offenders, []);
 });
 
+// Cold engine starts on a shared runner; a retry would hide a real failure (internal dev doc §10).
+test("the cross-engine projects run one browser at a time on a cold start budget and never retry", () => {
+  const config = require(path.join(ROOT, "playwright.config.js"));
+  assert.equal(config.retries, 0);
+  for (const project of config.projects) {
+    if (project.name === "chromium") {
+      assert.deepEqual([project.workers, project.timeout, project.expect], [undefined, undefined, undefined]);
+    } else {
+      assert.deepEqual([project.workers, project.timeout, project.expect], [1, 60_000, { timeout: 15_000 }], project.name);
+    }
+  }
+});
+
+// The Python baseline has no build for later Ubuntu releases, so a job that sets up Python never
+// follows ubuntu-latest.
+test("no workflow job that sets up Python runs on ubuntu-latest", () => {
+  const workflows = path.join(ROOT, ".github", "workflows");
+  const offenders = fs.readdirSync(workflows).flatMap((file) => {
+    const source = fs.readFileSync(path.join(workflows, file), "utf8").replace(/\r\n/g, "\n");
+    return source.split(/^ {2}(?=[\w-]+:\n)/m).filter((job) => /actions\/setup-python@/.test(job) && /runs-on: ubuntu-latest/.test(job)).map((job) => `${file}: ${job.split(":")[0]}`);
+  });
+  assert.deepEqual(offenders, []);
+});
+
 test("every browser spec uses the coverage-aware Playwright fixture", () => {
   const browserSpecs = testFiles.filter((file) => rel(file).startsWith("browser/"));
   const bypasses = browserSpecs.filter((file) => {

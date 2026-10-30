@@ -24,7 +24,7 @@ export function renderJobEditor(context, vm) {
   const removal = vm.remove ? { action: vm.remove.action, args: vm.remove.args, label: vm.remove.label, iconName: "mdi:delete-outline", decision: vm.remove.decision, reasonText: context.reason(vm.remove.decision), tone: "danger" } : null;
   const template = vm.saveAsTemplate ? { action: vm.saveAsTemplate.action, label: vm.saveAsTemplate.label, iconName: "mdi:content-save-outline", decision: vm.saveAsTemplate.decision, reasonText: context.reason(vm.saveAsTemplate.decision) } : null;
   const lead = footerLead(context, { items: [removal, template], key: "editor", label: context.t("action.moreActions"), open: vm.menuOpen === true });
-  const startNow = vm.startNow ? button({ action: "start-draft", label: vm.startNow.label, iconName: "mdi:play", decision: pending ?? vm.startNow.decision, reasonText: context.reason(vm.startNow.decision) }) : "";
+  const startNow = vm.startNow ? button({ action: "start-draft", args: vm.startNow.lowBattery ? { lowBattery: true } : undefined, label: vm.startNow.label, iconName: "mdi:play", decision: pending ?? vm.startNow.decision, reasonText: context.reason(vm.startNow.decision) }) : "";
   const save = button({ action: "save-draft", label: vm.save.label, iconName: "mdi:check", variant: "primary", decision: pending ?? vm.save.decision, reasonText: context.reason(vm.save.decision) });
   const actions = `${lead}${button({ action: "back", label: context.t("action.back"), variant: "quiet" })}${startNow}${save}`;
   // A lost hold heads the page with what can still be done (JOB-20, JOB-21).

@@ -16,6 +16,8 @@ const ENDING = { recording: "queue_controls", from: "The queue ends after the st
 const tab = (view) => `[role="tab"][data-view="${view}"]`;
 // A step on the list item shown under `name`.
 const on = (selector, name, inner) => (card) => card.named(selector, name).querySelector(inner);
+// UI-32: an element's further actions are in its menu.
+const fromMenu = (selector, name, inner) => [on(selector, name, ".voc-menu-button"), on(selector, name, `[role="menu"] ${inner}`)];
 
 const CASES = Object.freeze([
   { name: "queue-typical", place: BUSY },
@@ -48,8 +50,8 @@ const CASES = Object.freeze([
   { name: "job-defaults", place: BUSY, config: { start_view: "settings" }, steps: ['[data-action="open-job-defaults"]'] },
   { name: "save-template", place: BUSY, steps: [on(".voc-job", "Conservatory", ".voc-job-main"), '[data-action="open-save-template"]'] },
   { name: "release-dialog", place: BUSY, steps: [tab("rooms"), on(".voc-room", "Conservatory", '[data-action="open-release"]')] },
-  { name: "room-editor", place: BUSY, steps: [tab("rooms"), on(".voc-room", "Dining Room", '[data-action="edit-room"]')] },
-  { name: "robot-editor", place: { recording: "robot_choice", from: "The card opens" }, steps: [tab("robots"), on(".voc-robot", "Dusty", '[data-action="edit-robot"]'), '[data-action="toggle-section"][data-args*="roles"]'] },
+  { name: "room-editor", place: BUSY, steps: [tab("rooms"), ...fromMenu(".voc-room", "Dining Room", '[data-action="edit-room"]')] },
+  { name: "robot-editor", place: { recording: "robot_choice", from: "The card opens" }, steps: [tab("robots"), ...fromMenu(".voc-robot", "Dusty", '[data-action="edit-robot"]'), '[data-action="toggle-section"][data-args*="roles"]'] },
 ]);
 
 for (const entry of CASES) {

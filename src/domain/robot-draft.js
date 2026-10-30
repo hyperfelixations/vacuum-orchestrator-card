@@ -29,6 +29,8 @@ export function createRobotDraft(robot, { roleEntities = {} } = {}) {
   const wire = robot.configuration.wire;
   const roles = wire.roles && typeof wire.roles === "object" ? wire.roles : {};
   const values = {
+    // The robot's own name; empty follows the name Home Assistant shows (ROB-02).
+    name: robot.nameSource === "custom" ? robot.name : "",
     enabled: wire.enabled !== false,
     allowedOperations: Array.isArray(wire.allowed_operations) ? wire.allowed_operations.filter(isOperation) : [...OPERATIONS],
     fixedMode: isOperation(wire.fixed_mode) ? wire.fixed_mode : null,
@@ -76,6 +78,7 @@ export function isRobotDirty(draft) {
 
 // The draft field each part of the `configure_robot` configuration fills.
 const ROBOT_FIELDS = Object.freeze({
+  name: "name",
   enabled: "enabled",
   allowed_operations: "allowedOperations",
   fixed_mode: "fixedMode",
@@ -103,6 +106,10 @@ export function robotFieldOf(path) {
 // fields replaced. The role map is replaced as a whole; an automatic role is left out of it.
 export function robotDraftToConfiguration(draft) {
   const configuration = copy(draft.meta.wire);
+  // A stored name is cleared with null; without one the profile follows Home Assistant's.
+  const name = String(draft.name ?? "").trim();
+  if (name) configuration.name = name;
+  else if (Object.hasOwn(configuration, "name")) configuration.name = null;
   configuration.enabled = draft.enabled;
   configuration.allowed_operations = [...draft.allowedOperations];
   configuration.fixed_mode = draft.fixedMode;

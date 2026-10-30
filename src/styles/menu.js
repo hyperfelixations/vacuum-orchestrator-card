@@ -35,7 +35,9 @@ export const MENU_CSS = `
   cursor: pointer;
 }
 .voc-menu-item ha-icon { --mdc-icon-size: 18px; color: var(--voc-muted); }
-.voc-menu-item:hover, .voc-menu-item:focus-visible { background: color-mix(in srgb, var(--primary-text-color) 8%, transparent); }
+.voc-menu-item:focus-visible { background: color-mix(in srgb, var(--primary-text-color) 8%, transparent); }
+@media (hover: hover) { .voc-menu-item:hover { background: color-mix(in srgb, var(--primary-text-color) 8%, transparent); } }
+.voc-menu-item:not([aria-disabled="true"]):active { background: color-mix(in srgb, var(--primary-text-color) 14%, transparent); }
 .voc-menu-item:focus-visible { outline: 2px solid var(--voc-focus); outline-offset: -2px; }
 .voc-menu-item[data-tone="danger"], .voc-menu-item[data-tone="danger"] ha-icon { color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
 .voc-menu-item[aria-disabled="true"], .voc-menu-item[aria-disabled="true"] ha-icon { color: var(--voc-faint); cursor: default; }

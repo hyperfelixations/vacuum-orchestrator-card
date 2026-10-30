@@ -47,6 +47,19 @@ function callWS(page, message) {
   return page.evaluate((payload) => document.querySelector("home-assistant").hass.callWS(payload), message);
 }
 
+// Closes the frontend's socket and resolves once it has reconnected by itself; while the socket
+// closes `hass.connected` still reads true and a message sent then is lost.
+function dropConnection(page) {
+  return page.evaluate(() => new Promise((resolve) => {
+    const { connection } = document.querySelector("home-assistant").hass;
+    connection.addEventListener("ready", function ready() {
+      connection.removeEventListener("ready", ready);
+      resolve();
+    });
+    connection.socket.close();
+  }));
+}
+
 test.describe.serial("[ha-frontend] smoke", () => {
   test("[ha-frontend] the card loads on the dashboard, keeps its height and shows the robot's map", async ({ page }) => {
     const { card, errors } = await openDashboard(page);
@@ -57,7 +70,9 @@ test.describe.serial("[ha-frontend] smoke", () => {
     await card.locator('[role="tab"][data-view="robots"]').click();
     const picture = card.locator(".voc-robot-map img").first();
     await expect.poll(() => picture.evaluate((image) => image.complete && image.naturalWidth), { timeout: READY_MS }).toBeGreaterThan(0);
-    await card.locator('[data-action="edit-robot"]').first().click();
+    // UI-32: the profile is in the robot's menu.
+    await card.locator(".voc-robot .voc-menu-button").first().click();
+    await card.locator('.voc-robot [role="menu"] [data-action="edit-robot"]').first().click();
     await expect(card.locator(".voc-overlay")).toBeVisible();
     expect(Math.abs((await frame.boundingBox()).height - resting), "a page keeps the card's height (LAY-17)").toBeLessThanOrEqual(1);
     await card.locator('.voc-overlay [data-action="back"]').first().click();
@@ -93,8 +108,7 @@ test.describe.serial("[ha-frontend] smoke", () => {
     await card.locator('[role="tab"][data-view="queue"]').click();
     await expect(card.locator(".voc-job")).toHaveCount(before);
     // The frontend reconnects by itself; the card follows the new connection.
-    await page.evaluate(() => document.querySelector("home-assistant").hass.connection.socket.close());
-    await expect.poll(() => page.evaluate(() => document.querySelector("home-assistant").hass.connected), { timeout: READY_MS }).toBe(true);
+    await dropConnection(page);
     await callWS(page, { type: "voi_e2e/robot", robot: "Rocky", stimulus: "set", key: "battery", value: "42" });
     await expect(card.locator(".voc-panel-robot")).toContainText(/42\s?%/, { timeout: READY_MS });
     errors = cardErrors(errors);

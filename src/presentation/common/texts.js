@@ -77,6 +77,14 @@ export function remainingText(texts, value) {
   return duration(texts, Math.floor(value / 60) * 60000);
 }
 
+// A span as a due date says it: hours and minutes, or from a day on whole days where the span is
+// calendar time; time in use is never said in days (DUE-04).
+export function spanText(texts, milliseconds, { days = false } = {}) {
+  if (!Number.isFinite(milliseconds) || milliseconds < 60000) return t(texts, "time.lessThanMinute");
+  if (days && milliseconds >= 86400000) return t(texts, "time.days", { count: Math.round(milliseconds / 86400000) });
+  return duration(texts, Math.floor(milliseconds / 60000) * 60000);
+}
+
 export function seconds(texts, value) {
   return value === null || value === undefined ? "—" : duration(texts, value * 1000);
 }

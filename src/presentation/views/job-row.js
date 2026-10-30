@@ -2,7 +2,8 @@
 // from the affordance table; why a job waits is the integration's main reason, worded
 // (`waiting.js`), and a started job shows its progress. See internal dev doc §8 "Queue".
 
-import { jobAffordances, jobTarget, roomAffordances } from "../../domain/affordances.js";
+import { PHRASE_SEPARATOR } from "../../core/text.js";
+import { decide, jobAffordances, jobTarget, roomAffordances } from "../../domain/affordances.js";
 import { SETTING_FIELDS, isActiveState, isTerminalState } from "../../domain/job-schema.js";
 import { readinessProblems } from "../../domain/readiness.js";
 import { entityName, jobTitle, list, robotName, roomName, slotData } from "../common/lookups.js";
@@ -77,7 +78,7 @@ export function progressOf(job, { model, texts, timeFormat = "auto" }) {
   if (!progress) return null;
   const phased = Number.isInteger(progress.phases) && progress.phases > 1;
   const phase = phased ? `${t(texts, "progress.phase", { phase: number(texts, progress.phase), phases: number(texts, progress.phases) })} · ${operationLabel(texts, progress.operation)}` : null;
-  const line = [phase, progress.robotId ? robotName(progress.robotId, model) : null, progress.startedAt !== null ? startedText(progress.startedAt, { model, texts, timeFormat }) : t(texts, "progress.notStarted")].filter(Boolean).join(" · ");
+  const line = [phase, progress.robotId ? robotName(progress.robotId, model) : null, progress.startedAt !== null ? startedText(progress.startedAt, { model, texts, timeFormat }) : t(texts, "progress.notStarted")].filter(Boolean).join(PHRASE_SEPARATOR);
   // With one phase the phase is the job: one bar. With several, each bar names what it measures.
   const bar = (key, value, labelKey) => (Number.isFinite(value) ? { key, label: t(texts, labelKey), value: Math.max(0, Math.min(100, value)), text: t(texts, "progress.percent", { value: number(texts, value) }) } : null);
   const bars = (phased ? [bar("phase", progress.phasePercent, "progress.phasePercent"), bar("total", progress.percent, "progress.totalPercent")] : [bar("total", progress.percent, "progress.totalPercent")]).filter(Boolean);
@@ -86,8 +87,9 @@ export function progressOf(job, { model, texts, timeFormat = "auto" }) {
 }
 
 // The one action a row offers by its state (UI-06, QUE-08, JOB-08): release the rooms a waiting
-// job waits for, delete it during its start delay, start it while it only waits for the queue;
-// cancel a started job; create a finished one again.
+// job waits for, delete it during its start delay, start it while it only waits for the queue or
+// for a battery below the minimum, which the start then asks about (JOB-27); cancel a started job;
+// create a finished one again.
 function mainAction(job, actions, { context, index }) {
   const code = job.waiting?.code;
   if (job.state === "queued") {
@@ -101,11 +103,26 @@ function mainAction(job, actions, { context, index }) {
       return { key: "release", roomIds, decision: decisions.find((decision) => decision.state !== "enabled") ?? decisions[0] };
     }
     if (code === "queue_idle" || code === "queue_paused") return { key: "start", decision: actions.start };
+    if (code === "battery_low" && actions.start.warning === "battery_low") return { key: "start", decision: actions.start };
     return null;
   }
   if (job.state === "dispatching" || job.state === "running") return { key: "cancel", decision: actions.cancel };
   if (isTerminalState(job.state)) return { key: "retry", decision: actions.retry };
   return null;
+}
+
+// The row's further actions in the order of its menu (UI-32); its main action is not repeated.
+function menuItems(job, actions, main, context) {
+  const args = { jobId: job.jobId };
+  const items = [
+    { key: "moveUp", action: "move-job", args: { ...args, direction: "up" }, iconName: "mdi:arrow-up", labelKey: "action.moveUp", decision: actions.moveUp },
+    { key: "moveDown", action: "move-job", args: { ...args, direction: "down" }, iconName: "mdi:arrow-down", labelKey: "action.moveDown", decision: actions.moveDown },
+    { key: "edit", action: "edit-job", args, iconName: "mdi:pencil-outline", labelKey: "action.edit", decision: actions.edit },
+    { key: "correct", action: "correct-job", args, iconName: "mdi:clipboard-edit-outline", labelKey: "action.correctResult", decision: actions.correct },
+    { key: "saveAsTemplate", action: "open-save-template", args, iconName: "mdi:content-save-outline", labelKey: "action.saveAsTemplate", decision: decide(context, { operation: "save_job_as_template", target: jobTarget(job.jobId) }) },
+    { key: "delete", action: "delete-job", args, iconName: "mdi:delete-outline", labelKey: "action.delete", decision: actions.delete, tone: "danger" },
+  ];
+  return items.filter((item) => item.key !== main?.key);
 }
 
 // `menu`: the key of the card's open menu, if any.
@@ -136,11 +153,13 @@ export function buildJobRow(job, { model, texts, index, context, timeFormat = "a
     status,
     progress: isActiveState(job.state) ? progressOf(job, { model, texts, timeFormat: timeFormat === "absolute" ? "time" : "relative" }) : null,
     settings: settingChips(job, texts, { defaults: slotData(model, "queue")?.jobDefaults }),
-    time: moment(texts, job.updatedAt, timeFormat, model.nowMs),
+    // A finished job by when it ended (JOB-28), any other by its last change.
+    time: moment(texts, job.finishedAt ?? job.updatedAt, timeFormat, model.nowMs),
     outcome: outcomeText(texts, job.failureCode),
     pending: list(model.pending).includes(jobTarget(job.jobId)),
     actions,
     main,
+    menu: menuItems(job, actions, main, context),
     menuOpen: menu === `job:${job.jobId}`,
   };
 }

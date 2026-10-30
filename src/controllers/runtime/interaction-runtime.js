@@ -23,6 +23,12 @@ export function createInteractionRuntime({ root, onAction = () => {} } = {}) {
   let connected = false;
 
   function onClick(event) {
+    // A note that explains itself when tapped, as a refused control does (UI-22).
+    const note = event.target?.closest?.("[data-explain]");
+    if (note) {
+      onAction({ type: "explain", text: note.dataset.explain, target: note, event });
+      return;
+    }
     const target = event.target?.closest?.("[data-action], [data-view]");
     // A click on nothing the card acts on, such as beside an open menu.
     if (!target) {

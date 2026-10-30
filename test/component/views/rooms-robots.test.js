@@ -22,7 +22,8 @@ const robot = (card, name) => card.named(".voc-robot", name);
 
 test("rooms show the integration's due verdicts, release state and conditions", async () => {
   const card = await rooms();
-  assert.deepEqual(card.all(".voc-room-name").map((node) => node.textContent.trim()), ["Dining Room", "Studio", "Library", "Conservatory"]);
+  // In the integration's order: most due first (ROOM-13).
+  assert.deepEqual(card.all(".voc-room-name").map((node) => node.textContent.trim()), ["Library", "Studio", "Dining Room", "Conservatory"]);
   assert.match(room(card, "Dining Room").querySelector('[data-key="due:vacuum"]').textContent, /Due in 2 days/);
   assert.match(room(card, "Studio").querySelector('[data-key="due:vacuum"]').textContent, /Never cleaned/);
   assert.match(room(card, "Library").textContent, /Released · one job/);
@@ -38,7 +39,7 @@ test("released rooms are locked together", async () => {
   assert.match(card.text('[data-key="lock-all"]'), /2 rooms released/);
   await card.click('[data-key="lock-all"] [data-action="lock-rooms"]');
   await card.settle(32);
-  assert.deepEqual(card.commands("revoke_rooms").map((message) => message.parameters), [{ rooms: [roomId(card, "Studio"), roomId(card, "Library")] }]);
+  assert.deepEqual(card.commands("revoke_rooms").map((message) => message.parameters), [{ rooms: card.all(".voc-room-name").map((node) => node.textContent.trim()).filter((name) => ["Studio", "Library"].includes(name)).map((name) => roomId(card, name)) }]);
   assert.equal(card.root.querySelector('[data-key="lock-all"]'), null, "nothing left to lock");
   card.unmount();
 });
@@ -65,7 +66,7 @@ test("a timed release sends its duration; locking sends a revoke", async () => {
 test("a room is excluded after a confirmation and included again from the room list", async () => {
   const card = await rooms("The library is released for 75 minutes");
   const studio = roomId(card, "Studio");
-  await card.click(room(card, "Studio").querySelector('[data-action="edit-room"]'));
+  await card.click(await card.menuItem(room(card, "Studio"), '[data-action="edit-room"]'));
   // UI-20: excluding is undone by including again, so it is no destructive action and not red.
   assert.ok(!card.root.querySelector('[data-action="disable-room"]').classList.contains("voc-button--danger"));
   await card.click('[data-action="disable-room"]');
@@ -87,7 +88,7 @@ test("a room is excluded after a confirmation and included again from the room l
 test("room settings save only what changed", async () => {
   const card = await rooms("The studio is included again");
   const dining = roomId(card, "Dining Room");
-  await card.click(room(card, "Dining Room").querySelector('[data-action="edit-room"]'));
+  await card.click(await card.menuItem(room(card, "Dining Room"), '[data-action="edit-room"]'));
   // An interval that is off is empty; one day and twelve hours travel as 36 hours.
   const parts = (interval) => [card.root.querySelector(`[data-field="${interval}:days"]`).value, card.root.querySelector(`[data-field="${interval}:hours"]`).value];
   assert.deepEqual(parts("vacuumHours"), ["", ""]);
@@ -104,7 +105,7 @@ test("room settings save only what changed", async () => {
 test("a job for one room opens the editor with that room chosen", async () => {
   const card = await rooms();
   const dining = roomId(card, "Dining Room");
-  await card.click(room(card, "Dining Room").querySelector('[data-action="create-job"]'));
+  await card.click(await card.menuItem(room(card, "Dining Room"), '[data-action="create-job"]'));
   await card.settle(32);
   assert.equal(card.root.querySelector(`[data-field-control="chips"] [data-value="${dining}"]`).getAttribute("aria-selected"), "true");
   card.unmount();
@@ -128,7 +129,7 @@ test("a new room needs a name and is created without an area", async () => {
 test("robots show live state, and a profile under a lease is changed for the next job", async () => {
   const card = await open("robots", BUSY);
   assert.match(robot(card, "Rocky").textContent, /100 %/);
-  await card.click(robot(card, "Rocky").querySelector('[data-action="edit-robot"]'));
+  await card.click(await card.menuItem(robot(card, "Rocky"), '[data-action="edit-robot"]'));
   await card.settle(32);
   assert.equal(card.root.querySelector(".voc-overlay").dataset.key, "overlay:robot-editor");
   assert.equal(card.text('[data-key="busy"]'), "Rocky is working on a job. Changes apply from its next job.");
@@ -154,7 +155,7 @@ test("a robot stopped away from its dock is sent home from its card", async () =
 
 test("a profile change sends the complete definition read from the integration", async () => {
   const card = await open("robots", { recording: "robot_choice", from: "The card opens" });
-  await card.click(robot(card, "Dusty").querySelector('[data-action="edit-robot"]'));
+  await card.click(await card.menuItem(robot(card, "Dusty"), '[data-action="edit-robot"]'));
   await card.click('[data-key="field:fixedMode"] [data-value="vacuum"]');
   await card.click('[data-action="save-robot"]');
   await card.settle(32);
