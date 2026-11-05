@@ -2,7 +2,8 @@
 // integration's own code runs (`python -m tests.contract --record-to`), so the card's tests play
 // what the real integration answers. Nothing of it is committed; see internal dev doc §10.
 //
-//   npm run voi:record                       from ../vacuum-orchestrator and its .venv-ha
+//   npm run voi:record                       from .voi-checkout (as CI checks it out) or
+//                                            ../vacuum-orchestrator, with its .venv-ha
 //   npm run voi:record -- --from <checkout> --python <interpreter>
 //   npm run voi:record -- --force            record even if the recordings are current
 //
@@ -12,8 +13,11 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+const { defaultVoiCheckout } = createRequire(import.meta.url)("../test/helpers/voi-checkout.js");
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const TARGET = path.join(ROOT, "test", "fixtures", "voi", "recordings");
@@ -51,9 +55,9 @@ function current(state) {
 }
 
 function main() {
-  const checkout = path.resolve(ROOT, argument("--from") ?? path.join("..", "vacuum-orchestrator"));
+  const checkout = path.resolve(ROOT, argument("--from") ?? defaultVoiCheckout(ROOT));
   if (!fs.existsSync(path.join(checkout, "tests", "contract", "__main__.py"))) {
-    throw new Error(`no checkout of the integration at ${checkout}; clone it next to the card or pass --from`);
+    throw new Error(`no checkout of the integration at ${checkout}; check it out into .voi-checkout or pass --from`);
   }
   const python =
     argument("--python") ?? path.join(checkout, ".venv-ha", process.platform === "win32" ? path.join("Scripts", "python.exe") : path.join("bin", "python"));

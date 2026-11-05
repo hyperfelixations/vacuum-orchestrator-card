@@ -5,6 +5,7 @@
 process.env.TZ = "UTC";
 
 const test = require("node:test");
+const assert = require("node:assert/strict");
 const { mountCard } = require("../helpers/mount-card.js");
 const { expectBaseline, serializeCard } = require("../helpers/characterization.js");
 const { haError } = require("../helpers/voi-records.js");
@@ -13,6 +14,16 @@ const BASE_CONFIG = Object.freeze({ time_format: "absolute" });
 
 const BUSY = { recording: "showcase", from: "A busy afternoon" };
 const ENDING = { recording: "queue_controls", from: "The queue ends after the started job" };
+const READ_ONLY = { recording: "read_only_user", from: "The card opens for a read-only user" };
+// The rights a state stands for, checked before its baseline (UI-14, UI-22): a user who is no
+// administrator commands; a user of Home Assistant's read-only group sees no command and is told
+// so once.
+const COMMANDS = '[data-action="create-job"], [data-action="queue-control"], [data-action="start-job"]';
+const commands = (card) => assert.ok(card.root.querySelector(COMMANDS), "the state offers commands");
+const readsOnly = (card) => {
+  assert.equal(card.root.querySelector(COMMANDS), null, "the state offers no command");
+  assert.match(card.text(".voc-subtitle"), /Read only for your account/);
+};
 const tab = (view) => `[role="tab"][data-view="${view}"]`;
 // A step on the list item shown under `name`.
 const on = (selector, name, inner) => (card) => card.named(selector, name).querySelector(inner);
@@ -25,7 +36,8 @@ const CASES = Object.freeze([
   { name: "queue-attention", place: { recording: "attention", from: "The station needs attention" } },
   { name: "queue-recovery", place: { recording: "recovery", from: "The job needs clarification" } },
   { name: "queue-winding-down", place: { recording: "queue_end", from: "The queue waits for work" } },
-  { name: "queue-read-only", place: { ...BUSY, admin: false } },
+  { name: "queue-non-admin", place: { ...BUSY, admin: false }, check: commands },
+  { name: "queue-read-only", place: READ_ONLY, check: readsOnly },
   { name: "queue-german", place: BUSY, config: { language: "de" } },
   { name: "onboarding-not-installed", place: { recording: "not_installed" } },
   { name: "onboarding-not-set-up", place: { recording: "setup", from: "Vacuum Orchestrator is installed but not set up" } },
@@ -61,6 +73,7 @@ for (const entry of CASES) {
       await card.click(typeof step === "function" ? step(card) : step);
       await card.settle(24);
     }
+    entry.check?.(card);
     expectBaseline(`dom/${entry.name}.html`, serializeCard(card.card));
     card.unmount();
   });

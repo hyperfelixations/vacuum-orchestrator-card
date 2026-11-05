@@ -104,7 +104,7 @@ export function jobAffordances(job, context) {
   });
 }
 
-const QUEUE_CONTROLS = Object.freeze([
+export const QUEUE_CONTROLS = Object.freeze([
   Object.freeze({ name: "run", operation: "run_queue" }),
   Object.freeze({ name: "pause", operation: "pause_queue" }),
   Object.freeze({ name: "resume", operation: "resume_queue" }),
@@ -146,7 +146,6 @@ export function robotAffordances(robot, context) {
   const target = robotTarget(robot?.robotId);
   return Object.freeze({
     configure: offer(context, actions?.configure, { operation: "configure_robot", target }),
-    rename: offer(context, actions?.rename, { operation: "rename_robot", target }),
     remove: offer(context, actions?.remove, { operation: "remove_robot", target }),
     returnToDock: offer(context, actions?.return_to_dock, { operation: "return_robot", target }),
   });

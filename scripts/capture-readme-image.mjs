@@ -9,8 +9,9 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT = path.join(ROOT, "vacuum-orchestrator-card.png");
-const PORT = 4173;
-const BASE_URL = `http://localhost:${PORT}`;
+// The static server listens on loopback only, on the card's own port.
+const { DEFAULT_PORT } = createRequire(import.meta.url)("../test/helpers/static-server.js");
+const BASE_URL = `http://127.0.0.1:${DEFAULT_PORT}`;
 const CARD_WIDTH = 640;
 
 const require = createRequire(import.meta.url);

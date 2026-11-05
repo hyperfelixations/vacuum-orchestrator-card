@@ -7,7 +7,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+
+const { propertyEnvKeys } = createRequire(import.meta.url)("../test/property/run-config.js");
 
 const MODULE_PATH = fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(MODULE_PATH), "..");
@@ -33,17 +36,11 @@ export const UNMEASURED_TEST_DIRECTORIES = Object.freeze({
 });
 
 // Fixed for every Node layer run: the artifact tests judge dist/ without its coverage source
-// map, property runs use their default counts and seeds, and nothing rewrites a baseline or
-// writes a report. `null` removes a variable inherited from the shell.
+// map, every property family uses its default counts and seeds, and nothing rewrites a baseline.
+// `null` removes a variable inherited from the shell.
 export const NODE_LAYER_ENV = Object.freeze({
   VACUUM_ORCHESTRATOR_CARD_COVERAGE_ARTIFACT: "1",
-  VACUUM_ORCHESTRATOR_CARD_FUZZ_CASES: null,
-  VACUUM_ORCHESTRATOR_CARD_FUZZ_SEED: null,
-  VACUUM_ORCHESTRATOR_CARD_METAMORPHIC_CASES: null,
-  VACUUM_ORCHESTRATOR_CARD_METAMORPHIC_SEED: null,
-  VACUUM_ORCHESTRATOR_CARD_DISCOVERY_CASES: null,
-  VACUUM_ORCHESTRATOR_CARD_DISCOVERY_SEED: null,
-  VACUUM_ORCHESTRATOR_CARD_PROPERTY_REPORT_DIR: null,
+  ...Object.fromEntries(propertyEnvKeys().map((name) => [name, null])),
   UPDATE_CHARACTERIZATION: null,
 });
 
