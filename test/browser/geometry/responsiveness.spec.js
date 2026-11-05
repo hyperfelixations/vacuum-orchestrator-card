@@ -95,3 +95,79 @@ for (const touch of [false, true]) {
     }
   });
 }
+
+// UI-35: a chosen tab is painted in the next frame around the view still shown, which takes no
+// tap meanwhile; the chosen view follows once that frame is painted.
+test("a chosen tab is painted at once and its view right after", async ({ page }) => {
+  const card = await mountCard(page, { ...BUSY, width: 380 });
+  await page.evaluate(() => {
+    // What the browser paints in the frame after the tap, read just before it paints.
+    const root = window.vocHarness.cards[0].shadowRoot;
+    root.addEventListener("click", () => requestAnimationFrame(() => {
+      const body = root.querySelector("#voc-panel");
+      window.__vocFirstFrame = { tab: root.querySelector('[role="tab"][aria-selected="true"]').dataset.view, body: body.dataset.body, stale: body.hasAttribute("data-stale"), taps: getComputedStyle(body).pointerEvents };
+    }), { once: true });
+  });
+  await card.locator('[role="tab"][data-view="rooms"]').click();
+  await page.evaluate(() => window.vocHarness.cards[0].updateComplete);
+  expect(await page.evaluate(() => window.__vocFirstFrame)).toEqual({ tab: "rooms", body: "view:queue", stale: true, taps: "none" });
+  await expect(card.locator("#voc-panel")).toHaveAttribute("data-body", "view:rooms");
+  await expect(card.locator("#voc-panel")).not.toHaveAttribute("data-stale");
+  await expect(card.locator('[role="tab"][data-view="rooms"]')).toBeFocused();
+});
+
+// UI-31: a render whose markup equals what is shown parses and changes nothing.
+test("a render with nothing new changes no node", async ({ page }) => {
+  await mountCard(page, { ...BUSY, width: 380 });
+  const mutations = await page.evaluate(async () => {
+    const card = window.vocHarness.cards[0];
+    const seen = [];
+    const observer = new MutationObserver((records) => seen.push(...records));
+    observer.observe(card.shadowRoot, { subtree: true, childList: true, attributes: true, characterData: true });
+    card._renderer.invalidate();
+    card._renderSafely();
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    observer.disconnect();
+    return seen.length;
+  });
+  expect(mutations).toBe(0);
+});
+
+// UI-35: read ahead while the card was idle, the history's first painted view holds its rows.
+test("the history read ahead shows its rows in its first view", async ({ page }) => {
+  const card = await mountCard(page, { ...BUSY, width: 380 });
+  expect(await page.evaluate(() => window.__vocIdle.flush())).toBe(1);
+  await waitForStableLayout(page, 380);
+  await page.evaluate(() => {
+    const root = window.vocHarness.cards[0].shadowRoot;
+    const observer = new MutationObserver(() => {
+      const body = root.querySelector('#voc-panel[data-body="view:history"]:not([data-stale])');
+      if (!body) return;
+      window.__vocHistory = { rows: body.querySelectorAll(".voc-job").length, loading: Boolean(body.querySelector(".voc-loading")) };
+      observer.disconnect();
+    });
+    observer.observe(root, { subtree: true, childList: true, attributes: true });
+  });
+  await card.locator('[role="tab"][data-view="history"]').click();
+  await page.evaluate(() => window.vocHarness.cards[0].updateComplete);
+  expect(await page.evaluate(() => window.__vocHistory)).toEqual({ rows: 3, loading: false });
+});
+
+// A list page another view corrects leaves the view on screen where it stands.
+test("a page change of another view keeps the view's scroll position", async ({ page }) => {
+  const card = await mountCard(page, { ...BUSY, width: 380, layout: "grid", rows: 7 });
+  await card.locator('[role="tab"][data-view="rooms"]').click();
+  await waitForStableLayout(page, 380);
+  const scrolled = await page.evaluate(async () => {
+    const card = window.vocHarness.cards[0];
+    const body = card.shadowRoot.querySelector("#voc-panel");
+    body.scrollTop = body.scrollHeight;
+    const position = body.scrollTop;
+    // The history's runs, a list the rooms view does not show.
+    card._ui.setPage("runs", 25);
+    await card.updateComplete;
+    return [position, body.scrollTop];
+  });
+  expect(scrolled[0]).toBeGreaterThan(0);
+  expect(scrolled[1]).toBe(scrolled[0]);
+});

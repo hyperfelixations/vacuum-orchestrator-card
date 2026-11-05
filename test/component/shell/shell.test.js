@@ -151,6 +151,62 @@ test("arrow keys move through the tabs and switch the view with focus on the tab
   card.unmount();
 });
 
+// UI-35: a tab the person chose shows at once; the view still shown stays, busy and untouchable,
+// until the browser has painted, then the chosen view follows. UI-36 names how long that took.
+test("a chosen tab shows at once and its view right after the next paint", async () => {
+  const card = await mountCard({ ...BUSY, config: { views: ["queue", "rooms", "diagnostics"] } });
+  const { window } = card.env;
+  const frames = [];
+  window.requestAnimationFrame = (fn) => frames.push(fn);
+  const microtasks = () => new Promise((resolve) => setTimeout(resolve, 0));
+  card.root.querySelector('[role="tab"][data-view="rooms"]').dispatchEvent(new window.MouseEvent("click", { bubbles: true, composed: true }));
+  await microtasks();
+  const body = card.root.querySelector("#voc-panel");
+  assert.equal(card.root.querySelector('[role="tab"][aria-selected="true"]').dataset.view, "rooms");
+  assert.deepEqual([body.dataset.body, body.hasAttribute("data-stale"), body.getAttribute("aria-busy"), Boolean(body.querySelector(".voc-job"))], ["view:queue", true, "true", true], "the queue still shows");
+  assert.equal(card.root.activeElement?.dataset.view, "rooms", "focus is on the chosen tab");
+  card.clock.advance(120);
+  frames.splice(0).forEach((fn) => fn());
+  await card.settle(8);
+  assert.deepEqual([body.dataset.body, body.hasAttribute("data-stale"), body.hasAttribute("aria-busy"), Boolean(body.querySelector(".voc-room"))], ["view:rooms", false, false, true]);
+  frames.splice(0).forEach((fn) => fn());
+  await card.click('[role="tab"][data-view="diagnostics"]');
+  frames.splice(0).forEach((fn) => fn());
+  await card.settle(8);
+  assert.match(card.text('[data-key="render"]'), /Last view switch\s*120 ms/);
+  card.unmount();
+});
+
+test("a card taken off the page while its view waits for the paint is complete at once", async () => {
+  const card = await mountCard(BUSY);
+  const { window } = card.env;
+  window.requestAnimationFrame = () => 0;
+  card.root.querySelector('[role="tab"][data-view="rooms"]').dispatchEvent(new window.MouseEvent("click", { bubbles: true, composed: true }));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  let complete = false;
+  const waiting = card.card.updateComplete.then((value) => (complete = value));
+  await Promise.resolve();
+  assert.equal(complete, false, "phase 2 waits");
+  card.card.remove();
+  assert.equal(await waiting, true);
+  card.unmount();
+});
+
+// UI-35: the history is read ahead once the card is idle; opened, it shows its rows at once.
+test("the history is read ahead once the card is idle and shows at once", async () => {
+  const card = await mountCard(BUSY);
+  const reads = () => card.backend.calls.filter((message) => message.type === "vacuum_orchestrator/jobs/list" && message.states?.includes("completed")).length;
+  assert.equal(reads(), 0, "nothing before the card is idle");
+  assert.equal(card.env.window.__vocIdle.flush(), 1);
+  await card.settle(16);
+  assert.equal(reads(), 1);
+  assert.equal(card.env.window.__vocIdle.pending, 0, "once per session");
+  await card.click('[role="tab"][data-view="history"]');
+  assert.equal(reads(), 1, "opened, nothing is read again");
+  assert.equal(card.all('[data-key="jobs"] .voc-job').length, 3);
+  card.unmount();
+});
+
 test("the body is a region that scrolls; as a tab panel it is a tab stop", async () => {
   const card = await mountCard(BUSY);
   const body = () => card.root.querySelector("#voc-panel");

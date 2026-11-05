@@ -46,6 +46,7 @@
     "validate:release": "node scripts/validate-release.mjs",
     "voi:record": "node scripts/record-voi.mjs",
     "readme:image": "npm run build:test && node scripts/capture-readme-image.mjs",
+    "perf": "node scripts/measure-performance.mjs",
     "test:install": "playwright install chromium firefox webkit"
   },
   "devDependencies": {

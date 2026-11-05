@@ -26,7 +26,8 @@ export function renderDiagnostics(context, vm) {
     ? `<div class="voc-diagnostics-download" data-key="download"><span>${e(context.t("diagnostics.downloadHint"))}</span>${button({ action: "navigate", args: { path: vm.download.path }, label: context.t("onboarding.action.openIntegration"), iconName: "mdi:open-in-app" })}</div>`
     : "";
   const versions = block(context.t("diagnostics.versions"), `${connection}${facts(vm.facts)}`, { iconName: "mdi:information-outline", key: "versions" });
-  return wrap(`${sink}${versions}${traceBlock(context, vm)}${download}`);
+  const display = block(context.t("diagnostics.render"), facts(vm.render), { iconName: "mdi:timer-outline", key: "render" });
+  return wrap(`${sink}${versions}${display}${traceBlock(context, vm)}${download}`);
 }
 
 export const diagnosticsView = Object.freeze({
@@ -37,7 +38,7 @@ export const diagnosticsView = Object.freeze({
   optionsSchema: Object.freeze({ show_trace: boolOption(true) }),
   primary: null,
   scopes: ({ options }) => [{ name: "diagnostics" }, ...(options.show_trace === false ? [] : [{ name: "trace" }])],
-  build: ({ model, texts, options, ui }) => buildDiagnosticsView({ model, texts, options, ui }),
+  build: ({ model, texts, options, ui, stats }) => buildDiagnosticsView({ model, texts, options, ui, stats }),
   render: renderDiagnostics,
   css: DIAGNOSTICS_CSS,
 });

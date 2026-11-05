@@ -40,6 +40,9 @@ export const historyView = Object.freeze({
     const scope = activeSegment(options.source, ui) === "jobs" ? "jobLog" : "runs";
     return [{ name: scope, params: { offset: ui.pages?.[scope] ?? 0, limit: config.page_size } }];
   },
+  // The list it pages, and read ahead once the card is idle (UI-35).
+  paged: ({ ui, options }) => [activeSegment(options.source, ui) === "jobs" ? "jobLog" : "runs"],
+  warm: true,
   build: ({ model, texts, context, options, ui, config }) => buildHistoryView({ model, texts, context, options, ui, timeFormat: config.time_format }),
   render: renderHistory,
   css: HISTORY_CSS,

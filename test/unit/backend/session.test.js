@@ -299,6 +299,33 @@ test("scopes nobody demands are pruned: a draft's at once, the rest beyond the n
   env.session.dispose();
 });
 
+// UI-35: a view the card will likely show next is read ahead, once, without a render; demanded
+// later it is there already.
+test("a scope read ahead is read once, renders no card and is there when a card asks", async () => {
+  const env = await setup({ from: "A busy afternoon" });
+  await env.start();
+  let heard = 0;
+  env.session.subscribe(() => (heard += 1));
+  const runs = { name: "runs", params: { offset: 0, limit: 25 } };
+  env.session.warm([runs, { name: "registry" }, { name: "no-such-scope" }]);
+  env.session.warm([runs]);
+  await tick();
+  assert.deepEqual([env.queries("get_history"), heard], [1, 0], "read once, no card told");
+  assert.equal(scope(env.snapshot(), 'runs|{"limit":25,"offset":0}').status, "ready");
+  env.session.setDemand("card", [runs]);
+  await tick();
+  assert.equal(env.queries("get_history"), 1, "demanded, it is not read again");
+  env.session.dispose();
+});
+
+test("nothing is read ahead outside ready", async () => {
+  const env = await setup();
+  env.session.warm([{ name: "runs", params: { offset: 0, limit: 25 } }]);
+  await tick();
+  assert.equal(env.queries("get_history"), 0);
+  env.session.dispose();
+});
+
 test("each way the integration can be unusable is its own phase", async () => {
   const notInstalled = await setup({ recording: "not_installed", from: "Vacuum Orchestrator is not installed" });
   await notInstalled.start();

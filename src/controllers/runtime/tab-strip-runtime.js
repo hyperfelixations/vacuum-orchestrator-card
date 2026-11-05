@@ -10,6 +10,8 @@
 const EDGE_PX = 1;
 const REVEAL_PAD_PX = 28;
 const COMPACT_LEVELS = Object.freeze(["labels", "action"]);
+// Fits remembered for this many rows (tabs, labels, active tab, action) at the card's width.
+export const FIT_MEMORY = 32;
 
 export function stripOverflow({ scrollLeft, clientWidth, scrollWidth }) {
   return { start: scrollLeft > EDGE_PX, end: scrollLeft + clientWidth < scrollWidth - EDGE_PX };
@@ -29,6 +31,8 @@ export function createTabStripRuntime({ root, platform }) {
   let shownView = null;
   // The last fit: the row it was measured for and its compaction level.
   let compacted = null;
+  // Earlier fits at this width by row, oldest first: a tab chosen again is not measured.
+  const fits = new Map();
 
   const measure = (strip) => ({ scrollLeft: strip.scrollLeft, clientWidth: strip.clientWidth, scrollWidth: strip.scrollWidth });
 
@@ -47,33 +51,47 @@ export function createTabStripRuntime({ root, platform }) {
     strip.scrollLeft = revealOffset({ left, right: left + tabBox.width, scrollLeft: strip.scrollLeft, clientWidth: strip.clientWidth, scrollWidth: strip.scrollWidth });
   }
 
-  // What the row's fit depends on: its width, its tabs and their labels, and the action.
+  // What the row's fit depends on besides its width, which only a resize changes: its tabs and
+  // their labels, and the action. Read from the markup, never from the layout.
   const rowKey = (strip, row) =>
-    [strip.clientWidth, ...[...strip.querySelectorAll('[role="tab"]'), row.querySelector(".voc-primary-action")]
-      .map((node) => (node ? `${node.dataset.view ?? ""}:${node.getAttribute("aria-selected") ?? ""}:${node.textContent.trim()}` : ""))]
+    [...strip.querySelectorAll('[role="tab"]'), row.querySelector(".voc-primary-action")]
+      .map((node) => (node ? `${node.dataset.view ?? ""}:${node.getAttribute("aria-selected") ?? ""}:${node.textContent.trim()}` : ""))
       .join("|");
 
   // Measured from the labelled layout, so the result depends only on the width; measured again
-  // only when the row or the fonts change, since measuring a row it just changed lays out the
-  // whole page (UI-31).
+  // only for a row not seen at this width, since measuring after a render lays out the whole page
+  // (UI-31). A fit is the level and whether the strip still scrolls at it. Returns "measured",
+  // "remembered" or "same" (the row and strip as they were).
   function compact(strip, force) {
     const row = strip.closest(".voc-tab-row") || strip;
     const key = rowKey(strip, row);
-    if (!force && compacted?.key === key) {
-      if (row.getAttribute("data-compact") !== compacted.level) {
-        if (compacted.level) row.setAttribute("data-compact", compacted.level);
+    if (force) fits.clear();
+    const known = fits.get(key);
+    if (known) {
+      fits.delete(key);
+      fits.set(key, known);
+      const same = compacted?.key === key && compacted.strip === strip;
+      compacted = { key, strip, ...known };
+      if (row.getAttribute("data-compact") !== known.level) {
+        if (known.level) row.setAttribute("data-compact", known.level);
         else row.removeAttribute("data-compact");
       }
-      return;
+      return same ? "same" : "remembered";
     }
     row.removeAttribute("data-compact");
-    let fitted = null;
-    for (const level of COMPACT_LEVELS) {
-      if (!stripOverflow({ ...measure(strip), scrollLeft: 0 }).end) break;
-      row.setAttribute("data-compact", level);
-      fitted = level;
+    let level = null;
+    let scrolls = stripOverflow({ ...measure(strip), scrollLeft: 0 }).end;
+    for (const next of COMPACT_LEVELS) {
+      if (!scrolls) break;
+      row.setAttribute("data-compact", next);
+      level = next;
+      scrolls = stripOverflow({ ...measure(strip), scrollLeft: 0 }).end;
     }
-    compacted = { key, level: fitted };
+    const fit = { level, scrolls };
+    compacted = { key, strip, ...fit };
+    fits.set(key, fit);
+    if (fits.size > FIT_MEMORY) fits.delete(fits.keys().next().value);
+    return "measured";
   }
 
   function sync({ force = false } = {}) {
@@ -83,10 +101,19 @@ export function createTabStripRuntime({ root, platform }) {
       compacted = null;
       return;
     }
-    compact(strip, force);
+    const fit = compact(strip, force);
     const active = strip.querySelector('[role="tab"][aria-selected="true"]')?.dataset.view ?? null;
-    if (force || active !== shownView) reveal(strip);
+    // An unchanged row keeps its scroll position and edges; scrolling marks them itself.
+    if (fit === "same" && active === shownView) return;
+    const changed = force || fit !== "same" || active !== shownView;
     shownView = active;
+    // A strip that does not scroll has no edge to fade and no tab to bring into view.
+    if (!compacted.scrolls) {
+      strip.removeAttribute("data-overflow-start");
+      strip.removeAttribute("data-overflow-end");
+      return;
+    }
+    if (changed) reveal(strip);
     mark(strip);
   }
 
@@ -111,6 +138,7 @@ export function createTabStripRuntime({ root, platform }) {
       stopObserving = null;
       shownView = null;
       compacted = null;
+      fits.clear();
     },
     // After every render: the edges, and the active tab when it changed.
     sync,

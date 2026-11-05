@@ -1,6 +1,9 @@
 // The browser behind the card: clock, timers, page visibility, size changes, console and Home
 // Assistant's in-app navigation. Everything else reaches the browser through the DOM it renders.
 
+export const AFTER_PAINT_LIMIT_MS = 100;
+export const IDLE_FALLBACK_MS = 2000;
+
 function documentOf(getDocument) {
   return () => getDocument?.() || null;
 }
@@ -20,6 +23,43 @@ export function createBrowserPlatform(getDocument, getHost = () => null) {
       return { cancel: () => view.clearTimeout(id) };
     },
     clearTimeout(handle) { handle?.cancel?.(); },
+    // Calls `fn` once the browser has painted: in the task after the next frame, or after
+    // `AFTER_PAINT_LIMIT_MS` where frames rest (a hidden page). Returns a handle to cancel it.
+    afterPaint(fn) {
+      const view = viewOf();
+      if (!view?.setTimeout) return null;
+      let done = false;
+      const ids = [];
+      const run = () => {
+        if (done) return;
+        done = true;
+        cancel();
+        fn();
+      };
+      function cancel() {
+        for (const [clear, id] of ids.splice(0)) clear(id);
+      }
+      if (view.requestAnimationFrame) ids.push([view.cancelAnimationFrame.bind(view), view.requestAnimationFrame(() => ids.push([view.clearTimeout.bind(view), view.setTimeout(run, 0)]))]);
+      ids.push([view.clearTimeout.bind(view), view.setTimeout(run, AFTER_PAINT_LIMIT_MS)]);
+      return {
+        cancel() {
+          done = true;
+          cancel();
+        },
+      };
+    },
+    // Calls `fn` once the browser is idle (`requestIdleCallback`; Safari has none: after
+    // `IDLE_FALLBACK_MS`). Returns a handle to cancel it.
+    whenIdle(fn) {
+      const view = viewOf();
+      if (view?.requestIdleCallback) {
+        const id = view.requestIdleCallback(() => fn());
+        return { cancel: () => view.cancelIdleCallback?.(id) };
+      }
+      if (!view?.setTimeout) return null;
+      const id = view.setTimeout(fn, IDLE_FALLBACK_MS);
+      return { cancel: () => view.clearTimeout(id) };
+    },
     isDocumentHidden: () => Boolean(currentDocument()?.hidden),
     // Calls `fn` whenever the page is hidden or shown again; returns the removal.
     onVisibilityChange(fn) {

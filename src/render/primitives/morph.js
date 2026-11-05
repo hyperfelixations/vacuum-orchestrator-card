@@ -3,7 +3,8 @@
 // node keeps its focus, caret and scroll position. See internal dev doc §9 "Morph".
 //
 // Contract for markup: repeated siblings carry a `data-key`; form values are rendered as
-// attributes (`value`, `checked`) and are not written into a control the user is editing.
+// attributes (`value`, `checked`) and are not written into a control the user is editing. A node
+// marked `data-morph="keep"` takes the new attributes and keeps its children as they are.
 
 const VALUE_ELEMENTS = new Set(["INPUT", "TEXTAREA"]);
 // Set by the runtime controllers on rendered nodes and never rendered by markup: a render keeps
@@ -53,7 +54,7 @@ function morphNode(current, next, activeElement) {
   syncAttributes(current, next);
   syncControlState(current, next, activeElement);
   // A textarea's text is its value, handled above; custom elements own their content.
-  if (current.nodeName === "TEXTAREA" || current.nodeName.includes("-")) return;
+  if (current.nodeName === "TEXTAREA" || current.nodeName.includes("-") || next.getAttribute("data-morph") === "keep") return;
   morphChildren(current, next, activeElement);
 }
 

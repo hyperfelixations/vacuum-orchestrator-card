@@ -171,7 +171,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     scope.stale = false;
     // The integration answers in order: a read sent now shows at least what the session has seen.
     scope.requested = { runtimeId: runtime.id, sequence: runtime.sequence, commitId: runtime.commitId };
-    changed();
+    touched(scope);
     const result = await SCOPE_LOADERS[scope.name](transport, scope.params);
     if (disposed) return;
     if (result.ok) {
@@ -192,8 +192,14 @@ export function createSession({ transport, platform, getHass } = {}) {
     const again = scope.reload && demandedKeys().has(scope.key);
     if (scope.reload && !again) scope.stale = true;
     prune();
-    changed();
+    touched(scope);
     if (again) await load(scope);
+  }
+
+  // A scope no card shows changes no card: the snapshot follows without a render.
+  function touched(scope) {
+    if (demandedKeys().has(scope.key)) changed();
+    else snapshot = null;
   }
 
   // A scope failure can reveal a phase: the integration unloaded, or became incompatible.
@@ -462,6 +468,19 @@ export function createSession({ transport, platform, getHass } = {}) {
     if (demands.has(owner)) demand(owner, null);
   }
 
+  // Reads scopes no card shows yet, such as the history a tap will show next (UI-35). They are not
+  // demanded and are kept like scopes left just now.
+  function warm(requests = []) {
+    if (disposed || phase !== "ready") return;
+    for (const { name, params = {} } of requests) {
+      if (!SCOPE_LOADERS[name] || HOME_ASSISTANT_SCOPES.has(name)) continue;
+      const scope = entry(scopeKey(name, params), name, params);
+      releases += 1;
+      scope.releasedAt = releases;
+      if (scope.status === "idle" || scope.stale || scope.status === "error") void load(scope);
+    }
+  }
+
   function reload(name, params = {}) {
     const scope = scopes.get(scopeKey(name, params));
     if (scope) void load(scope);
@@ -534,6 +553,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     syncHass,
     setDemand,
     releaseDemand,
+    warm,
     reload,
     validate,
     command,

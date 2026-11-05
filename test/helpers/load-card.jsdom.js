@@ -9,6 +9,7 @@ const { JSDOM } = require("jsdom");
 const CARD_TAG = "vacuum-orchestrator-card";
 const CARD_SOURCE_PATH = path.join(__dirname, "..", "..", "dist", "vacuum-orchestrator-card.js");
 const CARD_SOURCE = fs.existsSync(CARD_SOURCE_PATH) ? fs.readFileSync(CARD_SOURCE_PATH, "utf8") : null;
+const IDLE_SEAM_PATH = path.join(__dirname, "..", "fixtures", "idle-seam.js");
 
 // `now`: the instant the card's clocks read, so relative times are the same on every run; a
 // function for a clock that moves, such as a recording's.
@@ -19,6 +20,8 @@ function createTestEnvironment({ now = null } = {}) {
   window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
   window.ResizeObserver = class { observe() {} disconnect() {} };
   window.document.fonts = { ready: Promise.resolve() };
+  // Idle callbacks wait for a test's `window.__vocIdle.flush()`, as in the browser harness.
+  vm.runInContext(fs.readFileSync(IDLE_SEAM_PATH, "utf8"), dom.getInternalVMContext(), { filename: IDLE_SEAM_PATH });
   // The monotonic clock follows the same instant, so the card's time anchor moves with it.
   const clock = typeof now === "function" ? now : Number.isFinite(now) ? () => now : null;
   if (clock) {
