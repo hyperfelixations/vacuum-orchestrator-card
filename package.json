@@ -10,6 +10,7 @@
     "build:test": "npm run voi:record && npm run build",
     "check:run": "node --check dist/vacuum-orchestrator-card.js",
     "check:security": "npm audit --omit=dev --audit-level=low && npm audit signatures",
+    "report:advisories": "node scripts/report-dev-advisories.mjs",
     "test": "npm run build:test && npm run check:run && npm run test:node:run && npm run test:browser:run",
     "test:node": "npm run build:test && npm run test:node:run",
     "test:unit": "npm run build:test && npm run test:unit:run",
