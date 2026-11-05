@@ -14,37 +14,42 @@ function describedBy(field) {
   return [field.hint ? `${id}-hint` : null, field.warning ? `${id}-warning` : null, field.error ? `${id}-error` : null].filter(Boolean).join(" ") || null;
 }
 
-function choice(field, option, { role, selected, multiple }) {
-  const action = multiple ? "toggle-value" : "set-field";
-  const disabled = option.disabled === true;
-  return `<button type="button" class="voc-option${selected ? " is-selected" : ""}${option.included ? " is-included" : ""}" role="${role}"${option.title ? ` title="${e(option.title)}"` : ""} ${role === "radio" ? "aria-checked" : "aria-selected"}="${selected}" tabindex="${selected ? 0 : -1}" data-action="${action}"${argsAttr({ field: field.key, value: option.value })} data-value="${e(option.value ?? "")}" data-key="option:${e(option.value ?? "")}"${disabled ? ' aria-disabled="true"' : ""}${attr("title", option.title || null)}>${icon(selected ? "mdi:check" : option.icon)}<span>${e(option.label)}</span>${option.badge ? `<span class="voc-option-badge">${icon(option.badge)}</span>` : ""}</button>`;
+// A choice group's one tab stop (WAI-ARIA APG): its first chosen option, else the first that can
+// be chosen.
+function tabStop(options, chosen) {
+  const open = options.filter((option) => option.disabled !== true);
+  return open.find(chosen) ?? open[0] ?? options[0] ?? null;
 }
 
-function roving(markup) {
-  // Exactly one option is reachable by Tab: the selected one, else the first.
-  return markup.includes('tabindex="0"') ? markup : markup.replace('tabindex="-1"', 'tabindex="0"');
+function choice(field, option, { role, selected, multiple, stop }) {
+  const action = multiple ? "toggle-value" : "set-field";
+  const disabled = option.disabled === true;
+  return `<button type="button" class="voc-option${selected ? " is-selected" : ""}${option.included ? " is-included" : ""}" role="${role}" ${role === "radio" ? "aria-checked" : "aria-selected"}="${selected}" tabindex="${option === stop ? 0 : -1}" data-action="${action}"${argsAttr({ field: field.key, value: option.value })} data-value="${e(option.value ?? "")}" data-key="option:${e(option.value ?? "")}"${disabled ? ' aria-disabled="true"' : ""}${attr("title", option.title || null)}>${icon(selected ? "mdi:check" : option.icon)}<span>${e(option.label)}</span>${option.badge ? `<span class="voc-option-badge">${icon(option.badge)}</span>` : ""}</button>`;
 }
 
 function segmented(field) {
-  const items = field.options.map((option) => choice(field, option, { role: "radio", selected: option.value === field.value })).join("");
-  return roving(`<div class="voc-segmented" role="radiogroup" aria-labelledby="${fieldId(field.key)}-label"${attr("aria-describedby", describedBy(field))}${field.error ? ' aria-invalid="true"' : ""} data-control="choice">${items}</div>`);
+  const stop = tabStop(field.options, (option) => option.value === field.value);
+  const items = field.options.map((option) => choice(field, option, { role: "radio", selected: option.value === field.value, stop })).join("");
+  return `<div class="voc-segmented" role="radiogroup" aria-labelledby="${fieldId(field.key)}-label"${attr("aria-describedby", describedBy(field))}${field.error ? ' aria-invalid="true"' : ""} data-control="choice">${items}</div>`;
 }
 
 // A vertical single choice whose options explain themselves: a radio mark, a label and a note.
 function radios(field) {
+  const stop = tabStop(field.options, (option) => option.value === field.value);
   const items = field.options
     .map((option) => {
       const selected = option.value === field.value;
-      return `<button type="button" class="voc-radio${selected ? " is-selected" : ""}" role="radio" aria-checked="${selected}" tabindex="${selected ? 0 : -1}" data-action="set-field"${argsAttr({ field: field.key, value: option.value })} data-value="${e(option.value)}" data-key="option:${e(option.value)}">${icon(selected ? "mdi:radiobox-marked" : "mdi:radiobox-blank")}<span class="voc-radio-text"><span class="voc-radio-label">${e(option.label)}</span>${option.description ? `<span class="voc-radio-note">${e(option.description)}</span>` : ""}</span></button>`;
+      return `<button type="button" class="voc-radio${selected ? " is-selected" : ""}" role="radio" aria-checked="${selected}" tabindex="${option === stop ? 0 : -1}" data-action="set-field"${argsAttr({ field: field.key, value: option.value })} data-value="${e(option.value)}" data-key="option:${e(option.value)}">${icon(selected ? "mdi:radiobox-marked" : "mdi:radiobox-blank")}<span class="voc-radio-text"><span class="voc-radio-label">${e(option.label)}</span>${option.description ? `<span class="voc-radio-note">${e(option.description)}</span>` : ""}</span></button>`;
     })
     .join("");
-  return roving(`<div class="voc-radios" role="radiogroup" aria-labelledby="${fieldId(field.key)}-label"${attr("aria-describedby", describedBy(field))} data-control="choice">${items}</div>`);
+  return `<div class="voc-radios" role="radiogroup" aria-labelledby="${fieldId(field.key)}-label"${attr("aria-describedby", describedBy(field))} data-control="choice">${items}</div>`;
 }
 
 function chips(field) {
   const selected = new Set(field.value || []);
-  const items = field.options.map((option) => choice(field, option, { role: "option", selected: selected.has(option.value), multiple: true })).join("");
-  return roving(`<div class="voc-chips" role="listbox" aria-multiselectable="true" aria-labelledby="${fieldId(field.key)}-label"${attr("aria-describedby", describedBy(field))}${field.error ? ' aria-invalid="true"' : ""} data-control="choice">${items}</div>`);
+  const stop = tabStop(field.options, (option) => selected.has(option.value));
+  const items = field.options.map((option) => choice(field, option, { role: "option", selected: selected.has(option.value), multiple: true, stop })).join("");
+  return `<div class="voc-chips" role="listbox" aria-multiselectable="true" aria-labelledby="${fieldId(field.key)}-label"${attr("aria-describedby", describedBy(field))}${field.error ? ' aria-invalid="true"' : ""} data-control="choice">${items}</div>`;
 }
 
 function stepper(context, field) {

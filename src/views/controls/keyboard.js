@@ -1,7 +1,7 @@
 // Keyboard behaviour of the card's own controls, by event delegation. Choice groups are roving
-// tab stops: arrow keys move between options, and in a single-choice group also select. From an
-// entity search field, ArrowDown enters the match list. In an open menu the arrow keys, Home and
-// End move between its items.
+// tab stops: arrow keys move the focus and the tab stop between options, and in a single-choice
+// group also select. From an entity search field, ArrowDown enters the match list. In an open
+// menu the arrow keys, Home and End move between its items.
 
 const OPTION = "[role='radio'], [role='option']";
 
@@ -32,14 +32,15 @@ export function handleControlKeydown(event) {
   }
   const group = target.closest("[data-control='choice']");
   if (group && target.matches(OPTION)) {
-    const options = enabled([...group.querySelectorAll(OPTION)]);
+    const all = [...group.querySelectorAll(OPTION)];
+    const options = enabled(all);
     const index = options.indexOf(target);
     const select = target.getAttribute("role") === "radio";
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") return move(event, options, index + 1, select);
-    if (event.key === "ArrowLeft" || event.key === "ArrowUp") return move(event, options, index - 1, select);
-    if (event.key === "Home") return move(event, options, 0, select);
-    if (event.key === "End") return move(event, options, options.length - 1, select);
-    return false;
+    const to = { ArrowRight: index + 1, ArrowDown: index + 1, ArrowLeft: index - 1, ArrowUp: index - 1, Home: 0, End: options.length - 1 }[event.key];
+    if (to === undefined || !move(event, options, to, select)) return false;
+    const focused = options[(to + options.length) % options.length];
+    for (const option of all) option.tabIndex = option === focused ? 0 : -1;
+    return true;
   }
   const picker = target.closest("[data-control='entities']");
   if (picker) {

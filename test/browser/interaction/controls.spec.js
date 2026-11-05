@@ -2,7 +2,7 @@
 // they move, the stepper, the entity search with its match list, and the job editor end to end.
 
 const { test, expect } = require("../../helpers/playwright.js");
-const { BUSY, mountCard, named, serviceCalls } = require("../../helpers/browser-helpers.js");
+const { BUSY, fromMenu, mountCard, named, serviceCalls } = require("../../helpers/browser-helpers.js");
 
 // The job defaults page carries the same mode group and stepper as the editor.
 test("a mode group selects with the arrow keys and keeps one tab stop", async ({ page }) => {
@@ -14,6 +14,27 @@ test("a mode group selects with the arrow keys and keeps one tab stop", async ({
   await expect(group.locator('[role=radio][data-value="mop"]')).toHaveAttribute("aria-checked", "true");
   await expect(group.locator('[role=radio][data-value="mop"]')).toBeFocused();
   await expect(group.locator('[role=radio][tabindex="0"]')).toHaveCount(1);
+});
+
+// A11Y-01: a multiple choice is one tab stop, its first chosen option; the arrow keys carry it and
+// Space chooses without losing the focus.
+test("a multiple choice keeps one tab stop that the arrow keys carry", async ({ page }) => {
+  const card = await mountCard(page, { ...BUSY, config: { start_view: "robots" } });
+  for (const step of fromMenu(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]')) await step.click();
+  const allowed = card.locator('[role=listbox][aria-multiselectable="true"]').first();
+  const options = allowed.locator("[role=option]");
+  await expect(allowed.locator('[role=option][aria-selected="true"]')).toHaveCount(await options.count());
+  await expect(allowed.locator('[tabindex="0"]')).toHaveCount(1);
+  await expect(options.first()).toHaveAttribute("tabindex", "0");
+  await options.first().focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(options.nth(1)).toBeFocused();
+  await expect(options.nth(1)).toHaveAttribute("tabindex", "0");
+  await expect(allowed.locator('[tabindex="0"]')).toHaveCount(1);
+  await page.keyboard.press("Space");
+  await expect(options.nth(1)).toHaveAttribute("aria-selected", "false");
+  await expect(options.nth(1)).toBeFocused();
+  await expect(allowed.locator('[tabindex="0"]')).toHaveCount(1);
 });
 
 test("the stepper counts within its bounds", async ({ page }) => {

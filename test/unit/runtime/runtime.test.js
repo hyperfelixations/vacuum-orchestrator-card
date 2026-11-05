@@ -293,6 +293,7 @@ test("choice groups are roving tab stops and the entity search leads into its ma
   assert.equal(key(root.querySelector("#a"), "ArrowRight"), true);
   assert.equal(root.activeElement.id, "c", "a disabled option is skipped");
   assert.equal(clicked, "c", "a single choice selects as it moves");
+  assert.deepEqual(["#a", "#b", "#c"].map((id) => root.querySelector(id).tabIndex), [-1, -1, 0], "the tab stop moves with the focus");
   assert.equal(key(root.querySelector("#q"), "ArrowDown"), true);
   assert.equal(root.activeElement.id, "m1");
   assert.equal(key(root.querySelector("#m1"), "ArrowUp"), true);

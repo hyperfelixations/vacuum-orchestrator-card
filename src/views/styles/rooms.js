@@ -13,9 +13,9 @@ export const ROOMS_CSS = `
 
 .voc-room-due { display: grid; gap: 6px; }
 .voc-due { display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; align-items: center; }
-.voc-due-label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 850; letter-spacing: .03em; color: var(--voc-faint); text-transform: uppercase; }
+.voc-due-label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 850; letter-spacing: .03em; color: var(--voc-muted); text-transform: uppercase; }
 .voc-due-label ha-icon { --mdc-icon-size: 14px; }
-.voc-due--none { display: flex; gap: 4px; font-size: 12px; font-weight: 650; color: var(--voc-faint); }
+.voc-due--none { display: flex; gap: 4px; font-size: 12px; font-weight: 650; color: var(--voc-muted); }
 .voc-due--none ha-icon { --mdc-icon-size: 14px; }
 .voc-due-status { justify-self: end; display: inline-flex; align-items: center; gap: 4px; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-size: 12px; font-weight: 800; text-align: right; }
 button.voc-due-status { cursor: help; }
@@ -27,7 +27,7 @@ button.voc-due-status { cursor: help; }
 .voc-due[data-due="due"] .voc-due-bar span { background: var(--voc-warning); }
 .voc-due[data-due="due"] .voc-due-status { color: var(--voc-warning-ink); }
 .voc-due[data-due="unknown"] .voc-due-bar span { background: var(--voc-faint); }
-.voc-due[data-due="disabled"] .voc-due-status { color: var(--voc-faint); font-weight: 700; }
+.voc-due[data-due="disabled"] .voc-due-status { color: var(--voc-muted); font-weight: 700; }
 .voc-due-last { grid-column: 1 / -1; font-size: 11px; font-weight: 650; color: var(--voc-muted); }
 
 .voc-room-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; font-weight: 650; color: var(--voc-muted); }

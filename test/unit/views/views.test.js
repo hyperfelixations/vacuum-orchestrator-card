@@ -105,6 +105,22 @@ test("a field ties its label, hint and error to the control", async () => {
   assert.deepEqual(icons(parse(document, renderField(context, { key: "rooms", label: "Rooms", control: "chips", value: ["b"], options: [{ value: "a", label: "A" }, { value: "b", label: "B" }] }))), [null, "mdi:check"]);
 });
 
+// A11Y-01 (WAI-ARIA APG): a choice group is one tab stop, its first chosen option, else the first
+// that can be chosen; an option that cannot be chosen names its reason once.
+test("a choice group has one tab stop: the first chosen option, else the first that can be chosen", async () => {
+  const { renderField } = await import("../../../src/views/controls/fields.js");
+  const built = await busy();
+  const { document, context } = await renderContext(built.texts);
+  const options = [{ value: "a", label: "A", disabled: true, title: "Not offered" }, { value: "b", label: "B" }, { value: "c", label: "C" }];
+  const stops = (field) => [...parse(document, renderField(context, { key: "x", label: "X", options, ...field })).querySelectorAll("[role=option], [role=radio]")].map((option) => option.tabIndex);
+  assert.deepEqual(stops({ control: "chips", value: ["c", "b"] }), [-1, 0, -1], "two chosen: the first of them");
+  assert.deepEqual(stops({ control: "chips", value: [] }), [-1, 0, -1], "none chosen: the first that can be chosen");
+  assert.deepEqual(stops({ control: "segmented", value: null }), [-1, 0, -1]);
+  assert.deepEqual(stops({ control: "segmented", value: "c" }), [-1, -1, 0]);
+  const refused = renderField(context, { key: "x", label: "X", control: "chips", value: [], options }).match(/<button[^>]*data-value="a"[^>]*>/)[0];
+  assert.equal(refused.match(/ title=/g).length, 1, "the reason once");
+});
+
 test("an inline field puts label and hint beside the control; a single entity hides its search once chosen", async () => {
   const { renderField } = await import("../../../src/views/controls/fields.js");
   const built = await busy();

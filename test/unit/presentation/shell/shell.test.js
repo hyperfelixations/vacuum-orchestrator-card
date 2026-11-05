@@ -76,12 +76,15 @@ test("status, panel and subtitle read the newest queue facts alike", async () =>
   assert.equal(automaticSubtitle(model, "running", quiet.texts), quiet.texts.t("subtitle.waitingRunning", { count: 3 }));
 });
 
-test("each status has a tone in the RCC token derivation", async () => {
+// Fill and border follow the RCC derivation; text takes the darker ink of `--voc-ink-share`
+// (A11Y-06).
+test("each status has a tone in the RCC token derivation with a readable ink", async () => {
   const { toneFor } = await import("../../../../src/presentation/shell/status.js");
   const tone = toneFor("paused");
   assert.equal(tone.key, "paused");
+  assert.match(tone.style, /--tone-ink:color-mix\(in srgb, var\(--warning-color, #ffa600\) var\(--voc-ink-share\), var\(--primary-text-color\)\)/);
   assert.match(tone.style, /--tone-soft:color-mix\(in srgb, var\(--warning-color, #ffa600\) 20%, transparent\)/);
-  assert.match(tone.style, /--tone-border:color-mix\(in srgb, var\(--tone-ink\) 38%, transparent\)/);
+  assert.match(tone.style, /--tone-border:color-mix\(in srgb, color-mix\(in srgb, var\(--warning-color, #ffa600\) 82%, var\(--primary-text-color\)\) 38%, transparent\)/);
   assert.equal(toneFor("nonsense").key, "nonsense");
 });
 
@@ -99,7 +102,7 @@ test("controls take an accent from the tone that is never the error colour", asy
     assert.equal(accent(status), "var(--primary-color, #03a9f4)", status);
   }
   assert.match(toneFor("idle").style, /--voc-accent-soft:color-mix\(in srgb, var\(--success-color, #43a047\) 20%, transparent\);/);
-  assert.match(toneFor("idle").style, /--voc-accent-border:color-mix\(in srgb, var\(--voc-accent-ink\) 38%, transparent\);/);
+  assert.match(toneFor("idle").style, /--voc-accent-border:color-mix\(in srgb, color-mix\(in srgb, var\(--success-color, #43a047\) 82%, var\(--primary-text-color\)\) 38%, transparent\);/);
 });
 
 test("the automatic subtitle names what the card is doing", async () => {

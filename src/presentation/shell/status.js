@@ -56,9 +56,10 @@ const TONES = Object.freeze({
 const TONE_TOKENS = Object.freeze({ color: "--tone-color", ink: "--tone-ink", soft: "--tone-soft", border: "--tone-border" });
 const ACCENT_TOKENS = Object.freeze({ color: "--voc-accent", ink: "--voc-accent-ink", soft: "--voc-accent-soft", border: "--voc-accent-border" });
 
-// The RCC tone token derivation: soft fill 20 % of the colour, border 38 % of the ink.
+// The RCC tone token derivation: soft fill 20 % of the colour, border 38 % of an ink of 82 %; text
+// takes the darker ink of `--voc-ink-share` (A11Y-06).
 function derive({ color, ink, soft, border }, value) {
-  return `${color}:${value};${ink}:color-mix(in srgb, ${value} 82%, var(--primary-text-color));${soft}:color-mix(in srgb, ${value} 20%, transparent);${border}:color-mix(in srgb, var(${ink}) 38%, transparent);`;
+  return `${color}:${value};${ink}:color-mix(in srgb, ${value} var(--voc-ink-share), var(--primary-text-color));${soft}:color-mix(in srgb, ${value} 20%, transparent);${border}:color-mix(in srgb, color-mix(in srgb, ${value} 82%, var(--primary-text-color)) 38%, transparent);`;
 }
 
 // The tone colours pill, badge and accent line; the accent (`--voc-accent*`) colours the controls.

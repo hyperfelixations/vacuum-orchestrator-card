@@ -8,12 +8,12 @@ export const FORMS_CSS = `
 .voc-field--inline > .voc-field-text { display: grid; gap: 2px; flex: 1 1 150px; min-width: 0; }
 .voc-field--inline > .voc-field-error { flex-basis: 100%; }
 .voc-field-label { font-size: 12px; font-weight: 800; color: var(--primary-text-color); }
-.voc-field-optional { font-weight: 650; color: var(--voc-faint); }
+.voc-field-optional { font-weight: 650; color: var(--voc-muted); }
 .voc-field-hint { font-size: 11.5px; font-weight: 600; line-height: 1.35; color: var(--voc-muted); }
 .voc-field-hint, .voc-field-warning > span, .voc-field-error { text-wrap: pretty; }
 .voc-field-warning { display: flex; align-items: flex-start; gap: 6px; font-size: 11.5px; font-weight: 750; line-height: 1.35; color: var(--voc-warning-ink); }
 .voc-field-warning ha-icon { --mdc-icon-size: 15px; flex: none; margin-top: 1px; }
-.voc-field-error { font-size: 11.5px; font-weight: 750; line-height: 1.35; color: color-mix(in srgb, var(--voc-error) 85%, var(--primary-text-color)); }
+.voc-field-error { font-size: 11.5px; font-weight: 750; line-height: 1.35; color: var(--voc-error-ink); }
 
 .voc-segmented, .voc-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .voc-radios { display: grid; gap: 8px; min-width: 0; }
@@ -96,7 +96,7 @@ textarea.voc-input { resize: vertical; min-height: 64px; line-height: 1.35; }
 .voc-entity-name { font-size: 12.5px; font-weight: 800; }
 .voc-entity-id { font-size: 11px; font-weight: 600; color: var(--voc-muted); }
 
-.voc-disclosure { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--voc-faint); cursor: pointer; font: inherit; font-size: 10px; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; }
+.voc-disclosure { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--voc-muted); cursor: pointer; font: inherit; font-size: 10px; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; }
 .voc-disclosure ha-icon { --mdc-icon-size: 16px; }
 
 .voc-list-item { display: grid; gap: 8px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--voc-hairline); background: var(--voc-chip-bg); }

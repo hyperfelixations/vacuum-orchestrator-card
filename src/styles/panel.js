@@ -20,7 +20,7 @@ export const PANEL_CSS = `
   font-weight: 850;
   letter-spacing: .075em;
   text-transform: uppercase;
-  color: var(--voc-faint);
+  color: var(--voc-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
