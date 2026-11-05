@@ -1,7 +1,7 @@
 // Queue view: job rows (title, what the job asks for, status, progress, main action and menu),
 // attention and recovery alerts, template quick starts and pagination. The job row is shared with
 // the history view: title and details on the left, the actions on the right, centred on the row
-// while the title fits beside them (`data-title="fits"`, row-fit runtime), else below a title
+// while the title fits beside them (`data-title-fit="fits"`, row-fit runtime), else below a title
 // across the row (UI-32, LAY-09); the row's button spans both lines through a subgrid, so the
 // whole row opens the job.
 
@@ -96,8 +96,8 @@ export const QUEUE_CSS = `
 .voc-job-actions { grid-column: 3; grid-row: 2; position: relative; z-index: 1; display: flex; align-items: center; gap: var(--voc-target-gap); }
 .voc-job-actions:has(.voc-menu) { z-index: 4; }
 .voc-job .voc-menu-button { width: var(--voc-row-target); min-width: var(--voc-row-target); min-height: var(--voc-row-target); }
-.voc-job[data-title="fits"] .voc-job-title-line { grid-column: 1; }
-.voc-job[data-title="fits"] .voc-job-actions { grid-row: 1 / span 2; }
+.voc-job[data-title-fit="fits"] .voc-job-title-line { grid-column: 1; }
+.voc-job[data-title-fit="fits"] .voc-job-actions { grid-row: 1 / span 2; }
 
 .voc-alerts { display: grid; gap: 6px; }
 .voc-alert {

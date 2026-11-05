@@ -31,7 +31,7 @@ async function rowGeometry(card, name) {
       return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
     };
     const visible = [...row.querySelectorAll(".voc-job-actions .voc-button")].filter((node) => node.getBoundingClientRect().width > 0);
-    return { row: box(row), main: box(row.querySelector(".voc-job-main")), title: box(row.querySelector(".voc-job-title")), actions: visible.map(box), names: visible.map((node) => node.dataset.action), form: row.getAttribute("data-title") };
+    return { row: box(row), main: box(row.querySelector(".voc-job-main")), title: box(row.querySelector(".voc-job-title")), actions: visible.map(box), names: visible.map((node) => node.dataset.action), form: row.getAttribute("data-title-fit") };
   }, name);
 }
 
@@ -76,7 +76,7 @@ test.describe("with a mouse", () => {
         const actions = row.querySelector(".voc-job-actions").getBoundingClientRect();
         const titleBox = title.getBoundingClientRect();
         const rowBox = row.getBoundingClientRect();
-        return { name: title.textContent, form: row.getAttribute("data-title"), fits: lines === 1 && end <= actions.left - Number.parseFloat(getComputedStyle(row).columnGap) + 0.5, beside: actions.left >= end, centred: Math.abs((actions.top + actions.bottom) / 2 - (rowBox.top + rowBox.bottom) / 2) <= 1, below: actions.top >= titleBox.bottom - 1 };
+        return { name: title.textContent, form: row.getAttribute("data-title-fit"), fits: lines === 1 && end <= actions.left - Number.parseFloat(getComputedStyle(row).columnGap) + 0.5, beside: actions.left >= end, centred: Math.abs((actions.top + actions.bottom) / 2 - (rowBox.top + rowBox.bottom) / 2) <= 1, below: actions.top >= titleBox.bottom - 1 };
       }));
       for (const row of rows) {
         forms.add(row.form);

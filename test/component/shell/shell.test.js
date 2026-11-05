@@ -56,6 +56,39 @@ test("a lost connection is a hint behind the subtitle, not a warning", async () 
   card.unmount();
 });
 
+// UI-37: an empty queue beside the panel leaves the automatic line empty (UI-03); a hint still gets a
+// line of its own. A subtitle switched off or written empty stays off.
+test("a hint keeps a line of its own when the automatic subtitle has nothing to say", async () => {
+  const EMPTY = { recording: "queue_end", from: "The card opens" };
+  const card = await mountCard(EMPTY);
+  assert.equal(card.root.querySelector(".voc-subtitle"), null);
+  card.backend.disconnect();
+  await card.updateHass({});
+  assert.match(card.text(".voc-subtitle"), /^Reconnecting/);
+  assert.equal(card.root.querySelector(".voc-root").dataset.subtitle, "wrap");
+  card.backend.reconnect();
+  await card.settle(24);
+  assert.equal(card.root.querySelector(".voc-subtitle"), null);
+  card.unmount();
+  for (const config of [{ show: { subtitle: false } }, { subtitle: "" }]) {
+    const off = await mountCard({ ...EMPTY, config });
+    off.backend.disconnect();
+    await off.updateHass({});
+    assert.equal(off.root.querySelector(".voc-subtitle"), null, JSON.stringify(config));
+    off.unmount();
+  }
+});
+
+// The root's title overflow follows a new configuration; a job row's fit is an attribute of its own.
+test("a title clipped before wraps once the configuration says so", async () => {
+  const card = await mountCard({ ...BUSY, config: { title: { text: "Upstairs", overflow: "clip" } } });
+  assert.equal(card.root.querySelector(".voc-root").dataset.title, "clip");
+  card.card.setConfig({ type: "custom:vacuum-orchestrator-card", title: { text: "Upstairs", overflow: "wrap" } });
+  await card.settle();
+  assert.equal(card.root.querySelector(".voc-root").hasAttribute("data-title"), false);
+  card.unmount();
+});
+
 // LAY-05, A11Y-02: a card dialog lies over the view, which stays on screen, follows Home Assistant
 // and is inert; the dialog keeps what the user typed.
 test("a dialog covers the view, which stays live and inert below it; Escape closes it", async () => {

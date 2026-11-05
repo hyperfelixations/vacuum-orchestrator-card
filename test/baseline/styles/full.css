@@ -178,6 +178,9 @@ ha-icon {
   text-overflow: ellipsis;
 }
 
+/* A clipped line cuts inside a phrase: an atomic phrase that does not fit would be dropped whole. */
+.voc-root:not([data-subtitle="wrap"]) .voc-subtitle .voc-phrase { display: inline; }
+
 .voc-root[data-subtitle="wrap"] .voc-subtitle {
   white-space: normal;
   overflow: visible;
@@ -776,8 +779,8 @@ ha-card[data-frame] [data-scroll][data-overflow-top][data-overflow-bottom] { mas
 .voc-job-actions { grid-column: 3; grid-row: 2; position: relative; z-index: 1; display: flex; align-items: center; gap: var(--voc-target-gap); }
 .voc-job-actions:has(.voc-menu) { z-index: 4; }
 .voc-job .voc-menu-button { width: var(--voc-row-target); min-width: var(--voc-row-target); min-height: var(--voc-row-target); }
-.voc-job[data-title="fits"] .voc-job-title-line { grid-column: 1; }
-.voc-job[data-title="fits"] .voc-job-actions { grid-row: 1 / span 2; }
+.voc-job[data-title-fit="fits"] .voc-job-title-line { grid-column: 1; }
+.voc-job[data-title-fit="fits"] .voc-job-actions { grid-row: 1 / span 2; }
 
 .voc-alerts { display: grid; gap: 6px; }
 .voc-alert {

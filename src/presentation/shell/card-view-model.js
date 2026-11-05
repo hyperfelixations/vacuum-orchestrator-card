@@ -7,7 +7,7 @@ import { decide } from "../../domain/affordances.js";
 import { isTransportFailure } from "../../domain/backend-errors.js";
 import { failureText, t } from "../common/texts.js";
 import { buildHeader } from "./header.js";
-import { buildNotices, buildWarningBlock, hintText, withHint } from "./notices.js";
+import { buildNotices, buildWarningBlock, hintText } from "./notices.js";
 import { buildOnboarding } from "./onboarding.js";
 import { buildPanel } from "./panel.js";
 import { cardStatus, toneFor } from "./status.js";
@@ -49,7 +49,7 @@ export function buildCardViewModel({ model = {}, config = {}, texts, ui = {}, ta
   const status = cardStatus(model);
   const tone = toneFor(status);
   const notices = buildNotices({ configDiagnostics: config._configDiagnostics || [], diagnostics: [...(model.diagnostics?.warnings || []), ...(model.diagnostics?.hints || [])] });
-  const header = withHint(buildHeader({ model, config, texts, status }), hintText(notices.hints, texts));
+  const header = buildHeader({ model, config, texts, status, hint: hintText(notices.hints, texts) });
   const onboarding = buildOnboarding({ model, texts });
   const ready = !onboarding;
 

@@ -132,6 +132,27 @@ test("the header honours title, subtitle, icon and the show switches", async () 
   assert.deepEqual([reduced.hasSubtitle, reduced.parts], [false, "title"]);
 });
 
+// UI-37: a hint joins the line the card shows and makes it wrap. Where the automatic line has
+// nothing to say beside the panel (UI-03) the hint stands alone; a subtitle switched off or written
+// empty stays off, and outside `ready` the onboarding says what is going on.
+test("a hint joins the subtitle, stands alone where the automatic line is empty and brings back no line switched off", async () => {
+  const { texts, config } = await shell();
+  const { buildHeader } = await import("../../../../src/presentation/shell/header.js");
+  const empty = (await at(["queue_end", { from: "The card opens" }])).model;
+  const hint = texts.t("hint.readOnly");
+  const plain = buildHeader({ model: empty, config: config(), texts, status: "idle" });
+  assert.deepEqual([plain.hasSubtitle, plain.subtitleOverflow], [false, "clip"], "panel and pill say it all");
+  const alone = buildHeader({ model: empty, config: config(), texts, status: "idle", hint });
+  assert.deepEqual([alone.hasSubtitle, alone.subtitle, alone.subtitleOverflow, alone.parts], [true, hint, "wrap", null]);
+  const joined = buildHeader({ model: empty, config: config({ subtitle: "Upstairs" }), texts, status: "idle", hint });
+  assert.deepEqual([joined.subtitle, joined.subtitleOverflow], [`Upstairs · ${hint}`, "wrap"]);
+  for (const raw of [{ subtitle: "" }, { show: { subtitle: false } }]) {
+    assert.equal(buildHeader({ model: empty, config: config(raw), texts, status: "idle", hint }).hasSubtitle, false, JSON.stringify(raw));
+  }
+  const onboarding = (await at(NOT_INSTALLED)).model;
+  assert.equal(buildHeader({ model: onboarding, config: config(), texts, status: "notInstalled", hint }).hasSubtitle, false);
+});
+
 test("the panel shows the waiting count, the run line, up to three robots and the queue control", async () => {
   const { model, texts, context, config } = await shell();
   const { buildPanel } = await import("../../../../src/presentation/shell/panel.js");
@@ -229,8 +250,8 @@ test("one warning is a sentence, several a count; a hint is appended to the subt
   const several = notices.buildNotices({ diagnostics: [createDiagnostic("backend.query_failed", { params: { scope: "rooms", code: "x" } }), createDiagnostic("backend.query_failed", { params: { scope: "robots", code: "x" } })] });
   assert.equal(notices.warningText(several.warnings, texts), texts.t("warning.several", { count: 2 }));
   assert.equal(notices.buildWarningBlock({ config: config({ show: { warnings: false } }), notices: one, texts }).visible, false);
-  const header = notices.withHint({ subtitle: "Nothing waiting", hasSubtitle: true }, notices.hintText(one.hints, texts));
-  assert.equal(header.subtitle, `Nothing waiting · ${texts.t("hint.reconnecting")}`);
+  assert.equal(notices.appendHint("Nothing waiting", notices.hintText(one.hints, texts)), `Nothing waiting · ${texts.t("hint.reconnecting")}`);
+  assert.equal(notices.appendHint("Nothing waits.", "Reconnecting…"), "Nothing waits. Reconnecting…", "after a sentence the hint is a sentence of its own");
 });
 
 test("onboarding explains each unusable phase and offers Home Assistant's own pages", async () => {

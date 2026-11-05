@@ -76,15 +76,10 @@ export function buildWarningBlock({ config = {}, notices = {}, texts } = {}) {
   return { visible: Boolean(text) && config.show?.warnings !== false, text: text || "", label: texts.t("warning.label") };
 }
 
-function appendHint(line, hint) {
+// A hint follows the line's own sentence: after a stop with a space, after a full-width stop
+// without one, and after a separator where the line has no sentence end.
+export function appendHint(line, hint) {
   if (/[.!?…]$/.test(line)) return `${line} ${hint}`;
   if (/[。！？]$/.test(line)) return `${line}${hint}`;
   return `${line} · ${hint}`;
-}
-
-// A hint joins the line the card shows anyway and makes it wrap while it lasts; a hidden or
-// empty subtitle stays hidden.
-export function withHint(header, hint) {
-  if (!hint || !header.hasSubtitle) return header;
-  return { ...header, subtitle: appendHint(header.subtitle, hint), subtitleOverflow: "wrap" };
 }

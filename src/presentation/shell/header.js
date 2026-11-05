@@ -5,6 +5,7 @@ import { SETUP_STEPS } from "../../domain/setup.js";
 import { faultsText } from "../common/faults.js";
 import { list, roomIndex, robotName, slotData, jobTitle } from "../common/lookups.js";
 import { jobStateLabel, relative, t } from "../common/texts.js";
+import { appendHint } from "./notices.js";
 
 function attentionSentence(model, texts) {
   const targets = list(slotData(model, "queue")?.recoveryTargets);
@@ -57,11 +58,25 @@ export function automaticSubtitle(model, status, texts, { panelShown = false } =
   }
 }
 
+// The subtitle with the notices' `hint` (UI-22, UI-23, UI-37): the hint joins the line and makes it
+// wrap while it lasts; where the automatic line has nothing to say beside the panel it stands
+// alone. A subtitle switched off or written empty stays off, and outside `ready` the onboarding
+// says what is going on (RCC header contract).
+function subtitleLine(model, config, texts, status, hint) {
+  const show = config.show || {};
+  const own = config.subtitle?.text;
+  const line = own ?? automaticSubtitle(model, status, texts, { panelShown: show.panel !== false });
+  const overflow = config.subtitle?.overflow || "clip";
+  if (show.subtitle === false || own === "" || !hint) return { text: line, overflow };
+  if (line !== "") return { text: appendHint(line, hint), overflow: "wrap" };
+  return model.phase === "ready" ? { text: hint, overflow: "wrap" } : { text: "", overflow };
+}
+
 // `data-parts` lists the present header parts when one is missing (RCC header layout).
-export function buildHeader({ model = {}, config = {}, texts, status } = {}) {
+export function buildHeader({ model = {}, config = {}, texts, status, hint = null } = {}) {
   const show = config.show || {};
   const title = config.title?.text ?? t(texts, "card.title");
-  const subtitle = config.subtitle?.text ?? automaticSubtitle(model, status, texts, { panelShown: show.panel !== false });
+  const { text: subtitle, overflow: subtitleOverflow } = subtitleLine(model, config, texts, status, hint);
   const hasIcon = show.icon !== false;
   const hasTitle = show.title !== false && title !== "";
   const hasSubtitle = show.subtitle !== false && subtitle !== "";
@@ -77,7 +92,7 @@ export function buildHeader({ model = {}, config = {}, texts, status } = {}) {
     titleOverflow: config.title?.overflow || "wrap",
     hasSubtitle,
     subtitle,
-    subtitleOverflow: config.subtitle?.overflow || "clip",
+    subtitleOverflow,
     hasPill,
     pill: t(texts, `status.${status}`),
   };

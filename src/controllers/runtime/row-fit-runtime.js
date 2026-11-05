@@ -1,6 +1,6 @@
 // A job row keeps its main action and menu beside the title, centred on the row, while the title
 // line fits on one line beside them; otherwise the title runs across the row above the details and
-// actions (`data-title` "fits" or "wraps" on `.voc-job`, UI-32, LAY-09). See internal dev doc §8
+// actions (`data-title-fit` "fits" or "wraps" on `.voc-job`, UI-32, LAY-09). See internal dev doc §8
 // "Queue".
 
 const ROW = ".voc-job";
@@ -56,9 +56,9 @@ export function createRowFitRuntime({ root, platform }) {
     });
     fitted = next;
     for (const [row, value] of decisions) {
-      if (row.getAttribute("data-title") === value) continue;
-      if (value) row.setAttribute("data-title", value);
-      else row.removeAttribute("data-title");
+      if (row.getAttribute("data-title-fit") === value) continue;
+      if (value) row.setAttribute("data-title-fit", value);
+      else row.removeAttribute("data-title-fit");
     }
   }
 

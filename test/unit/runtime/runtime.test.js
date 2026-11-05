@@ -530,7 +530,7 @@ test("job rows keep their actions beside a title that fits, else below it, read 
   const short = fitRow(dom, root, { key: "Studio" });
   const long = fitRow(dom, root, { key: "Library, thoroughly", pill: true });
   const bare = fitRow(dom, root, { key: "Dining Room", actions: false });
-  bare.setAttribute("data-title", "fits");
+  bare.setAttribute("data-title-fit", "fits");
   // The title's text ends where its key says; the pill 60 px later; the actions start at 300.
   const textEnd = { Studio: 120, "Library, thoroughly": 260 };
   let lines = 1;
@@ -555,14 +555,14 @@ test("job rows keep their actions beside a title that fits, else below it, read 
   dom.window.getComputedStyle = (node) => (node.classList.contains("voc-job") ? { columnGap: "6px" } : style(node));
   const runtime = createRowFitRuntime({ root, platform: { observeResize: () => () => {} } });
   runtime.sync();
-  assert.deepEqual([short, long, bare].map((row) => row.getAttribute("data-title")), ["fits", "wraps", null], "the pill counts to the title line; a row without actions has no form");
+  assert.deepEqual([short, long, bare].map((row) => row.getAttribute("data-title-fit")), ["fits", "wraps", null], "the pill counts to the title line; a row without actions has no form");
   assert.equal(readAfterWrite, false);
   // A wrapped title never fits, however short its last line.
   lines = 2;
   textEnd.Studio = 121;
   short.querySelector(".voc-job-title").textContent = "Studio";
   runtime.sync({ force: true });
-  assert.equal(short.getAttribute("data-title"), "wraps");
+  assert.equal(short.getAttribute("data-title-fit"), "wraps");
 });
 
 test("a job row is measured again only when its width, title or actions change, or a font loads (UI-31)", async () => {
@@ -587,14 +587,14 @@ test("a job row is measured again only when its width, title or actions change, 
   const runtime = createRowFitRuntime({ root, platform: { observeResize: (element, fn) => { assert.equal(element, host); observing += 1; resized = fn; return () => { observing -= 1; }; } } });
   runtime.connect();
   runtime.sync();
-  assert.deepEqual([row.getAttribute("data-title"), measures], ["fits", 1]);
+  assert.deepEqual([row.getAttribute("data-title-fit"), measures], ["fits", 1]);
   // A render that leaves the row as it was keeps its form without reading the layout.
-  row.removeAttribute("data-title");
+  row.removeAttribute("data-title-fit");
   runtime.sync();
-  assert.deepEqual([row.getAttribute("data-title"), measures], ["fits", 1]);
+  assert.deepEqual([row.getAttribute("data-title-fit"), measures], ["fits", 1]);
   width = 200;
   resized();
-  assert.deepEqual([row.getAttribute("data-title"), measures], ["wraps", 2], "a narrower card measures again");
+  assert.deepEqual([row.getAttribute("data-title-fit"), measures], ["wraps", 2], "a narrower card measures again");
   row.querySelector(".voc-job-actions button").textContent = "Cancel job";
   runtime.sync();
   assert.equal(measures, 3, "changed actions measure again");

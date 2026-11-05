@@ -82,7 +82,7 @@ test.describe("the queue", () => {
     await expect(named(card, ".voc-job", "Library, thoroughly", ".voc-job-status")).toHaveText("Job ready · Rocky is busy");
     await expect(card.locator('[data-key="grace"]')).toHaveCount(0);
     // UI-32: titles that fit leave the actions beside them, centred on the row.
-    await expect(card.locator('.voc-job[data-title="fits"]')).toHaveCount(4);
+    await expect(card.locator('.voc-job[data-title-fit="fits"]')).toHaveCount(4);
     await shot(page, "queue-medium-light.png", MEDIUM);
   });
 
@@ -161,6 +161,13 @@ test.describe("the queue", () => {
     await shot(page, "queue-fault-medium-light.png", MEDIUM);
   });
 
+  // UI-34: on a phone the clipped subtitle still names what is wrong, as far as it fits.
+  test("a station fault in the clipped subtitle, compact, German", async ({ page }) => {
+    const card = await mountCard(page, { ...STATION, language: "de", config: { ...BASE, language: "de" } });
+    await expect(card.locator(".voc-subtitle")).toHaveText("Rocky · Schmutzwassertank voll");
+    await shot(page, "queue-station-german-compact-light.png", 320);
+  });
+
   test("narrow, a row's menu open", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await setCardWidth(page, NARROW);
@@ -180,8 +187,8 @@ test.describe("the queue", () => {
   test("a long title above its row's actions, narrow, German", async ({ page }) => {
     const card = await mountCard(page, { recording: "showcase", from: "Seven jobs are open", config: { ...BASE, language: "de" } });
     await setCardWidth(page, NARROW);
-    await expect(named(card, ".voc-job", "Library before the reading group on Saturday")).toHaveAttribute("data-title", "wraps");
-    await expect(named(card, ".voc-job", "Library, thoroughly")).toHaveAttribute("data-title", "fits");
+    await expect(named(card, ".voc-job", "Library before the reading group on Saturday")).toHaveAttribute("data-title-fit", "wraps");
+    await expect(named(card, ".voc-job", "Library, thoroughly")).toHaveAttribute("data-title-fit", "fits");
     await scrollTo(card, ".voc-body", 1);
     await shot(page, "queue-long-title-german-narrow-light.png");
   });
