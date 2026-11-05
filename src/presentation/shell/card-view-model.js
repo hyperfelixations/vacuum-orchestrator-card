@@ -7,7 +7,7 @@ import { decide } from "../../domain/affordances.js";
 import { isTransportFailure } from "../../domain/backend-errors.js";
 import { failureText, t } from "../common/texts.js";
 import { buildHeader } from "./header.js";
-import { buildNotices, buildWarningBlock, hintText } from "./notices.js";
+import { buildNotices, buildWarningBlock, hintText, noticeDuration } from "./notices.js";
 import { buildOnboarding } from "./onboarding.js";
 import { buildPanel } from "./panel.js";
 import { cardStatus, toneFor } from "./status.js";
@@ -28,13 +28,19 @@ function primaryReserve(tabs, definitions, texts) {
   return definitions.filter((entry) => keys.has(entry.key) && entry.primary).map((entry) => ({ icon: entry.primary.icon, label: t(texts, entry.primary.labelKey) }));
 }
 
-function noticeFor(ui, texts) {
-  const notice = ui?.notice;
-  if (!notice) return null;
+function noticeText(notice, texts) {
   if (notice.kind === "error") return { kind: "error", text: failureText(texts, notice.failure), operation: notice.operation };
   // Why a tapped control is refused, already in words.
   if (notice.text) return { kind: notice.kind, text: notice.text };
   return { kind: notice.kind, text: t(texts, notice.messageKey, notice.vars) };
+}
+
+// The card's notice with its id and, for one that goes by itself, its time (UI-33).
+function noticeFor(ui, texts) {
+  const notice = ui?.notice;
+  if (!notice) return null;
+  const shown = noticeText(notice, texts);
+  return { ...shown, id: notice.id ?? null, durationMs: noticeDuration(shown) };
 }
 
 // A page or dialog waiting for its command's answer, and the failure a dialog shows itself: a

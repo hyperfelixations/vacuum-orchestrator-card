@@ -26,6 +26,7 @@ import { createClockRuntime, watchTimes } from "../controllers/runtime/clock-run
 import { createDiagnosticsReporter } from "../controllers/runtime/diagnostics-reporter.js";
 import { createInteractionRuntime } from "../controllers/runtime/interaction-runtime.js";
 import { createKeyboardRuntime } from "../controllers/runtime/keyboard-runtime.js";
+import { createNoticeRuntime } from "../controllers/runtime/notice-runtime.js";
 import { placeMenus } from "../controllers/runtime/menu-placement.js";
 import { placeMaps } from "../controllers/runtime/map-rotation.js";
 import { createScrollRuntime } from "../controllers/runtime/scroll-runtime.js";
@@ -99,6 +100,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._rowFit = createRowFitRuntime({ root: this.shadowRoot, platform: this._platform });
     this._scroll = createScrollRuntime({ root: this.shadowRoot, platform: this._platform });
     this._layoutTier = createLayoutRuntime({ root: this.shadowRoot, platform: this._platform, onWide: (wide) => this._ui.setWide(wide) });
+    this._notices = createNoticeRuntime({ root: this.shadowRoot, platform: this._platform, onExpire: (id) => this._ui.dismissNotice(id) });
     this._clock = createClockRuntime({ platform: this._platform, now: () => this._now(), onTick: () => this._scheduleRender() });
     this._renderer = createRenderController({ computeViewModel: () => this._computeViewModel(), renderView: (viewModel) => this._renderView(viewModel) });
   }
@@ -160,6 +162,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._rowFit.connect();
     this._scroll.connect();
     this._layoutTier.connect();
+    this._notices.connect();
     // A card that changes size lays its map pictures out again, also within a width tier.
     this._stopMapResize = this._platform.observeResize(this, () => this._placeMaps());
     this._clock.connect();
@@ -179,6 +182,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._rowFit.disconnect();
     this._scroll.disconnect();
     this._layoutTier.disconnect();
+    this._notices.disconnect();
     this._stopMapResize?.();
     this._stopMapResize = null;
     this._clock.disconnect();
@@ -401,6 +405,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._overlayDepth = depth;
     this._tabStrip.sync();
     this._layoutTier.sync();
+    this._notices.sync(viewModel.notice);
     this._clock.plan(times.mode);
     this._diagnostics.reportWarnings(viewModel.notices.warnings);
     this._diagnostics.reportRenderSuccess();

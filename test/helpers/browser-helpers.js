@@ -79,7 +79,10 @@ async function waitForStableLayout(page, widthPx = null) {
           if (!cards.length || !cards.every((card) => card.shadowRoot)) return false;
           if (widthPx !== null && cards.some((card) => Math.round(card.getBoundingClientRect().width) !== widthPx)) return false;
           await document.fonts.ready;
+          // A running transform, such as a notice's running line, moves a box by design, not by layout.
+          const moving = (node) => node.getAnimations().some((animation) => animation.playState === "running" && animation.effect.getKeyframes().some((frame) => "transform" in frame));
           const read = () => cards.map((card) => Array.from(card.shadowRoot.querySelectorAll("*"), (node) => {
+            if (moving(node)) return "";
             const rect = node.getBoundingClientRect();
             return `${rect.width},${rect.height}`;
           }).join("|")).join("#");

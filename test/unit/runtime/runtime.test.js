@@ -35,6 +35,21 @@ test("ui state keeps the view, an overlay stack, pages, choices and the notice",
   assert.ok(Object.isFrozen(ui.snapshot));
 });
 
+// UI-33: every notice has its own id, so a timer that ran out for one dismisses only that one.
+test("each notice has its own id and is dismissed only while it is the card's notice", async () => {
+  const { createUIState } = await import("../../../src/controllers/runtime/ui-state.js");
+  const ui = createUIState();
+  ui.setNotice({ kind: "success", messageKey: "a" });
+  const first = ui.snapshot.notice.id;
+  ui.setNotice({ kind: "success", messageKey: "a" });
+  const second = ui.snapshot.notice.id;
+  assert.ok(Number.isInteger(first) && second > first, "the same text again is a new notice");
+  ui.dismissNotice(first);
+  assert.equal(ui.snapshot.notice.id, second, "a stale timer leaves the newer notice");
+  ui.dismissNotice(second);
+  assert.equal(ui.snapshot.notice, null);
+});
+
 // One menu is open at a time; opening a page or another view closes it.
 // LAY-16: a list page left empty by deleting its last entry steps back to the last page there is.
 test("a page past the end of its list steps back to the last page", async () => {

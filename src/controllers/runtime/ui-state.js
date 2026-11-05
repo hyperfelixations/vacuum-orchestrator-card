@@ -18,6 +18,7 @@ export function pagesPastTheEnd(slots, pages) {
 
 export function createUIState() {
   let opened = 0;
+  let notices = 0;
   let state = Object.freeze({ view: null, overlays: Object.freeze([]), pages: Object.freeze({}), expanded: Object.freeze([]), menu: null, wide: false, selectedJob: null, setupDeferred: false, choices: Object.freeze({}), notice: null, focus: null });
   const listeners = new Set();
   const publish = () => listeners.forEach((listener) => listener(state));
@@ -94,8 +95,14 @@ export function createUIState() {
       if ((jobId || null) === state.selectedJob) return state;
       return update({ selectedJob: jobId || null });
     },
+    // Each notice gets its own id: a later one replaces it, and a timer that ran out for it
+    // dismisses only it (UI-33).
     setNotice(notice) {
-      return update({ notice: notice ? Object.freeze({ ...notice }) : null });
+      return update({ notice: notice ? Object.freeze({ ...notice, id: ++notices }) : null });
+    },
+    dismissNotice(id) {
+      if (state.notice?.id !== id) return state;
+      return update({ notice: null });
     },
     // A focus request is data for the next render, not a reason for one.
     requestFocus(selector) {

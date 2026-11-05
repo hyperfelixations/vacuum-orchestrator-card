@@ -76,6 +76,17 @@ export function buildWarningBlock({ config = {}, notices = {}, texts } = {}) {
   return { visible: Boolean(text) && config.show?.warnings !== false, text: text || "", label: texts.t("warning.label") };
 }
 
+// How long a success or info notice stays before it goes by itself (UI-33): the time to read it,
+// from its length. Warnings and errors stay until dismissed or replaced.
+export const NOTICE_TIMING = Object.freeze({ baseMs: 1000, perCharacterMs: 60, minMs: 2000, maxMs: 10000 });
+const TIMED_KINDS = new Set(["success", "info"]);
+
+export function noticeDuration({ kind, text } = {}) {
+  if (!TIMED_KINDS.has(kind)) return null;
+  const { baseMs, perCharacterMs, minMs, maxMs } = NOTICE_TIMING;
+  return Math.min(maxMs, Math.max(minMs, baseMs + perCharacterMs * [...String(text ?? "")].length));
+}
+
 // A hint follows the line's own sentence: after a stop with a space, after a full-width stop
 // without one, and after a separator where the line has no sentence end.
 export function appendHint(line, hint) {

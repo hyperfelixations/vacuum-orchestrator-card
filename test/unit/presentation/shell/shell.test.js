@@ -254,6 +254,30 @@ test("one warning is a sentence, several a count; a hint is appended to the subt
   assert.equal(notices.appendHint("Nothing waits.", "Reconnecting…"), "Nothing waits. Reconnecting…", "after a sentence the hint is a sentence of its own");
 });
 
+// UI-33: success and info notices stay for the time it takes to read them, two seconds for a short
+// one and ten at most; warnings and errors stay until they are dismissed.
+test("a notice stays as long as its text takes to read, and warnings and errors stay", async () => {
+  const { NOTICE_TIMING, noticeDuration } = await import("../../../../src/presentation/shell/notices.js");
+  assert.deepEqual({ ...NOTICE_TIMING }, { baseMs: 1000, perCharacterMs: 60, minMs: 2000, maxMs: 10000 });
+  assert.equal(noticeDuration({ kind: "success", text: "Auftrag gespeichert." }), 2200);
+  assert.equal(noticeDuration({ kind: "success", text: "Saved." }), 2000);
+  assert.equal(noticeDuration({ kind: "info", text: "x".repeat(100) }), 7000);
+  assert.equal(noticeDuration({ kind: "info", text: "x".repeat(400) }), 10000);
+  assert.equal(noticeDuration({ kind: "warning", text: "No answer" }), null);
+  assert.equal(noticeDuration({ kind: "error", text: "Refused" }), null);
+});
+
+test("the shell hands each notice on with its id and time", async () => {
+  const { model, texts, VIEWS, config } = await shell();
+  const { buildTabs } = await import("../../../../src/presentation/shell/tabs.js");
+  const { buildCardViewModel } = await import("../../../../src/presentation/shell/card-view-model.js");
+  const tabs = buildTabs({ definitions: VIEWS, model, config: config(), ui: {}, texts });
+  const vm = (notice) => buildCardViewModel({ model, config: config(), texts, ui: { notice }, tabs, definitions: VIEWS, context: {} }).notice;
+  const saved = vm({ id: 4, kind: "success", messageKey: "notice.jobUpdated" });
+  assert.deepEqual([saved.id, saved.durationMs], [4, Math.min(10000, Math.max(2000, 1000 + 60 * saved.text.length))]);
+  assert.equal(vm({ id: 5, kind: "warning", messageKey: "notice.outcomeUnknown" }).durationMs, null);
+});
+
 test("onboarding explains each unusable phase and offers Home Assistant's own pages", async () => {
   const { buildOnboarding } = await import("../../../../src/presentation/shell/onboarding.js");
   const { HACS_INTEGRATION_URL, INTEGRATION_URL, SET_UP_PATH, INTEGRATION_PAGE_PATH } = await import("../../../../src/presentation/common/links.js");

@@ -188,6 +188,47 @@ test("a command's notice is announced and can be dismissed", async () => {
   card.unmount();
 });
 
+// UI-33: a notice that informs goes by itself after its reading time and holds while the pointer
+// is on it; a refused command's notice stays.
+test("an informing notice goes by itself after its reading time, a refusal stays", async () => {
+  const card = await mountCard({ recording: "queue_controls", from: "Rocky cleans while two jobs wait" });
+  const { window } = card.env;
+  const original = window.setTimeout;
+  const timers = [];
+  window.setTimeout = (fn, ms, ...rest) => {
+    if (ms < 1000) return original.call(window, fn, ms, ...rest);
+    timers.push({ fn, ms });
+    return original.call(window, () => {}, 0);
+  };
+  const up = await card.menuItem(card.named(".voc-job", "Dining Room"), `[data-action="move-job"][data-args*='"up"']`);
+  await card.click(up);
+  const notice = card.root.querySelector(".voc-notice--info");
+  const ms = Number(notice.dataset.timeout);
+  assert.ok(ms >= 2000, "it is shown long enough to read");
+  assert.equal(notice.style.getPropertyValue("--voc-notice-duration"), `${ms}ms`);
+  assert.ok(notice.querySelector(".voc-notice-timer"), "a line runs down its time");
+  assert.equal(timers.filter((entry) => entry.ms === ms).length, 1, "its time runs");
+  const text = notice.querySelector(".voc-notice-text");
+  text.dispatchEvent(new window.MouseEvent("pointermove", { bubbles: true, composed: true }));
+  assert.ok(notice.hasAttribute("data-paused"), "the pointer moving on it holds it");
+  text.dispatchEvent(new window.MouseEvent("pointerout", { bubbles: true, composed: true, relatedTarget: null }));
+  assert.ok(!notice.hasAttribute("data-paused"));
+  const resumed = timers.at(-1);
+  assert.equal(resumed.ms, ms, "the clock stood still, so all of its time is left");
+  resumed.fn();
+  await card.settle(8);
+  assert.equal(card.root.querySelector(".voc-notice"), null, "it went by itself");
+  card.backend.failNext({ service: "pause_queue" }, haError.homeAssistant("Unauthorized"));
+  await card.click(".voc-queue-control");
+  await card.settle(32);
+  const refusal = card.root.querySelector(".voc-notice--error");
+  assert.ok(refusal);
+  assert.equal(refusal.dataset.timeout, undefined);
+  assert.equal(refusal.querySelector(".voc-notice-timer"), null);
+  window.setTimeout = original;
+  card.unmount();
+});
+
 // UI-17: without an answer the card says the result is unknown and sends nothing again.
 test("a command without an answer is reported as unknown in the card's language", async () => {
   const card = await mountCard({ ...RUNNING, config: { language: "de" } });

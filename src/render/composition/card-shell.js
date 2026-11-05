@@ -35,9 +35,13 @@ function renderWarning(warning) {
 
 const NOTICE_ICONS = Object.freeze({ error: "mdi:alert-circle-outline", warning: "mdi:alert-outline", success: "mdi:check-circle-outline", info: "mdi:information-outline" });
 
+// A notice of its own (`data-key`) is a new node, so its running line starts again; one that goes
+// by itself names its time (UI-33).
 function renderNotice(context, notice) {
   if (!notice) return "";
-  return `<div class="voc-notice voc-notice--float voc-notice--${e(notice.kind)}" role="${notice.kind === "success" || notice.kind === "info" ? "status" : "alert"}">${icon(NOTICE_ICONS[notice.kind] ?? NOTICE_ICONS.success)}<span class="voc-notice-text">${e(notice.text)}</span>${button({ action: "dismiss-notice", label: context.t("action.dismiss"), iconName: "mdi:close", variant: "icon", className: "voc-notice-close" })}</div>`;
+  const timed = Number.isFinite(notice.durationMs);
+  const timing = timed ? ` data-timeout="${notice.durationMs}" style="--voc-notice-duration: ${notice.durationMs}ms"` : "";
+  return `<div class="voc-notice voc-notice--float voc-notice--${e(notice.kind)}"${attr("data-key", notice.id === null || notice.id === undefined ? null : `notice:${notice.id}`)} role="${notice.kind === "success" || notice.kind === "info" ? "status" : "alert"}"${timing}>${timed ? '<span class="voc-notice-timer" aria-hidden="true"></span>' : ""}${icon(NOTICE_ICONS[notice.kind] ?? NOTICE_ICONS.success)}<span class="voc-notice-text">${e(notice.text)}</span>${button({ action: "dismiss-notice", label: context.t("action.dismiss"), iconName: "mdi:close", variant: "icon", className: "voc-notice-close" })}</div>`;
 }
 
 function renderPanel(context, panel) {
