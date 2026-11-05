@@ -727,6 +727,12 @@ test("navigation, paging and reload reach their owners; an unknown action does n
   assert.equal(commands[0].operation, "probe");
   assert.equal(router.handle("no-such-action"), undefined);
   assert.equal(router.has("queue-control"), true);
+  // An action named from the page like a member of Object.prototype is no handler.
+  ui.setMenu("job:job-1");
+  for (const name of ["constructor", "toString", "hasOwnProperty", "__proto__"]) {
+    assert.deepEqual([router.handle(name, {}), router.has(name)], [undefined, false], name);
+  }
+  assert.equal(ui.snapshot.menu, "job:job-1", "an unknown action leaves an open menu open");
 });
 
 // WAI-ARIA APG "Menu Button": a menu opens with focus on its first item, or its last from ArrowUp,

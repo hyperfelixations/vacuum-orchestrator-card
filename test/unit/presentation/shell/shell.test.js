@@ -27,6 +27,7 @@ async function shell(state = BUSY, options = {}) {
 }
 
 const statusOf = async (model) => (await import("../../../../src/presentation/shell/status.js")).cardStatus(model);
+const slotMode = (model) => model.slots.queue.data.mode;
 
 test("status precedence: phase, attention, work in progress, queue mode, unfinished setup", async () => {
   assert.equal(await statusOf((await at(BUSY)).model), "cleaning");
@@ -59,6 +60,20 @@ test("the integration's counts mark attention and work before the open jobs are 
   // subtitle has nothing to add; without the panel it says it.
   assert.equal(automaticSubtitle(queue({}), "idle", texts), texts.t("subtitle.nothingWaiting"));
   for (const [mode, status] of [["idle", "idle"], ["running", "running"], ["paused", "paused"]]) assert.equal(automaticSubtitle(queue({ mode }), status, texts, { panelShown: true }), "", status);
+});
+
+// Status, panel and subtitle take the queue's mode and counts from one place, the newest the
+// session knows, so they cannot disagree.
+test("status, panel and subtitle read the newest queue facts alike", async () => {
+  const quiet = await at(QUIET);
+  const { buildPanel } = await import("../../../../src/presentation/shell/panel.js");
+  const { automaticSubtitle } = await import("../../../../src/presentation/shell/header.js");
+  const model = { ...quiet.model, live: { mode: "running", pendingJobs: 3, needsAttention: false, activeCount: 0, attentionCount: 0 } };
+  assert.equal(slotMode(quiet.model), "idle", "the queue read is older and rests");
+  assert.equal(await statusOf(model), "running");
+  const panel = buildPanel({ model, config: {}, texts: quiet.texts, context: quiet.context });
+  assert.deepEqual([panel.mode, panel.value], ["running", "3"]);
+  assert.equal(automaticSubtitle(model, "running", quiet.texts), quiet.texts.t("subtitle.waitingRunning", { count: 3 }));
 });
 
 test("each status has a tone in the RCC token derivation", async () => {

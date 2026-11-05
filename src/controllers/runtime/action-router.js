@@ -5,6 +5,7 @@
 // own message. A command belongs to the page or dialog it was sent from, which waits for the
 // answer. See internal dev doc §9 "Aktionsvertrag" and "Command-Lebenszyklus".
 
+import { own } from "../../core/lookup.js";
 import { CREATE_TARGET, QUEUE_TARGET, ROOMS_TARGET, SETUP_TARGET, jobTarget, robotTarget, roomTarget, templateTarget, queueControl } from "../../domain/affordances.js";
 import { applyDraftChange, createDraft, draftFieldOf, draftToIntent, draftToTemplate, draftToUpdatePatch, isDirty, toggleRoom } from "../../domain/job-draft.js";
 import { createRoomDraft, intervalOf, isRoomDirty, newBinding, newRequirement, roomDraftToPatch, roomFieldOf, splitList, updateRoomDraft } from "../../domain/room-draft.js";
@@ -711,7 +712,7 @@ export function createActionRouter({ ui, getSession, getModel, getConfig, platfo
       return heldEditors().length ? renewHolds() : null;
     },
     handle(action, args = {}) {
-      const handler = handlers[action];
+      const handler = own(handlers, action);
       if (!handler || (ui.overlay?.busy && !WHILE_BUSY.has(action))) return undefined;
       // Choosing anything, a menu item included, closes an open menu.
       if (action !== "toggle-menu" && ui.snapshot.menu) ui.setMenu(null);

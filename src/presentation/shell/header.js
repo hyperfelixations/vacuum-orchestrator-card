@@ -4,6 +4,7 @@
 import { SETUP_STEPS } from "../../domain/setup.js";
 import { faultsText } from "../common/faults.js";
 import { list, roomIndex, robotName, slotData, jobTitle } from "../common/lookups.js";
+import { queueFacts } from "../common/queue-facts.js";
 import { jobStateLabel, relative, t } from "../common/texts.js";
 import { appendHint } from "./notices.js";
 
@@ -25,7 +26,7 @@ function attentionSentence(model, texts) {
 // subtitle names the next job or that the run waits for new work instead (UI-03).
 export function automaticSubtitle(model, status, texts, { panelShown = false } = {}) {
   const queue = slotData(model, "queue");
-  const waiting = queue?.total ?? model.live?.pendingJobs ?? 0;
+  const waiting = queueFacts(model).pendingJobs ?? 0;
   const next = panelShown && waiting && queue?.offset === 0 ? list(queue.jobs)[0] : null;
   if (next && (status === "running" || status === "paused" || status === "idle" || status === "waiting" || status === "setup")) return t(texts, "subtitle.next", { job: jobTitle(next, roomIndex(model), model) });
   // With nothing waiting the panel already says how the queue rests or runs.

@@ -1,6 +1,8 @@
 // Closed vocabularies of the Vacuum Orchestrator API 4. Values are protocol identifiers;
 // wording belongs to i18n. See internal dev doc §7 "Vokabular".
 
+import { own } from "../core/lookup.js";
+
 const list = (values) => Object.freeze([...values]);
 
 export const CLEANING_MODES = list(["vacuum", "mop", "vacuum_and_mop", "vacuum_then_mop"]);
@@ -150,7 +152,7 @@ function member(values, value) {
 
 export function canonicalizeMode(value) {
   if (typeof value !== "string") return null;
-  return MODE_ALIASES[value.trim().toLowerCase()] ?? null;
+  return own(MODE_ALIASES, value.trim().toLowerCase()) ?? null;
 }
 
 export const isOperation = (value) => member(OPERATIONS, value);
@@ -160,7 +162,7 @@ export const isMopRoute = (value) => member(MOP_ROUTES, value);
 export const isProvenanceKind = (value) => member(PROVENANCE_KINDS, value);
 export const isAfterCancel = (value) => member(AFTER_CANCEL, value);
 // Whether a value is a rung of the given setting's ladder.
-export const isSettingValue = (field, value) => Boolean(SETTING_LADDERS[field]) && member(SETTING_LADDERS[field], value);
+export const isSettingValue = (field, value) => Boolean(own(SETTING_LADDERS, field)) && member(SETTING_LADDERS[field], value);
 export const isSettingsPolicy = (value) => member(SETTINGS_POLICIES, value);
 export const isJobState = (value) => member(JOB_STATES, value);
 export const isTerminalState = (value) => member(TERMINAL_STATES, value);

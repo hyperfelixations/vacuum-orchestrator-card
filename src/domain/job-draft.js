@@ -4,6 +4,7 @@
 // checks every input (`validate`); `draftFieldOf` places its errors. See internal dev doc §7
 // "Entwurf".
 
+import { own } from "../core/lookup.js";
 import { MODE_SETTINGS, SETTING_FIELDS, canonicalizeMode } from "./job-schema.js";
 
 export const INTENT_FIELDS = Object.freeze([
@@ -138,7 +139,7 @@ export function createDraft({ kind = "job", target = null, defaults = {}, jobDef
     values.automatic = target ? target.automatic === true : false;
   }
   for (const [key, value] of Object.entries(defaults || {})) {
-    if (value !== undefined && key in values) values[key] = copy(value);
+    if (value !== undefined && Object.hasOwn(values, key)) values[key] = copy(value);
   }
   values = fitSettings(values, jobDefaults);
   const id = kind === "template" ? target?.templateId ?? null : target?.jobId ?? null;
@@ -198,10 +199,10 @@ export function isDirty(draft) {
 export function draftFieldOf(draft, path) {
   const parts = String(path).split(".");
   if (draft?.meta?.kind === "template") {
-    if (parts[0] !== "intent") return TEMPLATE_FIELDS_ON_WIRE[parts[0]] ?? null;
+    if (parts[0] !== "intent") return own(TEMPLATE_FIELDS_ON_WIRE, parts[0]) ?? null;
     parts.shift();
   }
-  return FIELDS[parts[0]] ?? null;
+  return own(FIELDS, parts[0]) ?? null;
 }
 
 // The full intent for `create_job` or a template: unset optional fields and the settings the

@@ -8,7 +8,18 @@ import { decodeError } from "./error-decoding.js";
 export const DOMAIN = "vacuum_orchestrator";
 export const DEFAULT_TIMEOUT_MS = 15_000;
 
-function withTimeout(promise, platform, timeoutMs, channel) {
+// Gives a subscription back. A closed connection may refuse, which leaves nothing to do.
+export function releaseSubscription(handle) {
+  if (typeof handle !== "function") return;
+  try {
+    Promise.resolve(handle()).catch(() => {});
+  } catch (_error) {
+    // A handle from a closed connection cannot be released twice.
+  }
+}
+
+// `onLate`: receives an answer that arrives after the timeout, which nobody else will see.
+function withTimeout(promise, platform, timeoutMs, channel, onLate = null) {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || typeof platform?.setTimeout !== "function") return promise;
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -19,7 +30,10 @@ function withTimeout(promise, platform, timeoutMs, channel) {
     }, timeoutMs);
     Promise.resolve(promise).then(
       (value) => {
-        if (settled) return;
+        if (settled) {
+          onLate?.(value);
+          return;
+        }
         settled = true;
         platform.clearTimeout?.(handle);
         resolve(value);
@@ -44,12 +58,12 @@ export function createTransport({ getHass, platform, timeoutMs = DEFAULT_TIMEOUT
   let disposed = false;
   const hass = () => (disposed ? null : getHass?.() ?? null);
 
-  async function settle(channel, start, limit) {
+  async function settle(channel, start, limit, onLate = null) {
     if (disposed) return backendFailure("connection_lost", { detail: "disposed", channel });
     try {
       const call = start();
       if (isBackendFailure(call)) return call;
-      return ok(await withTimeout(call, platform, limit ?? timeoutMs, channel));
+      return ok(await withTimeout(call, platform, limit ?? timeoutMs, channel, onLate));
     } catch (error) {
       return decodeError(error, channel);
     }
@@ -81,13 +95,14 @@ export function createTransport({ getHass, platform, timeoutMs = DEFAULT_TIMEOUT
   }
 
   // Resolves to `{ ok: true, data: unsubscribe }` or a failure record. The connection library
-  // re-subscribes by itself after a reconnect.
+  // re-subscribes by itself after a reconnect. A subscription confirmed after its timeout is given
+  // back at once.
   function subscribe(message, onEvent) {
     return settle("ws", () => {
       const connection = hass()?.connection;
       if (typeof connection?.subscribeMessage !== "function") return backendFailure("connection_lost", { detail: "no connection", channel: "ws" });
       return connection.subscribeMessage(onEvent, sendable(message));
-    });
+    }, undefined, releaseSubscription);
   }
 
   // Connection lifecycle: "ready" after every (re)connect, "disconnected" on loss.

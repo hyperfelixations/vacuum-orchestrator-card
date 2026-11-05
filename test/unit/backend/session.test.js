@@ -50,6 +50,7 @@ async function setup({ recording = "showcase", from = "A quiet afternoon", hidde
   const recordedEvent = lastEventBefore(recording, from);
   let listener = null;
   let unsubscribed = 0;
+  let releaseFailure = null;
   let patch = null;
   const connection = {
     sendMessagePromise(message) {
@@ -70,6 +71,7 @@ async function setup({ recording = "showcase", from = "A quiet afternoon", hidde
         unsubscribed += 1;
         listener = null;
         release();
+        return releaseFailure ? Promise.reject(releaseFailure) : undefined;
       };
     },
     addEventListener: (name, handler) => backend.hass.connection.addEventListener(name, handler),
@@ -107,6 +109,14 @@ async function setup({ recording = "showcase", from = "A quiet afternoon", hidde
     count,
     get unsubscribed() {
       return unsubscribed;
+    },
+    // The callback of the current subscription, as the connection library holds it.
+    get listener() {
+      return listener;
+    },
+    // Giving the subscription back fails, as on a closed connection.
+    failRelease(error) {
+      releaseFailure = error;
     },
     // The next request like `match` fails with `error`, as Home Assistant rejects it.
     failNext: (match, error) => failures.push({ match, error }),
@@ -169,6 +179,123 @@ test("the live values follow the integration's events, counts included", async (
   await env.advance(env.QUIET_MS);
   const live = env.snapshot().live;
   assert.deepEqual([live.activeCount, live.attentionCount, live.pendingJobs, live.needsAttention], [1, 1, 2, true]);
+  env.session.dispose();
+});
+
+// The live values are the newest the session knows of this runtime, from an event or a queue
+// read, with the point they were read at.
+test("the probe's queue gives the first live values", async () => {
+  const env = await setup();
+  await env.start();
+  const probe = await env.backend.hass.connection.sendMessagePromise({ type: `${DOMAIN}/queue/get`, offset: 0, limit: 1 });
+  assert.deepEqual({ ...env.snapshot().live }, { runtimeId: probe.runtime_id, sequence: probe.runtime_sequence, mode: probe.mode, pendingJobs: probe.total, needsAttention: probe.needs_attention === true, queueRevision: probe.queue_revision, activeCount: probe.active_count, attentionCount: probe.attention_count });
+  env.session.dispose();
+});
+
+test("a queue read newer than the last event replaces its live values, an older event does not", async () => {
+  const env = await setup();
+  await env.start();
+  env.emit({ attention_count: 1, needs_attention: true });
+  const { id, sequence } = env.snapshot().runtime;
+  assert.equal(env.snapshot().live.attentionCount, 1);
+  env.rewrite(QUEUE_GET, { runtime_id: id, runtime_sequence: sequence + 2, attention_count: 0, needs_attention: false });
+  env.session.setDemand("card", [{ name: "queue", params: { offset: 0, limit: 25 } }]);
+  await tick();
+  const read = env.snapshot().live;
+  assert.deepEqual([read.attentionCount, read.needsAttention, read.sequence], [0, false, sequence + 2]);
+  env.emit({ attention_count: 1, needs_attention: true, runtime_sequence: sequence + 1 });
+  await env.advance(env.QUIET_MS);
+  assert.equal(env.snapshot().live, read, "an event older than the read changes nothing");
+  env.session.dispose();
+});
+
+test("a repeated or older event leaves the live values and the clock as they are", async () => {
+  const env = await setup();
+  await env.start();
+  env.emit({ attention_count: 1 });
+  const { sequence } = env.snapshot().runtime;
+  const live = { ...env.snapshot().live };
+  const now = env.session.now();
+  env.emit({ attention_count: 0, runtime_sequence: sequence, server_time: new Date(now + 3_600_000).toISOString() });
+  env.emit({ attention_count: 0, runtime_sequence: sequence - 1, server_time: new Date(now + 3_600_000).toISOString() });
+  assert.equal(env.session.now(), now);
+  // A read makes the session publish what it holds.
+  env.session.setDemand("card", [{ name: "rooms" }]);
+  await tick();
+  assert.deepEqual({ ...env.snapshot().live }, live);
+  env.session.dispose();
+});
+
+test("events of a subscription the session gave up are ignored", async () => {
+  const env = await setup();
+  await env.start();
+  const given = env.listener;
+  env.patchHass((base) => ({ config: { ...base.config, components: [...base.config.components].filter((name) => name !== DOMAIN) } }));
+  env.session.syncHass();
+  await tick();
+  assert.equal(env.unsubscribed, 1);
+  const [phase, sent] = [env.snapshot().phase, env.sent.length];
+  given({ ...lastEventBefore("showcase", "A quiet afternoon"), runtime_id: "runtime-gone", runtime_sequence: 1 });
+  await tick();
+  assert.deepEqual([env.snapshot().phase, env.sent.length], [phase, sent], "no probe follows it");
+  env.session.dispose();
+});
+
+test("giving a subscription back that the connection refuses is no unhandled rejection", async () => {
+  const env = await setup();
+  await env.start();
+  const unhandled = [];
+  const record = (reason) => unhandled.push(reason);
+  process.on("unhandledRejection", record);
+  env.failRelease(new Error("connection closed"));
+  env.session.dispose();
+  await tick();
+  process.off("unhandledRejection", record);
+  assert.deepEqual([env.unsubscribed, unhandled], [1, []]);
+});
+
+// A scope that an event names while it is read reads again after that read, or, demanded by
+// nobody, is stale: the read that ends cannot show what changed after it was sent.
+test("an event that names a scope while it is read is not lost", async () => {
+  const env = await setup();
+  await env.start();
+  const release = env.backend.hold();
+  env.session.setDemand("card", [{ name: "rooms" }]);
+  await tick();
+  env.session.releaseDemand("card");
+  env.emit({ changed: ["rooms"] });
+  await env.advance(env.QUIET_MS);
+  release();
+  await tick();
+  assert.deepEqual([scope(env.snapshot(), "rooms|{}").status, scope(env.snapshot(), "rooms|{}").stale], ["ready", true]);
+  env.session.setDemand("card", [{ name: "rooms" }]);
+  await tick();
+  assert.equal(env.queries("get_rooms"), 2, "shown again, it is read again");
+  env.session.dispose();
+});
+
+// Scopes nobody demands stay for a quick return, at most PRUNE_KEEP of them, the longest unused
+// first; an editor draft's preview goes with its last demand, also when its read ends later.
+test("scopes nobody demands are pruned: a draft's at once, the rest beyond the newest few", async () => {
+  const env = await setup();
+  const { PRUNE_KEEP } = await import("../../../src/backend/session.js");
+  await env.start();
+  const jobs = (snapshot) => Object.keys(snapshot.scopes).filter((key) => key.startsWith("job|"));
+  for (let index = 0; index < PRUNE_KEEP + 5; index += 1) {
+    env.session.setDemand("card", [{ name: "job", params: { jobId: `job-${index}` } }]);
+    await tick();
+  }
+  const kept = jobs(env.snapshot());
+  assert.equal(kept.length, PRUNE_KEEP + 1, "the demanded one and the newest undemanded");
+  assert.ok(!kept.includes('job|{"jobId":"job-0"}') && kept.includes(`job|{"jobId":"job-${PRUNE_KEEP + 4}"}`));
+  env.session.setDemand("editor", [{ name: "preview", params: { draft: "a" } }]);
+  // Still being read when the draft changes.
+  env.session.setDemand("editor", [{ name: "preview", params: { draft: "b" } }]);
+  assert.equal(scope(env.session.getSnapshot(), 'preview|{"draft":"a"}').status, "loading");
+  await tick();
+  assert.deepEqual(Object.keys(env.snapshot().scopes).filter((key) => key.startsWith("preview|")), ['preview|{"draft":"b"}'], "a draft read that ended after its demand is dropped");
+  env.session.releaseDemand("editor");
+  assert.deepEqual(Object.keys(env.session.getSnapshot().scopes).filter((key) => key.startsWith("preview|")), []);
   env.session.dispose();
 });
 

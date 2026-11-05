@@ -1,6 +1,8 @@
 // The room settings draft and the `update_room` patch it produces. The integration checks every
 // input (`validate`); `roomFieldOf` places its errors. See internal dev doc §7 "Raumentwurf".
 
+import { own } from "../core/lookup.js";
+
 function copy(value) {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
 }
@@ -130,9 +132,9 @@ const DUE_FIELDS = Object.freeze({ basis: "basis", vacuum_seconds: "vacuumHours"
 export function roomFieldOf(path) {
   const [root, part, child] = String(path).split(".");
   if (root !== "configuration") return null;
-  if (part === "due_policy") return DUE_FIELDS[child] ?? null;
+  if (part === "due_policy") return own(DUE_FIELDS, child) ?? null;
   if (part === "requirements" || part === "bindings") return /^\d+$/.test(child ?? "") ? `${part}.${child}` : null;
-  return ROOM_FIELDS[part] ?? null;
+  return own(ROOM_FIELDS, part) ?? null;
 }
 
 const hoursToSeconds = (value) => (value === null || value === undefined || value === "" ? null : Number(value) * 3600);
