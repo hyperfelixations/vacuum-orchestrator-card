@@ -8,7 +8,7 @@
 const VALUE_ELEMENTS = new Set(["INPUT", "TEXTAREA"]);
 // Set by the runtime controllers on rendered nodes and never rendered by markup: a render keeps
 // them, so a controller that finds them right changes nothing and the page is not laid out again.
-const RUNTIME_ATTRIBUTES = new Set(["data-compact", "data-overflow-start", "data-overflow-end", "data-overflow-top", "data-overflow-bottom", "data-placement", "data-rotated", "data-title-fit", "data-waiting", "data-paused"]);
+const RUNTIME_ATTRIBUTES = new Set(["data-compact", "data-overflow-start", "data-overflow-end", "data-overflow-top", "data-overflow-bottom", "data-placement", "data-rotated", "data-title-fit", "data-paused"]);
 
 function keyOf(node) {
   return node.nodeType === 1 ? node.getAttribute("data-key") : null;

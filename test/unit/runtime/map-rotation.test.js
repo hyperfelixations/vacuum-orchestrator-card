@@ -30,7 +30,7 @@ test("the decision stands until the box changes by more than 10 %", async () => 
 });
 
 test("a loaded map in its stage is laid out turned or upright; a stage that may not turn stays upright", async () => {
-  const { placeMaps } = await load();
+  const { placeMap } = await load();
   const { window } = new JSDOM('<!doctype html><div id="root"><div data-map-stage data-rotation="auto"><img src="a.png"></div><div data-map-stage data-rotation="none"><img src="b.png"></div></div>');
   const root = window.document.getElementById("root");
   for (const stage of root.querySelectorAll("[data-map-stage]")) Object.defineProperty(stage, "clientWidth", { value: 350 });
@@ -40,7 +40,7 @@ test("a loaded map in its stage is laid out turned or upright; a stage that may 
     Object.defineProperty(img, "naturalHeight", { value: 300 });
   }
   // A box of 350 × 490 px: turned, the map is 467 px wide and 350 px tall, and so is its stage.
-  placeMaps(root, { viewportHeight: 700 });
+  for (const stage of root.querySelectorAll("[data-map-stage]")) placeMap(stage, stage.querySelector("img"), { viewportHeight: 700 });
   const [turned, upright] = root.querySelectorAll("[data-map-stage]");
   const image = turned.querySelector("img");
   assert.deepEqual([turned.dataset.rotated, turned.style.height, image.style.width, image.style.height], ["true", "467px", "467px", "350px"]);
@@ -52,7 +52,7 @@ test("a loaded map in its stage is laid out turned or upright; a stage that may 
 // In a robot's card the map takes its column up to a fixed height, so a tall map on
 // a wide card turns instead of standing narrow beside empty space.
 test("a stage with a fixed height measures against it rather than the viewport", async () => {
-  const { placeMaps } = await load();
+  const { placeMap } = await load();
   const { window } = new JSDOM('<!doctype html><div id="root"><div data-map-stage data-rotation="auto" data-max-height="260"><img src="tall.png"></div></div>');
   const root = window.document.getElementById("root");
   const stage = root.querySelector("[data-map-stage]");
@@ -62,6 +62,6 @@ test("a stage with a fixed height measures against it rather than the viewport",
   Object.defineProperty(img, "naturalWidth", { value: 300 });
   Object.defineProperty(img, "naturalHeight", { value: 400 });
   // Upright it would be 195 × 260 px; turned it is 347 px wide and 260 px tall.
-  placeMaps(root, { viewportHeight: 900 });
+  placeMap(stage, img, { viewportHeight: 900 });
   assert.deepEqual([stage.dataset.rotated, stage.style.height, img.style.width, img.style.height], ["true", "260px", "260px", "347px"]);
 });

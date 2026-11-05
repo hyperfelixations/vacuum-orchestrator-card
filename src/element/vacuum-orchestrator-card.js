@@ -11,6 +11,8 @@ import { DEFAULT_LANGUAGE } from "../i18n/locales.js";
 import { affordanceContext } from "../domain/affordances.js";
 import { acquireSession } from "../backend/session-registry.js";
 import { FRAME_MIN_PX, GRID_OPTIONS, frameMode, standardHeightPx } from "./card-layout.js";
+import { cardDemand, resolvedOptions } from "./card-demand.js";
+import { renderSignature } from "./render-signature.js";
 import { buildCardDomainModel } from "../application/card-domain-model.js";
 import { hassChanged, readHomeAssistant } from "../backend/home-assistant.js";
 import { buildCardViewModel } from "../presentation/shell/card-view-model.js";
@@ -28,7 +30,7 @@ import { createInteractionRuntime } from "../controllers/runtime/interaction-run
 import { createKeyboardRuntime } from "../controllers/runtime/keyboard-runtime.js";
 import { createNoticeRuntime } from "../controllers/runtime/notice-runtime.js";
 import { placeMenus } from "../controllers/runtime/menu-placement.js";
-import { placeMaps } from "../controllers/runtime/map-rotation.js";
+import { createMapRuntime } from "../controllers/runtime/map-runtime.js";
 import { createScrollRuntime } from "../controllers/runtime/scroll-runtime.js";
 import { createLayoutRuntime } from "../controllers/runtime/layout-runtime.js";
 import { createRowFitRuntime } from "../controllers/runtime/row-fit-runtime.js";
@@ -43,12 +45,6 @@ const CARD_SIZE_MAX_ROWS = 14;
 const COLLABORATORS = Object.freeze({ isSupportedLanguage, viewTypes: VIEW_TYPES, optionSchemaForView });
 const STYLES = buildStyles({ viewCss: VIEW_CSS });
 let ownerSequence = 0;
-
-function resolvedOptions(definition, requested = {}) {
-  const resolved = {};
-  for (const [name, descriptor] of Object.entries(definition?.optionsSchema || {})) resolved[name] = requested[name] === undefined ? descriptor.default : requested[name];
-  return resolved;
-}
 
 export class VacuumOrchestratorCard extends HTMLElement {
   constructor() {
@@ -101,6 +97,8 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._scroll = createScrollRuntime({ root: this.shadowRoot, platform: this._platform });
     this._layoutTier = createLayoutRuntime({ root: this.shadowRoot, platform: this._platform, onWide: (wide) => this._ui.setWide(wide) });
     this._notices = createNoticeRuntime({ root: this.shadowRoot, platform: this._platform, onExpire: (id) => this._ui.dismissNotice(id) });
+    // A card that changes size lays its map pictures out again, also within a width tier.
+    this._maps = createMapRuntime({ root: this.shadowRoot, host: this, platform: this._platform, viewportHeight: () => this.ownerDocument?.defaultView?.innerHeight ?? 0 });
     this._clock = createClockRuntime({ platform: this._platform, now: () => this._now(), onTick: () => this._scheduleRender() });
     this._renderer = createRenderController({ computeViewModel: () => this._computeViewModel(), renderView: (viewModel) => this._renderView(viewModel) });
   }
@@ -163,16 +161,11 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._scroll.connect();
     this._layoutTier.connect();
     this._notices.connect();
-    // A card that changes size lays its map pictures out again, also within a width tier.
-    this._stopMapResize = this._platform.observeResize(this, () => this._placeMaps());
+    this._maps.connect();
     this._clock.connect();
     this._syncSession();
     void this._router.resumeHolds();
     this._renderSafely();
-  }
-
-  _placeMaps() {
-    placeMaps(this.shadowRoot, { viewportHeight: this.ownerDocument?.defaultView?.innerHeight ?? 0 });
   }
 
   disconnectedCallback() {
@@ -183,8 +176,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._scroll.disconnect();
     this._layoutTier.disconnect();
     this._notices.disconnect();
-    this._stopMapResize?.();
-    this._stopMapResize = null;
+    this._maps.disconnect();
     this._clock.disconnect();
     this._router.pauseHolds();
     this._releaseSession();
@@ -272,31 +264,8 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._lastRequests = null;
   }
 
-  // The scopes this card reads, by slot. The base set serves the shell; the active view, the page
-  // on screen and a dialog above it add their own.
   _requests(tabs) {
-    const ui = this._ui.snapshot;
-    const pageSize = this._config.page_size;
-    const requests = {
-      queue: { name: "queue", params: { offset: ui.pages.queue ?? 0, limit: pageSize } },
-      openJobs: { name: "openJobs", params: {} },
-      rooms: { name: "rooms", params: {} },
-      robots: { name: "robots", params: {} },
-      candidates: { name: "candidates", params: {} },
-      registry: { name: "registry", params: {} },
-      setup: { name: "setup", params: {} },
-      errorTexts: { name: "errorTexts", params: { language: this._language() } },
-    };
-    const add = (list) => {
-      for (const request of list || []) requests[request.slot || request.name] = { name: request.name, params: request.params || {} };
-    };
-    const definition = viewFor(tabs?.active);
-    if (definition?.scopes) add(definition.scopes({ ui, model: this._model, options: resolvedOptions(definition, tabs.activeTab?.options), config: this._config }));
-    for (const overlay of Object.values(this._layers())) {
-      const overlayDefinition = overlay ? overlayFor(overlay.kind) : null;
-      if (overlayDefinition?.scopes) add(overlayDefinition.scopes({ ui, overlay, config: this._config }));
-    }
-    return requests;
+    return cardDemand({ ui: this._ui.snapshot, config: this._config, language: this._language(), model: this._model, tabs, layers: this._layers() });
   }
 
   _language() {
@@ -336,16 +305,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
   }
 
   _signature({ model, texts }) {
-    return JSON.stringify({
-      session: this._hold?.session.getSnapshot().version ?? null,
-      config: this._configVersion,
-      language: texts.language,
-      scheme: this._scheme(),
-      minute: Math.floor(model.nowMs / 60000),
-      second: this._clock.mode === "second" ? Math.floor(model.nowMs / 1000) : null,
-      ui: this._ui.snapshot,
-      hass: [model.robotsLive, model.entityReadings, model.areas, model.operations, model.permissions, model.entityCatalog.length],
-    });
+    return renderSignature({ sessionVersion: this._hold?.session.getSnapshot().version ?? null, configVersion: this._configVersion, language: texts.language, scheme: this._scheme(), nowMs: model.nowMs, clockMode: this._clock.mode, ui: this._ui.snapshot, model });
   }
 
   // The texts note whether a shown time counts seconds; the clock ticks accordingly.
@@ -391,7 +351,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._rowFit.sync();
     this._scroll.sync(this._scrollStack(viewModel));
     placeMenus(this.shadowRoot);
-    this._placeMaps();
+    this._maps.sync();
     const requested = this._ui.consumeFocus();
     if (requested) focusSelector(this.shadowRoot, requested, ring);
     else if (depth > previousDepth && held && viewModel.dialog) focusSelector(this.shadowRoot, ".voc-dialog [data-autofocus]", ring) || focusSelector(this.shadowRoot, "#voc-dialog-title", ring);
