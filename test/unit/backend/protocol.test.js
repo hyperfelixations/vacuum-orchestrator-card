@@ -16,15 +16,16 @@ function recordedAnswerServices() {
   return step.hass.services.vacuum_orchestrator;
 }
 
-test("the catalog names the 13 actions, 16 commands, 6 card commands, 12 queries and both read actions", async () => {
+test("the catalog names the 13 actions, 16 commands, 6 card commands, 11 queries and both read actions", async () => {
   const { ACTIONS, CARD_COMMANDS, CONFIGURATION_COMMANDS, CONFIGURATION_QUERIES, OPERATIONS } = await load();
   assert.equal(ACTIONS.length, 13);
   assert.ok(Object.isFrozen(ACTIONS));
   assert.ok(ACTIONS.includes("end_queue") && ACTIONS.includes("return_robot") && ACTIONS.includes("correct_job"));
-  assert.equal(CONFIGURATION_COMMANDS.length, 17);
-  assert.ok(CONFIGURATION_COMMANDS.includes("rename_robot") && !CONFIGURATION_COMMANDS.includes("release_room"));
+  assert.equal(CONFIGURATION_COMMANDS.length, 16);
+  // The name travels with configure_robot (ROB-02); the card sends no rename_robot.
+  assert.ok(CONFIGURATION_COMMANDS.includes("configure_robot") && !CONFIGURATION_COMMANDS.includes("rename_robot") && !CONFIGURATION_COMMANDS.includes("release_room"));
   assert.deepEqual([...CARD_COMMANDS], ["complete_setup", "hold_job", "renew_job_hold", "release_job_hold", "release_rooms", "revoke_rooms"]);
-  assert.equal(CONFIGURATION_QUERIES.length, 12);
+  assert.equal(CONFIGURATION_QUERIES.length, 11);
   assert.ok(CONFIGURATION_QUERIES.includes("preview_job") && CONFIGURATION_QUERIES.includes("validate") && CONFIGURATION_QUERIES.includes("get_setup"));
   assert.equal(new Set(OPERATIONS).size, OPERATIONS.length);
   assert.ok(OPERATIONS.includes("get_queue") && OPERATIONS.includes("get_job"));
@@ -77,7 +78,6 @@ test("every guard accepts its fixture record, with or without additional fields"
     jobsPage: W.wireJobListPage([W.wireJob()]),
     job: W.wireJob(),
     roomsPage: W.wirePage("rooms", [W.wireRoom()]),
-    room: W.wireRoom(),
     robotsPage: W.wirePage("robots", [W.wireRobot()]),
     candidatesPage: W.wirePage("candidates", [W.wireCandidate()]),
     templatesPage: W.wirePage("templates", [W.wireTemplate()]),

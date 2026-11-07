@@ -6,7 +6,7 @@ export const DETAIL_CSS = `
 .voc-detail-line { display: flex; flex-wrap: wrap; gap: 6px; }
 .voc-detail-position { display: flex; align-items: center; gap: var(--voc-target-gap); font-size: 12px; font-weight: 700; color: var(--voc-muted); }
 .voc-detail-position > span { margin-right: 4px; }
-.voc-detail-ok { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; font-weight: 700; color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); }
+.voc-detail-ok { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; font-weight: 700; color: var(--voc-success-ink); }
 .voc-detail-ok ha-icon { --mdc-icon-size: 16px; }
 .voc-inline-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .voc-axis { display: grid; gap: 4px; }
@@ -37,11 +37,11 @@ export const DETAIL_CSS = `
 
 .voc-trace { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 11.5px; }
 .voc-trace li { display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; align-items: baseline; }
-.voc-trace-time { color: var(--voc-faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.voc-trace-time { color: var(--voc-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .voc-trace li.voc-trace-day { display: block; margin-top: 6px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--voc-muted); }
 .voc-trace li.voc-trace-day:first-child { margin-top: 0; }
 .voc-trace-event { font-weight: 800; }
-.voc-trace li[data-tone="attention"] .voc-trace-event { color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
+.voc-trace li[data-tone="attention"] .voc-trace-event { color: var(--voc-error-ink); }
 .voc-trace-detail { min-width: 0; color: var(--voc-muted); overflow-wrap: anywhere; }
 .voc-trace-count { font-weight: 800; color: var(--voc-muted); font-variant-numeric: tabular-nums; }
 

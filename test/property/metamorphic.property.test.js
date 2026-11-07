@@ -7,15 +7,19 @@ const W = require("../helpers/voi-records.js");
 const { checkGenerated } = require("./check.js");
 const { propertyRun } = require("./run-config.js");
 
+// A wire field may be named like a member of Object.prototype; it is as unknown as any other.
+const PROTOTYPE_NAMES = ["constructor", "__proto__", "toString", "hasOwnProperty", "valueOf"];
+
 test("unknown wire fields change only the unknown-field inventory", async () => {
   const { normalizeJob } = await import("../../src/domain/job.js");
   const { normalizeRoom } = await import("../../src/domain/rooms.js");
-  const { cases, seed } = propertyRun("METAMORPHIC", 240, "voc-metamorphic-v2");
+  const { cases, seed } = propertyRun("METAMORPHIC", 240, "voc-metamorphic-v3");
   checkGenerated({
     name: "additive fields",
     cases,
     seed,
-    generate: (random, index) => ({ field: `future_${random.integer(1000)}`, job: W.wireJob({ job_id: `job-${index}`, passes: 1 + random.integer(10) }), room: W.wireRoom({ room_id: `room-${index}` }) }),
+    generate: (random, index) => ({ field: random.integer(4) === 0 ? random.pick(PROTOTYPE_NAMES) : `future_${random.integer(1000)}`, job: W.wireJob({ job_id: `job-${index}`, passes: 1 + random.integer(10) }), room: W.wireRoom({ room_id: `room-${index}` }) }),
+    classify: ({ field }) => (PROTOTYPE_NAMES.includes(field) ? "prototype name" : "future field"),
     verify({ field, job, room }) {
       for (const [normalize, wire] of [[normalizeJob, job], [normalizeRoom, room]]) {
         const { unknownFields: before, ...known } = normalize(wire);

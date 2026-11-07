@@ -77,9 +77,14 @@ async function waitForStableLayout(page, widthPx = null) {
         page.evaluate(async (widthPx) => {
           const cards = window.vocHarness?.cards || [];
           if (!cards.length || !cards.every((card) => card.shadowRoot)) return false;
+          // A view switch's second phase and the renders it gathered come first.
+          await Promise.all(cards.map((card) => card.updateComplete));
           if (widthPx !== null && cards.some((card) => Math.round(card.getBoundingClientRect().width) !== widthPx)) return false;
           await document.fonts.ready;
+          // A running transform, such as a notice's running line, moves a box by design, not by layout.
+          const moving = (node) => node.getAnimations().some((animation) => animation.playState === "running" && animation.effect.getKeyframes().some((frame) => "transform" in frame));
           const read = () => cards.map((card) => Array.from(card.shadowRoot.querySelectorAll("*"), (node) => {
+            if (moving(node)) return "";
             const rect = node.getBoundingClientRect();
             return `${rect.width},${rect.height}`;
           }).join("|")).join("#");

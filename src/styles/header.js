@@ -63,6 +63,9 @@ export const HEADER_CSS = `
   text-overflow: ellipsis;
 }
 
+/* A clipped line cuts inside a phrase: an atomic phrase that does not fit would be dropped whole. */
+.voc-root:not([data-subtitle="wrap"]) .voc-subtitle .voc-phrase { display: inline; }
+
 .voc-root[data-subtitle="wrap"] .voc-subtitle {
   white-space: normal;
   overflow: visible;

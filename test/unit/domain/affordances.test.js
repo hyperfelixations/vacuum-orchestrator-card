@@ -7,7 +7,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const load = () => import("../../../src/domain/affordances.js");
-const ALL = ["move_job", "update_job", "start_job", "cancel_job", "delete_job", "retry_job", "correct_job", "run_queue", "pause_queue", "resume_queue", "create_job", "configure_queue", "release_rooms", "revoke_rooms", "update_room", "disable_room", "enable_room", "configure_robot", "rename_robot", "remove_robot", "resolve_recovery", "add_robot", "create_job_from_template", "save_template", "remove_template", "reset_template_demand", "end_queue", "return_robot", "complete_setup"];
+const ALL = ["move_job", "update_job", "start_job", "cancel_job", "delete_job", "retry_job", "correct_job", "run_queue", "pause_queue", "resume_queue", "create_job", "configure_queue", "release_rooms", "revoke_rooms", "update_room", "disable_room", "enable_room", "configure_robot", "remove_robot", "resolve_recovery", "add_robot", "create_job_from_template", "save_template", "remove_template", "reset_template_demand", "end_queue", "return_robot", "complete_setup"];
 
 async function context(overrides = {}) {
   const { affordanceContext } = await load();
@@ -80,8 +80,8 @@ test("room actions follow the room's verdicts", async () => {
 test("robot actions follow the robot's verdicts; a docked robot is not sent home", async () => {
   const { robotAffordances } = await load();
   const ctx = await context();
-  const busy = robotAffordances({ robotId: "r", actions: { configure: no("robot_busy"), rename: yes, remove: no("robot_busy"), return_to_dock: no("robot_already_executing") } }, ctx);
-  assert.deepEqual(states(busy), { configure: "disabled", rename: "enabled", remove: "disabled", returnToDock: "hidden" });
+  const busy = robotAffordances({ robotId: "r", actions: { configure: no("robot_busy"), remove: no("robot_busy"), return_to_dock: no("robot_already_executing") } }, ctx);
+  assert.deepEqual(states(busy), { configure: "disabled", remove: "disabled", returnToDock: "hidden" });
   assert.equal(robotAffordances({ robotId: "r", actions: { return_to_dock: no("robot_at_dock") } }, ctx).returnToDock.state, "hidden");
   assert.equal(robotAffordances({ robotId: "r", actions: { return_to_dock: no("robot_needs_attention") } }, ctx).returnToDock.reason, "robot_needs_attention");
   assert.equal(robotAffordances({ robotId: "r", actions: { return_to_dock: yes } }, await context({ operations: ALL.filter((name) => name !== "return_robot") })).returnToDock.reason, "operation_missing");
@@ -111,6 +111,6 @@ test("against a recording, every object carries the integration's verdicts", asy
   const running = model.slots.openJobs.data.jobs[0];
   assert.deepEqual([jobAffordances(running, ctx).cancel.state, jobAffordances(running, ctx).delete.state], ["enabled", "hidden"]);
   const robot = robotAffordances(model.slots.robots.data.items[0], ctx);
-  assert.deepEqual([robot.configure.state, robot.remove.reason, robot.rename.state], ["enabled", "robot_busy", "enabled"], "a working robot is configured for its next job, not removed");
+  assert.deepEqual([robot.configure.state, robot.remove.reason], ["enabled", "robot_busy"], "a working robot is configured for its next job, not removed");
   assert.ok(model.slots.rooms.data.items.every((room) => roomAffordances(room, ctx).release.state !== "hidden"));
 });

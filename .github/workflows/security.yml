@@ -1,7 +1,7 @@
 # Dependency audit: any advisory against a runtime dependency fails, and every installed package
-# needs a valid registry signature. Advisories against build and test tooling are reported by
-# GitHub (Dependabot alerts and security updates) and do not stop CI: none of that code ships.
-# The schedule catches advisories published without a new commit.
+# needs a valid registry signature. Advisories against build and test tooling do not stop CI, since
+# none of that code ships: the job summary lists them, and GitHub raises Dependabot alerts and
+# security updates. The schedule catches advisories published without a new commit.
 
 name: Security
 
@@ -33,6 +33,9 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Report advisories against build and test tooling
+        run: npm run report:advisories
 
       - name: Audit dependencies and registry signatures
         run: npm run check:security

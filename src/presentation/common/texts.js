@@ -3,6 +3,7 @@
 // reads in the integration's own text, and a code without any text is named.
 // See internal dev doc §8 "Wortwahl".
 
+import { own } from "../../core/lookup.js";
 import { DUE_REASONS, FAILURE_CODES, READINESS_REASONS, isClientCode } from "../../domain/backend-errors.js";
 
 const FAILURES = new Set(FAILURE_CODES);
@@ -109,7 +110,8 @@ export const queueModeLabel = (texts, mode) => t(texts, `queue.mode.${mode || "i
 const ADAPTERS = Object.freeze({ roborock: "robot.adapter.roborock", home_assistant: "robot.adapter.homeAssistant" });
 
 export function adapterLabel(texts, adapter) {
-  return ADAPTERS[adapter] ? t(texts, ADAPTERS[adapter]) : adapter || t(texts, "value.unknown");
+  const key = own(ADAPTERS, adapter);
+  return key ? t(texts, key) : adapter || t(texts, "value.unknown");
 }
 
 // The integration's text for one of its codes, or null while none is known.

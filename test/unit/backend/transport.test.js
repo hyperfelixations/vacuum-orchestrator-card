@@ -134,6 +134,34 @@ test("subscribing hands back the unsubscribe function and connection events reac
   assert.equal(listeners.ready, undefined);
 });
 
+// A subscription the connection confirms after its time ran out would deliver events nobody
+// listens for: it is given back once, also by a disposed transport, and a refused release is no
+// unhandled rejection.
+test("a subscription confirmed too late is given back once", async () => {
+  const { createTransport } = await load();
+  const clock = new VirtualClock();
+  const confirms = [];
+  const released = [];
+  const connection = { subscribeMessage: () => new Promise((resolve) => confirms.push(resolve)) };
+  const transport = createTransport({ getHass: () => ({ connection }), platform: platformOf(clock), timeoutMs: 1000 });
+  const unhandled = [];
+  const record = (reason) => unhandled.push(reason);
+  process.on("unhandledRejection", record);
+  const first = transport.subscribe({ type: "x" }, () => {});
+  const second = transport.subscribe({ type: "x" }, () => {});
+  clock.advance(1000);
+  assert.deepEqual([(await first).code, (await second).code], ["timeout", "timeout"]);
+  confirms[0](() => released.push("first"));
+  transport.dispose();
+  confirms[1](() => {
+    released.push("second");
+    return Promise.reject(new Error("connection closed"));
+  });
+  for (let index = 0; index < 4; index += 1) await new Promise((resolve) => setImmediate(resolve));
+  process.off("unhandledRejection", record);
+  assert.deepEqual([released, unhandled], [["first", "second"], []]);
+});
+
 test("a disposed transport sends nothing", async () => {
   const { createTransport } = await load();
   let calls = 0;

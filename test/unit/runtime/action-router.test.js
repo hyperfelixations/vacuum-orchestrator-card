@@ -205,12 +205,10 @@ test("ending the queue asks how started jobs end, and only confirms without any"
   assert.deepEqual([quick.commands[0].operation, quick.commands[0].parameters, quick.ui.overlay], ["end_queue", {}, null], "without confirmations the integration's default applies");
 });
 
-test("the setup opens as a page, and a setup step can switch the view", async () => {
+test("the setup opens as a page", async () => {
   const { router, ui } = await setup();
   router.handle("open-setup");
   assert.deepEqual(shown(ui.overlay), { kind: "setup-guide" });
-  router.handle("show-view", { view: "rooms" });
-  assert.deepEqual([ui.snapshot.view, ui.overlay], ["rooms", null]);
 });
 
 test("a robot is sent home through its own command", async () => {
@@ -342,7 +340,7 @@ test("a command without an answer is reported as unknown and the page stays", as
   page.router.handle("set-field", { field: "passes", value: 3 });
   await page.router.handle("save-draft");
   assert.deepEqual([page.ui.overlay.kind, page.ui.overlay.busy, page.ui.overlay.draft.passes, page.commands.length], ["job-editor", false, 3, 2]);
-  assert.deepEqual({ ...page.ui.snapshot.notice }, { kind: "warning", messageKey: "notice.outcomeUnknown" });
+  assert.deepEqual({ ...page.ui.snapshot.notice }, { kind: "warning", messageKey: "notice.outcomeUnknown", id: 1 });
   assert.equal(page.ui.consumeFocus(), "#voc-overlay-title");
   const dialog = await setup({ answer: (operation) => (operation === "hold_job" ? HELD(operation) : { ...lost, code: "connection_lost" }) });
   dialog.router.handle("open-job", { jobId: "job-1" });
@@ -503,7 +501,7 @@ test("without a verdict nothing is sent; a page left meanwhile keeps nothing of 
   const lost = await setup({ verdict: () => failure });
   lost.router.handle("create-job", { roomIds: ["room-library"] });
   await lost.router.handle("save-draft");
-  assert.deepEqual([lost.commands.length, lost.ui.overlay.kind, { ...lost.ui.snapshot.notice }], [0, "job-editor", { kind: "error", operation: "create_job", failure }]);
+  assert.deepEqual([lost.commands.length, lost.ui.overlay.kind, { ...lost.ui.snapshot.notice }], [0, "job-editor", { kind: "error", operation: "create_job", failure, id: 1 }]);
   let leave = null;
   const verdict = () => {
     leave();
@@ -523,7 +521,7 @@ test("a refusal keeps the page open and becomes the notice", async () => {
   router.handle("set-field", { field: "passes", value: 3 });
   await router.handle("save-draft");
   assert.equal(ui.overlay.kind, "job-editor");
-  assert.deepEqual({ ...ui.snapshot.notice }, { kind: "error", operation: "update_job", failure });
+  assert.deepEqual({ ...ui.snapshot.notice }, { kind: "error", operation: "update_job", failure, id: 1 });
 });
 
 test("templates are created, edited, used and removed through their commands", async () => {
@@ -727,6 +725,12 @@ test("navigation, paging and reload reach their owners; an unknown action does n
   assert.equal(commands[0].operation, "probe");
   assert.equal(router.handle("no-such-action"), undefined);
   assert.equal(router.has("queue-control"), true);
+  // An action named from the page like a member of Object.prototype is no handler.
+  ui.setMenu("job:job-1");
+  for (const name of ["constructor", "toString", "hasOwnProperty", "__proto__"]) {
+    assert.deepEqual([router.handle(name, {}), router.has(name)], [undefined, false], name);
+  }
+  assert.equal(ui.snapshot.menu, "job:job-1", "an unknown action leaves an open menu open");
 });
 
 // WAI-ARIA APG "Menu Button": a menu opens with focus on its first item, or its last from ArrowUp,
@@ -842,7 +846,7 @@ test("an editor whose job another card holds closes with the reason", async () =
   const { router, ui } = await setup({ answer: (operation) => (operation === "hold_job" ? held : { ok: true, data: null }) });
   await router.handle("edit-job", { jobId: "job-1" });
   assert.equal(ui.overlay, null);
-  assert.deepEqual({ ...ui.snapshot.notice }, { kind: "error", operation: "hold_job", failure: held });
+  assert.deepEqual({ ...ui.snapshot.notice }, { kind: "error", operation: "hold_job", failure: held, id: 1 });
 });
 
 // JOB-20: only a card on screen keeps its hold alive; detached, it lets the hold lapse, and back on

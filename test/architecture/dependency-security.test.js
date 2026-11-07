@@ -2,7 +2,8 @@
 // Supply-chain gates: no dependency is pinned past its fixes, every advisory against a runtime
 // dependency and every package without a registry signature stops CI and the release, and every
 // action runs from a reviewed commit that Dependabot keeps current. Advisories against build and
-// test tooling do not gate: none of that code ships. See internal dev doc §4 "Abhängigkeits-Sicherheit".
+// test tooling do not gate, since none of that code ships; CI reports them (SEC-07). See internal
+// dev doc §4 "Abhängigkeits-Sicherheit".
 // Boundary: the files are read as text; whether an advisory exists is npm audit's verdict in CI.
 
 const test = require("node:test");
@@ -35,24 +36,62 @@ test("overrides only set a caret minimum for packages in the lockfile", () => {
   assert.equal(pkg.resolutions, undefined);
 });
 
-test("check:security audits runtime at any severity and registry signatures, not tooling advisories", () => {
+test("check:security audits runtime at any severity and registry signatures; tooling advisories are reported", () => {
   assert.equal(pkg.scripts["check:security"], "npm audit --omit=dev --audit-level=low && npm audit signatures");
+  assert.equal(pkg.scripts["report:advisories"], "node scripts/report-dev-advisories.mjs");
 });
+
+// The report comes first, so it shows even when the gating audit stops the job. Neither step may
+// fail quietly.
+const AUDIT_STEPS = "run: npm ci\n\n      - name: Report advisories against build and test tooling\n        run: npm run report:advisories\n\n      - name: Audit dependencies and registry signatures\n        run: npm run check:security\n";
 
 test("the security workflow audits every push, pull request and week", () => {
   const workflow = read(".github", "workflows", "security.yml");
   assert.match(workflow, /^on:\n  push:\n    branches: \[main\]\n  pull_request:\n    branches: \[main\]\n  schedule:\n    - cron: "[^"]+"\n  workflow_dispatch:/m);
   assert.match(workflow, /^permissions:\n  contents: read$/m);
   assert.match(workflow, /persist-credentials: false/);
-  assert.match(workflow, /- run: npm ci\n\n      - name: Audit dependencies and registry signatures\n        run: npm run check:security\n/);
+  assert.ok(workflow.includes(`- ${AUDIT_STEPS}`), "report, then audit, right after npm ci");
+  assert.doesNotMatch(workflow, /continue-on-error/);
 });
 
 test("a release candidate is audited before it is built", () => {
   const workflow = read(".github", "workflows", "release.yml");
   const job = workflow.match(/\n  build-and-test:\n((?:    .*\n|\n)*)/);
   assert.ok(job, "build-and-test job");
-  assert.match(job[1], /run: npm ci\n\n      - name: Audit dependencies and registry signatures\n        run: npm run check:security\n/);
+  assert.ok(job[1].includes(AUDIT_STEPS), "report, then audit, right after npm ci");
   assert.ok(job[1].indexOf("check:security") < job[1].indexOf("npm run build"), "audit precedes the build");
+  assert.doesNotMatch(workflow, /continue-on-error/);
+});
+
+// SEC-07: the report lists tooling advisories by severity and leaves runtime ones to the audit.
+const LOCK = { packages: { "": {}, "node_modules/c8": { dev: true }, "node_modules/glob": { dev: true }, "node_modules/left-pad": {}, "node_modules/fsevents": { devOptional: true } } };
+const advisory = (name, severity, via, extra = {}) => ({ name, severity, isDirect: false, via, effects: [], range: "*", nodes: [`node_modules/${name}`], fixAvailable: false, ...extra });
+
+test("the tooling report lists each advisory by severity and counts runtime ones apart", async () => {
+  const { summarize } = await import("../../scripts/report-dev-advisories.mjs");
+  const audit = {
+    vulnerabilities: {
+      c8: advisory("c8", "moderate", ["glob"], { isDirect: true, fixAvailable: { name: "c8", version: "9.1.0", isSemVerMajor: true } }),
+      glob: advisory("glob", "high", [{ title: "Glob | traversal", url: "https://github.com/advisories/GHSA-0000-0000-0000" }], { fixAvailable: true }),
+      "left-pad": advisory("left-pad", "low", [{ title: "Runtime", url: "https://github.com/advisories/GHSA-1111-1111-1111" }]),
+      fsevents: advisory("fsevents", "low", [{ title: "Optional", url: "https://github.com/advisories/GHSA-2222-2222-2222" }]),
+    },
+  };
+  const { markdown, tooling, runtime } = summarize(audit, LOCK);
+  assert.deepEqual([tooling, runtime], [2, 2], "an optional package a runtime one may pull in is not tooling");
+  assert.deepEqual(markdown.split("\n").filter((line) => /^\| (?!Package|---)/.test(line)), [
+    "| glob | high | [Glob \\| traversal](https://github.com/advisories/GHSA-0000-0000-0000) | `npm audit fix` |",
+    "| c8 (direct) | moderate | through glob | c8 9.1.0 (semver-major) |",
+  ]);
+  assert.match(markdown, /2 packages \(1 high, 1 moderate\)/);
+  assert.match(markdown, /2 advisories concern runtime dependencies; `npm run check:security` fails on them\./);
+  assert.equal(summarize({ vulnerabilities: {} }, LOCK).markdown, "## Advisories against build and test tooling\n\nnpm audit reports none.\n");
+});
+
+test("the tooling report fails only when npm audit gives no report", async () => {
+  const { summarize } = await import("../../scripts/report-dev-advisories.mjs");
+  assert.throws(() => summarize({ error: { code: "ENOAUDIT", summary: "registry down" } }, LOCK), /no report \(registry down\)/);
+  assert.throws(() => summarize(null, LOCK), /no report/);
 });
 
 // hacs/action publishes no releases Dependabot could follow; it tracks main and is confined to

@@ -6,7 +6,7 @@
 // pointer.
 
 const { test, expect } = require("../../helpers/playwright.js");
-const { BUSY, mountCard, named, setCardWidth } = require("../../helpers/browser-helpers.js");
+const { BUSY, fromMenu, mountCard, named, setCardWidth } = require("../../helpers/browser-helpers.js");
 
 // Dusty vacuums the dining room while a studio job waits that Rocky could start: a waiting row
 // with every row action and a running row.
@@ -31,11 +31,36 @@ async function rowGeometry(card, name) {
       return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
     };
     const visible = [...row.querySelectorAll(".voc-job-actions .voc-button")].filter((node) => node.getBoundingClientRect().width > 0);
-    return { row: box(row), main: box(row.querySelector(".voc-job-main")), title: box(row.querySelector(".voc-job-title")), actions: visible.map(box), names: visible.map((node) => node.dataset.action), form: row.getAttribute("data-title") };
+    return { row: box(row), main: box(row.querySelector(".voc-job-main")), title: box(row.querySelector(".voc-job-title")), actions: visible.map(box), names: visible.map((node) => node.dataset.action), form: row.getAttribute("data-title-fit") };
   }, name);
 }
 
 const gaps = (boxes) => boxes.slice(1).map((box, index) => box.left - boxes[index].right);
+
+// Every visible control that a touch can use, looks smaller than 44 × 44 px and where a finger
+// landing just inside a 44 px square around its centre reaches something else instead; each
+// scrolled into view first.
+function missedTargets(card) {
+  return card.evaluate((element) => {
+    const CONTROLS = "button, a[href], [role=tab], [role=option], [role=radio], input:not([type=checkbox]), textarea, .voc-switch";
+    const EXEMPT = "[inert], [aria-hidden='true'], [aria-disabled='true'], :disabled, .voc-primary-reserve";
+    const misses = [];
+    for (const node of element.shadowRoot.querySelectorAll(CONTROLS)) {
+      if (node.closest(EXEMPT) || !node.getClientRects().length) continue;
+      node.scrollIntoView({ block: "center", inline: "center" });
+      const rect = node.getBoundingClientRect();
+      if (!rect.width || !rect.height || (rect.width >= 44 && rect.height >= 44)) continue;
+      const [x, y] = [rect.left + rect.width / 2, rect.top + rect.height / 2];
+      const reach = 21.5;
+      const reached = [[x, y - reach], [x, y + reach], [x - reach, y], [x + reach, y]].every(([left, top]) => {
+        const hit = element.shadowRoot.elementFromPoint(left, top);
+        return Boolean(hit) && (hit === node || node.contains(hit));
+      });
+      if (!reached) misses.push(`${node.localName}.${[...node.classList].join(".")} "${node.getAttribute("aria-label") || node.textContent.trim().slice(0, 30)}" (${Math.round(rect.width)}×${Math.round(rect.height)})`);
+    }
+    return misses;
+  });
+}
 
 test.describe("with a mouse", () => {
   // UI-32: beside a title that fits, the main action and the menu stand centred on the row.
@@ -76,7 +101,7 @@ test.describe("with a mouse", () => {
         const actions = row.querySelector(".voc-job-actions").getBoundingClientRect();
         const titleBox = title.getBoundingClientRect();
         const rowBox = row.getBoundingClientRect();
-        return { name: title.textContent, form: row.getAttribute("data-title"), fits: lines === 1 && end <= actions.left - Number.parseFloat(getComputedStyle(row).columnGap) + 0.5, beside: actions.left >= end, centred: Math.abs((actions.top + actions.bottom) / 2 - (rowBox.top + rowBox.bottom) / 2) <= 1, below: actions.top >= titleBox.bottom - 1 };
+        return { name: title.textContent, form: row.getAttribute("data-title-fit"), fits: lines === 1 && end <= actions.left - Number.parseFloat(getComputedStyle(row).columnGap) + 0.5, beside: actions.left >= end, centred: Math.abs((actions.top + actions.bottom) / 2 - (rowBox.top + rowBox.bottom) / 2) <= 1, below: actions.top >= titleBox.bottom - 1 };
       }));
       for (const row of rows) {
         forms.add(row.form);
@@ -202,6 +227,41 @@ for (const language of ["en", "de"]) {
 }
 
 test.describe("with touch", () => {
+  // LAY-13 (WCAG 2.5.5): every control activates on at least 44 × 44 px, also where it looks
+  // smaller: every view, the job editor with all its fields, a confirmation, the room and the
+  // robot editor.
+  test("every control activates on at least 44 × 44 px", async ({ page }) => {
+    const views = ["queue", "rooms", "robots", "templates", "history", "diagnostics", "setup", "settings"];
+    const card = await mountCard(page, { ...BUSY, width: 380, config: { views } });
+    const short = [];
+    const check = async (where) => {
+      for (const miss of await missedTargets(card)) short.push(`${where}: ${miss}`);
+    };
+    const back = () => card.locator('.voc-overlay [data-action="back"]').first().click();
+    for (const view of views) {
+      await card.locator(`[role=tab][data-view="${view}"]`).click();
+      await expect(card.locator(`[data-key="view:${view}"]`)).toBeVisible();
+      await check(view);
+    }
+    await card.locator('[role=tab][data-view="queue"]').click();
+    await card.locator(".voc-primary-action").click();
+    await card.locator('[data-action="set-overlay"][data-args*="moreOpen"]').click();
+    await check("job editor");
+    await back();
+    await named(card, ".voc-job", "Studio", '[data-action="cancel-job"]').click();
+    await expect(card.locator(".voc-dialog")).toBeVisible();
+    await check("cancel dialog");
+    await page.keyboard.press("Escape");
+    await card.locator('[role=tab][data-view="rooms"]').click();
+    for (const step of fromMenu(card, ".voc-room", "Dining Room", '[data-action="edit-room"]')) await step.click();
+    await check("room editor");
+    await back();
+    await card.locator('[role=tab][data-view="robots"]').click();
+    for (const step of fromMenu(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]')) await step.click();
+    await check("robot editor");
+    expect(short).toEqual([]);
+  });
+
   test.use({ hasTouch: true });
 
   test("every action and control is at least 44 px", async ({ page }) => {

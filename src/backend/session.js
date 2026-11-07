@@ -10,6 +10,7 @@ import { normalizeValidation } from "../domain/validation.js";
 import { ACTIONS, CARD_COMMANDS, CONFIGURATION_COMMANDS, guards, messages } from "./protocol.js";
 import { SCOPE_LOADERS, scopesForChanges } from "./scopes.js";
 import { createInvalidationTimer } from "./subscription.js";
+import { releaseSubscription } from "./transport.js";
 
 export const DOMAIN = "vacuum_orchestrator";
 
@@ -29,6 +30,8 @@ const ANY_PHASE_SCOPES = new Set(["errorTexts"]);
 const ENTITY_REGISTRY_SCOPES = Object.freeze(["registry", "candidates"]);
 // Keyed by an editor draft: a key nobody asks for any more is never asked for again.
 const DRAFT_SCOPES = new Set(["preview"]);
+// Scopes nobody demands stay for a quick return, this many of them, the most recently shown.
+export const PRUNE_KEEP = 32;
 
 const LOAD_FAILED_CODES = new Set(["orchestrator_not_loaded", "orchestrator_not_initialized", "orchestrator_shutting_down", "multiple_orchestrator_entries_loaded"]);
 
@@ -68,6 +71,17 @@ function freeze(value) {
   return Object.freeze(value);
 }
 
+// The queue's mode and counts as an event or a queue read reports them, and the point of this
+// runtime they were read at.
+function liveOfEvent(event) {
+  const count = (value) => (Number.isInteger(value) ? value : null);
+  return { runtimeId: event.runtime_id, sequence: event.runtime_sequence, mode: event.mode, pendingJobs: event.pending_jobs, needsAttention: event.needs_attention === true, queueRevision: event.queue_revision, activeCount: count(event.active_count), attentionCount: count(event.attention_count) };
+}
+
+function liveOfQueue(queue, view) {
+  return { runtimeId: view.runtimeId, sequence: view.sequence, mode: queue.mode, pendingJobs: queue.total, needsAttention: queue.needsAttention, queueRevision: queue.queueRevision, activeCount: queue.activeCount, attentionCount: queue.attentionCount };
+}
+
 export function createSession({ transport, platform, getHass } = {}) {
   const scopes = new Map();
   const demands = new Map();
@@ -78,8 +92,13 @@ export function createSession({ transport, platform, getHass } = {}) {
   let phaseFailure = null;
   let apiVersion = null;
   let runtime = { id: null, sequence: null, commitId: null };
+  // The newest queue facts of this runtime, from the probe, a queue read or an event.
   let live = null;
   let subscription = "idle";
+  // Callbacks of a subscription the session gave up carry an older generation and are ignored.
+  let generation = 0;
+  // Stamps when a scope stopped being demanded, to prune the longest unused first.
+  let releases = 0;
   let unsubscribe = null;
   let probing = null;
   let wasLoaded = null;
@@ -105,6 +124,11 @@ export function createSession({ transport, platform, getHass } = {}) {
   function now() {
     if (!anchor) return platform?.now?.() ?? 0;
     return anchor.serverMs + (monotonic() - anchor.at);
+  }
+
+  function offerLive(next) {
+    if (live && live.runtimeId === next.runtimeId && next.sequence < live.sequence) return;
+    live = Object.freeze(next);
   }
 
   function changed() {
@@ -133,7 +157,7 @@ export function createSession({ transport, platform, getHass } = {}) {
   }
 
   function entry(key, name, params) {
-    if (!scopes.has(key)) scopes.set(key, { key, name, params, status: "idle", stale: false, data: null, view: null, requested: null, error: null, loadedAt: null, reload: false });
+    if (!scopes.has(key)) scopes.set(key, { key, name, params, status: "idle", stale: false, data: null, view: null, requested: null, error: null, loadedAt: null, reload: false, releasedAt: 0 });
     return scopes.get(key);
   }
 
@@ -147,7 +171,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     scope.stale = false;
     // The integration answers in order: a read sent now shows at least what the session has seen.
     scope.requested = { runtimeId: runtime.id, sequence: runtime.sequence, commitId: runtime.commitId };
-    changed();
+    touched(scope);
     const result = await SCOPE_LOADERS[scope.name](transport, scope.params);
     if (disposed) return;
     if (result.ok) {
@@ -158,13 +182,24 @@ export function createSession({ transport, platform, getHass } = {}) {
       scope.error = null;
       scope.stale = false;
       scope.loadedAt = platform?.now?.() ?? null;
+      if (scope.name === "queue" && scope.view?.runtimeId === runtime.id) offerLive(liveOfQueue(scope.data, scope.view));
     } else {
       scope.status = "error";
       scope.error = result;
       handleFailure(result);
     }
-    changed();
-    if (scope.reload && demandedKeys().has(scope.key)) await load(scope);
+    // Outdated while it was read: read again for a card, else stale until one shows it.
+    const again = scope.reload && demandedKeys().has(scope.key);
+    if (scope.reload && !again) scope.stale = true;
+    prune();
+    touched(scope);
+    if (again) await load(scope);
+  }
+
+  // A scope no card shows changes no card: the snapshot follows without a render.
+  function touched(scope) {
+    if (demandedKeys().has(scope.key)) changed();
+    else snapshot = null;
   }
 
   // A scope failure can reveal a phase: the integration unloaded, or became incompatible.
@@ -182,8 +217,15 @@ export function createSession({ transport, platform, getHass } = {}) {
     }
   }
 
+  // A scope that no longer shows the integration. One being read is read again afterwards: its
+  // read was sent before the change.
+  function outdate(scope) {
+    scope.stale = true;
+    if (scope.status === "loading") scope.reload = true;
+  }
+
   function invalidateAll() {
-    for (const scope of scopes.values()) if (scope.status !== "idle" && !HOME_ASSISTANT_SCOPES.has(scope.name)) scope.stale = true;
+    for (const scope of scopes.values()) if (scope.status !== "idle" && !HOME_ASSISTANT_SCOPES.has(scope.name)) outdate(scope);
     changed();
     refreshDemanded();
   }
@@ -202,7 +244,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     for (const scope of scopes.values()) {
       if (scope.status === "idle" || HOME_ASSISTANT_SCOPES.has(scope.name)) continue;
       if (names !== "all" && !names.has(scope.name)) continue;
-      if (!shows(scope, { sequence })) scope.stale = true;
+      if (!shows(scope, { sequence })) outdate(scope);
     }
     changed();
     refreshDemanded();
@@ -213,8 +255,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     const wanted = names === "all" ? null : new Set(names);
     for (const scope of scopes.values()) {
       if (wanted && !wanted.has(scope.name)) continue;
-      if (shows(scope, { commitId })) continue;
-      scope.stale = scope.status !== "idle";
+      if (!shows(scope, { commitId }) && scope.status !== "idle") outdate(scope);
     }
     changed();
     refreshDemanded();
@@ -242,6 +283,8 @@ export function createSession({ transport, platform, getHass } = {}) {
     }
   }
 
+  // Everything about an event is decided before the session changes: an event it has already
+  // seen moves neither the clock nor the live values.
   function onEvent(event) {
     if (disposed) return;
     if (guards.unloadedEvent(event)) {
@@ -249,24 +292,24 @@ export function createSession({ transport, platform, getHass } = {}) {
       return;
     }
     if (!guards.event(event)) return;
-    anchorAt(parseInstant(event.server_time));
     // An incompatible integration changes only with an update, which restarts Home Assistant.
     if (phase === "api_incompatible") return;
+    // Outside ready the probe reads the integration as it is now.
     if (phase !== "ready") {
       cancelUnloadedProbe();
       void probe();
       return;
     }
-    const count = (value) => (Number.isInteger(value) ? value : null);
-    live = Object.freeze({ mode: event.mode, pendingJobs: event.pending_jobs, needsAttention: event.needs_attention === true, queueRevision: event.queue_revision, activeCount: count(event.active_count), attentionCount: count(event.attention_count) });
-    if (runtime.id !== null && event.runtime_id !== runtime.id) {
-      runtime = { id: event.runtime_id, sequence: event.runtime_sequence, commitId: event.commit_id };
+    const newRuntime = runtime.id !== null && event.runtime_id !== runtime.id;
+    if (!newRuntime && runtime.sequence !== null && event.runtime_sequence <= runtime.sequence) return;
+    anchorAt(parseInstant(event.server_time));
+    offerLive(liveOfEvent(event));
+    runtime = { id: event.runtime_id, sequence: event.runtime_sequence, commitId: event.commit_id };
+    if (newRuntime) {
       invalidation.cancel();
       invalidateAll();
       return;
     }
-    if (runtime.sequence !== null && event.runtime_sequence <= runtime.sequence) return;
-    runtime = { id: event.runtime_id, sequence: event.runtime_sequence, commitId: event.commit_id };
     changed();
     invalidation.schedule({ scopes: scopesForChanges(event.changed), sequence: event.runtime_sequence });
   }
@@ -274,12 +317,16 @@ export function createSession({ transport, platform, getHass } = {}) {
   async function subscribe() {
     if (unsubscribe || subscription === "connecting") return true;
     subscription = "connecting";
-    const result = await transport.subscribe(messages.subscribe(), onEvent);
+    const own = ++generation;
+    const result = await transport.subscribe(messages.subscribe(), (event) => {
+      if (own === generation) onEvent(event);
+    });
     if (disposed) {
-      if (result.ok && typeof result.data === "function") result.data();
+      if (result.ok) releaseSubscription(result.data);
       return false;
     }
     if (!result.ok) {
+      generation += 1;
       subscription = "failed";
       return result;
     }
@@ -314,6 +361,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     apiVersion = check.data.apiVersion;
     anchorAt(check.data.serverTime);
     runtime = { id: check.data.runtimeId, sequence: check.data.runtimeSequence, commitId: check.data.commitId };
+    if (check.view) offerLive(liveOfQueue(check.data, check.view));
     cancelUnloadedProbe();
     setPhase("ready");
     invalidateAll();
@@ -346,13 +394,8 @@ export function createSession({ transport, platform, getHass } = {}) {
     const current = unsubscribe;
     unsubscribe = null;
     subscription = "idle";
-    if (typeof current === "function") {
-      try {
-        current();
-      } catch (_error) {
-        // A handle from a closed connection cannot be released twice; nothing is left to do.
-      }
-    }
+    generation += 1;
+    releaseSubscription(current);
   }
 
   // The connection library re-subscribes by itself; after a reconnect the snapshot is reloaded.
@@ -380,6 +423,33 @@ export function createSession({ transport, platform, getHass } = {}) {
     void probe();
   }
 
+  // What nobody demands: a draft's scope goes at once, the others stay for a quick return, the
+  // PRUNE_KEEP most recently demanded. A scope being read stays until its read ends. No card shows
+  // a scope nobody demands, so pruning tells no card.
+  function prune() {
+    const demanded = demandedKeys();
+    const kept = [];
+    for (const [key, scope] of scopes) {
+      if (demanded.has(key) || scope.status === "loading" || HOME_ASSISTANT_SCOPES.has(scope.name)) continue;
+      if (DRAFT_SCOPES.has(scope.name)) scopes.delete(key);
+      else kept.push(scope);
+    }
+    kept.sort((one, other) => other.releasedAt - one.releasedAt);
+    for (const scope of kept.slice(PRUNE_KEEP)) scopes.delete(scope.key);
+    snapshot = null;
+  }
+
+  // Sets or ends one owner's demand, stamps the scopes nobody demands any more and prunes.
+  function demand(owner, keys) {
+    const before = demandedKeys();
+    if (keys) demands.set(owner, keys);
+    else demands.delete(owner);
+    const after = demandedKeys();
+    releases += 1;
+    for (const key of before) if (!after.has(key) && scopes.has(key)) scopes.get(key).releasedAt = releases;
+    prune();
+  }
+
   function setDemand(owner, requests = []) {
     const keys = new Set();
     for (const { name, params = {} } of requests) {
@@ -390,14 +460,25 @@ export function createSession({ transport, platform, getHass } = {}) {
     }
     const previous = demands.get(owner);
     if (previous && previous.size === keys.size && [...keys].every((key) => previous.has(key))) return;
-    demands.set(owner, keys);
-    const demanded = demandedKeys();
-    for (const [key, scope] of scopes) if (DRAFT_SCOPES.has(scope.name) && !demanded.has(key) && scope.status !== "loading") scopes.delete(key);
+    demand(owner, keys);
     refreshDemanded();
   }
 
   function releaseDemand(owner) {
-    demands.delete(owner);
+    if (demands.has(owner)) demand(owner, null);
+  }
+
+  // Reads scopes no card shows yet, such as the history a tap will show next (UI-35). They are not
+  // demanded and are kept like scopes left just now.
+  function warm(requests = []) {
+    if (disposed || phase !== "ready") return;
+    for (const { name, params = {} } of requests) {
+      if (!SCOPE_LOADERS[name] || HOME_ASSISTANT_SCOPES.has(name)) continue;
+      const scope = entry(scopeKey(name, params), name, params);
+      releases += 1;
+      scope.releasedAt = releases;
+      if (scope.status === "idle" || scope.stale || scope.status === "error") void load(scope);
+    }
   }
 
   function reload(name, params = {}) {
@@ -472,6 +553,7 @@ export function createSession({ transport, platform, getHass } = {}) {
     syncHass,
     setDemand,
     releaseDemand,
+    warm,
     reload,
     validate,
     command,

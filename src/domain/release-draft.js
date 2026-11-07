@@ -1,6 +1,8 @@
 // A release being composed: one row per room with its own kind and, for a timed one, hours and
 // minutes. Rows become the grants of one `release_rooms` command. See internal dev doc §8 "Räume".
 
+import { own } from "../core/lookup.js";
+
 const NEW_ROW = Object.freeze({ kind: "queue_run", hours: 2, minutes: 0 });
 const GRANT_FIELDS = Object.freeze({ kind: "kind", duration_seconds: "duration", room: "room" });
 
@@ -44,7 +46,8 @@ export function releaseField(key) {
 // The row field an error of the integration names by its path `grants.<index>.<field>`.
 export function releaseFieldOf(path) {
   const match = /^grants\.(\d+)\.([a-z_]+)$/.exec(String(path));
-  return match && GRANT_FIELDS[match[2]] ? `release:${match[1]}:${GRANT_FIELDS[match[2]]}` : null;
+  const field = match ? own(GRANT_FIELDS, match[2]) : undefined;
+  return field ? `release:${match[1]}:${field}` : null;
 }
 
 // Hours, minutes and the quick choice form one duration, which carries its error.

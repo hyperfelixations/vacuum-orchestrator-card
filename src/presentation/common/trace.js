@@ -1,6 +1,7 @@
 // Trace records as rows: time, the event's name and its details in words. An event this card
 // does not know keeps the integration's name.
 
+import { own } from "../../core/lookup.js";
 import { isAttemptState, isJobState, SETTING_FIELDS, SETTING_WIRE_NAMES } from "../../domain/job-schema.js";
 import { findJob, jobTitle, list, robotName, roomIndex, roomName } from "./lookups.js";
 import { attemptStateLabel, dayOf, jobStateLabel, queueModeLabel, reasonText, secondOf, settingName, t } from "./texts.js";
@@ -57,7 +58,8 @@ function vendorStatus(texts, code) {
 }
 
 function traceReason(texts, event, code) {
-  if (event === "setting" && SETTING_BY_WIRE[code]) return settingName(texts, SETTING_BY_WIRE[code]);
+  const setting = event === "setting" ? own(SETTING_BY_WIRE, code) : undefined;
+  if (setting) return settingName(texts, setting);
   if (ROBOT_EVENTS.has(event)) return vendorStatus(texts, code);
   return TRACE_REASONS.has(code) ? t(texts, `trace.reason.${code}`) : reasonText(texts, code);
 }

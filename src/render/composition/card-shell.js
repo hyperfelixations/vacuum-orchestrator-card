@@ -35,9 +35,13 @@ function renderWarning(warning) {
 
 const NOTICE_ICONS = Object.freeze({ error: "mdi:alert-circle-outline", warning: "mdi:alert-outline", success: "mdi:check-circle-outline", info: "mdi:information-outline" });
 
+// A notice of its own (`data-key`) is a new node, so its running line starts again; one that goes
+// by itself names its time (UI-33).
 function renderNotice(context, notice) {
   if (!notice) return "";
-  return `<div class="voc-notice voc-notice--float voc-notice--${e(notice.kind)}" role="${notice.kind === "success" || notice.kind === "info" ? "status" : "alert"}">${icon(NOTICE_ICONS[notice.kind] ?? NOTICE_ICONS.success)}<span class="voc-notice-text">${e(notice.text)}</span>${button({ action: "dismiss-notice", label: context.t("action.dismiss"), iconName: "mdi:close", variant: "icon", className: "voc-notice-close" })}</div>`;
+  const timed = Number.isFinite(notice.durationMs);
+  const timing = timed ? ` data-timeout="${notice.durationMs}" style="--voc-notice-duration: ${notice.durationMs}ms"` : "";
+  return `<div class="voc-notice voc-notice--float voc-notice--${e(notice.kind)}"${attr("data-key", notice.id === null || notice.id === undefined ? null : `notice:${notice.id}`)} role="${notice.kind === "success" || notice.kind === "info" ? "status" : "alert"}"${timing}>${timed ? '<span class="voc-notice-timer" aria-hidden="true"></span>' : ""}${icon(NOTICE_ICONS[notice.kind] ?? NOTICE_ICONS.success)}<span class="voc-notice-text">${e(notice.text)}</span>${button({ action: "dismiss-notice", label: context.t("action.dismiss"), iconName: "mdi:close", variant: "icon", className: "voc-notice-close" })}</div>`;
 }
 
 function renderPanel(context, panel) {
@@ -91,8 +95,10 @@ export function renderCard(context, vm, renderBody) {
   ].join("");
   // A tab panel is a tab stop: no view starts with a focusable control, and in a frame it scrolls.
   const bodyRole = vm.body.kind === "view" && vm.tabs.visible ? ` role="tabpanel" aria-labelledby="voc-tab-${e(vm.body.key)}" tabindex="0"` : "";
+  // The view still shown while a chosen tab's view is built (UI-35): kept as it is and busy.
+  const kept = vm.body.keep ? ' data-morph="keep" data-stale="" aria-busy="true"' : "";
   const covered = Boolean(vm.dialog);
-  const background = [renderHeader(context, vm), renderWarning(vm.warning), renderNotice(context, vm.notice), renderPanel(context, vm.panel), renderTabRow(context, vm), `<div class="voc-body" id="voc-panel" data-body="${e(vm.body.kind)}:${e(vm.body.key || "")}" data-scroll${bodyRole}>${renderBody(context, vm.body)}</div>`];
+  const background = [renderHeader(context, vm), renderWarning(vm.warning), renderNotice(context, vm.notice), renderPanel(context, vm.panel), renderTabRow(context, vm), `<div class="voc-body" id="voc-panel" data-body="${e(vm.body.kind)}:${e(vm.body.key || "")}" data-scroll${bodyRole}${kept}>${vm.body.keep ? "" : renderBody(context, vm.body)}</div>`];
   const dialog = covered ? `<div class="voc-scrim" data-key="dialog">${renderBody(context, vm.dialog)}</div>` : "";
   return `<div class="voc-root" ${rootAttributes} tabindex="-1">${vm.accentLine ? '<div class="voc-top-line"></div>' : ""}${background.map((part) => beneath(part, covered)).join("")}<div class="voc-live-region" aria-live="polite" aria-atomic="true">${e(vm.liveMessage)}</div>${dialog}</div>`;
 }

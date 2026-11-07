@@ -37,7 +37,13 @@ async function mountCard({ recording, from, config = {}, language = "en", admin,
   open.add(env);
   const card = env.createCard({ type: "custom:vacuum-orchestrator-card", ...config }, backend.hass);
   backend.onChange((next) => (card.hass = next));
-  await settle(24);
+  // The card settles: its renders, a view switch's second phase and the reads they start.
+  const settled = async (rounds) => {
+    await settle(rounds);
+    await card.updateComplete;
+    await settle(4);
+  };
+  await settled(24);
   const root = card.shadowRoot;
 
   const find = (selector) => {
@@ -48,7 +54,7 @@ async function mountCard({ recording, from, config = {}, language = "en", admin,
 
   async function click(selector) {
     find(selector).dispatchEvent(new env.window.MouseEvent("click", { bubbles: true, composed: true }));
-    await settle(16);
+    await settled(16);
   }
 
   // An element's further action (UI-32): opens the menu of `scope` and finds `selector` in it.
@@ -65,7 +71,7 @@ async function mountCard({ recording, from, config = {}, language = "en", admin,
     const node = find(selector);
     node.focus?.();
     node.dispatchEvent(new env.window.KeyboardEvent("keydown", { key, bubbles: true, composed: true, cancelable: true, ...init }));
-    await settle(16);
+    await settled(16);
   }
 
   async function type(selector, value) {
@@ -75,20 +81,20 @@ async function mountCard({ recording, from, config = {}, language = "en", admin,
     // A browser reports both; the card listens to each for a different control kind.
     node.dispatchEvent(new env.window.Event("input", { bubbles: true, composed: true }));
     node.dispatchEvent(new env.window.Event("change", { bubbles: true, composed: true }));
-    await settle(16);
+    await settled(16);
   }
 
   // A new hass object, as Home Assistant hands one over on every state change.
   async function updateHass(patch = {}) {
     card.hass = { ...card.hass, ...patch };
-    await settle(16);
+    await settled(16);
     return card.hass;
   }
 
   // Plays the recording through a change in the home and lets the card follow.
   async function until(change) {
     backend.until(change);
-    await settle(24);
+    await settled(24);
   }
 
   // The list item matching `selector` that is shown under `name`.
@@ -117,7 +123,7 @@ async function mountCard({ recording, from, config = {}, language = "en", admin,
     press,
     type,
     updateHass,
-    settle: (rounds = 16) => settle(rounds),
+    settle: (rounds = 16) => settled(rounds),
     text: (selector) => root.querySelector(selector)?.textContent?.replace(/\s+/g, " ").trim() ?? null,
     all: (selector) => [...root.querySelectorAll(selector)],
     named,

@@ -3,6 +3,7 @@
 // fields the user edits. The integration checks every input (`validate`); `robotFieldOf` places
 // its errors. See internal dev doc §7 "Roboterentwurf".
 
+import { own } from "../core/lookup.js";
 import { OPERATIONS, ROBOT_OPTION_MAPS, ROBOT_ROLES, ROBOT_TIMEOUT_FIELDS, isOperation } from "./job-schema.js";
 import { splitList } from "./room-draft.js";
 
@@ -99,7 +100,7 @@ export function robotFieldOf(path) {
   if (Object.hasOwn(ROBOT_OPTION_MAPS, part)) return `optionMaps.${part}`;
   if (part === "roles") return ROBOT_ROLES.includes(child) ? `roles.${child}` : null;
   if (part === "requirements") return /^\d+$/.test(child ?? "") ? `requirements.${child}` : null;
-  return ROBOT_FIELDS[part] ?? null;
+  return own(ROBOT_FIELDS, part) ?? null;
 }
 
 // The complete definition `configure_robot` expects: the stored configuration with the edited

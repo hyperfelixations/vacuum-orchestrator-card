@@ -3,6 +3,7 @@
 // then the queue mode, then a pending setup assistant. See internal dev doc §8 "Status und Ton".
 
 import { slotData, list } from "../common/lookups.js";
+import { queueFacts } from "../common/queue-facts.js";
 
 const PHASE_STATUS = Object.freeze({
   probing: "connecting",
@@ -18,19 +19,17 @@ export function cardStatus(model = {}) {
   if (model.phase && model.phase !== "ready") return PHASE_STATUS[model.phase] || "connecting";
   const queue = slotData(model, "queue");
   const openJobs = list(slotData(model, "openJobs")?.jobs);
-  // The integration's counts; a live event is newer than the last queue read.
-  const attentionCount = model.live?.attentionCount ?? queue?.attentionCount ?? 0;
-  const activeCount = model.live?.activeCount ?? queue?.activeCount ?? 0;
-  const attention = openJobs.some((job) => job.state === "needs_attention") || attentionCount > 0 || queue?.needsAttention || model.live?.needsAttention === true || list(queue?.recoveryTargets).length > 0;
+  // The integration's counts, also before the open jobs are read.
+  const facts = queueFacts(model);
+  const attention = openJobs.some((job) => job.state === "needs_attention") || (facts.attentionCount ?? 0) > 0 || facts.needsAttention || list(queue?.recoveryTargets).length > 0;
   if (attention) return "attention";
-  if (openJobs.some((job) => job.state !== "needs_attention") || activeCount > 0) return "cleaning";
-  const mode = queue?.mode ?? model.live?.mode ?? null;
-  if (mode === "running") return "running";
-  if (mode === "paused") return "paused";
+  if (openJobs.some((job) => job.state !== "needs_attention") || (facts.activeCount ?? 0) > 0) return "cleaning";
+  if (facts.mode === "running") return "running";
+  if (facts.mode === "paused") return "paused";
   if (!queue) return "connecting";
   if (model.setup?.assistantPending) return "setup";
   // Jobs waiting on a queue nobody started are not "ready" to run.
-  return (queue.total ?? model.live?.pendingJobs ?? 0) > 0 ? "waiting" : "idle";
+  return (facts.pendingJobs ?? 0) > 0 ? "waiting" : "idle";
 }
 
 // [tone, control accent]: the accent is the tone, except that an error or a grey tone leaves the
@@ -57,9 +56,10 @@ const TONES = Object.freeze({
 const TONE_TOKENS = Object.freeze({ color: "--tone-color", ink: "--tone-ink", soft: "--tone-soft", border: "--tone-border" });
 const ACCENT_TOKENS = Object.freeze({ color: "--voc-accent", ink: "--voc-accent-ink", soft: "--voc-accent-soft", border: "--voc-accent-border" });
 
-// The RCC tone token derivation: soft fill 20 % of the colour, border 38 % of the ink.
+// The RCC tone token derivation: soft fill 20 % of the colour, border 38 % of an ink of 82 %; text
+// takes the darker ink of `--voc-ink-share` (A11Y-06).
 function derive({ color, ink, soft, border }, value) {
-  return `${color}:${value};${ink}:color-mix(in srgb, ${value} 82%, var(--primary-text-color));${soft}:color-mix(in srgb, ${value} 20%, transparent);${border}:color-mix(in srgb, var(${ink}) 38%, transparent);`;
+  return `${color}:${value};${ink}:color-mix(in srgb, ${value} var(--voc-ink-share), var(--primary-text-color));${soft}:color-mix(in srgb, ${value} 20%, transparent);${border}:color-mix(in srgb, color-mix(in srgb, ${value} 82%, var(--primary-text-color)) 38%, transparent);`;
 }
 
 // The tone colours pill, badge and accent line; the accent (`--voc-accent*`) colours the controls.

@@ -35,6 +35,21 @@ test("a state change reaches the card without a backend event", async () => {
   card.unmount();
 });
 
+// An editor's entity search follows Home Assistant's entities, also one renamed while the card
+// shows nothing else of it.
+test("a renamed entity reaches an open editor's search", async () => {
+  const card = await mountCard(BUSY);
+  await card.click(".voc-primary-action");
+  await card.click('[data-action="set-overlay"][data-args*="moreOpen"]');
+  await card.type('[data-field="query:requiredOn"]', "waiting");
+  assert.match(card.text('[data-key="field:requiredOn"]'), /Vacuum Orchestrator Waiting jobs/);
+  const id = "sensor.vacuum_orchestrator_waiting_jobs";
+  const sensor = card.hass.states[id];
+  await card.updateHass({ states: { ...card.hass.states, [id]: { ...sensor, attributes: { ...sensor.attributes, friendly_name: "Waiting jobs, renamed" } } } });
+  assert.match(card.text('[data-key="field:requiredOn"]'), /Waiting jobs, renamed/);
+  card.unmount();
+});
+
 test("a missing integration shows how to get it", async () => {
   const card = await mountCard({ recording: "not_installed" });
   assert.equal(card.root.querySelector(".voc-onboarding").dataset.phase, "not_installed");

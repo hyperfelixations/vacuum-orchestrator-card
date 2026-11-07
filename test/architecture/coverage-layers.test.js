@@ -11,6 +11,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
+const { PROPERTY_FAMILIES, propertyEnvKeys } = require("../property/run-config.js");
+
 const ROOT = path.join(__dirname, "..", "..");
 const TEST_DIR = path.join(ROOT, "test");
 
@@ -84,16 +86,9 @@ test("each layer run reports src/ directly and keeps its raw V8 files for the bu
 test("the layer runs use a fixed environment: the coverage artifact flag set, run-shaping variables removed", () => {
   const env = coverage.NODE_LAYER_ENV;
   assert.equal(env.VACUUM_ORCHESTRATOR_CARD_COVERAGE_ARTIFACT, "1");
-  for (const name of [
-    "VACUUM_ORCHESTRATOR_CARD_FUZZ_CASES",
-    "VACUUM_ORCHESTRATOR_CARD_FUZZ_SEED",
-    "VACUUM_ORCHESTRATOR_CARD_METAMORPHIC_CASES",
-    "VACUUM_ORCHESTRATOR_CARD_METAMORPHIC_SEED",
-    "VACUUM_ORCHESTRATOR_CARD_DISCOVERY_CASES",
-    "VACUUM_ORCHESTRATOR_CARD_DISCOVERY_SEED",
-    "VACUUM_ORCHESTRATOR_CARD_PROPERTY_REPORT_DIR",
-    "UPDATE_CHARACTERIZATION",
-  ]) {
+  const families = Object.keys(PROPERTY_FAMILIES).flatMap((kind) => [`VACUUM_ORCHESTRATOR_CARD_${kind}_CASES`, `VACUUM_ORCHESTRATOR_CARD_${kind}_SEED`]);
+  assert.deepEqual(families.sort(), propertyEnvKeys().sort());
+  for (const name of [...families, "UPDATE_CHARACTERIZATION"]) {
     assert.ok(Object.hasOwn(env, name) && env[name] === null, `${name} must be removed for the layer runs`);
   }
 });
@@ -122,6 +117,8 @@ test("every environment variable a test reads is either fixed for the layer runs
     }
   };
   walk(TEST_DIR);
+  // propertyRun composes its variable names from the family list.
+  for (const name of propertyEnvKeys()) names.add(name);
   const unhandled = [...names].filter((name) => !Object.hasOwn(coverage.NODE_LAYER_ENV, name) && !Object.hasOwn(NOT_RUN_SHAPING, name));
   assert.deepEqual(unhandled.sort(), [], `set or remove these in NODE_LAYER_ENV: ${unhandled.join(", ")}`);
 });

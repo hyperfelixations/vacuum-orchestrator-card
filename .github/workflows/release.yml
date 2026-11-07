@@ -166,6 +166,9 @@ jobs:
       - name: Install exactly from the lockfile
         run: npm ci
 
+      - name: Report advisories against build and test tooling
+        run: npm run report:advisories
+
       - name: Audit dependencies and registry signatures
         run: npm run check:security
 
@@ -229,12 +232,14 @@ jobs:
 
       - name: Run an additional release property sweep
         env:
-          VACUUM_ORCHESTRATOR_CARD_FUZZ_CASES: "2500"
+          VACUUM_ORCHESTRATOR_CARD_INVARIANTS_CASES: "2500"
+          VACUUM_ORCHESTRATOR_CARD_INVARIANTS_SEED: ${{ github.run_id }}
+          VACUUM_ORCHESTRATOR_CARD_EVENTS_CASES: "500"
+          VACUUM_ORCHESTRATOR_CARD_EVENTS_SEED: ${{ github.run_id }}
+          VACUUM_ORCHESTRATOR_CARD_BACKEND_UI_CASES: "2500"
+          VACUUM_ORCHESTRATOR_CARD_BACKEND_UI_SEED: ${{ github.run_id }}
           VACUUM_ORCHESTRATOR_CARD_METAMORPHIC_CASES: "1200"
-          VACUUM_ORCHESTRATOR_CARD_FUZZ_SEED: ${{ github.run_id }}
           VACUUM_ORCHESTRATOR_CARD_METAMORPHIC_SEED: ${{ github.run_id }}
-          VACUUM_ORCHESTRATOR_CARD_DISCOVERY_CASES: "2500"
-          VACUUM_ORCHESTRATOR_CARD_DISCOVERY_SEED: ${{ github.run_id }}
         run: npm run test:property:run
 
       # Provenance: the digest covers every committed baseline, so the draft can state which

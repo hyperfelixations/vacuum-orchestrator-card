@@ -54,6 +54,20 @@ test("stable and dev versions use the RCC version contract", () => {
   assert.match(workflow, /args\+=\(--prerelease --latest=false\)/);
 });
 
+// The sweep's environment, as the step writes it: every family's count from run-config and a
+// seed that differs per run, and nothing else.
+test("the release property sweep runs every property family with its release count and a fresh seed", () => {
+  const { PROPERTY_FAMILIES } = require("../property/run-config.js");
+  const step = workflow.match(/- name: Run an additional release property sweep\n        env:\n((?: {10}[A-Z0-9_]+: .+\n)+)        run: npm run test:property:run\n/);
+  assert.ok(step, "the release sweep step runs the property tests with its own environment");
+  const env = Object.fromEntries([...step[1].matchAll(/^ {10}([A-Z0-9_]+): (.+)$/gm)].map(([, name, value]) => [name, value.trim()]));
+  const expected = Object.fromEntries(Object.entries(PROPERTY_FAMILIES).flatMap(([kind, { releaseCases }]) => [
+    [`VACUUM_ORCHESTRATOR_CARD_${kind}_CASES`, `"${releaseCases}"`],
+    [`VACUUM_ORCHESTRATOR_CARD_${kind}_SEED`, "${{ github.run_id }}"],
+  ]));
+  assert.deepEqual(env, expected);
+});
+
 test("browser and draft consume the same checked candidate bundle", () => {
   assert.match(workflow, /browser-tests:\n(?:.|\n)*?needs: build-and-test/);
   assert.match(workflow, /create-draft:\n(?:.|\n)*?needs:\n      - build-and-test\n      - browser-tests\n      - hacs-validation/);

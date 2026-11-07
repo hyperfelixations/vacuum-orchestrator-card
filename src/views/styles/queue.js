@@ -1,7 +1,7 @@
 // Queue view: job rows (title, what the job asks for, status, progress, main action and menu),
 // attention and recovery alerts, template quick starts and pagination. The job row is shared with
 // the history view: title and details on the left, the actions on the right, centred on the row
-// while the title fits beside them (`data-title="fits"`, row-fit runtime), else below a title
+// while the title fits beside them (`data-title-fit="fits"`, row-fit runtime), else below a title
 // across the row (UI-32, LAY-09); the row's button spans both lines through a subgrid, so the
 // whole row opens the job.
 
@@ -42,7 +42,7 @@ export const QUEUE_CSS = `
 
 .voc-job-lead { grid-column: 1; grid-row: 1; display: flex; justify-content: center; color: var(--voc-faint); }
 .voc-job-lead ha-icon { --mdc-icon-size: 18px; }
-.voc-job-position { font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--voc-faint); }
+.voc-job-position { font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--voc-muted); }
 
 .voc-job-main {
   grid-column: 2 / -1;
@@ -77,12 +77,12 @@ export const QUEUE_CSS = `
 .voc-job-status, .voc-job-outcome { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 11.5px; font-weight: 750; line-height: 1.25; }
 .voc-job-status span, .voc-job-outcome span { min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
 .voc-job-status ha-icon, .voc-job-outcome ha-icon { --mdc-icon-size: 14px; }
-.voc-job-status[data-tone="ready"] { color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); }
-.voc-job-status[data-tone="delay"] { color: color-mix(in srgb, var(--voc-info) 82%, var(--primary-text-color)); }
+.voc-job-status[data-tone="ready"] { color: var(--voc-success-ink); }
+.voc-job-status[data-tone="delay"] { color: var(--voc-info-ink); }
 .voc-job-status[data-tone="blocked"] { color: var(--voc-warning-ink); }
 .voc-job-status[data-tone="waiting"], .voc-job-status[data-tone="edit"] { color: var(--voc-muted); }
-.voc-job-status[data-tone="muted"] { color: var(--voc-faint); }
-.voc-job-status[data-tone="attention"], .voc-job-outcome { color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
+.voc-job-status[data-tone="muted"] { color: var(--voc-muted); }
+.voc-job-status[data-tone="attention"], .voc-job-outcome { color: var(--voc-error-ink); }
 .voc-job-progress { display: grid; gap: 3px; min-width: 0; font-size: 11.5px; font-weight: 700; line-height: 16px; color: var(--voc-muted); }
 .voc-job-progress-line { min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
 .voc-job-percents { display: flex; flex-wrap: wrap; gap: 2px 12px; }
@@ -96,8 +96,8 @@ export const QUEUE_CSS = `
 .voc-job-actions { grid-column: 3; grid-row: 2; position: relative; z-index: 1; display: flex; align-items: center; gap: var(--voc-target-gap); }
 .voc-job-actions:has(.voc-menu) { z-index: 4; }
 .voc-job .voc-menu-button { width: var(--voc-row-target); min-width: var(--voc-row-target); min-height: var(--voc-row-target); }
-.voc-job[data-title="fits"] .voc-job-title-line { grid-column: 1; }
-.voc-job[data-title="fits"] .voc-job-actions { grid-row: 1 / span 2; }
+.voc-job[data-title-fit="fits"] .voc-job-title-line { grid-column: 1; }
+.voc-job[data-title-fit="fits"] .voc-job-actions { grid-row: 1 / span 2; }
 
 .voc-alerts { display: grid; gap: 6px; }
 .voc-alert {
@@ -109,13 +109,13 @@ export const QUEUE_CSS = `
   background: color-mix(in srgb, var(--voc-error) 9%, transparent);
   border: 1px solid color-mix(in srgb, var(--voc-error) 38%, transparent);
 }
-.voc-alert > ha-icon { --mdc-icon-size: 22px; color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
+.voc-alert > ha-icon { --mdc-icon-size: 22px; color: var(--voc-error-ink); }
 .voc-alert-text { display: grid; gap: 2px; flex: 1; min-width: 0; font-size: 12px; font-weight: 650; line-height: 1.3; color: var(--voc-muted); }
 .voc-alert-text strong { color: var(--primary-text-color); font-size: 13px; font-weight: 850; }
 
 /* The label beside its chips; chips that wrap line up under the first one. */
 .voc-quick { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 8px; }
-.voc-quick-label { display: flex; align-items: center; min-height: var(--voc-control); font-size: 10px; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; color: var(--voc-faint); }
+.voc-quick-label { display: flex; align-items: center; min-height: var(--voc-control); font-size: 10px; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; color: var(--voc-muted); }
 .voc-quick-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 
 .voc-pagination { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 750; color: var(--voc-muted); }

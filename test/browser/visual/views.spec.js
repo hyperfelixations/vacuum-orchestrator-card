@@ -39,9 +39,21 @@ const READ_ONLY = { recording: "read_only_user", from: "The card opens for a rea
 
 // The stage carries the page background and the gutter a dashboard card sits in, and it is wide
 // enough to contain the card's own shadow.
-async function shot(page, name, width) {
+// `animations: "allow"` keeps a held animation where it stands; otherwise each runs to its end.
+async function shot(page, name, width, { animations = "disabled" } = {}) {
   if (width) await setCardWidth(page, width);
-  await expect(page.locator("#stage")).toHaveScreenshot(name, { animations: "disabled" });
+  await expect(page.locator("#stage")).toHaveScreenshot(name, { animations });
+}
+
+// Holds the card's notice as a pointer on it does, its line run to `share` of its time (UI-33); a
+// shot with `animations: "allow"` shows the line there.
+async function holdNotice(card, share) {
+  const notice = card.locator(".voc-notice--float");
+  await notice.dispatchEvent("pointermove");
+  await expect(notice).toHaveAttribute("data-paused", "");
+  await notice.evaluate((node, share) => {
+    for (const animation of node.querySelector(".voc-notice-timer").getAnimations()) animation.currentTime = share * Number(node.dataset.timeout);
+  }, share);
 }
 
 async function open(page, card, view) {
@@ -82,7 +94,7 @@ test.describe("the queue", () => {
     await expect(named(card, ".voc-job", "Library, thoroughly", ".voc-job-status")).toHaveText("Job ready · Rocky is busy");
     await expect(card.locator('[data-key="grace"]')).toHaveCount(0);
     // UI-32: titles that fit leave the actions beside them, centred on the row.
-    await expect(card.locator('.voc-job[data-title="fits"]')).toHaveCount(4);
+    await expect(card.locator('.voc-job[data-title-fit="fits"]')).toHaveCount(4);
     await shot(page, "queue-medium-light.png", MEDIUM);
   });
 
@@ -161,6 +173,13 @@ test.describe("the queue", () => {
     await shot(page, "queue-fault-medium-light.png", MEDIUM);
   });
 
+  // UI-34: on a phone the clipped subtitle still names what is wrong, as far as it fits.
+  test("a station fault in the clipped subtitle, compact, German", async ({ page }) => {
+    const card = await mountCard(page, { ...STATION, language: "de", config: { ...BASE, language: "de" } });
+    await expect(card.locator(".voc-subtitle")).toHaveText("Rocky · Schmutzwassertank voll");
+    await shot(page, "queue-station-german-compact-light.png", 320);
+  });
+
   test("narrow, a row's menu open", async ({ page }) => {
     const card = await mountCard(page, { ...BUSY, config: BASE });
     await setCardWidth(page, NARROW);
@@ -180,8 +199,8 @@ test.describe("the queue", () => {
   test("a long title above its row's actions, narrow, German", async ({ page }) => {
     const card = await mountCard(page, { recording: "showcase", from: "Seven jobs are open", config: { ...BASE, language: "de" } });
     await setCardWidth(page, NARROW);
-    await expect(named(card, ".voc-job", "Library before the reading group on Saturday")).toHaveAttribute("data-title", "wraps");
-    await expect(named(card, ".voc-job", "Library, thoroughly")).toHaveAttribute("data-title", "fits");
+    await expect(named(card, ".voc-job", "Library before the reading group on Saturday")).toHaveAttribute("data-title-fit", "wraps");
+    await expect(named(card, ".voc-job", "Library, thoroughly")).toHaveAttribute("data-title-fit", "fits");
     await scrollTo(card, ".voc-body", 1);
     await shot(page, "queue-long-title-german-narrow-light.png");
   });
@@ -193,7 +212,8 @@ test.describe("the queue", () => {
     await act(page, card.locator('[data-key="field:roomIds"] [data-value]', { hasText: "Dining Room" }));
     await act(page, card.locator('[data-action="save-draft"]'));
     await expect(card.locator(".voc-notice")).toContainText("added");
-    await shot(page, "queue-notice-medium-light.png", MEDIUM);
+    await holdNotice(card, 0.4);
+    await shot(page, "queue-notice-medium-light.png", MEDIUM, { animations: "allow" });
   });
 
   // ACT-07: a user the integration lets only read sees the queue without its controls.
@@ -629,8 +649,9 @@ test.describe("on a touch screen", () => {
     expect(await card.locator('[data-key="busy"]').evaluate((node) => getComputedStyle(node).position)).toBe("static");
     await act(page, card.locator(".voc-overlay-actions .voc-menu-button"));
     await card.locator('[role="menuitem"][data-action="remove-robot"]').tap({ force: true });
-    await expect(card.locator(".voc-notice--info:not([data-key])")).toBeVisible();
-    await shot(page, "robot-refused-narrow-touch-light.png");
+    await expect(card.locator(".voc-notice--float.voc-notice--info")).toBeVisible();
+    await holdNotice(card, 0.4);
+    await shot(page, "robot-refused-narrow-touch-light.png", null, { animations: "allow" });
   });
 
   test("more views than fit, dark", async ({ page }) => {

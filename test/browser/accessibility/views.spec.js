@@ -9,33 +9,87 @@ const { BUSY, fromMenu, mountCard, named } = require("../../helpers/browser-help
 
 const INTERACTIVE = "button, a[href], input, textarea, select, [role=button], [role=tab], [role=option], [role=radio], [role=switch]";
 
-// Colours of the elements under `selector` (`part` "color", "border" or "background"), each laid
-// over the backgrounds below it up to the page, and the backdrop they stand on, as sRGB triples.
-function painted(card, selector, part) {
-  return card.evaluate((element, [query, which]) => {
-    const pixel = (layers) => {
+// Lays colours over each other in the page as a canvas does, the last one at `alpha`, and lists
+// the backgrounds below a node up to the page, bottom first: once plain and once with the
+// overlay at the start of the card's gradient (`--voc-top-overlay`).
+async function installPaint(page) {
+  await page.evaluate(() => {
+    if (window.__vocPaint) return;
+    const pixel = (layers, alpha = 1) => {
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = 1;
       const context = canvas.getContext("2d");
-      for (const layer of layers) {
+      layers.forEach((layer, index) => {
+        context.globalAlpha = index === layers.length - 1 ? alpha : 1;
         context.fillStyle = layer;
         context.fillRect(0, 0, 1, 1);
-      }
+      });
       return [...context.getImageData(0, 0, 1, 1).data].slice(0, 3);
     };
-    const backdrop = (node) => {
-      const layers = [];
-      for (let at = node; at; at = at.parentElement || at.getRootNode().host) layers.unshift(getComputedStyle(at).backgroundColor);
-      return ["#fff", getComputedStyle(document.body).backgroundColor, ...layers];
+    const overlayOf = (card) => {
+      const probe = document.createElement("div");
+      probe.style.backgroundColor = "var(--voc-top-overlay)";
+      card.append(probe);
+      const color = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return color;
     };
+    const below = (node) => {
+      const plain = [];
+      const top = [];
+      for (let at = node; at; at = at.parentElement || at.getRootNode().host) {
+        const color = getComputedStyle(at).backgroundColor;
+        plain.unshift(color);
+        top.unshift(...(at.localName === "ha-card" ? [color, overlayOf(at)] : [color]));
+      }
+      const page = ["#fff", getComputedStyle(document.body).backgroundColor];
+      return [[...page, ...plain], [...page, ...top]];
+    };
+    window.__vocPaint = { pixel, below };
+  });
+}
+
+// Colours of the elements under `selector` (`part` "color", "border" or "background"), each laid
+// over the backgrounds below it up to the page, and the backdrop they stand on, as sRGB triples:
+// on the card's plain surface and at the start of its gradient (`top`).
+async function painted(card, selector, part) {
+  await installPaint(card.page());
+  return card.evaluate((element, [query, which]) => {
+    const { pixel, below } = window.__vocPaint;
     return [...element.shadowRoot.querySelectorAll(query)].map((node) => {
       const style = getComputedStyle(node);
       const border = Number.parseFloat(style.borderTopWidth) > 0 && style.borderTopStyle !== "none" ? style.borderTopColor : "transparent";
       const own = { color: style.color, border, background: style.backgroundColor }[which];
-      const below = backdrop(node.parentElement);
-      return { own: pixel([...below, own]), backdrop: pixel(below) };
+      const [plain, top] = below(node.parentElement);
+      return { own: pixel([...plain, own]), backdrop: pixel(plain), top: { own: pixel([...top, own]), backdrop: pixel(top) } };
     });
   }, [selector, part]);
+}
+
+// Every visible text of the card that informs, with its colour and the backdrops it stands on.
+// Exempt: what assistive technology alone reads, what is hidden or inert below a dialog, and the
+// text of a control that cannot be used.
+async function readableText(card) {
+  await installPaint(card.page());
+  return card.evaluate((element) => {
+    const { pixel, below } = window.__vocPaint;
+    const exempt = ".voc-sr-only, .voc-live-region, [aria-hidden='true'], [inert], [aria-disabled='true'], :disabled";
+    const texts = [];
+    for (const node of element.shadowRoot.querySelectorAll("*")) {
+      const own = [...node.childNodes].filter((child) => child.nodeType === 3).map((child) => child.textContent).join("").trim();
+      if (!own || node.closest(exempt) || node.localName === "style") continue;
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      if (!rect.width || !rect.height || style.visibility !== "visible") continue;
+      let opacity = 1;
+      for (let at = node; at && at !== element; at = at.parentElement || at.getRootNode().host) opacity *= Number(getComputedStyle(at).opacity);
+      const size = Number.parseFloat(style.fontSize);
+      const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
+      const [plain, top] = below(node);
+      texts.push({ text: own.slice(0, 40), name: `${node.localName}.${[...node.classList].join(".")}`, large, plain: [pixel([...plain, style.color], opacity), pixel(plain)], top: [pixel([...top, style.color], opacity), pixel(top)] });
+    }
+    return texts;
+  });
 }
 
 const luminance = (rgb) => {
@@ -174,9 +228,8 @@ test("role choices in the robot profile are named radio groups", async ({ page }
   await expect(battery).toHaveAccessibleDescription("Found: Rocky Battery");
 });
 
-// In a sections grid cell the content scrolls inside the card.
 // A11Y-05 (WCAG 1.4.11): an off switch shows its place with an outline and a thumb of at least 3:1
-// against the card, light and dark.
+// against the card, light and dark, also at the start of the card's gradient.
 for (const scheme of ["light", "dark"]) {
   test(`an off switch stands out at least 3:1 against the card (${scheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
@@ -185,9 +238,51 @@ for (const scheme of ["light", "dark"]) {
     await card.locator('[data-action="open-save-template"]').click();
     await expect(card.locator(".voc-dialog .voc-switch input")).not.toBeChecked();
     for (const [selector, part] of [[".voc-dialog .voc-switch-track", "border"], [".voc-dialog .voc-switch-thumb", "background"]]) {
-      const [{ own, backdrop }] = await painted(card, selector, part);
+      const [{ own, backdrop, top }] = await painted(card, selector, part);
       expect(contrast(own, backdrop), `${selector} ${part}`).toBeGreaterThanOrEqual(3);
+      expect(contrast(top.own, top.backdrop), `${selector} ${part} at the gradient's start`).toBeGreaterThanOrEqual(3);
     }
+  });
+}
+
+// A11Y-06 (WCAG 1.4.3): informative text stands at least 4.5:1 against its surface, large text
+// 3:1, light and dark, on the card's plain surface and at the start of its gradient: in every
+// view, the job editor with all its fields, the room and robot editors and a confirmation.
+const ALL_VIEWS = ["queue", "rooms", "robots", "templates", "history", "diagnostics", "setup", "settings"];
+for (const scheme of ["light", "dark"]) {
+  test(`informative text stands at least 4.5:1, large text 3:1 (${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    const card = await mountCard(page, { ...BUSY, config: { views: ALL_VIEWS } });
+    const failures = [];
+    const check = async (where) => {
+      for (const entry of await readableText(card)) {
+        const ratio = Math.min(contrast(...entry.plain), contrast(...entry.top));
+        if (ratio < (entry.large ? 3 : 4.5)) failures.push(`${where}: ${entry.name} "${entry.text}" ${ratio.toFixed(2)}:1`);
+      }
+    };
+    const back = () => card.locator('.voc-overlay [data-action="back"]').first().click();
+    for (const view of ALL_VIEWS) {
+      await card.locator(`[role=tab][data-view="${view}"]`).click();
+      await expect(card.locator(`[data-key="view:${view}"]`)).toBeVisible();
+      await check(view);
+    }
+    await card.locator('[role=tab][data-view="queue"]').click();
+    await card.locator(".voc-primary-action").click();
+    await card.locator('[data-action="set-overlay"][data-args*="moreOpen"]').click();
+    await check("job editor");
+    await back();
+    await named(card, ".voc-job", "Studio", '[data-action="cancel-job"]').click();
+    await expect(card.locator(".voc-dialog")).toBeVisible();
+    await check("cancel dialog");
+    await page.keyboard.press("Escape");
+    await card.locator('[role=tab][data-view="rooms"]').click();
+    for (const step of fromMenu(card, ".voc-room", "Dining Room", '[data-action="edit-room"]')) await step.click();
+    await check("room editor");
+    await back();
+    await card.locator('[role=tab][data-view="robots"]').click();
+    for (const step of fromMenu(card, ".voc-robot", "Rocky", '[data-action="edit-robot"]')) await step.click();
+    await check("robot editor");
+    expect(failures).toEqual([]);
   });
 }
 

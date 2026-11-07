@@ -49,6 +49,7 @@ export const queueView = Object.freeze({
   primary: Object.freeze({ action: "create-job", icon: "mdi:plus", labelKey: "action.createJob", operation: "create_job", target: "create" }),
   bodyHoldsPrimary: ({ model, options }) => queueIsEmpty(model, options),
   scopes: ({ ui, model, options }) => buildQueueScopes({ ui, model, options }),
+  paged: () => ["queue"],
   build: ({ model, texts, context, options, config, ui }) => {
     const vm = buildQueueView({ model, texts, context, options, ui, timeFormat: config.time_format, panelShown: config.show?.panel !== false });
     if (!vm.detail) return vm;

@@ -11,5 +11,5 @@ export const HISTORY_CSS = `
 .voc-run-title { font-size: 13px; font-weight: 850; overflow-wrap: anywhere; }
 .voc-run-meta > span:first-child { flex-basis: 100%; }
 .voc-run-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 11.5px; font-weight: 700; color: var(--voc-muted); }
-.voc-job-time { color: var(--voc-faint); }
+.voc-job-time { color: var(--voc-muted); }
 `;

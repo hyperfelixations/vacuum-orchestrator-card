@@ -3,12 +3,13 @@
 // node keeps its focus, caret and scroll position. See internal dev doc §9 "Morph".
 //
 // Contract for markup: repeated siblings carry a `data-key`; form values are rendered as
-// attributes (`value`, `checked`) and are not written into a control the user is editing.
+// attributes (`value`, `checked`) and are not written into a control the user is editing. A node
+// marked `data-morph="keep"` takes the new attributes and keeps its children as they are.
 
 const VALUE_ELEMENTS = new Set(["INPUT", "TEXTAREA"]);
 // Set by the runtime controllers on rendered nodes and never rendered by markup: a render keeps
 // them, so a controller that finds them right changes nothing and the page is not laid out again.
-const RUNTIME_ATTRIBUTES = new Set(["data-compact", "data-overflow-start", "data-overflow-end", "data-overflow-top", "data-overflow-bottom", "data-placement", "data-rotated", "data-title", "data-waiting"]);
+const RUNTIME_ATTRIBUTES = new Set(["data-compact", "data-overflow-start", "data-overflow-end", "data-overflow-top", "data-overflow-bottom", "data-placement", "data-rotated", "data-title-fit", "data-paused"]);
 
 function keyOf(node) {
   return node.nodeType === 1 ? node.getAttribute("data-key") : null;
@@ -53,7 +54,7 @@ function morphNode(current, next, activeElement) {
   syncAttributes(current, next);
   syncControlState(current, next, activeElement);
   // A textarea's text is its value, handled above; custom elements own their content.
-  if (current.nodeName === "TEXTAREA" || current.nodeName.includes("-")) return;
+  if (current.nodeName === "TEXTAREA" || current.nodeName.includes("-") || next.getAttribute("data-morph") === "keep") return;
   morphChildren(current, next, activeElement);
 }
 

@@ -27,6 +27,7 @@ async function shell(state = BUSY, options = {}) {
 }
 
 const statusOf = async (model) => (await import("../../../../src/presentation/shell/status.js")).cardStatus(model);
+const slotMode = (model) => model.slots.queue.data.mode;
 
 test("status precedence: phase, attention, work in progress, queue mode, unfinished setup", async () => {
   assert.equal(await statusOf((await at(BUSY)).model), "cleaning");
@@ -61,12 +62,29 @@ test("the integration's counts mark attention and work before the open jobs are 
   for (const [mode, status] of [["idle", "idle"], ["running", "running"], ["paused", "paused"]]) assert.equal(automaticSubtitle(queue({ mode }), status, texts, { panelShown: true }), "", status);
 });
 
-test("each status has a tone in the RCC token derivation", async () => {
+// Status, panel and subtitle take the queue's mode and counts from one place, the newest the
+// session knows, so they cannot disagree.
+test("status, panel and subtitle read the newest queue facts alike", async () => {
+  const quiet = await at(QUIET);
+  const { buildPanel } = await import("../../../../src/presentation/shell/panel.js");
+  const { automaticSubtitle } = await import("../../../../src/presentation/shell/header.js");
+  const model = { ...quiet.model, live: { mode: "running", pendingJobs: 3, needsAttention: false, activeCount: 0, attentionCount: 0 } };
+  assert.equal(slotMode(quiet.model), "idle", "the queue read is older and rests");
+  assert.equal(await statusOf(model), "running");
+  const panel = buildPanel({ model, config: {}, texts: quiet.texts, context: quiet.context });
+  assert.deepEqual([panel.mode, panel.value], ["running", "3"]);
+  assert.equal(automaticSubtitle(model, "running", quiet.texts), quiet.texts.t("subtitle.waitingRunning", { count: 3 }));
+});
+
+// Fill and border follow the RCC derivation; text takes the darker ink of `--voc-ink-share`
+// (A11Y-06).
+test("each status has a tone in the RCC token derivation with a readable ink", async () => {
   const { toneFor } = await import("../../../../src/presentation/shell/status.js");
   const tone = toneFor("paused");
   assert.equal(tone.key, "paused");
+  assert.match(tone.style, /--tone-ink:color-mix\(in srgb, var\(--warning-color, #ffa600\) var\(--voc-ink-share\), var\(--primary-text-color\)\)/);
   assert.match(tone.style, /--tone-soft:color-mix\(in srgb, var\(--warning-color, #ffa600\) 20%, transparent\)/);
-  assert.match(tone.style, /--tone-border:color-mix\(in srgb, var\(--tone-ink\) 38%, transparent\)/);
+  assert.match(tone.style, /--tone-border:color-mix\(in srgb, color-mix\(in srgb, var\(--warning-color, #ffa600\) 82%, var\(--primary-text-color\)\) 38%, transparent\)/);
   assert.equal(toneFor("nonsense").key, "nonsense");
 });
 
@@ -84,7 +102,7 @@ test("controls take an accent from the tone that is never the error colour", asy
     assert.equal(accent(status), "var(--primary-color, #03a9f4)", status);
   }
   assert.match(toneFor("idle").style, /--voc-accent-soft:color-mix\(in srgb, var\(--success-color, #43a047\) 20%, transparent\);/);
-  assert.match(toneFor("idle").style, /--voc-accent-border:color-mix\(in srgb, var\(--voc-accent-ink\) 38%, transparent\);/);
+  assert.match(toneFor("idle").style, /--voc-accent-border:color-mix\(in srgb, color-mix\(in srgb, var\(--success-color, #43a047\) 82%, var\(--primary-text-color\)\) 38%, transparent\);/);
 });
 
 test("the automatic subtitle names what the card is doing", async () => {
@@ -130,6 +148,27 @@ test("the header honours title, subtitle, icon and the show switches", async () 
   assert.deepEqual([full.title, full.icon, full.parts, full.pill], ["Upstairs", "mdi:broom", null, texts.t("status.idle")]);
   const reduced = buildHeader({ model, config: config({ subtitle: "", show: { pill: false, icon: false } }), texts, status: "idle" });
   assert.deepEqual([reduced.hasSubtitle, reduced.parts], [false, "title"]);
+});
+
+// UI-37: a hint joins the line the card shows and makes it wrap. Where the automatic line has
+// nothing to say beside the panel (UI-03) the hint stands alone; a subtitle switched off or written
+// empty stays off, and outside `ready` the onboarding says what is going on.
+test("a hint joins the subtitle, stands alone where the automatic line is empty and brings back no line switched off", async () => {
+  const { texts, config } = await shell();
+  const { buildHeader } = await import("../../../../src/presentation/shell/header.js");
+  const empty = (await at(["queue_end", { from: "The card opens" }])).model;
+  const hint = texts.t("hint.readOnly");
+  const plain = buildHeader({ model: empty, config: config(), texts, status: "idle" });
+  assert.deepEqual([plain.hasSubtitle, plain.subtitleOverflow], [false, "clip"], "panel and pill say it all");
+  const alone = buildHeader({ model: empty, config: config(), texts, status: "idle", hint });
+  assert.deepEqual([alone.hasSubtitle, alone.subtitle, alone.subtitleOverflow, alone.parts], [true, hint, "wrap", null]);
+  const joined = buildHeader({ model: empty, config: config({ subtitle: "Upstairs" }), texts, status: "idle", hint });
+  assert.deepEqual([joined.subtitle, joined.subtitleOverflow], [`Upstairs · ${hint}`, "wrap"]);
+  for (const raw of [{ subtitle: "" }, { show: { subtitle: false } }]) {
+    assert.equal(buildHeader({ model: empty, config: config(raw), texts, status: "idle", hint }).hasSubtitle, false, JSON.stringify(raw));
+  }
+  const onboarding = (await at(NOT_INSTALLED)).model;
+  assert.equal(buildHeader({ model: onboarding, config: config(), texts, status: "notInstalled", hint }).hasSubtitle, false);
 });
 
 test("the panel shows the waiting count, the run line, up to three robots and the queue control", async () => {
@@ -229,8 +268,32 @@ test("one warning is a sentence, several a count; a hint is appended to the subt
   const several = notices.buildNotices({ diagnostics: [createDiagnostic("backend.query_failed", { params: { scope: "rooms", code: "x" } }), createDiagnostic("backend.query_failed", { params: { scope: "robots", code: "x" } })] });
   assert.equal(notices.warningText(several.warnings, texts), texts.t("warning.several", { count: 2 }));
   assert.equal(notices.buildWarningBlock({ config: config({ show: { warnings: false } }), notices: one, texts }).visible, false);
-  const header = notices.withHint({ subtitle: "Nothing waiting", hasSubtitle: true }, notices.hintText(one.hints, texts));
-  assert.equal(header.subtitle, `Nothing waiting · ${texts.t("hint.reconnecting")}`);
+  assert.equal(notices.appendHint("Nothing waiting", notices.hintText(one.hints, texts)), `Nothing waiting · ${texts.t("hint.reconnecting")}`);
+  assert.equal(notices.appendHint("Nothing waits.", "Reconnecting…"), "Nothing waits. Reconnecting…", "after a sentence the hint is a sentence of its own");
+});
+
+// UI-33: success and info notices stay for the time it takes to read them, two seconds for a short
+// one and ten at most; warnings and errors stay until they are dismissed.
+test("a notice stays as long as its text takes to read, and warnings and errors stay", async () => {
+  const { NOTICE_TIMING, noticeDuration } = await import("../../../../src/presentation/shell/notices.js");
+  assert.deepEqual({ ...NOTICE_TIMING }, { baseMs: 1000, perCharacterMs: 60, minMs: 2000, maxMs: 10000 });
+  assert.equal(noticeDuration({ kind: "success", text: "Auftrag gespeichert." }), 2200);
+  assert.equal(noticeDuration({ kind: "success", text: "Saved." }), 2000);
+  assert.equal(noticeDuration({ kind: "info", text: "x".repeat(100) }), 7000);
+  assert.equal(noticeDuration({ kind: "info", text: "x".repeat(400) }), 10000);
+  assert.equal(noticeDuration({ kind: "warning", text: "No answer" }), null);
+  assert.equal(noticeDuration({ kind: "error", text: "Refused" }), null);
+});
+
+test("the shell hands each notice on with its id and time", async () => {
+  const { model, texts, VIEWS, config } = await shell();
+  const { buildTabs } = await import("../../../../src/presentation/shell/tabs.js");
+  const { buildCardViewModel } = await import("../../../../src/presentation/shell/card-view-model.js");
+  const tabs = buildTabs({ definitions: VIEWS, model, config: config(), ui: {}, texts });
+  const vm = (notice) => buildCardViewModel({ model, config: config(), texts, ui: { notice }, tabs, definitions: VIEWS, context: {} }).notice;
+  const saved = vm({ id: 4, kind: "success", messageKey: "notice.jobUpdated" });
+  assert.deepEqual([saved.id, saved.durationMs], [4, Math.min(10000, Math.max(2000, 1000 + 60 * saved.text.length))]);
+  assert.equal(vm({ id: 5, kind: "warning", messageKey: "notice.outcomeUnknown" }).durationMs, null);
 });
 
 test("onboarding explains each unusable phase and offers Home Assistant's own pages", async () => {

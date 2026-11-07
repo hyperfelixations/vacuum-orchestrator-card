@@ -35,6 +35,21 @@ test("ui state keeps the view, an overlay stack, pages, choices and the notice",
   assert.ok(Object.isFrozen(ui.snapshot));
 });
 
+// UI-33: every notice has its own id, so a timer that ran out for one dismisses only that one.
+test("each notice has its own id and is dismissed only while it is the card's notice", async () => {
+  const { createUIState } = await import("../../../src/controllers/runtime/ui-state.js");
+  const ui = createUIState();
+  ui.setNotice({ kind: "success", messageKey: "a" });
+  const first = ui.snapshot.notice.id;
+  ui.setNotice({ kind: "success", messageKey: "a" });
+  const second = ui.snapshot.notice.id;
+  assert.ok(Number.isInteger(first) && second > first, "the same text again is a new notice");
+  ui.dismissNotice(first);
+  assert.equal(ui.snapshot.notice.id, second, "a stale timer leaves the newer notice");
+  ui.dismissNotice(second);
+  assert.equal(ui.snapshot.notice, null);
+});
+
 // One menu is open at a time; opening a page or another view closes it.
 // LAY-16: a list page left empty by deleting its last entry steps back to the last page there is.
 test("a page past the end of its list steps back to the last page", async () => {
@@ -278,6 +293,7 @@ test("choice groups are roving tab stops and the entity search leads into its ma
   assert.equal(key(root.querySelector("#a"), "ArrowRight"), true);
   assert.equal(root.activeElement.id, "c", "a disabled option is skipped");
   assert.equal(clicked, "c", "a single choice selects as it moves");
+  assert.deepEqual(["#a", "#b", "#c"].map((id) => root.querySelector(id).tabIndex), [-1, -1, 0], "the tab stop moves with the focus");
   assert.equal(key(root.querySelector("#q"), "ArrowDown"), true);
   assert.equal(root.activeElement.id, "m1");
   assert.equal(key(root.querySelector("#m1"), "ArrowUp"), true);
@@ -466,15 +482,18 @@ test("the tab row drops the inactive labels, then the action label, keeps the ac
   Object.defineProperty(strip, "clientWidth", { get: () => clientWidth });
   Object.defineProperty(strip, "scrollWidth", { get: () => Math.max(clientWidth, widths[row.getAttribute("data-compact") || "labelled"]) });
   Object.defineProperty(strip, "scrollLeft", { get: () => 0, set: () => {} });
-  const runtime = createTabStripRuntime({ root, platform: { observeResize: () => () => {} } });
+  // A width changes with the card's size, which the platform reports.
+  let resized = null;
+  const runtime = createTabStripRuntime({ root, platform: { observeResize: (_element, fn) => ((resized = fn), () => {}) } });
+  runtime.connect();
   const level = () => row.getAttribute("data-compact");
   for (const [width, expected] of [[350, "action"], [420, "labels"], [500, null]]) {
     clientWidth = width;
-    runtime.sync();
+    resized();
     assert.equal(level(), expected, `at ${width}`);
   }
   clientWidth = 200;
-  runtime.sync();
+  resized();
   assert.deepEqual([level(), strip.hasAttribute("data-overflow-end")], ["action", true], "the active tab keeps its label; the strip scrolls");
 });
 
@@ -530,7 +549,7 @@ test("job rows keep their actions beside a title that fits, else below it, read 
   const short = fitRow(dom, root, { key: "Studio" });
   const long = fitRow(dom, root, { key: "Library, thoroughly", pill: true });
   const bare = fitRow(dom, root, { key: "Dining Room", actions: false });
-  bare.setAttribute("data-title", "fits");
+  bare.setAttribute("data-title-fit", "fits");
   // The title's text ends where its key says; the pill 60 px later; the actions start at 300.
   const textEnd = { Studio: 120, "Library, thoroughly": 260 };
   let lines = 1;
@@ -555,14 +574,14 @@ test("job rows keep their actions beside a title that fits, else below it, read 
   dom.window.getComputedStyle = (node) => (node.classList.contains("voc-job") ? { columnGap: "6px" } : style(node));
   const runtime = createRowFitRuntime({ root, platform: { observeResize: () => () => {} } });
   runtime.sync();
-  assert.deepEqual([short, long, bare].map((row) => row.getAttribute("data-title")), ["fits", "wraps", null], "the pill counts to the title line; a row without actions has no form");
+  assert.deepEqual([short, long, bare].map((row) => row.getAttribute("data-title-fit")), ["fits", "wraps", null], "the pill counts to the title line; a row without actions has no form");
   assert.equal(readAfterWrite, false);
   // A wrapped title never fits, however short its last line.
   lines = 2;
   textEnd.Studio = 121;
   short.querySelector(".voc-job-title").textContent = "Studio";
   runtime.sync({ force: true });
-  assert.equal(short.getAttribute("data-title"), "wraps");
+  assert.equal(short.getAttribute("data-title-fit"), "wraps");
 });
 
 test("a job row is measured again only when its width, title or actions change, or a font loads (UI-31)", async () => {
@@ -587,14 +606,14 @@ test("a job row is measured again only when its width, title or actions change, 
   const runtime = createRowFitRuntime({ root, platform: { observeResize: (element, fn) => { assert.equal(element, host); observing += 1; resized = fn; return () => { observing -= 1; }; } } });
   runtime.connect();
   runtime.sync();
-  assert.deepEqual([row.getAttribute("data-title"), measures], ["fits", 1]);
+  assert.deepEqual([row.getAttribute("data-title-fit"), measures], ["fits", 1]);
   // A render that leaves the row as it was keeps its form without reading the layout.
-  row.removeAttribute("data-title");
+  row.removeAttribute("data-title-fit");
   runtime.sync();
-  assert.deepEqual([row.getAttribute("data-title"), measures], ["fits", 1]);
+  assert.deepEqual([row.getAttribute("data-title-fit"), measures], ["fits", 1]);
   width = 200;
   resized();
-  assert.deepEqual([row.getAttribute("data-title"), measures], ["wraps", 2], "a narrower card measures again");
+  assert.deepEqual([row.getAttribute("data-title-fit"), measures], ["wraps", 2], "a narrower card measures again");
   row.querySelector(".voc-job-actions button").textContent = "Cancel job";
   runtime.sync();
   assert.equal(measures, 3, "changed actions measure again");
@@ -625,11 +644,52 @@ test("the tab row is not measured again while nothing it depends on changed (UI-
   runtime.sync();
   assert.equal(row.getAttribute("data-compact"), "labels");
   const first = measures;
-  // A render that leaves the row as it was: the attribute stands, only the edges are marked.
+  // A render that leaves the row as it was: the attribute stands and nothing is read.
   runtime.sync();
   assert.equal(row.getAttribute("data-compact"), "labels");
-  assert.equal(measures - first, 1, "only the edge marks read the row");
+  assert.equal(measures - first, 0, "nothing reads the row");
   root.querySelector('[role="tab"]').textContent = "Warteschlange";
   runtime.sync();
-  assert.ok(measures - first > 2, "a changed label is measured again");
+  assert.ok(measures - first >= 2, "a changed label is measured again");
+});
+
+// UI-35: a tab chosen again takes its remembered fit without reading the layout; whether the
+// strip scrolls belongs to that fit, so its edges and the active tab follow the row shown.
+test("a tab chosen again takes its remembered fit, the strip's scrolling included", async () => {
+  const { createTabStripRuntime, FIT_MEMORY } = await import("../../../src/controllers/runtime/tab-strip-runtime.js");
+  const dom = new JSDOM('<!doctype html><div id="host"></div>');
+  const root = dom.window.document.getElementById("host").attachShadow({ mode: "open" });
+  root.innerHTML = '<div class="voc-tab-row"><div class="voc-tabs"><button role="tab" data-view="queue">Queue</button><button role="tab" data-view="rooms">Rooms</button></div></div>';
+  const row = root.querySelector(".voc-tab-row");
+  const strip = root.querySelector(".voc-tabs");
+  // With rooms active its long label keeps the strip scrolling at every level; with queue it fits.
+  const select = (view) => strip.querySelectorAll('[role="tab"]').forEach((tab) => tab.setAttribute("aria-selected", String(tab.dataset.view === view)));
+  let reads = 0;
+  let revealed = 0;
+  Object.defineProperty(strip, "clientWidth", { get: () => 300 });
+  Object.defineProperty(strip, "scrollWidth", {
+    get: () => {
+      reads += 1;
+      return strip.querySelector('[aria-selected="true"]').dataset.view === "rooms" ? 380 : 300;
+    },
+  });
+  Object.defineProperty(strip, "scrollLeft", { get: () => 0, set: () => {} });
+  strip.getBoundingClientRect = () => {
+    revealed += 1;
+    return { left: 0, width: 300 };
+  };
+  for (const tab of strip.querySelectorAll('[role="tab"]')) tab.getBoundingClientRect = () => ({ left: 0, width: 80 });
+  const runtime = createTabStripRuntime({ root, platform: { observeResize: () => () => {} } });
+  const show = (view) => {
+    select(view);
+    const [before, shown] = [reads, revealed];
+    runtime.sync();
+    return { reads: reads - before, revealed: revealed - shown, end: strip.hasAttribute("data-overflow-end"), level: row.getAttribute("data-compact") };
+  };
+  // Measured: once labelled, once per level, then the active tab is brought into view and the edges marked.
+  assert.deepEqual(show("rooms"), { reads: 5, revealed: 1, end: true, level: "action" }, "measured: it scrolls even without labels");
+  assert.deepEqual(show("queue"), { reads: 1, revealed: 0, end: false, level: null }, "measured: it fits");
+  assert.deepEqual(show("rooms"), { reads: 2, revealed: 1, end: true, level: "action" }, "remembered: no fit is measured, the edges and the active tab follow");
+  assert.deepEqual(show("queue"), { reads: 0, revealed: 0, end: false, level: null }, "remembered and not scrolling: nothing is read");
+  assert.equal(FIT_MEMORY, 32);
 });

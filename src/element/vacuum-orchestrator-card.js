@@ -11,6 +11,8 @@ import { DEFAULT_LANGUAGE } from "../i18n/locales.js";
 import { affordanceContext } from "../domain/affordances.js";
 import { acquireSession } from "../backend/session-registry.js";
 import { FRAME_MIN_PX, GRID_OPTIONS, frameMode, standardHeightPx } from "./card-layout.js";
+import { cardDemand, resolvedOptions } from "./card-demand.js";
+import { renderSignature } from "./render-signature.js";
 import { buildCardDomainModel } from "../application/card-domain-model.js";
 import { hassChanged, readHomeAssistant } from "../backend/home-assistant.js";
 import { buildCardViewModel } from "../presentation/shell/card-view-model.js";
@@ -26,15 +28,16 @@ import { createClockRuntime, watchTimes } from "../controllers/runtime/clock-run
 import { createDiagnosticsReporter } from "../controllers/runtime/diagnostics-reporter.js";
 import { createInteractionRuntime } from "../controllers/runtime/interaction-runtime.js";
 import { createKeyboardRuntime } from "../controllers/runtime/keyboard-runtime.js";
+import { createNoticeRuntime } from "../controllers/runtime/notice-runtime.js";
 import { placeMenus } from "../controllers/runtime/menu-placement.js";
-import { placeMaps } from "../controllers/runtime/map-rotation.js";
+import { createMapRuntime } from "../controllers/runtime/map-runtime.js";
 import { createScrollRuntime } from "../controllers/runtime/scroll-runtime.js";
 import { createLayoutRuntime } from "../controllers/runtime/layout-runtime.js";
 import { createRowFitRuntime } from "../controllers/runtime/row-fit-runtime.js";
 import { createTabStripRuntime } from "../controllers/runtime/tab-strip-runtime.js";
 import { createUIState, pagesPastTheEnd } from "../controllers/runtime/ui-state.js";
 import { createActionRouter } from "../controllers/runtime/action-router.js";
-import { createRenderController } from "../controllers/render/render-controller.js";
+import { RENDER_PATH, createRenderController } from "../controllers/render/render-controller.js";
 import { VIEWS, VIEW_CSS, VIEW_TYPES, handleControlKeydown, isDialog, optionSchemaForView, overlayFor, renderBody, viewFor } from "../views/index.js";
 
 const CARD_SIZE_ROW_PX = 50;
@@ -42,12 +45,6 @@ const CARD_SIZE_MAX_ROWS = 14;
 const COLLABORATORS = Object.freeze({ isSupportedLanguage, viewTypes: VIEW_TYPES, optionSchemaForView });
 const STYLES = buildStyles({ viewCss: VIEW_CSS });
 let ownerSequence = 0;
-
-function resolvedOptions(definition, requested = {}) {
-  const resolved = {};
-  for (const [name, descriptor] of Object.entries(definition?.optionsSchema || {})) resolved[name] = requested[name] === undefined ? descriptor.default : requested[name];
-  return resolved;
-}
 
 export class VacuumOrchestratorCard extends HTMLElement {
   constructor() {
@@ -63,6 +60,21 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._hold = null;
     this._unsubscribe = null;
     this._model = null;
+    // A tab the person chose (UI-35): `{view, startedAt, shown}`; `shown` once phase 1 rendered it.
+    this._switch = null;
+    // Phase 2 or a switch's end, waiting for the browser to paint.
+    this._painting = null;
+    // Callers of `updateComplete` waiting for the card to settle.
+    this._settling = [];
+    // UI-36: how long the last view switch and the last render took, for the diagnostics view.
+    this._stats = { switchMs: null, renderMs: null };
+    // The render's phase: 1 builds the tab row around the view still shown, 0 everything.
+    this._phase = 0;
+    // Phase 1's model, which phase 2 takes while nothing it was built from changed.
+    this._reuse = null;
+    // The session whose next views were read ahead (UI-35), and the idle wait for it.
+    this._warmed = null;
+    this._idle = null;
     this._platform = createBrowserPlatform(() => this.ownerDocument, () => this);
     this._mount = createShadowMount(this.shadowRoot);
     this._ui = createUIState();
@@ -80,7 +92,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._interaction = createInteractionRuntime({ root: this.shadowRoot, onAction: (event) => this._onInteraction(event) });
     this._keyboard = createKeyboardRuntime({
       root: this.shadowRoot,
-      onView: (view) => this._ui.setView(view),
+      onView: (view) => this._switchView(view),
       // Escape closes an open menu; else it is the page's Back control, including its question
       // about unsaved changes.
       onEscape: () => {
@@ -99,6 +111,9 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._rowFit = createRowFitRuntime({ root: this.shadowRoot, platform: this._platform });
     this._scroll = createScrollRuntime({ root: this.shadowRoot, platform: this._platform });
     this._layoutTier = createLayoutRuntime({ root: this.shadowRoot, platform: this._platform, onWide: (wide) => this._ui.setWide(wide) });
+    this._notices = createNoticeRuntime({ root: this.shadowRoot, platform: this._platform, onExpire: (id) => this._ui.dismissNotice(id) });
+    // A card that changes size lays its map pictures out again, also within a width tier.
+    this._maps = createMapRuntime({ root: this.shadowRoot, host: this, platform: this._platform, viewportHeight: () => this.ownerDocument?.defaultView?.innerHeight ?? 0 });
     this._clock = createClockRuntime({ platform: this._platform, now: () => this._now(), onTick: () => this._scheduleRender() });
     this._renderer = createRenderController({ computeViewModel: () => this._computeViewModel(), renderView: (viewModel) => this._renderView(viewModel) });
   }
@@ -160,16 +175,12 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._rowFit.connect();
     this._scroll.connect();
     this._layoutTier.connect();
-    // A card that changes size lays its map pictures out again, also within a width tier.
-    this._stopMapResize = this._platform.observeResize(this, () => this._placeMaps());
+    this._notices.connect();
+    this._maps.connect();
     this._clock.connect();
     this._syncSession();
     void this._router.resumeHolds();
     this._renderSafely();
-  }
-
-  _placeMaps() {
-    placeMaps(this.shadowRoot, { viewportHeight: this.ownerDocument?.defaultView?.innerHeight ?? 0 });
   }
 
   disconnectedCallback() {
@@ -179,11 +190,37 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._rowFit.disconnect();
     this._scroll.disconnect();
     this._layoutTier.disconnect();
-    this._stopMapResize?.();
-    this._stopMapResize = null;
+    this._notices.disconnect();
+    this._maps.disconnect();
     this._clock.disconnect();
     this._router.pauseHolds();
     this._releaseSession();
+    this._painting?.cancel();
+    this._painting = null;
+    this._switch = null;
+    this._idle?.cancel();
+    this._idle = null;
+    this._settle();
+  }
+
+  // Resolves once no render waits: none scheduled and no second phase pending (card-mod and the
+  // tests wait on it); at once on a detached card.
+  get updateComplete() {
+    if (!this.isConnected || (!this._renderScheduled && !this._painting)) return Promise.resolve(true);
+    return new Promise((resolve) => this._settling.push(resolve));
+  }
+
+  _settle() {
+    if (this.isConnected && (this._renderScheduled || this._painting)) return;
+    for (const resolve of this._settling.splice(0)) resolve(true);
+  }
+
+  // UI-35: a tab the person chose shows in the next frame, its view right after; see internal dev
+  // doc §5 "Reiterwechsel".
+  _switchView(view) {
+    if (view === (this._pending?.tabs?.active ?? this._ui.snapshot.view)) return;
+    this._switch = { view, startedAt: this._platform.monotonicNow(), shown: false };
+    this._ui.setView(view);
   }
 
   // Masonry rows of 50 px: the rendered height once there is one, else header, panel and tab
@@ -221,7 +258,11 @@ export class VacuumOrchestratorCard extends HTMLElement {
     if (body.kind !== "view" && body.kind !== "overlay") return [`${body.kind}:${body.key ?? ""}`];
     const ui = this._ui.snapshot;
     const pages = ui.overlays.map((overlay, index) => (isDialog(overlay.kind) ? null : `overlay:${index}:${overlay.kind}`)).filter(Boolean);
-    return [`view:${this._pending.tabs.active}:${JSON.stringify(ui.pages)}`, ...pages];
+    // Only the list pages the view shows: another view's page correction keeps its position.
+    const { active, activeTab } = this._pending.tabs;
+    const definition = viewFor(active);
+    const paged = definition?.paged?.({ ui, options: resolvedOptions(definition, activeTab?.options) }) ?? [];
+    return [`view:${active}:${JSON.stringify(paged.map((slot) => ui.pages[slot] ?? 0))}`, ...pages];
   }
 
   // The overlays on screen: the topmost page, and the dialog when the top overlay is one. The
@@ -268,31 +309,8 @@ export class VacuumOrchestratorCard extends HTMLElement {
     this._lastRequests = null;
   }
 
-  // The scopes this card reads, by slot. The base set serves the shell; the active view, the page
-  // on screen and a dialog above it add their own.
   _requests(tabs) {
-    const ui = this._ui.snapshot;
-    const pageSize = this._config.page_size;
-    const requests = {
-      queue: { name: "queue", params: { offset: ui.pages.queue ?? 0, limit: pageSize } },
-      openJobs: { name: "openJobs", params: {} },
-      rooms: { name: "rooms", params: {} },
-      robots: { name: "robots", params: {} },
-      candidates: { name: "candidates", params: {} },
-      registry: { name: "registry", params: {} },
-      setup: { name: "setup", params: {} },
-      errorTexts: { name: "errorTexts", params: { language: this._language() } },
-    };
-    const add = (list) => {
-      for (const request of list || []) requests[request.slot || request.name] = { name: request.name, params: request.params || {} };
-    };
-    const definition = viewFor(tabs?.active);
-    if (definition?.scopes) add(definition.scopes({ ui, model: this._model, options: resolvedOptions(definition, tabs.activeTab?.options), config: this._config }));
-    for (const overlay of Object.values(this._layers())) {
-      const overlayDefinition = overlay ? overlayFor(overlay.kind) : null;
-      if (overlayDefinition?.scopes) add(overlayDefinition.scopes({ ui, overlay, config: this._config }));
-    }
-    return requests;
+    return cardDemand({ ui: this._ui.snapshot, config: this._config, language: this._language(), model: this._model, tabs, layers: this._layers() });
   }
 
   _language() {
@@ -332,16 +350,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
   }
 
   _signature({ model, texts }) {
-    return JSON.stringify({
-      session: this._hold?.session.getSnapshot().version ?? null,
-      config: this._configVersion,
-      language: texts.language,
-      scheme: this._scheme(),
-      minute: Math.floor(model.nowMs / 60000),
-      second: this._clock.mode === "second" ? Math.floor(model.nowMs / 1000) : null,
-      ui: this._ui.snapshot,
-      hass: [model.robotsLive, model.entityReadings, model.areas, model.operations, model.permissions, model.entityCatalog.length],
-    });
+    return renderSignature({ sessionVersion: this._hold?.session.getSnapshot().version ?? null, configVersion: this._configVersion, language: texts.language, scheme: this._scheme(), nowMs: model.nowMs, clockMode: this._clock.mode, ui: this._ui.snapshot, model });
   }
 
   // The texts note whether a shown time counts seconds; the clock ticks accordingly.
@@ -351,10 +360,12 @@ export class VacuumOrchestratorCard extends HTMLElement {
     const texts = times.texts;
     const context = affordanceContext({ canCommand: model.permissions.canCommand, connected: model.subscription !== "reconnecting", operations: model.operations, pending: model.pending });
     const config = this._config;
+    // Phase 1 keeps the view still shown and builds none (UI-35).
+    const kept = this._phase === 1 ? this._renderer.lastViewModel?.viewModel?.body : null;
     let viewContent = null;
     const definition = viewFor(tabs.active);
-    if (definition && tabs.activeTab?.available && model.phase === "ready") {
-      viewContent = definition.build({ model, texts, context, options: resolvedOptions(definition, tabs.activeTab.options), config, ui: this._ui.snapshot });
+    if (!kept && definition && tabs.activeTab?.available && model.phase === "ready") {
+      viewContent = definition.build({ model, texts, context, options: resolvedOptions(definition, tabs.activeTab.options), config, ui: this._ui.snapshot, stats: this._stats });
     }
     const build = (entry) => {
       const overlayDefinition = entry ? overlayFor(entry.kind) : null;
@@ -363,6 +374,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     };
     const { page, dialog } = this._layers();
     const viewModel = buildCardViewModel({ model, config, texts, ui: this._ui.snapshot, tabs, definitions: VIEWS, context, viewContent, page: build(page), dialog: build(dialog), scheme: this._scheme() });
+    if (kept) viewModel.body = { kind: "view", key: kept.key, keep: true };
     return { viewModel, texts, times };
   }
 
@@ -382,12 +394,16 @@ export class VacuumOrchestratorCard extends HTMLElement {
     // it names one, else to its heading.
     if (depth > previousDepth) this._focusReturns = [...(this._focusReturns || []), held];
     this._applyFrame(viewModel.body.kind === "overlay");
-    this._scroll.capture();
-    this._mount.mount(context, { css: STYLES, html: renderCard(context, viewModel, renderBody) });
-    this._rowFit.sync();
-    this._scroll.sync(this._scrollStack(viewModel));
-    placeMenus(this.shadowRoot);
-    this._placeMaps();
+    // Phase 1 lays out only the tab row: the body is the view still shown (UI-35).
+    const kept = viewModel.body.keep === true;
+    if (!kept) this._scroll.capture();
+    const { changed } = this._mount.mount(context, { css: STYLES, html: renderCard(context, viewModel, renderBody) });
+    if (changed && !kept) {
+      this._rowFit.sync();
+      this._scroll.sync(this._scrollStack(viewModel));
+      placeMenus(this.shadowRoot);
+      this._maps.sync();
+    }
     const requested = this._ui.consumeFocus();
     if (requested) focusSelector(this.shadowRoot, requested, ring);
     else if (depth > previousDepth && held && viewModel.dialog) focusSelector(this.shadowRoot, ".voc-dialog [data-autofocus]", ring) || focusSelector(this.shadowRoot, "#voc-dialog-title", ring);
@@ -399,19 +415,22 @@ export class VacuumOrchestratorCard extends HTMLElement {
       if (!target || !focusSelector(this.shadowRoot, target, ring)) restoreFocus(this.shadowRoot, ".voc-root", ring);
     } else restoreFocus(this.shadowRoot, held, ring);
     this._overlayDepth = depth;
-    this._tabStrip.sync();
-    this._layoutTier.sync();
+    if (changed) this._tabStrip.sync();
+    if (changed && !kept) this._layoutTier.sync();
+    this._notices.sync(viewModel.notice);
     this._clock.plan(times.mode);
     this._diagnostics.reportWarnings(viewModel.notices.warnings);
     this._diagnostics.reportRenderSuccess();
   }
 
   // Session, UI and hass changes arrive in bursts; one render per microtask answers them all.
+  // While phase 2 of a view switch waits for the paint, phase 2 renders them.
   _scheduleRender() {
     if (this._renderScheduled) return;
     this._renderScheduled = true;
     Promise.resolve().then(() => {
       this._renderScheduled = false;
+      if (this._switch?.shown && this._painting) return;
       this._renderSafely();
     });
   }
@@ -419,7 +438,10 @@ export class VacuumOrchestratorCard extends HTMLElement {
   // A render can cause another (a new scope demand notifies synchronously); the nested request
   // is replayed after the outer render instead of interleaving with it.
   _renderSafely() {
-    if (!this._config) return;
+    if (!this._config) {
+      this._settle();
+      return;
+    }
     if (this._rendering) {
       this._renderAgain = true;
       return;
@@ -433,14 +455,65 @@ export class VacuumOrchestratorCard extends HTMLElement {
     } finally {
       this._rendering = false;
     }
+    this._settle();
+  }
+
+  // Phase 1 only for a tab the person chose from a view, with no page or dialog open, on a shown
+  // page in `ready`; any other switch renders at once.
+  _phaseOne() {
+    const choice = this._switch;
+    if (!choice || choice.shown) return false;
+    const last = this._renderer.lastViewModel?.viewModel;
+    const twoPhase = this._renderer.hasRendered && last?.body?.kind === "view" && !last.dialog && this._ui.snapshot.overlays.length === 0 && this._model?.phase === "ready" && !this._platform.isDocumentHidden();
+    if (!twoPhase) choice.shown = true;
+    return twoPhase;
+  }
+
+  // Phase 2 reuses phase 1's model while nothing it was built from changed.
+  _modelKey() {
+    return [this._hold?.session.getSnapshot().version ?? null, this._hass, this._configVersion, this._ui.snapshot];
+  }
+
+  _paintThen(fn) {
+    this._painting?.cancel();
+    this._painting = this._platform.afterPaint(fn);
+    if (!this._painting) fn();
   }
 
   _renderOnce() {
     try {
-      const pending = this._computeModel();
+      const started = this._platform.monotonicNow();
+      const phaseOne = this._phaseOne();
+      const reuse = this._reuse;
+      this._reuse = null;
+      const pending = reuse && this._modelKey().every((part, index) => part === reuse.key[index]) ? reuse.pending : this._computeModel();
       this._pending = pending;
-      this._renderer.render({ signature: this._signature(pending) });
+      this._phase = phaseOne ? 1 : 0;
+      if (phaseOne) {
+        this._renderer.render({ signature: this._signature(pending), force: true });
+        this._switch.shown = true;
+        this._reuse = { pending, key: this._modelKey() };
+        this._paintThen(() => {
+          this._painting = null;
+          this._renderer.invalidate();
+          this._renderSafely();
+        });
+        return;
+      }
+      if (this._renderer.render({ signature: this._signature(pending) }) === RENDER_PATH.RENDER) this._stats.renderMs = this._platform.monotonicNow() - started;
+      const choice = this._switch;
+      if (choice?.shown) {
+        this._switch = null;
+        this._paintThen(() => {
+          this._painting = null;
+          this._stats.switchMs = this._platform.monotonicNow() - choice.startedAt;
+          this._settle();
+        });
+      }
+      this._warmUp(pending.tabs);
     } catch (error) {
+      // A switch that failed to render is not tried again in two phases.
+      this._switch = null;
       this._renderer.markFailed();
       this._diagnostics.reportRenderFailure(error);
       const language = resolveMessageLanguage(this._config?.language, this.ownerDocument?.documentElement?.getAttribute("lang"));
@@ -450,7 +523,26 @@ export class VacuumOrchestratorCard extends HTMLElement {
       } catch (_ignored) {
         this._mount.showText(`${CARD_NAME}: ${text}`);
       }
+    } finally {
+      this._phase = 0;
     }
+  }
+
+  // UI-35: once per session, when the browser is idle, the views marked `warm` are read ahead, so
+  // their first frame shows content.
+  _warmUp(tabs) {
+    const session = this._hold?.session;
+    if (!session || this._warmed === session || this._model?.phase !== "ready") return;
+    this._warmed = session;
+    this._idle = this._platform.whenIdle(() => {
+      this._idle = null;
+      const ui = this._ui.snapshot;
+      const requests = (tabs?.tabs || []).flatMap((tab) => {
+        const definition = viewFor(tab.key);
+        return tab.available && definition?.warm ? definition.scopes({ ui, model: this._model, options: resolvedOptions(definition, tab.options), config: this._config }) : [];
+      });
+      if (this._hold?.session === session) session.warm(requests);
+    });
   }
 
   // A menu button opens its menu with ArrowDown or ArrowUp; Tab leaves an open menu and closes it.
@@ -479,7 +571,7 @@ export class VacuumOrchestratorCard extends HTMLElement {
     }
     if (event.type === "view") {
       this._ui.requestFocus(`[role="tab"][data-view="${event.view}"]`);
-      this._ui.setView(event.view);
+      this._switchView(event.view);
       return;
     }
     if (event.type === "input" || event.type === "change") {

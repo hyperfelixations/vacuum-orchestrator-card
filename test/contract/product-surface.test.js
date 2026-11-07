@@ -5,7 +5,10 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { parseAst } = require("rollup/parseAst");
 const manifest = require("../manifests/product-surface.js");
+const { visitTree } = require("../architecture/source-architecture.js");
+const { wireQueuePage } = require("../helpers/voi-records.js");
 
 test("the source offers exactly the manifest's languages, views, options and vocabularies", async () => {
   const { TRANSLATIONS } = await import("../../src/i18n/registry.js");
@@ -18,24 +21,73 @@ test("the source offers exactly the manifest's languages, views, options and voc
   assert.deepEqual([...schema.JOB_STATES], manifest.states);
 });
 
-test("the card uses every action, command and query of the integration", async () => {
+test("the protocol names exactly the manifest's actions, commands and queries", async () => {
   const { ACTIONS, CARD_COMMANDS, CONFIGURATION_COMMANDS, CONFIGURATION_QUERIES } = await import("../../src/backend/protocol.js");
   assert.deepEqual([...ACTIONS], manifest.actions);
   assert.deepEqual([...CONFIGURATION_COMMANDS], manifest.commands);
   assert.deepEqual([...CARD_COMMANDS], manifest.cardCommands);
   assert.deepEqual([...CONFIGURATION_QUERIES], manifest.queries);
-  const sources = [];
+});
+
+// The operations a control's handler sends: the first argument of `run`, `submit` and a session's
+// `command`, and the `operation` a confirmation or the battery question carries; the queue's run,
+// pause and resume button sends the one the integration offers (`QUEUE_CONTROLS`).
+function sentOperations() {
+  const sent = new Set();
+  const literal = (node) => (node?.type === "Literal" && typeof node.value === "string" ? node.value : null);
   const walk = (directory) => {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
       const full = path.join(directory, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (entry.name.endsWith(".js") && !full.includes(`${path.sep}backend${path.sep}`)) sources.push(fs.readFileSync(full, "utf8"));
+      else if (entry.name.endsWith(".js")) {
+        visitTree(parseAst(fs.readFileSync(full, "utf8")), (node) => {
+          const callee = node.type === "CallExpression" ? node.callee : null;
+          const name = callee?.type === "Identifier" ? callee.name : callee?.type === "MemberExpression" && !callee.computed ? callee.property.name : null;
+          if (["run", "submit", "command"].includes(name) && literal(node.arguments[0])) sent.add(literal(node.arguments[0]));
+          if (node.type === "Property" && !node.computed && node.key.type === "Identifier" && node.key.name === "operation" && literal(node.value)) sent.add(literal(node.value));
+        });
+      }
     }
   };
-  walk(path.join(__dirname, "..", "..", "src"));
-  const all = sources.join("\n");
-  const unused = [...manifest.actions, ...manifest.commands, ...manifest.cardCommands].filter((name) => !all.includes(`"${name}"`));
-  assert.deepEqual(unused, manifest.withoutControl, "every command is sent by some control, except those still waiting for theirs");
+  walk(path.join(__dirname, "..", "..", "src", "controllers", "runtime"));
+  return sent;
+}
+
+test("a control's handler sends every action and command of the protocol, and nothing else", async () => {
+  const { ACTIONS, CARD_COMMANDS, CONFIGURATION_COMMANDS } = await import("../../src/backend/protocol.js");
+  const { QUEUE_CONTROLS } = await import("../../src/domain/affordances.js");
+  const sent = sentOperations();
+  for (const control of QUEUE_CONTROLS) sent.add(control.operation);
+  assert.deepEqual([...sent].sort(), [...ACTIONS, ...CONFIGURATION_COMMANDS, ...CARD_COMMANDS].sort());
+});
+
+// Each scope loader runs against a transport that records what it asks and answers nothing; the
+// field check asks `validate` before every form's command (internal dev doc §6).
+test("the scope loaders and the field check ask every query of the protocol", async () => {
+  const { CONFIGURATION_QUERIES } = await import("../../src/backend/protocol.js");
+  const { SCOPE_LOADERS } = await import("../../src/backend/scopes.js");
+  const { createSession } = await import("../../src/backend/session.js");
+  const asked = new Set();
+  const transport = { ws: async (message) => {
+    if (message.query) asked.add(message.query);
+    return { ok: false, code: "unknown", detail: null, channel: "ws" };
+  } };
+  const parameters = { trace: { jobId: "job" }, execution: { jobId: "job" }, job: { jobId: "job" }, errorTexts: { language: "en" } };
+  for (const [name, load] of Object.entries(SCOPE_LOADERS)) await load(transport, parameters[name] ?? {});
+  // A session the integration found ready checks a form's input.
+  const ready = {
+    ...transport,
+    ws: async (message) => (message.type === "vacuum_orchestrator/queue/get" ? { ok: true, data: wireQueuePage([]) } : transport.ws(message)),
+    subscribe: async () => ({ ok: true, data: () => {} }),
+    onConnection: () => () => {},
+  };
+  const hass = { config: { components: ["vacuum_orchestrator"] }, services: {} };
+  const session = createSession({ transport: ready, platform: { now: () => 0, monotonicNow: () => 0 }, getHass: () => hass });
+  await session.probe();
+  assert.equal(session.getSnapshot().phase, "ready");
+  await session.validate("create_job", {});
+  session.dispose();
+  assert.deepEqual([...asked].sort(), [...CONFIGURATION_QUERIES].sort());
 });
 
 test("the configuration keys are exactly the manifest's", async () => {

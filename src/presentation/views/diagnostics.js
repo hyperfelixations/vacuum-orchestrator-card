@@ -42,7 +42,16 @@ function traceOf(model, texts, options, ui) {
   };
 }
 
-export function buildDiagnosticsView({ model, texts, options = {}, ui = {} }) {
+// UI-36: how long the card took for its last view switch and its last update; "—" before one.
+function renderStats(texts, stats) {
+  const value = (ms) => (Number.isFinite(ms) ? t(texts, "diagnostics.render.milliseconds", { value: number(texts, Math.round(ms)) }) : "—");
+  return [
+    { label: t(texts, "diagnostics.render.switch"), value: value(stats?.switchMs) },
+    { label: t(texts, "diagnostics.render.update"), value: value(stats?.renderMs) },
+  ];
+}
+
+export function buildDiagnosticsView({ model, texts, options = {}, ui = {}, stats = null }) {
   const summary = slotData(model, "diagnostics");
   const status = model.slots?.diagnostics?.status;
   const traceWindow = summary?.traceWindow;
@@ -66,6 +75,7 @@ export function buildDiagnosticsView({ model, texts, options = {}, ui = {} }) {
       },
       { label: t(texts, "diagnostics.setup"), value: setupFact(texts, model.setup) },
     ],
+    render: renderStats(texts, stats),
     sinkFailures: Number.isInteger(summary?.sinkFailures) && summary.sinkFailures > 0 ? t(texts, "diagnostics.sinkFailures", { count: summary.sinkFailures }) : null,
     ...traceOf(model, texts, options, ui),
     traceLoading: options.show_trace !== false && !slotData(model, "trace") && model.slots?.trace?.status !== "error",

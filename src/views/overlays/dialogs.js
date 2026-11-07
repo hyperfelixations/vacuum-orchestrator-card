@@ -22,7 +22,7 @@ export const DIALOGS_CSS = `
 .voc-choice-label { font-size: 14px; font-weight: 750; line-height: 20px; }
 .voc-choice-note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 650; color: var(--voc-muted); }
 .voc-choice-note ha-icon { --mdc-icon-size: 15px; }
-.voc-choice-note[data-eligible="true"] { color: color-mix(in srgb, var(--voc-success) 80%, var(--primary-text-color)); }
+.voc-choice-note[data-eligible="true"] { color: var(--voc-success-ink); }
 `;
 
 // A question before a command: going back changes nothing, as in every dialog (UI-21), and is

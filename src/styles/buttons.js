@@ -28,7 +28,7 @@ button { font: inherit; color: inherit; }
 .voc-button ha-icon { --mdc-icon-size: 17px; }
 .voc-button--primary { border-color: var(--voc-accent-border); background: var(--voc-accent-soft); color: var(--voc-accent-ink); }
 .voc-button--quiet { background: transparent; }
-.voc-button--danger { border-color: color-mix(in srgb, var(--voc-error) 45%, transparent); color: color-mix(in srgb, var(--voc-error) 80%, var(--primary-text-color)); }
+.voc-button--danger { border-color: color-mix(in srgb, var(--voc-error) 45%, transparent); color: var(--voc-error-ink); }
 .voc-button--icon { width: var(--voc-icon-target); min-width: var(--voc-icon-target); min-height: var(--voc-icon-target); padding: 0; border-color: transparent; background: transparent; color: var(--voc-muted); }
 
 /* Hover only where a pointer hovers; a touch screen keeps it on the tapped control. */
@@ -65,10 +65,10 @@ button { font: inherit; color: inherit; }
 
 .voc-pill ha-icon { --mdc-icon-size: 13px; }
 .voc-pill--neutral { background: var(--voc-chip-bg); border-color: var(--voc-hairline); color: var(--voc-muted); }
-.voc-pill--ready { background: color-mix(in srgb, var(--voc-success) 16%, transparent); color: color-mix(in srgb, var(--voc-success) 78%, var(--primary-text-color)); }
-.voc-pill--running { background: color-mix(in srgb, var(--voc-info) 16%, transparent); color: color-mix(in srgb, var(--voc-info) 78%, var(--primary-text-color)); }
-.voc-pill--attention { background: color-mix(in srgb, var(--voc-error) 15%, transparent); color: color-mix(in srgb, var(--voc-error) 78%, var(--primary-text-color)); }
-.voc-pill--muted { background: transparent; border-color: var(--voc-hairline); color: var(--voc-faint); }
+.voc-pill--ready { background: color-mix(in srgb, var(--voc-success) 16%, transparent); color: var(--voc-success-ink); }
+.voc-pill--running { background: color-mix(in srgb, var(--voc-info) 16%, transparent); color: var(--voc-info-ink); }
+.voc-pill--attention { background: color-mix(in srgb, var(--voc-error) 15%, transparent); color: var(--voc-error-ink); }
+.voc-pill--muted { background: transparent; border-color: var(--voc-hairline); color: var(--voc-muted); }
 
 .voc-chip {
   display: inline-flex;

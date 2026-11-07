@@ -1,7 +1,7 @@
 "use strict";
 
 const { defineConfig, devices } = require("@playwright/test");
-const PORT = 4173;
+const { DEFAULT_PORT: PORT } = require("./test/helpers/static-server.js");
 // A cold engine on a shared runner: one browser at a time, more time (internal dev doc §10).
 const CROSS_ENGINE = { workers: 1, timeout: 60_000, expect: { timeout: 15_000 } };
 
@@ -13,7 +13,8 @@ module.exports = defineConfig({
   reporter: process.env.CI ? "list" : "dot",
   // Screenshots record formatted timestamps, so the engine's clock context is pinned rather
   // than inherited from whichever machine runs the suite.
-  use: { baseURL: `http://localhost:${PORT}`, timezoneId: "UTC", locale: "en-US" },
+  // The static server listens on loopback only (test/helpers/static-server.js).
+  use: { baseURL: `http://127.0.0.1:${PORT}`, timezoneId: "UTC", locale: "en-US" },
   expect: { toHaveScreenshot: { maxDiffPixels: 200 } },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
@@ -22,8 +23,8 @@ module.exports = defineConfig({
   ],
   webServer: {
     command: "node test/helpers/static-server.js",
-    port: PORT,
-    reuseExistingServer: !process.env.CI,
+    url: `http://127.0.0.1:${PORT}/test/fixtures/harness.html`,
+    reuseExistingServer: false,
     env: { PORT: String(PORT) },
   },
 });
