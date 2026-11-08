@@ -72,7 +72,7 @@ test("a map picture follows each new image of its entity and says when it came",
 test("a role whose entity has no state yet reads as unavailable", async () => {
   const { indexRegistry, robotLive } = await load();
   const live = robotLive({ configuration: { entityId: "vacuum.x", roles: { battery: "sensor.missing" } } }, indexRegistry([]), {});
-  assert.deepEqual({ ...live.roles.battery }, { entityId: "sensor.missing", state: null, display: null, available: false, unit: null, friendlyName: null, picture: null });
+  assert.deepEqual({ ...live.roles.battery }, { entityId: "sensor.missing", state: null, display: null, available: false, unit: null, name: null, picture: null });
 });
 
 test("numeric readings accept only available finite values", async () => {

@@ -6,7 +6,7 @@
 import { SUPPORTED_API_VERSIONS } from "../backend/protocol.js";
 import { scopeKey } from "../backend/session.js";
 import { collectSourceDiagnostics } from "./source-diagnostics.js";
-import { indexRegistry, robotLive } from "./ha-entities.js";
+import { haName, indexRegistry, robotLive } from "./ha-entities.js";
 
 function deepFreeze(value) {
   if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
@@ -82,16 +82,6 @@ function worded(format, state, value) {
   }
 }
 
-function named(formatName, state) {
-  if (typeof formatName !== "function" || !state) return null;
-  try {
-    const name = formatName(state);
-    return typeof name === "string" && name.trim() ? name.trim() : null;
-  } catch {
-    return null;
-  }
-}
-
 // `values`: further states of the entity a view names, such as those a condition accepts; each
 // is worded as Home Assistant words it.
 function entityReading(states, entityId, format, values, formatName) {
@@ -99,18 +89,18 @@ function entityReading(states, entityId, format, values, formatName) {
   return {
     state: state?.state ?? null,
     display: worded(format, state),
-    name: named(formatName, state) || state?.attributes?.friendly_name || null,
+    name: haName(formatName, state),
     available: Boolean(state) && state.state !== "unavailable" && state.state !== "unknown",
     values: Object.fromEntries([...values].sort().map((value) => [value, worded(format, state, value)])),
   };
 }
 
 // Every entity as an editor option: id, name, domain. Built only while an editor needs it.
-function entityCatalog(states) {
+function entityCatalog(states, formatName) {
   if (!states || typeof states !== "object") return [];
   return Object.keys(states)
     .sort()
-    .map((entityId) => ({ entityId, name: states[entityId]?.attributes?.friendly_name || entityId, domain: entityId.split(".")[0] }));
+    .map((entityId) => ({ entityId, name: haName(formatName, states[entityId]) || entityId, domain: entityId.split(".")[0] }));
 }
 
 function watchedEntities(robotsLive, entityReadings) {
@@ -129,7 +119,7 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
   const robots = slots.robots?.data?.items ?? null;
   const candidates = new Map((slots.candidates?.data?.items || []).map((candidate) => [candidate.registryId, candidate]));
   const robotsLive = {};
-  for (const robot of robots || []) robotsLive[robot.robotId] = robotLive(robot, registry, states, candidates.get(robot.configuration.registryId), home?.formatState ?? null);
+  for (const robot of robots || []) robotsLive[robot.robotId] = robotLive(robot, registry, states, candidates.get(robot.configuration.registryId), home?.formatState ?? null, home?.formatName ?? null);
   const entityReadings = {};
   for (const [entityId, values] of referencedEntities(slots)) entityReadings[entityId] = entityReading(states, entityId, home?.formatState ?? null, values, home?.formatName ?? null);
   // The integration decides who may command; until it said so, nothing is withheld.
@@ -153,7 +143,7 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
     robotsLive,
     entityReadings,
     areas: areaCatalog(home?.areas),
-    entityCatalog: needsEntityCatalog ? entityCatalog(states) : [],
+    entityCatalog: needsEntityCatalog ? entityCatalog(states, home?.formatName ?? null) : [],
     // The entity states this model read; a change elsewhere does not change it.
     watched: { entityIds: watchedEntities(robotsLive, entityReadings), allStates: needsEntityCatalog },
     // The integration's setup status, or null until read.

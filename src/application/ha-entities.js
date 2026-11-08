@@ -36,10 +36,28 @@ function displayed(format, state) {
   }
 }
 
-function reading(states, entityId, format) {
+// The name Home Assistant shows for an entity: what its formatter gives (2026.11: device and
+// entity), else the friendly_name attribute. See internal dev doc §7 "Home-Assistant-Entitäten".
+export function haName(formatName, state) {
+  if (!state) return null;
+  let name = null;
+  if (typeof formatName === "function") {
+    try {
+      name = formatName(state);
+    } catch {
+      name = null;
+    }
+  }
+  for (const candidate of [name, state.attributes?.friendly_name]) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+  return null;
+}
+
+function reading(states, entityId, format, formatName) {
   if (!entityId) return null;
   const state = states?.[entityId];
-  if (!state) return Object.freeze({ entityId, state: null, display: null, available: false, unit: null, friendlyName: null, picture: null });
+  if (!state) return Object.freeze({ entityId, state: null, display: null, available: false, unit: null, name: null, picture: null });
   // Copies of single values only: Home Assistant's state objects are never retained or frozen.
   return Object.freeze({
     entityId,
@@ -47,7 +65,7 @@ function reading(states, entityId, format) {
     display: displayed(format, state),
     available: !UNUSABLE.has(state.state),
     unit: typeof state.attributes?.unit_of_measurement === "string" ? state.attributes.unit_of_measurement : null,
-    friendlyName: typeof state.attributes?.friendly_name === "string" ? state.attributes.friendly_name : null,
+    name: haName(formatName, state),
     picture: typeof state.attributes?.entity_picture === "string" ? state.attributes.entity_picture : null,
   });
 }
@@ -55,8 +73,8 @@ function reading(states, entityId, format) {
 // An image entity's state is the time of its last image. Home Assistant's own cards build the
 // picture with it, so each new image is a new address (frontend `computeImageUrl`); without a
 // token the entity's own picture stands.
-function mapReading(states, entityId, format) {
-  const base = reading(states, entityId, format);
+function mapReading(states, entityId, format, formatName) {
+  const base = reading(states, entityId, format, formatName);
   const token = states?.[entityId]?.attributes?.access_token;
   const updatedAt = Date.parse(base.state ?? "");
   return Object.freeze({
@@ -77,23 +95,23 @@ export function roleReference(robot, candidate, role) {
 // What Home Assistant reports for one profile: its vacuum entity and each role in use, plus
 // what discovery found per role. The map pictures are the image entities the integration names,
 // the current map's first.
-export function robotLive(robot, registry, states, candidate = null, format = null) {
+export function robotLive(robot, registry, states, candidate = null, format = null, formatName = null) {
   const entityId = robot?.configuration?.entityId || resolveEntityId(robot?.configuration?.registryId, registry);
   const roles = {};
   const discovered = {};
   for (const role of ROBOT_ROLES) {
     const reference = roleReference(robot, candidate, role);
-    if (reference) roles[role] = reading(states, resolveEntityId(reference, registry), format);
+    if (reference) roles[role] = reading(states, resolveEntityId(reference, registry), format, formatName);
     const found = resolveEntityId(candidate?.roles?.[role], registry);
     if (found) discovered[role] = found;
   }
   const maps = [...new Set([robot?.mapImageEntityId, ...(robot?.maps || []).map((map) => map.imageEntityId)].filter(Boolean))];
   return Object.freeze({
-    vacuum: reading(states, entityId, format),
+    vacuum: reading(states, entityId, format, formatName),
     roles: Object.freeze(roles),
     discovered: Object.freeze(discovered),
     ambiguousRoles: Object.freeze([...(candidate?.ambiguousRoles || [])]),
-    maps: Object.freeze(maps.map((mapId) => mapReading(states, mapId, format))),
+    maps: Object.freeze(maps.map((mapId) => mapReading(states, mapId, format, formatName))),
   });
 }
 

@@ -110,6 +110,37 @@ test("the entity catalog is built only for an editor", async () => {
   assert.equal(catalog.find((entry) => entry.entityId === "binary_sensor.door").domain, "binary_sensor");
 });
 
+// Home Assistant 2026.11 names an entity after its device and itself; friendly_name keeps an older
+// name until the entity is renamed. Readings, the editor's catalog and map pictures use the name
+// Home Assistant shows.
+test("an entity is named as Home Assistant names it, in readings, the catalog and map pictures", async () => {
+  const { buildCardDomainModel, requests, snapshot, home } = await fixture();
+  const shown = { "binary_sensor.door": "Hallway Door", "image.rocky_main_floor": "  Rocky Main Floor  ", "sensor.rocky_battery": "", "vacuum.rocky": 42, "sensor.voi_mode": null };
+  const calls = [];
+  const formatName = (state) => {
+    calls.push(state);
+    const entityId = Object.keys(home.states).find((id) => home.states[id] === state);
+    if (entityId === "sensor.rocky_status") throw new Error("no names yet");
+    return shown[entityId];
+  };
+  const model = buildCardDomainModel({ snapshot, requests, home: { ...home, formatName }, needsEntityCatalog: true });
+  const named = Object.fromEntries(model.entityCatalog.map((entry) => [entry.entityId, entry.name]));
+  assert.deepEqual(named, {
+    "binary_sensor.door": "Hallway Door",
+    "image.rocky_main_floor": "Rocky Main Floor",
+    "sensor.rocky_battery": "Rocky battery",
+    "sensor.rocky_status": "sensor.rocky_status",
+    "sensor.voi_mode": "sensor.voi_mode",
+    "vacuum.rocky": "Rocky",
+  }, "formatted, trimmed, else friendly_name, else the entity id; a failing, empty, non-text or null name is no name");
+  assert.equal(model.entityReadings["binary_sensor.door"].name, "Hallway Door");
+  assert.equal(Object.values(model.robotsLive)[0].maps[0].name, "Rocky Main Floor");
+  assert.ok(calls.every((state) => Object.values(home.states).includes(state)), "the formatter gets Home Assistant's own state objects");
+  const without = buildCardDomainModel({ snapshot, requests, home, needsEntityCatalog: true });
+  assert.equal(without.entityCatalog.find((entry) => entry.entityId === "binary_sensor.door").name, "Door");
+  assert.equal(Object.values(without.robotsLive)[0].maps[0].name, "Main Floor");
+});
+
 test("the model is frozen, deterministic, and leaves Home Assistant's objects alone", async () => {
   const { buildCardDomainModel, requests, snapshot, home, states } = await fixture();
   const first = buildCardDomainModel({ snapshot, requests, home, nowMs: 1 });

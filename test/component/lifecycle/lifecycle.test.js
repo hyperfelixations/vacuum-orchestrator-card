@@ -50,6 +50,15 @@ test("a renamed entity reaches an open editor's search", async () => {
   card.unmount();
 });
 
+test("an editor's entity search names entities the way Home Assistant does", async () => {
+  const card = await mountCard({ ...BUSY, formatEntityName: (state) => `Hub ${state.attributes.friendly_name}` });
+  await card.click(".voc-primary-action");
+  await card.click('[data-action="set-overlay"][data-args*="moreOpen"]');
+  await card.type('[data-field="query:requiredOn"]', "waiting");
+  assert.match(card.text('[data-key="field:requiredOn"]'), /Hub Vacuum Orchestrator Waiting jobs/);
+  card.unmount();
+});
+
 test("a missing integration shows how to get it", async () => {
   const card = await mountCard({ recording: "not_installed" });
   assert.equal(card.root.querySelector(".voc-onboarding").dataset.phase, "not_installed");

@@ -163,6 +163,7 @@
         callService,
       };
       if (typeof options.formatEntityState === "function") hass.formatEntityState = (state, value) => options.formatEntityState(state, language, value);
+      if (typeof options.formatEntityName === "function") hass.formatEntityName = (state) => options.formatEntityName(state);
       return hass;
     }
 

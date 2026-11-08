@@ -49,7 +49,7 @@ export function entityName(entityId, model) {
 // A map by the name the integration gives it; the image entity's name repeats the robot's.
 export function mapLabel(robot, map) {
   const own = list(robot?.maps).find((entry) => entry.imageEntityId === map?.entityId)?.name;
-  return own || map?.friendlyName || map?.entityId || "";
+  return own || map?.name || map?.entityId || "";
 }
 
 // A job's display name: its own name, else its rooms.
