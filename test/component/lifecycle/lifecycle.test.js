@@ -50,10 +50,32 @@ test("a renamed entity reaches an open editor's search", async () => {
   card.unmount();
 });
 
+test("an editor's entity search names entities the way Home Assistant does", async () => {
+  const card = await mountCard({ ...BUSY, formatEntityName: (state) => `Hub ${state.attributes.friendly_name}` });
+  await card.click(".voc-primary-action");
+  await card.click('[data-action="set-overlay"][data-args*="moreOpen"]');
+  await card.type('[data-field="query:requiredOn"]', "waiting");
+  assert.match(card.text('[data-key="field:requiredOn"]'), /Hub Vacuum Orchestrator Waiting jobs/);
+  card.unmount();
+});
+
 test("a missing integration shows how to get it", async () => {
   const card = await mountCard({ recording: "not_installed" });
   assert.equal(card.root.querySelector(".voc-onboarding").dataset.phase, "not_installed");
   assert.deepEqual([...card.root.querySelectorAll(".voc-onboarding a")].map((link) => link.getAttribute("href")), ["https://my.home-assistant.io/redirect/hacs_repository/?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration", "https://github.com/hyperfelixations/vacuum-orchestrator#installation"]);
+  card.unmount();
+});
+
+test("a missing integration sends an instance with the Marketplace there, and the card follows when the component appears", async () => {
+  const card = await mountCard({ recording: "not_installed", marketplace: true });
+  const links = () => [...card.root.querySelectorAll(".voc-onboarding a")].map((link) => [link.getAttribute("href"), link.textContent.trim()]);
+  assert.deepEqual(links(), [["https://my.home-assistant.io/redirect/marketplace_repository/?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration", "Open in Marketplace"], ["https://github.com/hyperfelixations/vacuum-orchestrator#installation", "Installation guide"]]);
+  assert.doesNotMatch(card.text(".voc-onboarding"), /HACS/);
+  const without = { ...card.hass.config, components: card.hass.config.components.filter((name) => name !== "marketplace") };
+  await card.updateHass({ config: without });
+  assert.equal(links()[0][1], "Open in HACS", "the instance has no Marketplace now");
+  await card.updateHass({ config: { ...without, components: [...without.components, "marketplace"] } });
+  assert.equal(links()[0][1], "Open in Marketplace");
   card.unmount();
 });
 

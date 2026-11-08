@@ -671,6 +671,19 @@ test.describe("onboarding and setup", () => {
     await shot(page, "onboarding-not-installed-medium-light.png", MEDIUM);
   });
 
+  test("not installed, with the Marketplace", async ({ page }) => {
+    const card = await mountCard(page, { ...NOT_INSTALLED, marketplace: true, config: BASE });
+    await expect(card.locator(".voc-onboarding ol li")).toHaveCount(3);
+    await expect(card.locator(".voc-onboarding-actions a").first()).toHaveText("Open in Marketplace");
+    await shot(page, "onboarding-not-installed-marketplace-medium-light.png", MEDIUM);
+  });
+
+  test("not installed, with the Marketplace, in German on a narrow card", async ({ page }) => {
+    const card = await mountCard(page, { ...NOT_INSTALLED, marketplace: true, language: "de", config: BASE });
+    await expect(card.locator(".voc-onboarding-actions a").first()).toHaveText("Im Marketplace öffnen");
+    await shot(page, "onboarding-not-installed-marketplace-german-narrow-light.png", NARROW);
+  });
+
   test("not set up, dark", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     const card = await mountCard(page, { ...NOT_SET_UP, config: BASE });

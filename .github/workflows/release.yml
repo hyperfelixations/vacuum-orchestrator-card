@@ -464,14 +464,14 @@ jobs:
 
           ## Installation
 
-          Install or update Vacuum Orchestrator Card through HACS. Reload the browser after the update.
+          Install or update Vacuum Orchestrator Card through the Marketplace (HACS on Home Assistant 2026.10 or older). Reload the browser after the update.
           EOF
           if [[ "$RELEASE_KIND" == "dev" ]]; then
             cat >> "$notes_file" <<'EOF'
 
           ## Pre-release
 
-          This is a development pre-release for testing. HACS offers it only where pre-releases are enabled for this repository.
+          This is a development pre-release for testing. The Marketplace and HACS offer it only where pre-releases are enabled for this repository.
           EOF
           fi
 
@@ -499,7 +499,7 @@ jobs:
           {
             echo "## Unpublished release draft created"
             echo
-            echo "Nothing has been published. HACS cannot see this draft."
+            echo "Nothing has been published. Neither the Marketplace nor HACS can see this draft."
             echo
             echo "- Draft: ${{ steps.draft.outputs.url }}"
             echo "- Tag to be created on publish: \`$RELEASE_TAG\`"

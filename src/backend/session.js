@@ -52,11 +52,10 @@ export function scopeKey(name, params = {}) {
   return `${name}|${stableJson(params)}`;
 }
 
-export function componentLoaded(hass) {
+export function componentLoaded(hass, domain = DOMAIN) {
   const components = hass?.config?.components;
-  if (!components) return false;
-  if (typeof components.includes === "function") return components.includes(DOMAIN);
-  if (typeof components.has === "function") return components.has(DOMAIN);
+  if (Array.isArray(components)) return components.includes(domain);
+  if (typeof components?.has === "function") return components.has(domain);
   return false;
 }
 

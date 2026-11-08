@@ -85,6 +85,15 @@ test("names come from the integration, then Home Assistant, then the id", async 
   assert.equal(findJob(model, "job-nowhere"), null);
 });
 
+test("a map is named by the integration, then by Home Assistant's name of its image entity, then by its id", async () => {
+  const { mapLabel } = await import("../../../../src/presentation/common/lookups.js");
+  const robot = { maps: [{ imageEntityId: "image.main", name: "Main floor" }] };
+  assert.equal(mapLabel(robot, { entityId: "image.main", name: "Rocky Main Floor" }), "Main floor");
+  assert.equal(mapLabel(robot, { entityId: "image.lower", name: "Rocky Lower Floor" }), "Rocky Lower Floor");
+  assert.equal(mapLabel(robot, { entityId: "image.lower", name: null }), "image.lower");
+  assert.equal(mapLabel({}, undefined), "");
+});
+
 // UI-09, EXE-11: the state is the integration's vendor-neutral activity, Home Assistant's vacuum
 // state only where the integration has none.
 test("a robot's status line joins its activity and battery with the lease", async () => {

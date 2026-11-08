@@ -31,7 +31,7 @@ function firstMark(recording) {
 
 // `requests`: extra slots, e.g. { templates: { name: "templates", params: {} } }. `until`: home
 // changes played after opening, in order.
-async function modelFor(name, { from, until = [], requests = {}, admin, language = "en", needsEntityCatalog = false, formatEntityState } = {}) {
+async function modelFor(name, { from, until = [], requests = {}, admin, language = "en", needsEntityCatalog = false, formatEntityState, formatEntityName, marketplace = false } = {}) {
   const { createTransport } = await import("../../src/backend/transport.js");
   const { createSession } = await import("../../src/backend/session.js");
   const { readHomeAssistant } = await import("../../src/backend/home-assistant.js");
@@ -40,7 +40,7 @@ async function modelFor(name, { from, until = [], requests = {}, admin, language
   const { affordanceContext } = await import("../../src/domain/affordances.js");
   const recording = loadRecording(name);
   const clock = { time: 0, now: () => clock.time, advance: (ms) => (clock.time += ms) };
-  const backend = createRecordedBackend(recording, { from: from ?? firstMark(recording), language, admin, clock, formatEntityState });
+  const backend = createRecordedBackend(recording, { from: from ?? firstMark(recording), language, admin, clock, formatEntityState, formatEntityName, marketplace });
   clock.time = backend.nowMs;
   const getHass = () => backend.hass;
   // Without timers the session reloads at once instead of after a quiet gap.

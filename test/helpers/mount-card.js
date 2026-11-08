@@ -24,13 +24,14 @@ function close(env) {
 // Where a job, room, robot or template shows its name.
 const NAMES = ".voc-job-title, .voc-room-name, .voc-robot-name, .voc-template-name";
 
-// `admin`: overrides the recorded user's flag. `failNext`: [match, error] pairs Home Assistant
-// refuses before the card opens (see the player's `failNext`).
-async function mountCard({ recording, from, config = {}, language = "en", admin, failNext = [] } = {}) {
+// `admin`: overrides the recorded user's flag. `marketplace`: the instance has the Marketplace
+// component loaded. `formatEntityName`: Home Assistant's name formatter. `failNext`: [match, error]
+// pairs Home Assistant refuses before the card opens (see the player's `failNext`).
+async function mountCard({ recording, from, config = {}, language = "en", admin, marketplace = false, formatEntityName, failNext = [] } = {}) {
   if (!recording) throw new Error("mountCard needs a recording of the integration");
   const played = loadRecording(recording);
   const clock = { time: 0, now: () => clock.time, advance: (ms) => (clock.time += ms) };
-  const backend = createRecordedBackend(played, { from: from ?? played.steps.find((step) => step.mark !== undefined)?.mark, language, admin, clock });
+  const backend = createRecordedBackend(played, { from: from ?? played.steps.find((step) => step.mark !== undefined)?.mark, language, admin, marketplace, formatEntityName, clock });
   clock.time = backend.nowMs;
   for (const [match, error] of failNext) backend.failNext(match, error);
   const env = createTestEnvironment({ now: () => clock.now() });

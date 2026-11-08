@@ -12,6 +12,6 @@ export function renderSignature({ sessionVersion = null, configVersion, language
     second: clockMode === "second" ? Math.floor(nowMs / 1000) : null,
     ui,
     // An editor's entity search shows ids and names, so a renamed entity is a change.
-    hass: [model.robotsLive, model.entityReadings, model.areas, model.operations, model.permissions, model.entityCatalog.map(({ entityId, name }) => [entityId, name])],
+    hass: [model.robotsLive, model.entityReadings, model.areas, model.operations, model.permissions, model.platform, model.entityCatalog.map(({ entityId, name }) => [entityId, name])],
   });
 }

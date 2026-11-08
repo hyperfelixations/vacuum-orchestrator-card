@@ -14,7 +14,7 @@ test("publishes one card registration and the production version identity", asyn
   }));
   expect(registration.customElement).toBe("VacuumOrchestratorCard");
   expect(registration.pickerCount).toBe(1);
-  expect(registration.version).toBe("0.1.0");
+  expect(registration.version).toBe("0.1.4");
 });
 
 test("the null configuration renders the connected queue on the recording's clock", async ({ page }) => {
@@ -49,6 +49,14 @@ test("a missing integration shows how to install it", async ({ page }) => {
   const links = card.locator(".voc-onboarding a");
   await expect(links).toHaveText(["Open in HACS", "Installation guide"]);
   for (const link of await links.all()) await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+});
+
+test("a missing integration is opened in the Marketplace where the instance has one", async ({ page }) => {
+  const card = await mountCard(page, { recording: "not_installed", marketplace: true });
+  const links = card.locator(".voc-onboarding a");
+  await expect(links).toHaveText(["Open in Marketplace", "Installation guide"]);
+  await expect(links.first()).toHaveAttribute("href", /\/redirect\/marketplace_repository\/\?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration$/);
+  await expect(card.locator(".voc-onboarding ol")).not.toContainText("HACS");
 });
 
 test("configured header text stays text", async ({ page }) => {

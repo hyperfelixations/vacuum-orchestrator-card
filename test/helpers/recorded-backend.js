@@ -152,7 +152,7 @@
         entities: displayEntities(view.entities),
         areas: Object.fromEntries(view.areas.map((area) => [area.area_id, area])),
         services: Object.fromEntries(Object.entries(view.services).map(([domain, names]) => [domain, Object.fromEntries(names.map((service) => [service, {}]))])),
-        config: { ...view.config },
+        config: { ...view.config, ...(options.marketplace ? { components: [...(view.config.components || []), "marketplace"] } : {}) },
         user: { ...view.user, ...(options.admin === undefined ? {} : { is_admin: options.admin }) },
         language,
         locale: { language },
@@ -163,6 +163,7 @@
         callService,
       };
       if (typeof options.formatEntityState === "function") hass.formatEntityState = (state, value) => options.formatEntityState(state, language, value);
+      if (typeof options.formatEntityName === "function") hass.formatEntityName = (state) => options.formatEntityName(state);
       return hass;
     }
 

@@ -296,6 +296,30 @@ test("the shell hands each notice on with its id and time", async () => {
   assert.equal(vm({ id: 5, kind: "warning", messageKey: "notice.outcomeUnknown" }).durationMs, null);
 });
 
+test("onboarding sends an instance with the Marketplace there and keeps HACS for the rest", async () => {
+  const { buildOnboarding } = await import("../../../../src/presentation/shell/onboarding.js");
+  const { HACS_INTEGRATION_URL, INTEGRATION_URL, MARKETPLACE_INTEGRATION_URL } = await import("../../../../src/presentation/common/links.js");
+  assert.equal(MARKETPLACE_INTEGRATION_URL, "https://my.home-assistant.io/redirect/marketplace_repository/?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration");
+  const market = await at(NOT_INSTALLED, { marketplace: true });
+  const onboarding = buildOnboarding({ model: market.model, texts: market.texts });
+  assert.equal(onboarding.steps.length, 3);
+  assert.match(onboarding.steps[0], /Marketplace/);
+  assert.doesNotMatch(onboarding.steps.join(" "), /HACS/);
+  assert.deepEqual(onboarding.actions.map((action) => [action.kind, action.href, action.label, action.primary]), [["link", MARKETPLACE_INTEGRATION_URL, "Open in Marketplace", true], ["link", INTEGRATION_URL, "Installation guide", false]]);
+  const german = await at(NOT_INSTALLED, { marketplace: true, language: "de" });
+  const inGerman = buildOnboarding({ model: german.model, texts: german.texts });
+  assert.match(inGerman.steps[0], /Marketplace/);
+  assert.equal(inGerman.actions[0].label, "Im Marketplace öffnen");
+  const asUser = await at(NOT_INSTALLED, { marketplace: true, admin: false });
+  assert.deepEqual(buildOnboarding({ model: asUser.model, texts: asUser.texts }).actions.map((action) => action.href), [INTEGRATION_URL]);
+  // Without the component the instance is on HACS, whatever else its configuration holds.
+  const hacs = await at(NOT_INSTALLED, { marketplace: false });
+  const onHacs = buildOnboarding({ model: hacs.model, texts: hacs.texts });
+  assert.equal(onHacs.actions[0].href, HACS_INTEGRATION_URL);
+  assert.equal(onHacs.actions[0].label, "Open in HACS");
+  assert.deepEqual(buildOnboarding({ model: { phase: "not_installed", permissions: { isAdmin: true } }, texts: hacs.texts }).actions.map((action) => action.href), [HACS_INTEGRATION_URL, INTEGRATION_URL], "a model without platform facts is on HACS");
+});
+
 test("onboarding explains each unusable phase and offers Home Assistant's own pages", async () => {
   const { buildOnboarding } = await import("../../../../src/presentation/shell/onboarding.js");
   const { HACS_INTEGRATION_URL, INTEGRATION_URL, SET_UP_PATH, INTEGRATION_PAGE_PATH } = await import("../../../../src/presentation/common/links.js");

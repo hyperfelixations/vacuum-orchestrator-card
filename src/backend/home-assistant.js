@@ -6,6 +6,8 @@
 import { CARD_COMMANDS } from "./protocol.js";
 import { componentLoaded, registeredOperations } from "./session.js";
 
+const MARKETPLACE_COMPONENT = "marketplace";
+
 // The parts besides entity states the card reads; Home Assistant replaces a part when it changes
 // and keeps the state object of an entity that did not (internal dev doc "Renderanlässe").
 const HASS_PARTS = Object.freeze(["areas", "entities", "devices", "floors", "user", "locale", "language", "themes", "services", "config", "connection", "formatEntityState", "formatEntityName", "hassUrl"]);
@@ -30,5 +32,7 @@ export function readHomeAssistant(hass) {
     formatState: typeof hass?.formatEntityState === "function" ? (state, value) => (value === undefined ? hass.formatEntityState(state) : hass.formatEntityState(state, value)) : null,
     // Home Assistant's name of an entity as its own cards show it: its device's and its own.
     formatName: typeof hass?.formatEntityName === "function" ? (state) => hass.formatEntityName(state) : null,
+    // Loaded from Home Assistant 2026.11, where it replaces HACS.
+    marketplace: componentLoaded(hass, MARKETPLACE_COMPONENT),
   };
 }
