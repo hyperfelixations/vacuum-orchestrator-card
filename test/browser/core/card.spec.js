@@ -51,6 +51,14 @@ test("a missing integration shows how to install it", async ({ page }) => {
   for (const link of await links.all()) await expect(link).toHaveAttribute("rel", "noopener noreferrer");
 });
 
+test("a missing integration is opened in the Marketplace where the instance has one", async ({ page }) => {
+  const card = await mountCard(page, { recording: "not_installed", marketplace: true });
+  const links = card.locator(".voc-onboarding a");
+  await expect(links).toHaveText(["Open in Marketplace", "Installation guide"]);
+  await expect(links.first()).toHaveAttribute("href", /\/redirect\/marketplace_repository\/\?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration$/);
+  await expect(card.locator(".voc-onboarding ol")).not.toContainText("HACS");
+});
+
 test("configured header text stays text", async ({ page }) => {
   const value = '<img src=x onerror="window.__vocXss = true">';
   const card = await mountCard(page, { ...BUSY, config: { title: value } });

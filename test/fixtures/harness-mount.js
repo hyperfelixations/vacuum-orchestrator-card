@@ -12,7 +12,7 @@
     const from = options.from ?? recording.steps.find((step) => step.mark !== undefined)?.mark;
     const clock = { advance: (ms) => (window.__vocNow += ms) };
     // Home Assistant words entity states for the frontend; the harness does so too.
-    const backend = window.VocRecorded.createRecordedBackend(recording, { from, language: options.language || "en", admin: options.admin, clock, formatEntityState: window.VocRecorded.formatLikeHomeAssistant });
+    const backend = window.VocRecorded.createRecordedBackend(recording, { from, language: options.language || "en", admin: options.admin, marketplace: options.marketplace === true, clock, formatEntityState: window.VocRecorded.formatLikeHomeAssistant });
     for (const [match, error] of options.failNext || []) backend.failNext(match, error);
     window.__vocNow = backend.nowMs;
     backend.onChange((hass) => {

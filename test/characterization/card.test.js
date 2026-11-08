@@ -40,6 +40,7 @@ const CASES = Object.freeze([
   { name: "queue-read-only", place: READ_ONLY, check: readsOnly },
   { name: "queue-german", place: BUSY, config: { language: "de" } },
   { name: "onboarding-not-installed", place: { recording: "not_installed" } },
+  { name: "onboarding-not-installed-marketplace", place: { recording: "not_installed", marketplace: true } },
   { name: "onboarding-not-set-up", place: { recording: "setup", from: "Vacuum Orchestrator is installed but not set up" } },
   { name: "onboarding-load-failed", place: { recording: "unloaded", from: "The integration is not loaded" } },
   { name: "onboarding-check-failed", place: { recording: "not_installed", failNext: [[{ type: "manifest/get" }, haError.homeAssistant("Unknown error")]] } },

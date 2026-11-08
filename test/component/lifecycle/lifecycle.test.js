@@ -57,6 +57,19 @@ test("a missing integration shows how to get it", async () => {
   card.unmount();
 });
 
+test("a missing integration sends an instance with the Marketplace there, and the card follows when the component appears", async () => {
+  const card = await mountCard({ recording: "not_installed", marketplace: true });
+  const links = () => [...card.root.querySelectorAll(".voc-onboarding a")].map((link) => [link.getAttribute("href"), link.textContent.trim()]);
+  assert.deepEqual(links(), [["https://my.home-assistant.io/redirect/marketplace_repository/?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration", "Open in Marketplace"], ["https://github.com/hyperfelixations/vacuum-orchestrator#installation", "Installation guide"]]);
+  assert.doesNotMatch(card.text(".voc-onboarding"), /HACS/);
+  const without = { ...card.hass.config, components: card.hass.config.components.filter((name) => name !== "marketplace") };
+  await card.updateHass({ config: without });
+  assert.equal(links()[0][1], "Open in HACS", "the instance has no Marketplace now");
+  await card.updateHass({ config: { ...without, components: [...without.components, "marketplace"] } });
+  assert.equal(links()[0][1], "Open in Marketplace");
+  card.unmount();
+});
+
 test("an installed but unconfigured integration offers Home Assistant's setup dialog, and the card follows once it is added", async () => {
   const card = await mountCard({ recording: "setup", from: "Vacuum Orchestrator is installed but not set up" });
   const action = card.root.querySelector('.voc-onboarding [data-action="navigate"]');

@@ -51,7 +51,7 @@ async function gotoHarness(page) {
   await page.goto("/test/fixtures/harness.html");
 }
 
-// options: recording, from, config, configs, count, width, language, admin, failNext, themes,
+// options: recording, from, config, configs, count, width, language, admin, marketplace, failNext, themes,
 // layout, rows (see test/fixtures/harness-mount.js). Resolves
 // once every card has left the connecting phase and laid itself out.
 async function mountCard(page, options = {}) {

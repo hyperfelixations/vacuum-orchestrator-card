@@ -29,8 +29,20 @@ test("the facts are taken from the hass object without copying its state objects
 test("missing parts read as unknown, not as permissions or offers", async () => {
   const { readHomeAssistant } = await load();
   const home = readHomeAssistant(null);
-  assert.deepEqual({ ...home }, { states: null, areas: null, admin: null, operations: [], formatState: null, formatName: null });
+  assert.deepEqual({ ...home }, { states: null, areas: null, admin: null, operations: [], formatState: null, formatName: null, marketplace: false });
   assert.equal(readHomeAssistant({ user: {} }).admin, null);
+});
+
+test("the Marketplace counts as present only where Home Assistant lists its component", async () => {
+  const { readHomeAssistant } = await load();
+  const read = (components) => readHomeAssistant({ config: { components } }).marketplace;
+  assert.equal(read(["vacuum_orchestrator", "marketplace"]), true);
+  assert.equal(read(new Set(["marketplace"])), true);
+  assert.equal(read(["hacs", "vacuum_orchestrator"]), false);
+  assert.equal(read([]), false);
+  assert.equal(read(undefined), false);
+  assert.equal(read("marketplace"), false, "a string is no component list");
+  assert.equal(readHomeAssistant({}).marketplace, false);
 });
 
 test("while the integration is loaded its card commands are offered beside its registered actions", async () => {

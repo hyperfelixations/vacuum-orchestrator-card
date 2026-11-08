@@ -146,6 +146,7 @@ export function buildCardDomainModel({ snapshot = null, requests = {}, home = nu
     live: snapshot?.live ?? null,
     subscription: snapshot?.subscription ?? "idle",
     permissions: { canCommand, isAdmin: home?.admin === true },
+    platform: { marketplace: home?.marketplace === true },
     operations: [...(home?.operations || [])],
     pending: Object.keys(snapshot?.pending || {}).sort(),
     slots,

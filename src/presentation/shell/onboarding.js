@@ -3,7 +3,7 @@
 // "My" redirects, so Home Assistant keeps ownership of installation and setup.
 
 import { RETRY_MS } from "../../backend/session.js";
-import { HACS_INTEGRATION_URL, INTEGRATION_PAGE_PATH, INTEGRATION_URL, SET_UP_PATH } from "../common/links.js";
+import { HACS_INTEGRATION_URL, INTEGRATION_PAGE_PATH, INTEGRATION_URL, MARKETPLACE_INTEGRATION_URL, SET_UP_PATH } from "../common/links.js";
 import { failureText, t } from "../common/texts.js";
 
 const ICONS = Object.freeze({
@@ -31,9 +31,12 @@ export function buildOnboarding({ model = {}, texts } = {}) {
     busy: phase === "probing",
   };
   if (phase === "not_installed") {
-    base.steps = [1, 2, 3].map((step) => t(texts, `onboarding.not_installed.step${step}`));
+    // The Marketplace where the instance has it, else HACS; see internal dev doc §8 "Shell".
+    const store = model.platform?.marketplace === true ? "marketplace" : "hacs";
+    base.steps = [1, 2, 3].map((step) => t(texts, `onboarding.not_installed.${store}.step${step}`));
     const guide = { kind: "link", href: INTEGRATION_URL, label: t(texts, "onboarding.action.guide"), icon: "mdi:open-in-new" };
-    base.actions = isAdmin ? [{ kind: "link", href: HACS_INTEGRATION_URL, label: t(texts, "onboarding.action.hacs"), icon: "mdi:open-in-new" }, guide] : [guide];
+    const storeAction = { kind: "link", href: store === "marketplace" ? MARKETPLACE_INTEGRATION_URL : HACS_INTEGRATION_URL, label: t(texts, `onboarding.action.${store}`), icon: "mdi:open-in-new" };
+    base.actions = isAdmin ? [storeAction, guide] : [guide];
     if (!isAdmin) base.note = t(texts, "onboarding.adminInstall");
   } else if (phase === "not_set_up") {
     base.actions = isAdmin ? [{ kind: "navigate", path: SET_UP_PATH, label: t(texts, "onboarding.action.setUp"), icon: "mdi:plus" }] : [];
