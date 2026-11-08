@@ -79,6 +79,13 @@ test("browser and draft consume the same checked candidate bundle", () => {
   assert.doesNotMatch(workflow, /gh release edit.*--draft=false|gh release upload|softprops\/action-gh-release/);
 });
 
+test("the draft names the Marketplace beside HACS for installing, pre-releases and visibility", () => {
+  const draft = jobBlock("create-draft");
+  assert.match(draft, /Install or update Vacuum Orchestrator Card through the Marketplace \(HACS on Home Assistant 2026\.10 or older\)\. Reload the browser after the update\./);
+  assert.match(draft, /The Marketplace and HACS offer it only where pre-releases are enabled for this repository\./);
+  assert.match(draft, /Neither the Marketplace nor HACS can see this draft\./);
+});
+
 // ------------------------------------------------------------------ approved commit --
 
 function jobBlock(name, source = workflow) {
