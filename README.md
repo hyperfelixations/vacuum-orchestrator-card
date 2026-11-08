@@ -1,10 +1,9 @@
 # Vacuum Orchestrator Card
 
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories)
 [![Questions](https://img.shields.io/badge/Questions%3F-Join%20the%20community-5865F2)](https://discord.gg/zfGKCVEvwe)
 [![Downloads](https://img.shields.io/github/downloads/hyperfelixations/vacuum-orchestrator-card/total?label=Downloads)](https://github.com/hyperfelixations/vacuum-orchestrator-card/releases/latest)
 
-[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=hyperfelixations&repository=vacuum-orchestrator-card&category=plugin)
+[![Open in the Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=hyperfelixations&repository=vacuum-orchestrator-card&category=plugin)
 
 A custom dashboard card for [Home Assistant](https://www.home-assistant.io/)
 that shows and controls the
@@ -49,10 +48,10 @@ follows your dashboard's light or dark theme.
 
 - **Home Assistant 2026.10.0 or newer.**
 - **The [Vacuum Orchestrator](https://github.com/hyperfelixations/vacuum-orchestrator)
-  integration**, installed through HACS and set up. Without it the card shows how
-  to get it.
+  integration**, installed through the Marketplace (HACS on Home Assistant
+  2026.10) and set up. Without it the card shows how to get it.
 
-  [![Add Vacuum Orchestrator to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration)
+  [![Open Vacuum Orchestrator in the Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=hyperfelixations&repository=vacuum-orchestrator&category=integration)
 - **A Home Assistant account that may control the robot.** Every user can
   operate the card; users in Home Assistant's **Read only** group see it
   read-only.
@@ -61,17 +60,25 @@ follows your dashboard's light or dark theme.
 
 ## Installation
 
-### HACS
+### Marketplace
 
-[![Open your Home Assistant instance and add this repository to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=hyperfelixations&repository=vacuum-orchestrator-card&category=plugin)
+[![Open your Home Assistant instance and add Vacuum Orchestrator Card to the Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=hyperfelixations&repository=vacuum-orchestrator-card&category=plugin)
 
-Add Vacuum Orchestrator Card as a custom repository using the button above or
-manually:
+Add the card from its GitHub address. Use the button above or add it manually:
 
-1. Open HACS → the three-dot menu → **Custom repositories**.
-2. Add `https://github.com/hyperfelixations/vacuum-orchestrator-card`, category
-   **Dashboard**.
-3. Install "Vacuum Orchestrator Card" and reload your browser.
+1. Go to **Settings → Marketplace**, open **Add from link**, enter
+   `https://github.com/hyperfelixations/vacuum-orchestrator-card`, select the
+   type **Dashboard** and select **Add**.
+2. Connect GitHub when asked — adding a repository needs it. If you started
+   from the button, open it again afterwards.
+3. Open the card, select **Install**, check the version in the dialog, and
+   select **Install** again.
+4. Reload your browser.
+
+On Home Assistant 2026.10, add the card to
+[HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=hyperfelixations&repository=vacuum-orchestrator-card&category=plugin)
+as a custom repository (category **Dashboard**), select **Download**, and
+reload your browser.
 
 ### Manual
 
@@ -96,8 +103,9 @@ type: custom:vacuum-orchestrator-card
 
 The card then leads you to a working setup:
 
-1. **Vacuum Orchestrator is not installed** — **Open in HACS** and follow the
-   three steps on the card, or read the **Installation guide**.
+1. **Vacuum Orchestrator is not installed** — **Open in Marketplace** (**Open in
+   HACS** on Home Assistant 2026.10) and follow the three steps on the card, or
+   read the **Installation guide**.
 2. **Installed but not set up** — **Set up integration** opens Home Assistant's
    dialog for adding it.
 3. **Could not start** — **Open integration** shows Home Assistant's error for
@@ -353,9 +361,13 @@ card_mod:
 ## Troubleshooting
 
 **The card doesn't appear after installing.**
-Confirm the dashboard resource was added (Settings → Dashboards → the three-dot
-menu → **Resources**) and points at the right path as a JavaScript module, then
-hard-reload the browser (see below).
+Hard-reload the browser (see below). If a repair under Settings → System →
+**Repairs** asks for a restart, restart Home Assistant. Then open Settings →
+Dashboards → the three-dot menu → **Resources** and make sure the card is listed
+there exactly once, as a JavaScript module — remove a manually added copy when
+the Marketplace or HACS installed the card too. If you manage dashboard
+resources in YAML, add the resource the install dialog shows. A manual install
+needs the resource step from [Installation](#installation).
 
 **Changes don't show up, or the card looks outdated after an update.**
 Browsers cache dashboard resources. Hard-reload the dashboard tab
